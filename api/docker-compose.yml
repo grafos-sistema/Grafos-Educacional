@@ -1,0 +1,90 @@
+version: '3.8'
+services:
+  postgres_santacruz:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=api_santacruz
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=pUXSu1qNwOgl4It
+    networks:
+      - interna
+    volumes:
+      - postgres_data_santacruz:/var/lib/postgresql/data
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+
+  redis_santacruz:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    networks:
+      - interna
+    volumes:
+      - redis_data_santacruz:/data
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+
+  api_santacruz:
+    image: luissantostsx/grafos-api:latest
+    environment:
+      - NODE_ENV=production
+      - APP_NAME=Sistema Santa Cruz
+      - DATABASE_URL=postgresql://postgres:pUXSu1qNwOgl4It@postgres_santacruz:5432/api_santacruz?pool_timeout=0&statement_timeout=0
+      - DIRECT_URL=postgresql://postgres:pUXSu1qNwOgl4It@postgres_santacruz:5432/api_santacruz
+      - JWT_SECRET=pUXSu1qNwOgl4It0
+      - JWT_REFRESH_SECRET=pUXSu1qNwOgl4It0_refresh
+      - REDIS_HOST=redis_santacruz
+      - REDIS_PORT=6379
+    networks:
+      - interna
+      - externa
+    volumes:
+      - uploads_santacruz:/app/public/uploads
+      - question_images_santacruz:/app/public/question-images
+    deploy:
+      mode: replicated
+      replicas: 1
+      update_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.services.api_santacruz.loadbalancer.server.port=3333"
+        - "traefik.http.services.api_santacruz.loadbalancer.passHostHeader=true"
+
+        - "traefik.http.routers.api_santacruz.service=api_santacruz"
+        - "traefik.http.routers.api_santacruz.rule=Host(`api-santacruz.grafoseducacional.com.br`)"
+        - "traefik.http.routers.api_santacruz.tls.certresolver=le"
+        - "traefik.http.routers.api_santacruz.entrypoints=websecure"
+        - "traefik.http.routers.api_santacruz.tls=true"
+volumes:
+  postgres_data_santacruz:
+    external: true
+  redis_data_santacruz:
+    external: true
+  uploads_santacruz:
+    external: true
+  question_images_santacruz:
+    external: true
+
+networks:
+  interna:
+    external: true
+  externa:
+    external: true

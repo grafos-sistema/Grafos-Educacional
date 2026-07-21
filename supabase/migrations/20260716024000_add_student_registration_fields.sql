@@ -1,0 +1,15 @@
+-- AlterTable: users
+ALTER TABLE "users" 
+  ADD COLUMN IF NOT EXISTS "numero" TEXT,
+  ADD COLUMN IF NOT EXISTS "complemento" TEXT,
+  ADD COLUMN IF NOT EXISTS "bairro" TEXT;
+
+-- AlterTable: students
+ALTER TABLE "students" 
+  ADD COLUMN IF NOT EXISTS "situacao" TEXT,
+  ADD COLUMN IF NOT EXISTS "escola" TEXT,
+  ADD COLUMN IF NOT EXISTS "unidade" TEXT,
+  ADD COLUMN IF NOT EXISTS "anoLetivo" TEXT,
+  ADD COLUMN IF NOT EXISTS "curso" TEXT,
+  ADD COLUMN IF NOT EXISTS "serie" TEXT,
+  ADD COLUMN IF NOT EXISTS "turma" TEXT;

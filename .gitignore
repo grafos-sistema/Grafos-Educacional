@@ -1,0 +1,276 @@
+# ==========================================
+# ENVIRONMENT VARIABLES
+# ==========================================
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Manter apenas os exemplos
+!.env.example
+!.env.prod
+
+# ==========================================
+# NODE MODULES
+# ==========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==========================================
+# BUILD & DIST
+# ==========================================
+dist/
+build/
+out/
+.next/
+.turbo/
+*.tsbuildinfo
+
+# ==========================================
+# LOGS
+# ==========================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pids
+*.pid
+*.pid.lock
+
+# ==========================================
+# UPLOADS & MEDIA
+# ==========================================
+uploads/
+public/uploads/
+temp/
+tmp/
+
+# ==========================================
+# BACKUPS
+# ==========================================
+backups/*.sql
+backups/*.sql.gz
+*.dump
+*.backup
+
+# Manter diretório de backups mas não os arquivos
+!backups/.gitkeep
+
+# ==========================================
+# COVERAGE & TESTS
+# ==========================================
+coverage/
+*.lcov
+.nyc_output
+.cache
+test-results/
+playwright-report/
+junit.xml
+
+# ==========================================
+# DATABASE
+# ==========================================
+*.sqlite
+*.sqlite3
+*.db
+
+# Prisma
+**/prisma/.env
+prisma/migrations/**/*.sql
+!prisma/migrations/migration_lock.toml
+
+# ==========================================
+# DOCKER
+# ==========================================
+# Manter os Dockerfiles e docker-compose, mas ignorar alguns temporários
+docker-compose.override.yml
+.dockerignore.bak
+
+# ==========================================
+# IDEs & EDITORS
+# ==========================================
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains (WebStorm, IntelliJ, etc)
+.idea/
+*.iml
+*.iws
+.idea_modules/
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+Session.vim
+Sessionx.vim
+.netrwhist
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ==========================================
+# OPERATING SYSTEM
+# ==========================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+.directory
+.Trash-*
+.nfs*
+
+# ==========================================
+# CERTIFICATES & KEYS
+# ==========================================
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+ssl/
+certs/
+certificates/
+
+# ==========================================
+# MISC
+# ==========================================
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*.bak
+*.orig
+
+# Lock files (exceto package-lock.json e yarn.lock que devem ser versionados)
+# package-lock.json e yarn.lock SÃO versionados para garantir dependências
+# Mas se preferir não versionar, descomente:
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Next.js
+.next/
+out/
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# PWA files
+**/public/sw.js
+**/public/workbox-*.js
+**/public/worker-*.js
+**/public/sw.js.map
+**/public/workbox-*.js.map
+**/public/worker-*.js.map
+
+# ==========================================
+# PROJECT SPECIFIC
+# ==========================================
+# Prisma generated files (são regenerados)
+**/generated/
+
+# Logs da aplicação
+api/logs/
+frontend/logs/
+
+# Uploads de produção
+api/uploads/*
+!api/uploads/.gitkeep
+
+# Cache
+.cache/
+*.cache
+
+# Storybook
+.storybook-static/
+
+# ==========================================
+# CI/CD
+# ==========================================
+.github/workflows/*.log
+
+# ==========================================
+# MISC FRAMEWORKS
+# ==========================================
+# ESLint
+.eslintcache
+
+# Prettier
+.prettierignore
+
+# Stylelint
+.stylelintcache
+
+# ==========================================
+# SECURITY
+# ==========================================
+# Nunca versionar arquivos com secrets ou credenciais
+secrets.yaml
+secrets.json
+credentials.json
+serviceAccount.json
+firebase-adminsdk-*.json

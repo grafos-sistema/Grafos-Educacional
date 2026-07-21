@@ -1,0 +1,241 @@
+'use client';
+
+import { toast } from 'react-hot-toast';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import {
+  PlusIcon,
+  MagnifyingGlassIcon,
+  PencilIcon,
+  TrashIcon,
+} from '@heroicons/react/24/outline';
+import { institutionsService } from '@/services/institutions.service';
+import { Institution, InstitutionFilterParams } from '@/types/institution.types';
+import { Table, Column } from '@/components/ui/Table';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { Pagination } from '@/components/ui/Pagination';
+import { Modal } from '@/components/ui/Modal';
+
+export default function InstitutionsPage() {
+  const router = useRouter();
+  const [filters, setFilters] = useState<InstitutionFilterParams>({
+    page: 1,
+    limit: 20,
+    search: '',
+    isActive: undefined,
+  });
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    institution: Institution | null;
+  }>({ isOpen: false, institution: null });
+
+  // Buscar instituições
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['institutions', filters],
+    queryFn: () => institutionsService.findAll(filters),
+  });
+
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setFilters({ ...filters, page: 1 });
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await institutionsService.remove(id);
+      refetch();
+      setDeleteModal({ isOpen: false, institution: null });
+      toast.success('Instituição removida com sucesso');
+    } catch (error) {
+      console.error('Erro ao remover instituição:', error);
+      toast.error('Erro ao remover instituição');
+    }
+  };
+
+  const columns: Column<Institution>[] = [
+    {
+      key: 'name',
+      label: 'Nome',
+      render: (inst) => (
+        <div>
+          <div className="font-medium text-gray-900 dark:text-white">{inst.name}</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{inst.slug}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'location',
+      label: 'Localização',
+      render: (inst) => (
+        <span className="text-gray-600 dark:text-gray-300">
+          {inst.city ? `${inst.city} - ${inst.state}` : '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'isActive',
+      label: 'Status',
+      render: (inst) => (
+        <Badge variant={inst.isActive ? 'success' : 'error'} size="sm">
+          {inst.isActive ? 'Ativo' : 'Inativo'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'Ações',
+      render: (inst) => (
+        <div className="flex gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/super-admin/institutions/${inst.id}/edit`);
+            }}
+            className="text-gray-600 hover:text-gray-700 dark:text-gray-400"
+            title="Editar"
+          >
+            <PencilIcon className="h-5 w-5" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setDeleteModal({ isOpen: true, institution: inst });
+            }}
+            className="text-red-600 hover:text-red-700 dark:text-red-400"
+            title="Remover"
+          >
+            <TrashIcon className="h-5 w-5" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="p-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          Instituições
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          Gerencie as escolas e instituições do sistema
+        </p>
+      </div>
+
+      {/* Filtros */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6">
+        <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1">
+            <Input
+              placeholder="Buscar por nome, slug, ou cidade..."
+              value={filters.search || ''}
+              onChange={(e) =>
+                setFilters({ ...filters, search: e.target.value })
+              }
+              leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
+            />
+          </div>
+          <div className="w-full sm:w-36">
+            <Select
+              options={[
+                { value: '', label: 'Todos' },
+                { value: 'true', label: 'Ativos' },
+                { value: 'false', label: 'Inativos' },
+              ]}
+              value={filters.isActive === undefined ? '' : filters.isActive.toString()}
+              onChange={(e) =>
+                setFilters({
+                  ...filters,
+                  isActive: e.target.value ? e.target.value === 'true' : undefined,
+                  page: 1,
+                })
+              }
+            />
+          </div>
+          <Button
+            type="submit"
+            className="w-full sm:w-auto"
+            leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
+          >
+            Buscar
+          </Button>
+        </form>
+      </div>
+
+      {/* Header com botão de criar */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div>
+          {data && (
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {data.meta.total} instituição(ões) encontrada(s)
+            </p>
+          )}
+        </div>
+        <Button
+          onClick={() => router.push('/super-admin/institutions/new')}
+          leftIcon={<PlusIcon className="h-5 w-5" />}
+          className="w-full sm:w-auto"
+        >
+          Nova Instituição
+        </Button>
+      </div>
+
+      {/* Tabela */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+        <Table
+          data={data?.data || []}
+          columns={columns}
+          keyExtractor={(inst) => inst.id}
+          isLoading={isLoading}
+          emptyMessage="Nenhuma instituição encontrada"
+        />
+      </div>
+
+      {/* Paginação */}
+      {data && data.meta.totalPages > 1 && (
+        <div className="mt-6">
+          <Pagination
+            meta={data.meta}
+            onPageChange={(page) => setFilters({ ...filters, page })}
+          />
+        </div>
+      )}
+
+      {/* Modal de confirmação de exclusão */}
+      <Modal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, institution: null })}
+        title="Confirmar remoção"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600 dark:text-gray-400">
+            Tem certeza que deseja remover a instituição{' '}
+            <strong>{deleteModal.institution?.name}</strong>?
+          </p>
+          <p className="text-sm text-red-600 dark:text-red-400">
+            Esta ação irá desativar a instituição no sistema e pode afetar os usuários vinculados a ela.
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button
+              variant="secondary"
+              onClick={() => setDeleteModal({ isOpen: false, institution: null })}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => deleteModal.institution && handleDelete(deleteModal.institution.id)}
+            >
+              Remover
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}

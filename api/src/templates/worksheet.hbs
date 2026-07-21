@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{title}}</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    @page {
+      margin: 1.2cm 1.5cm;
+      size: A4;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 11pt;
+      line-height: 1.6;
+      color: #1a1a1a;
+      letter-spacing: 0.01em;
+    }
+
+    /* HEADER COMPACTO E OTIMIZADO */
+    .header {
+      margin-bottom: 18px;
+      position: relative;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding-bottom: 12px;
+      border-bottom: 3px solid #000;
+      gap: 20px;
+    }
+
+    .institution-info {
+      flex: 1;
+      font-size: 9pt;
+      line-height: 1.4;
+    }
+
+    .info-line {
+      margin-bottom: 4px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 8px 15px;
+      margin-top: 6px;
+    }
+
+    .info-item {
+      font-size: 9pt;
+    }
+
+    .institution-info strong {
+      font-weight: 700;
+      color: #000;
+    }
+
+    .additional-text {
+      margin-top: 8px;
+      font-size: 8.5pt;
+      font-weight: normal;
+      color: #555;
+      font-style: italic;
+    }
+
+    .activity-meta {
+      text-align: right;
+      font-size: 9pt;
+      line-height: 1.6;
+      flex-shrink: 0;
+    }
+
+    .meta-item {
+      margin-bottom: 4px;
+    }
+
+    .total-points {
+      font-size: 11pt;
+      color: #000;
+      padding: 6px 12px;
+      border: 2px solid #000;
+      border-radius: 6px;
+      display: inline-block;
+      margin-top: 4px;
+    }
+
+    .activity-title {
+      font-size: 16pt;
+      font-weight: 700;
+      margin-top: 12px;
+      margin-bottom: 4px;
+      letter-spacing: -0.02em;
+    }
+
+    .activity-description {
+      font-size: 10pt;
+      color: #4a4a4a;
+      margin-bottom: 12px;
+      font-style: italic;
+    }
+
+    /* INSTRUÇÕES */
+    .instructions {
+      margin-bottom: 18px;
+      padding: 12px 16px;
+      border: 2px dashed #999;
+      border-radius: 6px;
+      background-color: #fafafa;
+    }
+
+    .instructions h3 {
+      font-size: 10pt;
+      font-weight: 700;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      display: flex;
+      align-items: center;
+    }
+
+    .instructions h3::before {
+      content: "▶";
+      margin-right: 8px;
+      font-size: 8pt;
+    }
+
+    .instructions p {
+      font-size: 9.5pt;
+      line-height: 1.5;
+    }
+
+    /* QUESTÕES - DESIGN MODERNO */
+    .question {
+      margin-bottom: 25px;
+      page-break-inside: avoid;
+    }
+
+    .question-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #000;
+    }
+
+    .question-number-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .question-number {
+      font-size: 14pt;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .question-type-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border: 1px solid #000;
+      border-radius: 3px;
+      font-size: 7.5pt;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .question-points {
+      font-size: 10pt;
+      font-weight: 700;
+      padding: 5px 10px;
+      border: 1.5px solid #000;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+
+    .question-statement {
+      margin-bottom: 14px;
+      line-height: 1.6;
+      font-size: 11pt;
+    }
+
+    /* IMAGENS DA QUESTÃO */
+    .question-images {
+      margin: 12px 0 16px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .question-image {
+      max-width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 4px;
+      background: #fff;
+    }
+
+    .question-image img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      max-height: 300px;
+      object-fit: contain;
+    }
+
+    /* Se múltiplas imagens, ajustar tamanho */
+    .question-images.multiple .question-image {
+      max-width: 48%;
+    }
+
+    /* OPÇÕES MODERNIZADAS - LAYOUT RESPONSIVO EM COLUNAS */
+    .options {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 8px 12px;
+      margin-left: 0;
+    }
+
+    /* Forçar 1 coluna para opções com texto muito longo */
+    .options.single-column {
+      grid-template-columns: 1fr;
+    }
+
+    .option {
+      display: flex;
+      align-items: flex-start;
+      padding: 6px 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: #fafafa;
+      break-inside: avoid;
+      min-height: 32px;
+    }
+
+    /* Opções longas (mais de 80 caracteres) ocupam linha inteira */
+    .option.long-text {
+      grid-column: 1 / -1;
+    }
+
+    .option-checkbox {
+      width: 14px;
+      height: 14px;
+      border: 2px solid #333;
+      border-radius: 2px;
+      display: inline-block;
+      margin-right: 8px;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+
+    .option-letter {
+      font-weight: 700;
+      margin-right: 8px;
+      min-width: 20px;
+      font-size: 10.5pt;
+      flex-shrink: 0;
+    }
+
+    .option-text {
+      flex: 1;
+      line-height: 1.5;
+      font-size: 10.5pt;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    /* Para 5 ou mais opções, tentar 3 colunas se houver espaço */
+    @media print {
+      .options.many-options {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+    }
+
+    /* ESPAÇOS DE RESPOSTA */
+    .answer-space {
+      margin-top: 12px;
+      min-height: 70px;
+      border: 2px dashed #999;
+      border-radius: 5px;
+      padding: 10px;
+      background: repeating-linear-gradient(
+        transparent,
+        transparent 26px,
+        #e0e0e0 26px,
+        #e0e0e0 27px
+      );
+    }
+
+    .answer-space.large {
+      min-height: 130px;
+    }
+
+    .answer-space-label {
+      font-size: 8.5pt;
+      color: #666;
+      font-style: italic;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .answer-lines {
+      margin-top: 12px;
+    }
+
+    .answer-line {
+      border-bottom: 1px solid #ccc;
+      height: 26px;
+      margin-bottom: 0;
+      position: relative;
+    }
+
+    /* FOOTER MODERNO */
+    .footer {
+      margin-top: 30px;
+      padding-top: 15px;
+      border-top: 2px solid #000;
+      text-align: center;
+      font-size: 9pt;
+      color: #666;
+    }
+
+    .page-break {
+      page-break-after: always;
+    }
+
+    /* OTIMIZAÇÕES PARA IMPRESSÃO P&B */
+    @media print {
+      body {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .option {
+        border-color: #666;
+        background-color: #fff;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header Compacto e Otimizado -->
+  <div class="header">
+    <div class="header-top">
+      <div class="institution-info">
+        {{#if municipalityName}}
+        <div class="info-line"><strong>Município:</strong> {{municipalityName}}</div>
+        {{/if}}
+        {{#if institutionName}}
+        <div class="info-line"><strong>Unidade de Ensino:</strong> {{institutionName}}</div>
+        {{/if}}
+        <div class="info-grid">
+          {{#if evaluationPeriod}}
+          <div class="info-item"><strong>Período:</strong> {{evaluationPeriod}}</div>
+          {{/if}}
+          <div class="info-item"><strong>Turma:</strong> {{className}}{{#if classShift}} - {{classShift}}{{/if}}</div>
+          {{#if teacherName}}
+          <div class="info-item"><strong>Professor(a):</strong> {{teacherName}}</div>
+          {{/if}}
+        </div>
+        {{#if headerText}}
+        <div class="additional-text">{{headerText}}</div>
+        {{/if}}
+      </div>
+      <div class="activity-meta">
+        {{#if activityDate}}
+        <div class="meta-item"><strong>Data:</strong> {{activityDate}}</div>
+        {{/if}}
+        {{#if totalPoints}}
+        <div class="meta-item total-points"><strong>Total:</strong> {{totalPoints}} pts</div>
+        {{/if}}
+      </div>
+    </div>
+    <div class="activity-title">{{title}}</div>
+    {{#if description}}
+    <div class="activity-description">{{description}}</div>
+    {{/if}}
+  </div>
+
+  <!-- Instruções -->
+  {{#if hasInstructions}}
+  <div class="instructions">
+    <h3>Instruções</h3>
+    {{#if instructions}}
+      <p style="white-space: pre-line;">{{instructions}}</p>
+    {{else}}
+      <p>Leia atentamente cada questão antes de responder. Use caneta azul ou preta. É proibido o uso de corretivo ou consulta.</p>
+    {{/if}}
+  </div>
+  {{/if}}
+
+  <!-- Questões - Layout Moderno -->
+  {{#each questions}}
+  <div class="question">
+    <div class="question-header">
+      <div class="question-number-wrapper">
+        <span class="question-number">{{this.number}}.</span>
+        <span class="question-type-badge">{{this.typeName}}</span>
+      </div>
+      <span class="question-points">{{this.points}} pts</span>
+    </div>
+
+    <div class="question-statement">
+      {{{this.statement}}}
+    </div>
+
+    {{#if this.images}}
+      <div class="question-images{{#if this.hasMultipleImages}} multiple{{/if}}">
+        {{#each this.images}}
+        <div class="question-image">
+          <img src="{{this}}" alt="Imagem ilustrativa da questão" />
+        </div>
+        {{/each}}
+      </div>
+    {{/if}}
+
+    {{#if this.isMultipleChoice}}
+      <div class="options{{#if this.hasLongOptions}} single-column{{/if}}{{#if this.manyOptions}} many-options{{/if}}">
+        {{#each this.options}}
+        <div class="option{{#if this.isLongText}} long-text{{/if}}">
+          <span class="option-checkbox"></span>
+          <span class="option-letter">{{this.letter}})</span>
+          <span class="option-text">{{this.text}}</span>
+        </div>
+        {{/each}}
+      </div>
+    {{/if}}
+
+    {{#if this.isTrueFalse}}
+      <div class="options">
+        <div class="option">
+          <span class="option-checkbox"></span>
+          <span class="option-letter">V)</span>
+          <span class="option-text">Verdadeiro</span>
+        </div>
+        <div class="option">
+          <span class="option-checkbox"></span>
+          <span class="option-letter">F)</span>
+          <span class="option-text">Falso</span>
+        </div>
+      </div>
+    {{/if}}
+
+    {{#if this.isShortAnswer}}
+      <div class="answer-space">
+        <span class="answer-space-label">Espaço para resposta:</span>
+      </div>
+    {{/if}}
+
+    {{#if this.isEssay}}
+      <div class="answer-lines">
+        {{#each this.answerLines}}
+        <div class="answer-line"></div>
+        {{/each}}
+      </div>
+    {{/if}}
+
+    {{#if this.isFillInBlank}}
+      <div class="answer-space">
+        <span class="answer-space-label">Complete com sua resposta:</span>
+      </div>
+    {{/if}}
+  </div>
+  {{/each}}
+
+  <!-- Footer -->
+  {{#if footerText}}
+  <div class="footer">
+    {{footerText}}
+  </div>
+  {{/if}}
+</body>
+</html>

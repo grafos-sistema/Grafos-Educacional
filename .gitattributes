@@ -1,0 +1,115 @@
+# ==========================================
+# GIT ATTRIBUTES
+# ==========================================
+
+# Auto detect text files and normalize line endings to LF
+* text=auto eol=lf
+
+# ==========================================
+# SOURCE CODE
+# ==========================================
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.html text eol=lf
+*.htm text eol=lf
+*.xml text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.sql text eol=lf
+
+# ==========================================
+# CONFIG FILES
+# ==========================================
+*.env* text eol=lf
+.env* text eol=lf
+*.config.js text eol=lf
+*.config.ts text eol=lf
+Dockerfile* text eol=lf
+docker-compose*.yml text eol=lf
+Makefile text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+.editorconfig text eol=lf
+.eslintrc* text eol=lf
+.prettierrc* text eol=lf
+
+# ==========================================
+# SCRIPTS
+# ==========================================
+*.sh text eol=lf
+*.bash text eol=lf
+
+# ==========================================
+# DOCUMENTS
+# ==========================================
+*.markdown text eol=lf
+*.mdown text eol=lf
+*.mkd text eol=lf
+
+# ==========================================
+# BINARY FILES
+# ==========================================
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.webp binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.rar binary
+*.7z binary
+*.mp4 binary
+*.mov binary
+*.mp3 binary
+*.wav binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.otf binary
+
+# ==========================================
+# ARCHIVES
+# ==========================================
+*.gz binary
+*.bz2 binary
+*.xz binary
+*.lzma binary
+*.cab binary
+*.7z binary
+*.tar binary
+*.zip binary
+*.rar binary
+
+# ==========================================
+# SPECIAL HANDLING
+# ==========================================
+# Lock files should not be merged
+package-lock.json -diff
+yarn.lock -diff
+pnpm-lock.yaml -diff
+
+# Prisma schema
+*.prisma text eol=lf linguist-language=Prisma
+
+# ==========================================
+# LINGUIST OVERRIDES (for GitHub language detection)
+# ==========================================
+*.prisma linguist-language=Prisma
+*.sql linguist-detectable=true
+*.md linguist-detectable=true
+*.ts linguist-detectable=true
+*.tsx linguist-detectable=true
+*.js linguist-detectable=true
+*.jsx linguist-detectable=true

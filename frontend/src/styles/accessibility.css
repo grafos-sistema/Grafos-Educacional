@@ -1,0 +1,202 @@
+/**
+ * Accessibility Styles
+ *
+ * Estilos globais para melhorar a acessibilidade
+ * seguindo as diretrizes WCAG 2.1 AA
+ */
+
+/* ========================================
+   FOCUS VISIBLE - Indicadores de Foco
+   ======================================== */
+
+/**
+ * Remove outline padrão do navegador apenas quando
+ * o usuário está usando o mouse (não teclado)
+ */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/**
+ * Indicador de foco visível melhorado
+ * Aparece apenas durante navegação por teclado
+ */
+*:focus-visible {
+  outline: 3px solid #fbbf24;
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+/**
+ * Foco especial para botões e links
+ */
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #fbbf24;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.1);
+}
+
+/**
+ * Foco para inputs e selects
+ */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  ring: 4px;
+  ring-color: rgba(59, 130, 246, 0.5);
+  border-color: #3b82f6;
+}
+
+/* ========================================
+   KEYBOARD NAVIGATION
+   ======================================== */
+
+/**
+ * Classe aplicada ao body quando navegação
+ * por teclado é detectada
+ */
+body.keyboard-nav *:focus {
+  outline: 3px solid #fbbf24 !important;
+  outline-offset: 2px !important;
+}
+
+/* ========================================
+   REDUCED MOTION - Respeita preferências
+   ======================================== */
+
+/**
+ * Desabilita animações para usuários que preferem
+ * movimento reduzido (acessibilidade)
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ========================================
+   HIGH CONTRAST MODE - Windows
+   ======================================== */
+
+/**
+ * Garante que elementos sejam visíveis em modo
+ * de alto contraste (Windows High Contrast Mode)
+ */
+@media (prefers-contrast: high) {
+  * {
+    border-width: 1px !important;
+  }
+
+  button,
+  a {
+    border: 2px solid currentColor !important;
+  }
+}
+
+/* ========================================
+   SCREEN READER ONLY - Visually Hidden
+   ======================================== */
+
+/**
+ * Classe para ocultar visualmente mas manter
+ * acessível para screen readers
+ */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/**
+ * Versão focusável (aparece quando tem foco)
+ */
+.sr-only-focusable:focus,
+.sr-only-focusable:active {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* ========================================
+   LANDMARK REGIONS - ARIA
+   ======================================== */
+
+/**
+ * Espaçamento para landmarks principais
+ */
+main {
+  min-height: calc(100vh - 200px);
+}
+
+[role="banner"],
+[role="navigation"],
+[role="main"],
+[role="contentinfo"],
+[role="complementary"] {
+  position: relative;
+}
+
+/* ========================================
+   FOCUS TRAP - Modal/Dialog
+   ======================================== */
+
+/**
+ * Previne scroll do body quando modal está aberto
+ */
+body.modal-open {
+  overflow: hidden;
+}
+
+/* ========================================
+   COLOR CONTRAST - Textos
+   ======================================== */
+
+/**
+ * Garante contraste mínimo 4.5:1 para textos
+ * (WCAG AA para texto normal)
+ */
+:root {
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-disabled: #9ca3af;
+
+  --text-primary-dark: #f9fafb;
+  --text-secondary-dark: #d1d5db;
+  --text-disabled-dark: #6b7280;
+}
+
+.dark {
+  --text-primary: var(--text-primary-dark);
+  --text-secondary: var(--text-secondary-dark);
+  --text-disabled: var(--text-disabled-dark);
+}
+
+/* ========================================
+   HYDRATION WARNING SUPPRESSION
+   ======================================== */
+
+/**
+ * Suprime avisos de hydration para elementos que podem
+ * ser modificados por extensões de navegador
+ */
+.suppress-hydration-warning,
+.suppress-hydration-warning * {
+  /* Esta classe ajuda a identificar elementos que devem
+     usar suppressHydrationWarning no React */
+}

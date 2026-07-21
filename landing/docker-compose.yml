@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  grafos_landing:
+    image: luissantostsx/grafos-landing:latest
+    environment:
+      - NODE_ENV=production
+    networks:
+      - externa
+      - interna
+    deploy:
+      mode: replicated
+      replicas: 2
+      update_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.services.grafos_landing.loadbalancer.server.port=3000"
+        - "traefik.http.services.grafos_landing.loadbalancer.passHostHeader=true"
+        - "traefik.http.routers.grafos_landing.service=grafos_landing"
+        - "traefik.http.routers.grafos_landing.rule=Host(`grafoseducacional.com.br`)"
+        - "traefik.http.routers.grafos_landing.tls.certresolver=le"
+        - "traefik.http.routers.grafos_landing.entrypoints=websecure"
+        - "traefik.http.routers.grafos_landing.tls=true"
+
+networks:
+  externa:
+    external: true
+  interna:
+    external: true

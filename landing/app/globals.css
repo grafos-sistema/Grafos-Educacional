@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --grafos-green: #10B981;
+  --grafos-green-dark: #059669;
+  --grafos-teal: #14B8A6;
+  --grafos-teal-dark: #0D9488;
+  --grafos-lime: #84CC16;
+  --grafos-lime-dark: #65A30D;
+  --grafos-blue: #3B82F6;
+  --grafos-blue-dark: #2563EB;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

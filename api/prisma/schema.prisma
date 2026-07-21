@@ -1,0 +1,1505 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum UserRole {
+  SUPER_ADMIN      // Administrador do sistema
+  INSTITUTION_ADMIN // Administrador da instituição
+  COORDINATOR      // Coordenador pedagógico
+  TEACHER          // Professor
+  STUDENT          // Aluno
+  PARENT           // Responsável/Pai
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  NOT_INFORMED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum GradeStatus {
+  PENDING
+  PUBLISHED
+  FINAL
+}
+
+enum AssignmentStatus {
+  PENDING
+  SUBMITTED
+  LATE
+  GRADED
+  RETURNED
+}
+
+enum EnrollmentStatus {
+  ENROLLED      // Matriculado (cursando)
+  APPROVED      // Aprovado (passou de ano)
+  FAILED        // Reprovado
+  DROPPED_OUT   // Abandonou
+  TRANSFERRED   // Transferido
+}
+
+enum LessonPlanStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum NotificationType {
+  ABSENCE
+  LOW_GRADE
+  GENERAL_ANNOUNCEMENT
+  ASSIGNMENT_DUE
+  EVENT_REMINDER
+  MEETING
+  BEHAVIOR_ALERT
+  PENDING_APPROVAL  // Novo usuário pendente de aprovação
+  USER_APPROVED     // Usuário foi aprovado
+  GRADE_PUBLISHED   // Nota publicada
+  NEW_ASSIGNMENT    // Nova atividade
+  SYSTEM            // Notificação do sistema
+}
+
+enum NotificationStatus {
+  SENT
+  READ
+  UNREAD
+}
+
+enum AcademicPeriodType {
+  SEMESTER
+  TRIMESTER
+  QUARTER
+  BIMESTER
+  ANNUAL
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE  // Questão de assinalar (múltipla escolha)
+  OPEN_ENDED      // Questão de responder por extenso
+  TRUE_FALSE      // Questão de verdadeiro ou falso
+  SHORT_ANSWER    // Questão de resposta curta
+  ESSAY           // Questão dissertativa
+  FILL_IN_BLANK   // Questão de preencher lacunas
+}
+
+enum QuestionDifficulty {
+  VERY_EASY
+  EASY
+  MEDIUM
+  HARD
+  VERY_HARD
+  EXPERT          // Nível especialista
+}
+
+// ==========================================
+// CORE ENTITIES
+// ==========================================
+
+model Institution {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  cnpj        String?  @unique
+  email       String?
+  phone       String?
+  address     String?
+  city        String?
+  state       String?
+  country     String   @default("BR")
+  zipCode     String?
+  logo        String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users           User[]
+  academicYears   AcademicYear[]
+  courses         Course[]
+  classes         Class[]
+  subjects        Subject[]
+  announcements   Announcement[]
+  questionCategories QuestionCategory[]
+  questions       Question[]
+  activities      Activity[]
+  rankings        Ranking[]
+  exams           Exam[]
+  idebTargets     IDEBTarget[]
+  idebIndicators  IDEBIndicator[]
+  userInstitutions UserInstitution[]  // Usuários vinculados (múltiplas instituições)
+
+  @@map("institutions")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String
+  password      String
+  role          UserRole
+  name          String    // Combined first and last name for simpler queries
+  firstName     String
+  lastName      String
+  cpf           String?
+  rg            String?
+  rgEmissor     String?
+  rgEmissao     DateTime?
+  nacionalidade String?
+  naturalidade  String?
+  phone         String?
+  telefoneFixo  String?
+  birthDate     DateTime?
+  gender        Gender?
+  socialName    String?
+  avatar        String?
+  address       String?
+  numero        String?
+  complemento   String?
+  bairro        String?
+  city          String?
+  state         String?
+  zipCode       String?
+  isActive      Boolean   @default(true)
+  emailVerified Boolean   @default(false)
+  requestedProfileType String? // Tipo de perfil solicitado no auto-registro (TEACHER, STUDENT, PARENT)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Foreign Keys
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  // Relations
+  teacherProfile  Teacher?
+  studentProfile  Student?
+  parentProfile   Parent?
+
+  // Activity tracking
+  createdAnnouncements  Announcement[]
+  notifications         Notification[] @relation("UserNotifications")
+  sentNotifications     Notification[] @relation("SentNotifications")
+  lessonPlansCreated    LessonPlan[] @relation("LessonPlanCreatedBy")
+  lessonPlansApproved   LessonPlan[] @relation("LessonPlanApprovedBy")
+  createdQuestions      Question[]
+  reviewedRequests      ClassSubjectRequest[] @relation("ReviewedRequests")
+
+  // Gamification
+  rankings              Ranking[]
+  achievements          Achievement[]
+  pointsTransactions    PointsTransaction[]
+
+  // Multiple institutions support
+  userInstitutions      UserInstitution[]
+
+  @@unique([email, institutionId], name: "unique_email_per_institution")
+  @@unique([cpf, institutionId], name: "unique_cpf_per_institution")
+  @@index([institutionId])
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// Relação usuário-instituição para suportar múltiplas instituições
+model UserInstitution {
+  id              String      @id @default(uuid())
+  isActive        Boolean     @default(true)
+  isPrimary       Boolean     @default(false)  // Instituição principal/padrão
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Foreign Keys
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institutionId   String
+  institution     Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, institutionId])
+  @@index([userId])
+  @@index([institutionId])
+  @@map("user_institutions")
+}
+
+model Teacher {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  specialization  String?
+  degree          String?
+  registrationNumber String? @unique
+  hireDate        DateTime?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  classSubjects   ClassSubject[]
+  subjectRequests ClassSubjectRequest[]
+  mainClasses     Class[] @relation("ClassMainTeacher")
+  attendances     Attendance[]
+  teacherAttendances TeacherAttendance[]
+  lessonContents  LessonContent[]
+  grades          Grade[]
+  lessonPlans     LessonPlan[]
+  observations    StudentObservation[]
+  assignments     Assignment[]
+  activities      Activity[]
+  exams           Exam[]
+  teacherSubjects TeacherSubject[]  // Disciplinas que o professor trabalha
+
+  @@map("teachers")
+}
+
+// Disciplinas que o professor trabalha (configuração prévia)
+model TeacherSubject {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Foreign Keys
+  teacherId   String
+  teacher     Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subjectId   String
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, subjectId])
+  @@index([teacherId])
+  @@index([subjectId])
+  @@map("teacher_subjects")
+}
+
+// Controle de ponto do professor (registro automático ao lançar frequência)
+model TeacherAttendance {
+  id              String   @id @default(uuid())
+  date            DateTime
+  checkInTime     DateTime @default(now())
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Foreign Keys
+  teacherId       String
+  teacher         Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classId         String
+  class           Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classSubjectId  String
+  classSubject    ClassSubject @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, classSubjectId, date])
+  @@index([teacherId])
+  @@index([classId])
+  @@index([classSubjectId])
+  @@index([date])
+  @@index([teacherId, date])
+  @@index([classSubjectId, date])
+  @@index([teacherId, classSubjectId])
+  @@map("teacher_attendances")
+}
+
+model Student {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  registrationNumber String  @unique
+  enrollmentNumber  String?  @unique  // Alternative enrollment identifier
+  enrollmentDate    DateTime @default(now())
+  isActive          Boolean  @default(true)
+  
+  // New profile fields
+  situacao          String?
+  escola            String?
+  unidade           String?
+  anoLetivo         String?
+  curso             String?
+  serie             String?
+  turma             String?
+  modalidade        String?
+  turno             String?
+  observacoes       String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  healthRecord      StudentHealthRecord?
+  transportation    StudentTransportation?
+  classEnrollments  ClassEnrollment[]
+  attendances       Attendance[]
+  grades            Grade[]
+  observations      StudentObservation[]
+  parents           StudentParent[]
+  assignmentSubmissions AssignmentSubmission[]
+  examAssignments   ExamAssignment[]
+  examAttempts      ExamAttempt[]
+
+  @@map("students")
+}
+
+model StudentHealthRecord {
+  id                    String   @id @default(uuid())
+  studentId             String   @unique
+  student               Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  tipoSanguineo         String?
+  convenioMedico        String?
+  alergias              String?
+  medicamentos          String?
+  necessidadesEspeciais String?
+  restricoesAlimentares String?
+  contatoEmergencia     String?
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("student_health_records")
+}
+
+model StudentTransportation {
+  id                  String   @id @default(uuid())
+  studentId           String   @unique
+  student             Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  usaTransporte       Boolean  @default(false)
+  tipoTransporte      String?
+  empresaTransporte   String?
+  motoristaTransporte String?
+  rotaTransporte      String?
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("student_transportation")
+}
+
+model Parent {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  occupation String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  children  StudentParent[]
+  notifications Notification[]
+
+  @@map("parents")
+}
+
+model StudentParent {
+  id            String   @id @default(uuid())
+  studentId     String
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  parentId      String
+  parent        Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  relationship  String   // "Responsável", "Avô", "Avó", "Tio", "Tia", etc.
+  isPrimary     Boolean  @default(false)
+  isFinancialResponsible Boolean @default(false)
+  receivesNotifications Boolean @default(false)
+  canPickup     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@unique([studentId, parentId])
+  @@map("student_parents")
+}
+
+// ==========================================
+// ACADEMIC STRUCTURE
+// ==========================================
+
+model AcademicYear {
+  id            String   @id @default(uuid())
+  year          Int
+  name          String   // Ex: "2024", "2024/2025"
+  startDate     DateTime
+  endDate       DateTime
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Foreign Keys
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  // Relations
+  periods       AcademicPeriod[]
+  classes       Class[]
+  events        Event[]
+
+  @@unique([institutionId, year])
+  @@index([institutionId])
+  @@map("academic_years")
+}
+
+model AcademicPeriod {
+  id              String              @id @default(uuid())
+  name            String              // "1º Semestre", "2º Bimestre", etc.
+  type            AcademicPeriodType
+  startDate       DateTime
+  endDate         DateTime
+  orderNumber     Int                 // 1, 2, 3, 4
+  isActive        Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  // Foreign Keys
+  academicYearId  String
+  academicYear    AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  // Relations
+  grades          Grade[]
+  lessonPlans     LessonPlan[]
+
+  @@unique([academicYearId, orderNumber])
+  @@index([academicYearId])
+  @@map("academic_periods")
+}
+
+model Course {
+  id            String   @id @default(uuid())
+  name          String   // "Ensino Fundamental I", "Ensino Médio", etc.
+  description   String?
+  code          String?
+  level         String?  // "Fundamental", "Médio", "Superior"
+  duration      Int?     // Duração em anos
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Foreign Keys
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  // Relations
+  classes       Class[]
+
+  @@index([institutionId])
+  @@map("courses")
+}
+
+model Class {
+  id            String   @id @default(uuid())
+  name          String   // "1º Ano A", "9º Ano B"
+  grade         String   // "1º Ano", "9º Ano"
+  section       String?  // "A", "B", "C"
+  shift         String?  // "Matutino", "Vespertino", "Noturno"
+  maxStudents   Int?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Foreign Keys
+  institutionId  String
+  institution    Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  courseId       String
+  course         Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  mainTeacherId  String?
+  mainTeacher    Teacher? @relation("ClassMainTeacher", fields: [mainTeacherId], references: [id], onDelete: SetNull)
+
+  // Relations
+  enrollments    ClassEnrollment[]
+  subjects       ClassSubject[]
+  subjectRequests ClassSubjectRequest[]
+  schedules      ClassSchedule[]
+  attendances    Attendance[]
+  teacherAttendances TeacherAttendance[]
+  activities     Activity[]
+  rankings       Ranking[]
+  examAssignments ExamAssignment[]
+
+  @@index([institutionId])
+  @@index([courseId])
+  @@index([academicYearId])
+  @@index([mainTeacherId])
+  @@map("classes")
+}
+
+model ClassEnrollment {
+  id              String           @id @default(uuid())
+  enrollmentDate  DateTime         @default(now())
+  isActive        Boolean          @default(true)
+  status          EnrollmentStatus @default(ENROLLED)
+  finalGrade      Float?           // Nota final do aluno na turma
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  // Foreign Keys
+  classId         String
+  class           Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  studentId       String
+  student         Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, studentId])
+  @@index([classId])
+  @@index([studentId])
+  @@index([classId, status]) // Composite index for filtering active enrollments
+  @@index([studentId, status]) // Composite index for student enrollment status
+  @@map("class_enrollments")
+}
+
+model Subject {
+  id            String   @id @default(uuid())
+  name          String   // "Matemática", "Português", "História"
+  code          String?
+  description   String?
+  color         String?  // Para UI
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Foreign Keys
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  // Relations
+  classSubjects ClassSubject[]
+  subjectRequests ClassSubjectRequest[]
+  questionCategories QuestionCategory[]
+  questions     Question[]
+  activities    Activity[]
+  exams         Exam[]
+  teacherSubjects TeacherSubject[]  // Professores que trabalham com esta disciplina
+
+  @@index([institutionId])
+  @@map("subjects")
+}
+
+model ClassSubject {
+  id            String   @id @default(uuid())
+  weeklyHours   Int?     // Carga horária semanal
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Foreign Keys
+  classId       String
+  class         Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subjectId     String
+  subject       Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacherId     String?
+  teacher       Teacher? @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  // Relations
+  schedules     ClassSchedule[]
+  attendances   Attendance[]
+  teacherAttendances TeacherAttendance[]
+  lessonContents LessonContent[]
+  grades        Grade[]
+  lessonPlans   LessonPlan[]
+  assignments   Assignment[]
+
+  @@unique([classId, subjectId])
+  @@index([classId])
+  @@index([subjectId])
+  @@index([teacherId])
+  @@map("class_subjects")
+}
+
+model ClassSubjectRequest {
+  id            String   @id @default(uuid())
+  status        RequestStatus @default(PENDING) // PENDING, APPROVED, REJECTED
+  message       String?  // Mensagem do professor explicando o pedido
+  rejectionReason String? // Motivo da rejeição (se rejeitado)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  reviewedAt    DateTime?
+
+  // Foreign Keys
+  classId       String
+  class         Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subjectId     String
+  subject       Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacherId     String
+  teacher       Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  reviewedById  String?
+  reviewedBy    User?   @relation("ReviewedRequests", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([classId, subjectId, teacherId]) // Um professor não pode solicitar a mesma disciplina/turma duas vezes
+  @@index([classId])
+  @@index([subjectId])
+  @@index([teacherId])
+  @@index([status])
+  @@map("class_subject_requests")
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ClassSchedule {
+  id            String    @id @default(uuid())
+  dayOfWeek     DayOfWeek
+  startTime     String    // "08:00"
+  endTime       String    // "09:00"
+  room          String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Foreign Keys
+  classId       String
+  class         Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classSubjectId String
+  classSubject  ClassSubject @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+
+  @@index([classId])
+  @@index([classSubjectId])
+  @@map("class_schedules")
+}
+
+// ==========================================
+// ATTENDANCE & LESSON CONTENT
+// ==========================================
+
+model Attendance {
+  id            String           @id @default(uuid())
+  date          DateTime
+  status        AttendanceStatus
+  notes         String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  // Foreign Keys
+  studentId     String
+  student       Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  classId       String
+  class         Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classSubjectId String
+  classSubject  ClassSubject @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  teacherId     String
+  teacher       Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, classSubjectId, date])
+  @@index([studentId])
+  @@index([classId])
+  @@index([classSubjectId])
+  @@index([date])
+  @@index([studentId, classSubjectId]) // Composite index for dashboard queries
+  @@index([classSubjectId, status]) // Composite index for filtering by subject and status
+  @@index([classSubjectId, date]) // Composite index for date-based queries
+  @@index([teacherId, date]) // Composite index for teacher reports
+  @@map("attendances")
+}
+
+model LessonContent {
+  id              String   @id @default(uuid())
+  date            DateTime
+  title           String
+  description     String   // Conteúdo ministrado
+  objectives      String?  // Objetivos da aula
+  activities      String?  // Atividades realizadas
+  homework        String?  // Tarefa de casa
+  observations    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Foreign Keys
+  classSubjectId  String
+  classSubject    ClassSubject @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  teacherId       String
+  teacher         Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([classSubjectId])
+  @@index([teacherId])
+  @@index([date])
+  @@map("lesson_contents")
+}
+
+model LessonPlan {
+  id              String   @id @default(uuid())
+  title           String
+  description     String
+  objectives      String   // Objetivos pedagógicos
+  methodology     String?  // Metodologia de ensino
+  resources       String?  // Recursos utilizados
+  evaluation      String?  // Critérios de avaliação
+  startDate       DateTime
+  endDate         DateTime
+  status          LessonPlanStatus @default(DRAFT)
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Foreign Keys
+  classSubjectId  String
+  classSubject    ClassSubject @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  academicPeriodId String
+  academicPeriod  AcademicPeriod @relation(fields: [academicPeriodId], references: [id], onDelete: Cascade)
+  teacherId       String
+  teacher         Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  createdById     String
+  createdBy       User @relation("LessonPlanCreatedBy", fields: [createdById], references: [id])
+  approvedById    String?
+  approvedBy      User? @relation("LessonPlanApprovedBy", fields: [approvedById], references: [id])
+
+  @@index([classSubjectId])
+  @@index([academicPeriodId])
+  @@index([teacherId])
+  @@index([status])
+  @@map("lesson_plans")
+}
+
+// ==========================================
+// GRADES & ASSESSMENTS
+// ==========================================
+
+model Grade {
+  id              String      @id @default(uuid())
+  value           Float       // Nota
+  weight          Float       @default(1.0) // Peso da avaliação
+  examType        String      // "Prova", "Trabalho", "Participação", etc.
+  examDate        DateTime?
+  description     String?
+  status          GradeStatus @default(PENDING)
+  publishedAt     DateTime?
+  observations    String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Foreign Keys
+  studentId       String
+  student         Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  classSubjectId  String
+  classSubject    ClassSubject @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  academicPeriodId String
+  academicPeriod  AcademicPeriod @relation(fields: [academicPeriodId], references: [id], onDelete: Cascade)
+  teacherId       String
+  teacher         Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([classSubjectId])
+  @@index([academicPeriodId])
+  @@index([teacherId])
+  @@index([studentId, classSubjectId]) // Composite index for dashboard queries
+  @@index([classSubjectId, status]) // Composite index for filtering by subject and status
+  @@map("grades")
+}
+
+model Assignment {
+  id              String   @id @default(uuid())
+  title           String
+  description     String
+  dueDate         DateTime
+  maxScore        Float?
+  attachments     String?  // JSON array of file URLs
+  instructions    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Foreign Keys
+  classSubjectId  String
+  classSubject    ClassSubject @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  teacherId       String
+  teacher         Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  // Relations
+  submissions     AssignmentSubmission[]
+
+  @@index([classSubjectId])
+  @@index([teacherId])
+  @@index([dueDate])
+  @@map("assignments")
+}
+
+model AssignmentSubmission {
+  id              String           @id @default(uuid())
+  content         String?
+  attachments     String?          // JSON array of file URLs
+  status          AssignmentStatus @default(PENDING)
+  score           Float?
+  feedback        String?
+  submittedAt     DateTime?
+  gradedAt        DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  // Foreign Keys
+  assignmentId    String
+  assignment      Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId       String
+  student         Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId])
+  @@index([assignmentId])
+  @@index([studentId])
+  @@index([status])
+  @@map("assignment_submissions")
+}
+
+// ==========================================
+// OBSERVATIONS & BEHAVIOR
+// ==========================================
+
+model StudentObservation {
+  id              String   @id @default(uuid())
+  title           String
+  description     String
+  type            String?  // "Comportamento", "Desempenho", "Geral"
+  isPrivate       Boolean  @default(false) // Visível apenas para coordenação/professores
+  date            DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Foreign Keys
+  studentId       String
+  student         Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacherId       String
+  teacher         Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([teacherId])
+  @@index([date])
+  @@map("student_observations")
+}
+
+// ==========================================
+// COMMUNICATION & NOTIFICATIONS
+// ==========================================
+
+model Announcement {
+  id              String   @id @default(uuid())
+  title           String
+  content         String
+  priority        String   @default("normal") // "low", "normal", "high", "urgent"
+  targetRoles     String[] // ["STUDENT", "PARENT", "TEACHER"]
+  isPublished     Boolean  @default(false)
+  publishedAt     DateTime?
+  expiresAt       DateTime?
+  attachments     String?  // JSON array
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Foreign Keys
+  institutionId   String?
+  institution     Institution? @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  createdById     String
+  createdBy       User @relation(fields: [createdById], references: [id])
+
+  @@index([institutionId])
+  @@index([isPublished])
+  @@index([publishedAt])
+  @@map("announcements")
+}
+
+model Notification {
+  id              String             @id @default(uuid())
+  type            NotificationType
+  title           String
+  message         String
+  status          NotificationStatus @default(SENT)
+  data            String?            // JSON com dados adicionais
+  readAt          DateTime?
+  sentAt          DateTime           @default(now())
+  createdAt       DateTime           @default(now())
+
+  // Foreign Keys - para quem é a notificação (agora aceita qualquer user)
+  userId          String
+  user            User @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  parentId        String?
+  parent          Parent? @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  // Quem enviou/gerou
+  sentById        String?
+  sentBy          User? @relation("SentNotifications", fields: [sentById], references: [id])
+
+  @@index([userId])
+  @@index([parentId])
+  @@index([status])
+  @@index([type])
+  @@index([sentAt])
+  @@map("notifications")
+}
+
+model Event {
+  id              String   @id @default(uuid())
+  title           String
+  description     String?
+  type            String   // "Prova", "Reunião", "Feriado", "Evento Escolar"
+  startDate       DateTime
+  endDate         DateTime?
+  location        String?
+  isAllDay        Boolean  @default(false)
+  color           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Foreign Keys
+  academicYearId  String
+  academicYear    AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  @@index([academicYearId])
+  @@index([startDate])
+  @@map("events")
+}
+
+// ==========================================
+// QUESTION BANK & ACTIVITIES (PRINTABLE)
+// ==========================================
+
+model QuestionCategory {
+  id            String   @id @default(uuid())
+  name          String   // "Álgebra", "Gramática", "História do Brasil"
+  description   String?
+  color         String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Foreign Keys
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  subjectId     String?    // Opcional: pode estar vinculada a uma disciplina
+  subject       Subject?   @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+
+  // Relations
+  questions     Question[]
+
+  @@index([institutionId])
+  @@index([subjectId])
+  @@map("question_categories")
+}
+
+model Question {
+  id              String             @id @default(uuid())
+  title           String             // Título da questão
+  type            QuestionType
+  difficulty      QuestionDifficulty @default(MEDIUM)
+  statement       String             // Enunciado da questão
+  images          String?            // JSON array de URLs de imagens
+  correctAnswer   String?            // Para questões de múltipla escolha: a opção correta
+  answerKey       String?            // Gabarito/resposta esperada para questões abertas
+  points          Float              @default(1.0) // Pontuação padrão
+  explanation     String?            // Explicação da resposta (para professores)
+  tags            String[]           // Tags para busca: ["frações", "divisão", "básico"]
+  isPublic        Boolean            @default(false) // Se a questão é pública (visível para outras instituições)
+  isActive        Boolean            @default(true)
+  timesUsed       Int                @default(0) // Contador de uso
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  // Foreign Keys - Apenas SUPER_ADMIN pode criar questões públicas sem instituição
+  institutionId   String?            // Opcional - questões públicas do SUPER_ADMIN não têm instituição
+  institution     Institution? @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  subjectId       String?
+  subject         Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  categoryId      String?
+  category        QuestionCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdById     String
+  createdBy       User @relation(fields: [createdById], references: [id])
+
+  saebDescriptorId String?
+  saebDescriptor   SAEBDescriptor? @relation("QuestionSAEBDescriptor", fields: [saebDescriptorId], references: [id], onDelete: SetNull)
+
+  // Relations
+  options         QuestionOption[] // Para questões de múltipla escolha
+  activityQuestions ActivityQuestion[]
+  examQuestions   ExamQuestion[]
+
+  @@index([institutionId])
+  @@index([subjectId])
+  @@index([categoryId])
+  @@index([type])
+  @@index([difficulty])
+  @@index([createdById])
+  @@index([saebDescriptorId])
+  @@index([isPublic])
+  @@map("questions")
+}
+
+model QuestionOption {
+  id            String   @id @default(uuid())
+  optionLetter  String   // "A", "B", "C", "D", "E"
+  text          String
+  image         String?  // URL da imagem (opcional)
+  orderNumber   Int      // Ordem de exibição
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Foreign Keys
+  questionId    String
+  question      Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, optionLetter])
+  @@index([questionId])
+  @@map("question_options")
+}
+
+model Activity {
+  id              String   @id @default(uuid())
+  title           String
+  description     String?
+  instructions    String?  // Instruções gerais para os alunos
+  totalPoints     Float?   // Pontuação total (calculada automaticamente)
+  headerTemplate  String?  // Template do cabeçalho (nome do aluno, turma, data, etc)
+  footerTemplate  String?  // Template do rodapé
+  showAnswerKey   Boolean  @default(false) // Se deve imprimir gabarito
+  isPublished     Boolean  @default(false)
+  publishedAt     DateTime?
+  activityDate    DateTime? // Data em que a atividade será aplicada aos alunos (opcional)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Foreign Keys - Professores podem criar
+  institutionId   String
+  institution     Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  subjectId       String?
+  subject         Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  classId         String?  // Opcional: atividade para uma turma específica
+  class           Class? @relation(fields: [classId], references: [id], onDelete: SetNull)
+  teacherId       String
+  teacher         Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  // Relations
+  questions       ActivityQuestion[]
+
+  @@index([institutionId])
+  @@index([subjectId])
+  @@index([classId])
+  @@index([teacherId])
+  @@index([isPublished])
+  @@map("activities")
+}
+
+model ActivityQuestion {
+  id              String   @id @default(uuid())
+  orderNumber     Int      // Ordem da questão na atividade
+  customPoints    Float?   // Pontuação customizada (sobrescreve a pontuação padrão da questão)
+  customStatement String?  // Enunciado customizado (opcional, sobrescreve o original)
+  pageBreakBefore Boolean  @default(false) // Para controle de impressão
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Foreign Keys
+  activityId      String
+  activity        Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  questionId      String
+  question        Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([activityId, questionId])
+  @@index([activityId])
+  @@index([questionId])
+  @@map("activity_questions")
+}
+
+// ============================================
+// RANKINGS E GAMIFICAÇÃO
+// ============================================
+
+enum BadgeType {
+  GRADE        // Badge por notas (ex: "Primeira Nota 10")
+  ATTENDANCE   // Badge por frequência (ex: "100% Presente")
+  STREAK       // Badge por sequência (ex: "7 dias consecutivos")
+  RANKING      // Badge por posição (ex: "Top 3 da Turma")
+  ACHIEVEMENT  // Badge por conquista específica (ex: "10 Atividades Entregues")
+  SPECIAL      // Badge especial/evento
+}
+
+enum BadgeRarity {
+  COMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum RankingPeriod {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+  ALL_TIME
+}
+
+model Badge {
+  id          String       @id @default(uuid())
+  name        String       // Nome do badge (ex: "Primeira Nota 10")
+  description String       // Descrição de como conquistar
+  type        BadgeType
+  rarity      BadgeRarity  @default(COMMON)
+  icon        String?      // URL ou código do ícone/emoji
+  color       String?      // Cor do badge em hex
+  points      Int          @default(0) // Pontos ganhos ao desbloquear
+
+  // Critérios para desbloquear (JSON)
+  criteria    Json         // Ex: { "type": "grade", "value": 10, "count": 1 }
+
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  achievements Achievement[]
+
+  @@index([type])
+  @@index([isActive])
+  @@map("badges")
+}
+
+model Achievement {
+  id          String   @id @default(uuid())
+  unlockedAt  DateTime @default(now())
+
+  // Foreign Keys
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId     String
+  badge       Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId]) // Cada usuário pode desbloquear cada badge apenas uma vez
+  @@index([userId])
+  @@index([badgeId])
+  @@index([unlockedAt])
+  @@map("achievements")
+}
+
+model Ranking {
+  id             String         @id @default(uuid())
+  period         RankingPeriod
+  periodStart    DateTime       // Início do período
+  periodEnd      DateTime       // Fim do período
+
+  totalPoints    Int            @default(0)
+  rank           Int            // Posição no ranking
+  previousRank   Int?           // Posição anterior (para mostrar subida/descida)
+
+  // Breakdown de pontos
+  gradePoints      Int @default(0)  // Pontos por notas
+  attendancePoints Int @default(0)  // Pontos por frequência
+  activityPoints   Int @default(0)  // Pontos por atividades
+  examPoints       Int @default(0)  // Pontos por simulados
+  streakBonus      Int @default(0)  // Bônus por streak
+
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  // Foreign Keys
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  institutionId  String?
+  institution    Institution?   @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  classId        String?
+  class          Class?         @relation(fields: [classId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, period, periodStart, classId]) // Um ranking por período por contexto
+  @@index([userId])
+  @@index([institutionId])
+  @@index([classId])
+  @@index([period])
+  @@index([periodStart])
+  @@index([rank])
+  @@map("rankings")
+}
+
+model PointsTransaction {
+  id          String   @id @default(uuid())
+  points      Int      // Pontos ganhos (positivo) ou perdidos (negativo)
+  type        String   // Tipo: "grade", "attendance", "activity", "exam", "streak", "badge"
+  description String   // Descrição da transação
+  metadata    Json?    // Dados adicionais (ex: { gradeId, activityId, etc })
+
+  createdAt   DateTime @default(now())
+
+  // Foreign Keys
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("points_transactions")
+}
+
+// ============================================
+// SIMULADOS E AVALIAÇÕES SAEB
+// ============================================
+
+enum ExamType {
+  SAEB           // Simulado SAEB oficial
+  DIAGNOSTIC     // Avaliação diagnóstica
+  FORMATIVE      // Avaliação formativa
+  SUMMATIVE      // Avaliação somativa
+  CUSTOM         // Prova customizada
+}
+
+enum ExamStatus {
+  DRAFT          // Rascunho
+  PUBLISHED      // Publicado
+  ARCHIVED       // Arquivado
+}
+
+enum AttemptStatus {
+  NOT_STARTED    // Não iniciado
+  IN_PROGRESS    // Em andamento
+  SUBMITTED      // Finalizado
+  GRADED         // Corrigido
+}
+
+model SAEBDescriptor {
+  id          String   @id @default(uuid())
+  code        String   @unique // Ex: "D1", "D15"
+  subject     String   // "PORTUGUESE" ou "MATH"
+  skill       String   // Habilidade avaliada
+  description String   @db.Text
+  gradeLevel  String   // Série/ano (ex: "9º Ano")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  questions   Question[] @relation("QuestionSAEBDescriptor")
+
+  @@index([subject])
+  @@index([gradeLevel])
+  @@map("saeb_descriptors")
+}
+
+model Exam {
+  id              String     @id @default(uuid())
+  title           String
+  description     String?    @db.Text
+  type            ExamType
+  status          ExamStatus @default(DRAFT)
+
+  // SAEB specific
+  gradeLevel      String?    // "5º Ano", "9º Ano"
+  duration        Int?       // Duração em minutos
+  totalPoints     Float      @default(0)
+  passingScore    Float?     // Nota mínima para aprovação
+
+  // Datas
+  startDate       DateTime?  // Data de início de disponibilidade
+  endDate         DateTime?  // Data de fim de disponibilidade
+
+  // Configurações
+  shuffleQuestions Boolean   @default(false)
+  shuffleOptions   Boolean   @default(false)
+  showResults      Boolean   @default(true)
+  allowReview      Boolean   @default(true)
+
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  // Foreign Keys
+  institutionId   String
+  institution     Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  subjectId       String?
+  subject         Subject?   @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+
+  createdById     String
+  createdBy       Teacher    @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  // Relations
+  questions       ExamQuestion[]
+  assignments     ExamAssignment[]
+  attempts        ExamAttempt[]
+
+  @@index([institutionId])
+  @@index([subjectId])
+  @@index([createdById])
+  @@index([type])
+  @@index([status])
+  @@map("exams")
+}
+
+model ExamQuestion {
+  id          String   @id @default(uuid())
+  orderNumber Int      // Ordem da questão no simulado
+  points      Float    // Pontuação da questão
+
+  createdAt   DateTime @default(now())
+
+  // Foreign Keys
+  examId      String
+  exam        Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  questionId  String
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  // Relations
+  answers     ExamAnswer[]
+
+  @@unique([examId, questionId])
+  @@index([examId])
+  @@index([questionId])
+  @@map("exam_questions")
+}
+
+model ExamAssignment {
+  id          String   @id @default(uuid())
+
+  // Atribuição pode ser para turma ou alunos específicos
+  assignedAt  DateTime @default(now())
+  dueDate     DateTime?
+
+  // Foreign Keys
+  examId      String
+  exam        Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  classId     String?
+  class       Class?   @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  studentId   String?
+  student     Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([examId])
+  @@index([classId])
+  @@index([studentId])
+  @@map("exam_assignments")
+}
+
+model ExamAttempt {
+  id          String        @id @default(uuid())
+  status      AttemptStatus @default(NOT_STARTED)
+
+  startTime   DateTime?
+  endTime     DateTime?
+
+  // Resultados
+  score       Float?        // Pontuação obtida
+  percentage  Float?        // Percentual de acerto
+  proficiency Int?          // Nível de proficiência SAEB (0-9)
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Foreign Keys
+  examId      String
+  exam        Exam          @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  studentId   String
+  student     Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  // Relations
+  answers     ExamAnswer[]
+
+  @@index([examId])
+  @@index([studentId])
+  @@index([status])
+  @@map("exam_attempts")
+}
+
+model ExamAnswer {
+  id              String   @id @default(uuid())
+  selectedOption  Int?     // Opção selecionada (1, 2, 3, 4, 5)
+  isCorrect       Boolean? // Se a resposta está correta
+  pointsEarned    Float    @default(0)
+
+  answeredAt      DateTime @default(now())
+
+  // Foreign Keys
+  attemptId       String
+  attempt         ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  examQuestionId  String
+  examQuestion    ExamQuestion @relation(fields: [examQuestionId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, examQuestionId])
+  @@index([attemptId])
+  @@index([examQuestionId])
+  @@map("exam_answers")
+}
+
+// ==========================================
+// IDEB TRACKING
+// ==========================================
+
+// Metas IDEB definidas pela instituição
+model IDEBTarget {
+  id              String   @id @default(uuid())
+  year            Int      // Ano da meta
+  gradeLevel      String   // "5º ano", "9º ano", etc
+  target          Float    // Meta de IDEB (0-10)
+  nationalTarget  Float?   // Meta nacional para comparação
+  stateTarget     Float?   // Meta estadual para comparação
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Foreign Keys
+  institutionId   String
+  institution     Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@unique([institutionId, year, gradeLevel])
+  @@index([institutionId])
+  @@index([year])
+  @@map("ideb_targets")
+}
+
+// Indicadores calculados de IDEB
+model IDEBIndicator {
+  id                    String   @id @default(uuid())
+  year                  Int      // Ano de referência
+  gradeLevel            String   // Série avaliada
+  
+  // Indicadores de Fluxo
+  approvalRate          Float    // Taxa de aprovação (0-1)
+  dropoutRate           Float    // Taxa de abandono (0-1)
+  repetitionRate        Float    // Taxa de reprovação (0-1)
+  
+  // Indicadores de Desempenho
+  averageProficiency    Float    // Proficiência média SAEB (0-10)
+  mathProficiency       Float?   // Proficiência em Matemática
+  portugueseProficiency Float?   // Proficiência em Português
+  
+  // IDEB Calculado
+  idebScore             Float    // IDEB = aprovação × proficiência média
+  
+  // Estatísticas
+  totalStudents         Int      // Total de alunos avaliados
+  evaluatedStudents     Int      // Alunos que fizeram avaliação
+  
+  calculatedAt          DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Foreign Keys
+  institutionId         String
+  institution           Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@unique([institutionId, year, gradeLevel])
+  @@index([institutionId])
+  @@index([year])
+  @@map("ideb_indicators")
+}

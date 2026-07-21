@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  santacruz:
+    image: luissantostsx/grafos-frontend:latest
+    environment:
+      # Node
+      - NODE_ENV=production
+      - PORT=3000
+
+      # API Configuration
+      - NEXT_PUBLIC_API_URL=https://api-santacruz.grafoseducacional.com.br
+
+      # Application
+      - NEXT_PUBLIC_APP_NAME=Sistema de Gestão Escolar
+      - NEXT_PUBLIC_APP_VERSION=1.0.0
+
+      # Deployment Type
+      - NEXT_PUBLIC_DEPLOYMENT_TYPE=MUNICIPALITY
+
+      # Municipality Configuration
+      - NEXT_PUBLIC_DEFAULT_INSTITUTION_SLUG=santa-cruz-do-rio-pardo
+      - NEXT_PUBLIC_MUNICIPALITY_NAME=Prefeitura Municipal de Santa Cruz do Rio Pardo
+      - NEXT_PUBLIC_MUNICIPALITY_SHORT_NAME=Santa Cruz do Rio Pardo
+      - NEXT_PUBLIC_MUNICIPALITY_STATE=SP
+      - NEXT_PUBLIC_MUNICIPALITY_SLOGAN=Secretaria Municipal de Educação
+      - NEXT_PUBLIC_MUNICIPALITY_LOGO=/logo-grafos.png
+
+      # Colors
+      - NEXT_PUBLIC_PRIMARY_COLOR=#1E40AF
+      - NEXT_PUBLIC_SECONDARY_COLOR=#059669
+      - NEXT_PUBLIC_ACCENT_COLOR=#F59E0B
+
+      # Contact Information
+      - NEXT_PUBLIC_CONTACT_EMAIL=educacao@santacruz.sp.gov.br
+      - NEXT_PUBLIC_CONTACT_PHONE=(14) 3372-9200
+      - NEXT_PUBLIC_CONTACT_ADDRESS=Rua da Educação, 123 - Centro, Santa Cruz do Rio Pardo - SP
+      - NEXT_PUBLIC_OFFICIAL_WEBSITE=https://santacruz.sp.gov.br
+
+      # Social Media
+      - NEXT_PUBLIC_FACEBOOK_URL=https://facebook.com/prefeiturasantacruz
+      - NEXT_PUBLIC_INSTAGRAM_URL=https://instagram.com/prefeiturasantacruz
+      - NEXT_PUBLIC_TWITTER_URL=https://twitter.com/prefeiturasantacruz
+    networks:
+      - externa
+      - interna
+    deploy:
+      mode: replicated
+      replicas: 2
+      update_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.services.santacruz.loadbalancer.server.port=3000"
+        - "traefik.http.services.santacruz.loadbalancer.passHostHeader=true"
+        - "traefik.http.routers.santacruz.service=santacruz"
+        - "traefik.http.routers.santacruz.rule=Host(`santacruz.grafoseducacional.com.br`)"
+        - "traefik.http.routers.santacruz.tls.certresolver=le"
+        - "traefik.http.routers.santacruz.entrypoints=websecure"
+        - "traefik.http.routers.santacruz.tls=true"
+
+networks:
+  externa:
+    external: true
+  interna:
+    external: true

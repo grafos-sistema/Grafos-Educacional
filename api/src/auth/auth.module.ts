@@ -1,0 +1,63 @@
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { JwtStrategy } from './strategies/jwt.strategy';
+import {
+  JwtAuthGuard,
+  RolesGuard,
+  OwnershipGuard,
+  InstitutionGuard,
+  SuperAdminGuard,
+  InstitutionAdminGuard,
+  TeacherGuard,
+  StudentGuard,
+  ParentGuard,
+} from './guards';
+import { NotificationsModule } from '../notifications/notifications.module';
+
+@Module({
+  imports: [
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('jwt.secret') || 'default-secret',
+        signOptions: {
+          expiresIn: (configService.get<string>('jwt.expiresIn') || '1d') as any,
+        },
+      }),
+    }),
+    NotificationsModule,
+  ],
+  controllers: [AuthController],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    JwtAuthGuard,
+    RolesGuard,
+    OwnershipGuard,
+    InstitutionGuard,
+    SuperAdminGuard,
+    InstitutionAdminGuard,
+    TeacherGuard,
+    StudentGuard,
+    ParentGuard,
+  ],
+  exports: [
+    AuthService,
+    JwtModule,
+    JwtAuthGuard,
+    RolesGuard,
+    OwnershipGuard,
+    InstitutionGuard,
+    SuperAdminGuard,
+    InstitutionAdminGuard,
+    TeacherGuard,
+    StudentGuard,
+    ParentGuard,
+  ],
+})
+export class AuthModule {}
