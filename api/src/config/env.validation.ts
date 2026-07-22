@@ -41,6 +41,14 @@ class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
+  SUPABASE_SERVICE_ROLE_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  SUPABASE_AVATARS_BUCKET: string = 'avatars';
+
+  @IsString()
+  @IsOptional()
   JWT_EXPIRES_IN: string = '1d';
 
   @IsString()

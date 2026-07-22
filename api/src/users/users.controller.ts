@@ -14,7 +14,6 @@ import {
   HttpStatus,
   UseInterceptors,
   UploadedFile,
-  Req,
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -27,7 +26,6 @@ import {
   ApiConsumes,
   ApiBody,
 } from '@nestjs/swagger';
-import type { Request } from 'express';
 import { UsersService } from './users.service';
 import {
   CreateUserDto,
@@ -303,7 +301,7 @@ export class UsersController {
         message: { type: 'string', example: 'Avatar atualizado com sucesso' },
         avatar: {
           type: 'string',
-          example: 'http://localhost:3333/public/avatars/avatar-1234567890.jpg',
+          example: 'https://your-project-ref.supabase.co/storage/v1/object/public/avatars/institutions/example/users/example/avatar.webp',
         },
       },
     },
@@ -314,18 +312,11 @@ export class UsersController {
   uploadAvatar(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
-    @Req() req: Request,
   ) {
     if (!file) {
       throw new BadRequestException('Arquivo de avatar não fornecido');
     }
-
-    // Obtém base URL do request
-    const protocol = req.protocol;
-    const host = req.get('host');
-    const baseUrl = `${protocol}://${host}`;
-
-    return this.usersService.updateAvatar(id, file.filename, baseUrl);
+    return this.usersService.updateAvatar(id, file);
   }
 
   @Get(':id/children')

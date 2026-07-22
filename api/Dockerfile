@@ -40,6 +40,9 @@ RUN npm install
 # Bundle app source
 COPY . .
 
+# Ensure upload directories exist in the container image
+RUN mkdir -p public/avatars public/question-images
+
 # Generate Prisma Client
 RUN npx prisma generate
 

@@ -14,6 +14,11 @@ export default () => ({
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
     supabaseUrl: process.env.SUPABASE_URL,
   },
+  storage: {
+    supabaseUrl: process.env.SUPABASE_URL,
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    avatarsBucket: process.env.SUPABASE_AVATARS_BUCKET || 'avatars',
+  },
   security: {
     bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || '10', 10),
   },

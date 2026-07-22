@@ -4,16 +4,22 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto, UpdateUserDto, ChangePasswordDto } from './dto';
 import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { NotificationsService } from '../notifications/notifications.service';
+import { extname } from 'path';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
@@ -23,6 +29,77 @@ export class UsersService {
   private buildInitialPassword(email: string) {
     const [localPart] = email.toLowerCase().split('@');
     return `${localPart}@Grafos`;
+  }
+
+  private getAvatarBucketName() {
+    return this.configService.get<string>('storage.avatarsBucket', 'avatars');
+  }
+
+  private getSupabaseAdminClient(): SupabaseClient {
+    const supabaseUrl = this.configService.get<string>('storage.supabaseUrl')?.trim();
+    const serviceRoleKey = this.configService.get<string>('storage.serviceRoleKey')?.trim();
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      throw new InternalServerErrorException(
+        'Upload de avatar indisponivel: credenciais do Supabase Storage nao configuradas.',
+      );
+    }
+
+    return createClient(supabaseUrl.replace(/\/+$/, ''), serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+  }
+
+  private getAvatarExtension(file: Express.Multer.File) {
+    const originalExtension = extname(file.originalname ?? '').toLowerCase();
+
+    if (['.jpeg', '.jpg', '.png', '.webp'].includes(originalExtension)) {
+      return originalExtension;
+    }
+
+    switch (file.mimetype) {
+      case 'image/jpeg':
+      case 'image/jpg':
+        return '.jpg';
+      case 'image/png':
+        return '.png';
+      case 'image/webp':
+        return '.webp';
+      default:
+        throw new BadRequestException('Tipo de arquivo invalido para avatar');
+    }
+  }
+
+  private buildAvatarStoragePath(
+    user: { id: string; institutionId: string },
+    file: Express.Multer.File,
+  ) {
+    const extension = this.getAvatarExtension(file);
+    return `institutions/${user.institutionId}/users/${user.id}/avatar-${Date.now()}${extension}`;
+  }
+
+  private extractStoragePathFromAvatarUrl(avatarUrl?: string | null) {
+    if (!avatarUrl) {
+      return null;
+    }
+
+    try {
+      const bucket = this.getAvatarBucketName();
+      const url = new URL(avatarUrl);
+      const prefix = `/storage/v1/object/public/${bucket}/`;
+      const pathIndex = url.pathname.indexOf(prefix);
+
+      if (pathIndex === -1) {
+        return null;
+      }
+
+      return decodeURIComponent(url.pathname.slice(pathIndex + prefix.length));
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -485,7 +562,7 @@ export class UsersService {
   /**
    * Atualiza avatar do usuário
    */
-  async updateAvatar(userId: string, filename: string, baseUrl: string) {
+  async updateAvatar(userId: string, file: Express.Multer.File) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -494,13 +571,51 @@ export class UsersService {
       throw new NotFoundException('Usuário não encontrado');
     }
 
-    // Gera URL completa do avatar
-    const avatarUrl = `${baseUrl}/public/avatars/${filename}`;
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Arquivo de avatar inválido');
+    }
 
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { avatar: avatarUrl },
+    const supabase = this.getSupabaseAdminClient();
+    const bucket = this.getAvatarBucketName();
+    const storagePath = this.buildAvatarStoragePath(user, file);
+    const previousStoragePath = this.extractStoragePathFromAvatarUrl(user.avatar);
+
+    const { error: uploadError } = await supabase.storage.from(bucket).upload(storagePath, file.buffer, {
+      contentType: file.mimetype,
+      cacheControl: '3600',
+      upsert: true,
     });
+
+    if (uploadError) {
+      this.logger.error(`Falha ao enviar avatar para o Supabase Storage: ${uploadError.message}`);
+      throw new BadRequestException('Nao foi possivel enviar o avatar para o armazenamento.');
+    }
+
+    const {
+      data: { publicUrl: avatarUrl },
+    } = supabase.storage.from(bucket).getPublicUrl(storagePath);
+
+    try {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { avatar: avatarUrl },
+      });
+    } catch (error) {
+      await supabase.storage.from(bucket).remove([storagePath]);
+      throw error;
+    }
+
+    if (previousStoragePath && previousStoragePath !== storagePath) {
+      const { error: removeError } = await supabase.storage
+        .from(bucket)
+        .remove([previousStoragePath]);
+
+      if (removeError) {
+        this.logger.warn(
+          `Falha ao remover avatar anterior do Supabase Storage: ${removeError.message}`,
+        );
+      }
+    }
 
     return {
       message: 'Avatar atualizado com sucesso',

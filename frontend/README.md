@@ -1,10 +1,10 @@
 # 📱 Frontend - Sistema de Gestão Escolar
 
-Interface web moderna desenvolvida com Next.js 15, TypeScript e Tailwind CSS.
+Interface web moderna desenvolvida com Next.js 16, TypeScript e Tailwind CSS.
 
 ## 🚀 Tecnologias
 
-- **Framework:** Next.js 15 (App Router)
+- **Framework:** Next.js 16 (App Router)
 - **Linguagem:** TypeScript
 - **Estilização:** Tailwind CSS
 - **Gerenciamento de Estado:** Zustand + TanStack Query
@@ -15,9 +15,9 @@ Interface web moderna desenvolvida com Next.js 15, TypeScript e Tailwind CSS.
 
 ## 📋 Pré-requisitos
 
-- Node.js 18+
+- Node.js 20.9+
 - npm ou yarn
-- API Backend rodando (porta 3001)
+- API Backend rodando (porta 3333)
 
 ## ⚙️ Instalação
 
@@ -26,10 +26,12 @@ Interface web moderna desenvolvida com Next.js 15, TypeScript e Tailwind CSS.
 npm install
 
 # Copiar variáveis de ambiente
-cp .env.example .env.local
+copy .env.example .env.local
 
 # Editar .env.local com suas configurações
-# NEXT_PUBLIC_API_URL=http://localhost:3001
+# NEXT_PUBLIC_API_URL=http://localhost:3333
+# NEXT_PUBLIC_SUPABASE_URL=...
+# NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 ```
 
 ## 🏃 Executar em Desenvolvimento
@@ -38,7 +40,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Acesse: [http://localhost:3333](http://localhost:3333)
+Acesse: [http://localhost:3000](http://localhost:3000)
 
 ## 📁 Estrutura de Pastas
 

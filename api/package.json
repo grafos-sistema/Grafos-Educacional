@@ -38,6 +38,7 @@
     "@nestjs/swagger": "^11.2.1",
     "@nestjs/throttler": "^6.4.0",
     "@prisma/client": "^6.17.1",
+    "@supabase/supabase-js": "^2.110.8",
     "@types/multer": "^2.0.0",
     "@types/puppeteer": "^5.4.7",
     "bcrypt": "^6.0.0",
