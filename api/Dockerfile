@@ -1,5 +1,5 @@
 # Base image
-FROM node:20
+FROM node:22
 
 # Install Chrome dependencies and netcat
 RUN apt-get update && apt-get install -y \
