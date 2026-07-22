@@ -75,7 +75,7 @@ export function EditUserPageContent({
   const [pendingPasswordData, setPendingPasswordData] = useState<EditUserFormData | null>(null);
 
   // Buscar usuário
-  const { data: user, isLoading } = useQuery({
+  const { data: user, isLoading, error: queryError } = useQuery({
     queryKey: ['user', userId],
     queryFn: () => usersService.findOne(userId),
     enabled: !!userId,
@@ -445,6 +445,16 @@ export function EditUserPageContent({
     return (
       <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner size="lg" text="Carregando usuário..." />
+      </div>
+    );
+  }
+
+  if (queryError) {
+    return (
+      <div className="p-6">
+        <div className="text-center text-gray-600 dark:text-gray-400">
+          {queryError instanceof Error ? queryError.message : 'Usuário não encontrado'}
+        </div>
       </div>
     );
   }
