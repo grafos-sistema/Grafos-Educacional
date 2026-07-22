@@ -142,8 +142,7 @@ async function parseSupabaseFunctionError(error: { context: Response }) {
     return fallbackMessage;
   }
 }
-const STUDENT_DETAIL_PROFILE_COLUMNS =
-  '*, healthRecord:student_health_records(*), transportation:student_transportation(*), parents:student_parents(*, parent:parents(userId, user:users(id, name, firstName, lastName, email, cpf, phone)))';
+const STUDENT_DETAIL_PROFILE_COLUMNS = '*';
 
 function mapUser(row: AppUserRow, extras?: Partial<User>): User {
   return {
@@ -263,24 +262,11 @@ async function loadUserProfiles(
     ),
     studentMap: new Map(
       (studentResult.data ?? []).map((row: any) => {
-        // Format nested relationships
-        let mappedParents = [];
-        if (Array.isArray(row.parents)) {
-          mappedParents = row.parents.map((p: any) => ({
-            id: p.id,
-            parentId: p.parentId,
-            studentId: p.studentId,
-            relationship: p.relationship,
-            isPrimary: p.isPrimary,
-            user: p.parent?.user
-          }));
-        }
-
         const studentProfile = {
           ...row,
-          healthRecord: Array.isArray(row.healthRecord) ? row.healthRecord[0] : row.healthRecord,
-          transportation: Array.isArray(row.transportation) ? row.transportation[0] : row.transportation,
-          parents: mappedParents,
+          healthRecord: undefined,
+          transportation: undefined,
+          parents: [],
         };
         return [row.userId as string, studentProfile as NonNullable<User['studentProfile']>];
       })

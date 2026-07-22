@@ -66,7 +66,7 @@ export default function UserDetailPage() {
   });
 
   // Buscar usuário
-  const { data: user, isLoading, refetch } = useQuery({
+  const { data: user, isLoading, error: queryError, refetch } = useQuery({
     queryKey: ['user', userId],
     queryFn: () => usersService.findOne(userId),
     enabled: !!userId,
@@ -175,7 +175,7 @@ export default function UserDetailPage() {
     return (
       <div className="p-6">
         <div className="text-center text-gray-600 dark:text-gray-400">
-          Usuário não encontrado
+          {queryError instanceof Error ? queryError.message : 'Usuário não encontrado'}
         </div>
       </div>
     );
