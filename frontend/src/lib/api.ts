@@ -29,9 +29,6 @@ const isExpiredToken = (token: string, skewMs = DEFAULT_TOKEN_CLOCK_SKEW_MS): bo
 const api = axios.create({
   baseURL: apiBaseUrl,
   timeout: 33330,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
 // Request interceptor - Add auth token to requests
@@ -68,6 +65,13 @@ api.interceptors.request.use(
 
     if (!headerAuth && resolvedAccessToken) {
       config.headers.Authorization = `Bearer ${resolvedAccessToken}`;
+    }
+
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+      delete config.headers['content-type'];
+    } else if (!config.headers['Content-Type'] && !config.headers['content-type']) {
+      config.headers['Content-Type'] = 'application/json';
     }
 
     return config;
