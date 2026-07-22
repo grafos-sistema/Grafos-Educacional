@@ -84,16 +84,24 @@ export default function NewAcademicYearPage() {
   );
 
   useEffect(() => {
-    if (startDay && !startDayOptions.some((option) => option.value === startDay)) {
+    if (
+      startMonth &&
+      startDay &&
+      !startDayOptions.some((option) => option.value === startDay)
+    ) {
       setValue('startDay', '');
     }
-  }, [setValue, startDay, startDayOptions]);
+  }, [setValue, startDay, startDayOptions, startMonth]);
 
   useEffect(() => {
-    if (endDay && !endDayOptions.some((option) => option.value === endDay)) {
+    if (
+      endMonth &&
+      endDay &&
+      !endDayOptions.some((option) => option.value === endDay)
+    ) {
       setValue('endDay', '');
     }
-  }, [endDay, endDayOptions, setValue]);
+  }, [endDay, endDayOptions, setValue, endMonth]);
 
   useEffect(() => {
     setValue('startDate', buildIsoDate(selectedYear, startMonth, startDay), {
