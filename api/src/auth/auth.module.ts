@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
@@ -18,6 +18,7 @@ import {
 } from './guards';
 import { NotificationsModule } from '../notifications/notifications.module';
 
+@Global()
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
@@ -49,6 +50,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
   exports: [
     AuthService,
     JwtModule,
+    JwtStrategy,
     JwtAuthGuard,
     RolesGuard,
     OwnershipGuard,
