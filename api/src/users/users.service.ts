@@ -604,6 +604,9 @@ export class UsersService {
       await this.prisma.user.update({
         where: { id: userId },
         data: { avatar: avatarUrl },
+        select: {
+          id: true,
+        },
       });
     } catch (error) {
       await supabase.storage.from(bucket).remove([storagePath]);
