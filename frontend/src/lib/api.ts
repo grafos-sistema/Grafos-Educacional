@@ -3,6 +3,7 @@ import { clientCookies } from './cookies';
 import { getApiBaseUrl, getApiConfigurationMessage } from './api-url';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '@/stores/authStore';
+import { supabase } from '@/lib/supabase';
 
 const apiBaseUrl = getApiBaseUrl();
 const AUTH_ROUTES_THAT_REQUIRE_RELOGIN = ['/auth/profile', '/auth/refresh', '/auth/logout'];
@@ -23,11 +24,20 @@ const api = axios.create({
 
 // Request interceptor - Add auth token to requests
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
     // Get token from cookies
     const { accessToken } = clientCookies.getAuthTokens();
     const storeAccessToken = useAuthStore.getState().accessToken;
-    const resolvedAccessToken = accessToken || storeAccessToken;
+    let resolvedAccessToken = accessToken || storeAccessToken;
+
+    if (!resolvedAccessToken) {
+      const { data } = await supabase.auth.getSession();
+      resolvedAccessToken = data.session?.access_token ?? null;
+
+      if (resolvedAccessToken) {
+        useAuthStore.getState().setTokens(resolvedAccessToken, data.session?.refresh_token ?? null);
+      }
+    }
 
     if (resolvedAccessToken) {
       config.headers.Authorization = `Bearer ${resolvedAccessToken}`;

@@ -867,11 +867,7 @@ export const usersService = {
     const response = await api.post<{ message: string; avatar: string }>(
       `/users/${id}/avatar`,
       formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
+      {}
     );
     return response as unknown as { message: string; avatar: string };
   },
