@@ -9,8 +9,8 @@ import {
   MagnifyingGlassIcon,
   PencilIcon,
   TrashIcon,
-  EyeIcon,
   CalendarIcon,
+  ArrowRightIcon,
 } from '@heroicons/react/24/outline';
 import { academicYearsService, AcademicYearsFilterParams } from '@/services/academic-years.service';
 import { AcademicYear, AcademicYearDeleteImpact } from '@/types/academic.types';
@@ -149,36 +149,39 @@ export default function AcademicYearsPage() {
       key: 'actions',
       label: 'Ações',
       render: (academicYear) => (
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/admin/academic-years/${academicYear.id}/edit`);
+              }}
+              className="text-gray-600 hover:text-gray-700 dark:text-gray-400"
+              title="Editar"
+            >
+              <PencilIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeleteModal({ isOpen: true, academicYear });
+              }}
+              className="text-red-600 hover:text-red-700 dark:text-red-400"
+              title="Remover"
+            >
+              <TrashIcon className="h-5 w-5" />
+            </button>
+          </div>
           <button
             onClick={(e) => {
               e.stopPropagation();
               router.push(`/admin/academic-years/${academicYear.id}`);
             }}
-            className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
-            title="Visualizar"
+            className="ml-auto inline-flex items-center gap-2 rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:bg-green-500 dark:hover:bg-green-600"
+            title="Acessar ano letivo"
           >
-            <EyeIcon className="h-5 w-5" />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              router.push(`/admin/academic-years/${academicYear.id}/edit`);
-            }}
-            className="text-gray-600 hover:text-gray-700 dark:text-gray-400"
-            title="Editar"
-          >
-            <PencilIcon className="h-5 w-5" />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setDeleteModal({ isOpen: true, academicYear });
-            }}
-            className="text-red-600 hover:text-red-700 dark:text-red-400"
-            title="Remover"
-          >
-            <TrashIcon className="h-5 w-5" />
+            <span>Acessar</span>
+            <ArrowRightIcon className="h-4 w-4" />
           </button>
         </div>
       ),

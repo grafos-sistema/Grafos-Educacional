@@ -36,10 +36,49 @@ interface NavItem {
   pathMapping: Partial<Record<UserRole, string>>; // Role-specific paths
 }
 
+interface NavigationSection {
+  title: string;
+  items: NavItem[];
+}
+
 // Helper function to get role-specific route
 const getRouteForRole = (item: NavItem, role: UserRole): string => {
   return item.pathMapping[role] || item.baseRoute;
 };
+
+const institutionAdminSectionConfig: Array<{
+  title: string;
+  itemNames: string[];
+}> = [
+  {
+    title: 'Visão Geral',
+    itemNames: ['Dashboard'],
+  },
+  {
+    title: 'Pessoas',
+    itemNames: ['Todos os Usuários', 'Coordenadores', 'Professores', 'Alunos'],
+  },
+  {
+    title: 'Estrutura Acadêmica',
+    itemNames: ['Anos Letivos', 'Cursos', 'Disciplinas', 'Turmas'],
+  },
+  {
+    title: 'Gestão Escolar',
+    itemNames: [
+      'Grade de Horários',
+      'Comunicados',
+      'Eventos',
+      'Comunicação',
+      'Rankings',
+      'Banco de Questões',
+      'Categorias de Questões',
+    ],
+  },
+  {
+    title: 'Conta',
+    itemNames: ['Configurações'],
+  },
+];
 
 const navigation: NavItem[] = [
   {
@@ -353,6 +392,47 @@ export function Sidebar({
     [currentRole]
   );
 
+  const navigationSections = useMemo<NavigationSection[]>(() => {
+    const isAdministrativeRole =
+      currentRole === UserRole.INSTITUTION_ADMIN ||
+      currentRole === UserRole.SUPER_ADMIN;
+
+    if (!isAdministrativeRole) {
+      return [{ title: '', items: filteredNavigation }];
+    }
+
+    const itemMap = new Map(filteredNavigation.map((item) => [item.name, item]));
+    const usedItemNames = new Set<string>();
+
+    const sections = institutionAdminSectionConfig
+      .map((section) => {
+        const items = section.itemNames
+          .map((itemName) => itemMap.get(itemName))
+          .filter((item): item is NavItem => Boolean(item));
+
+        items.forEach((item) => usedItemNames.add(item.name));
+
+        return {
+          title: section.title,
+          items,
+        };
+      })
+      .filter((section) => section.items.length > 0);
+
+    const remainingItems = filteredNavigation.filter(
+      (item) => !usedItemNames.has(item.name)
+    );
+
+    if (remainingItems.length > 0) {
+      sections.push({
+        title: currentRole === UserRole.SUPER_ADMIN ? 'Administração' : 'Outros',
+        items: remainingItems,
+      });
+    }
+
+    return sections;
+  }, [currentRole, filteredNavigation]);
+
   const prefetchRoutes = useMemo(() => {
     if (!currentRole) return [];
 
@@ -456,43 +536,55 @@ export function Sidebar({
       </div>
 
       {/* Navigation */}
-      <nav id="navigation" className="flex flex-1 flex-col gap-y-1 overflow-y-auto px-4 py-4">
-        <div className="space-y-1">
-          {filteredNavigation.map((item) => {
-            const href = currentRole ? getRouteForRole(item, currentRole) : item.baseRoute;
-            const isActive = pathname === href || pathname?.startsWith(href + '/');
-            return (
-              <Link
-                key={item.name}
-                href={href}
-                onClick={closeMobileMenu}
+      <nav id="navigation" className="flex flex-1 flex-col gap-y-4 overflow-y-auto px-4 py-4">
+        {navigationSections.map((section) => (
+          <div key={section.title || 'menu'} className="space-y-1">
+            {section.title ? (
+              <p
                 className={cn(
-                  'group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
-                  isDesktopCollapsed ? 'lg:justify-center lg:gap-0' : 'gap-3',
-                  isActive
-                    ? 'bg-primary-50 text-primary-700 shadow-sm'
-                    : 'text-secondary-600 hover:bg-secondary-50 hover:text-secondary-900'
+                  'px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-secondary-400',
+                  isDesktopCollapsed && 'lg:hidden'
                 )}
-                title={isDesktopCollapsed ? item.name : undefined}
               >
-                <item.icon
+                {section.title}
+              </p>
+            ) : null}
+            {section.items.map((item) => {
+              const href = currentRole ? getRouteForRole(item, currentRole) : item.baseRoute;
+              const isActive = pathname === href || pathname?.startsWith(href + '/');
+              return (
+                <Link
+                  key={item.name}
+                  href={href}
+                  onClick={closeMobileMenu}
                   className={cn(
-                    'h-5 w-5 shrink-0 transition-colors',
-                    isActive ? 'text-primary-600' : 'text-secondary-400 group-hover:text-secondary-600'
+                    'group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
+                    isDesktopCollapsed ? 'lg:justify-center lg:gap-0' : 'gap-3',
+                    isActive
+                      ? 'bg-primary-50 text-primary-700 shadow-sm'
+                      : 'text-secondary-600 hover:bg-secondary-50 hover:text-secondary-900'
                   )}
-                />
-                <span
-                  className={cn(
-                    'truncate',
-                    isDesktopCollapsed && 'lg:hidden'
-                  )}
+                  title={isDesktopCollapsed ? item.name : undefined}
                 >
-                  {item.name}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
+                  <item.icon
+                    className={cn(
+                      'h-5 w-5 shrink-0 transition-colors',
+                      isActive ? 'text-primary-600' : 'text-secondary-400 group-hover:text-secondary-600'
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      'truncate',
+                      isDesktopCollapsed && 'lg:hidden'
+                    )}
+                  >
+                    {item.name}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* User info at bottom */}

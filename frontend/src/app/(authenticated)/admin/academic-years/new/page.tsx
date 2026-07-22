@@ -104,16 +104,26 @@ export default function NewAcademicYearPage() {
   }, [endDay, endDayOptions, setValue, endMonth]);
 
   useEffect(() => {
-    setValue('startDate', buildIsoDate(selectedYear, startMonth, startDay), {
-      shouldValidate: Boolean(startMonth || startDay),
+    const nextStartDate = buildIsoDate(selectedYear, startMonth, startDay);
+    setValue('startDate', nextStartDate, {
+      shouldValidate: false,
     });
-  }, [selectedYear, setValue, startDay, startMonth]);
+
+    if (nextStartDate) {
+      clearErrors('startDate');
+    }
+  }, [clearErrors, selectedYear, setValue, startDay, startMonth]);
 
   useEffect(() => {
-    setValue('endDate', buildIsoDate(selectedYear, endMonth, endDay), {
-      shouldValidate: Boolean(endMonth || endDay),
+    const nextEndDate = buildIsoDate(selectedYear, endMonth, endDay);
+    setValue('endDate', nextEndDate, {
+      shouldValidate: false,
     });
-  }, [endDay, endMonth, selectedYear, setValue]);
+
+    if (nextEndDate) {
+      clearErrors('endDate');
+    }
+  }, [clearErrors, endDay, endMonth, selectedYear, setValue]);
 
   const onSubmit = async (data: NewAcademicYearFormValues) => {
     if (!user?.institutionId) {

@@ -170,16 +170,26 @@ export default function AcademicYearDetailPage() {
   }, [periodPresetOptions, selectedPeriodPresetValue, setValue]);
 
   useEffect(() => {
-    setValue('startDate', buildIsoDate(fixedYear, startMonth, startDay), {
-      shouldValidate: Boolean(startMonth || startDay),
+    const nextStartDate = buildIsoDate(fixedYear, startMonth, startDay);
+    setValue('startDate', nextStartDate, {
+      shouldValidate: false,
     });
-  }, [fixedYear, setValue, startDay, startMonth]);
+
+    if (nextStartDate) {
+      clearErrors('startDate');
+    }
+  }, [clearErrors, fixedYear, setValue, startDay, startMonth]);
 
   useEffect(() => {
-    setValue('endDate', buildIsoDate(fixedYear, endMonth, endDay), {
-      shouldValidate: Boolean(endMonth || endDay),
+    const nextEndDate = buildIsoDate(fixedYear, endMonth, endDay);
+    setValue('endDate', nextEndDate, {
+      shouldValidate: false,
     });
-  }, [endDay, endMonth, fixedYear, setValue]);
+
+    if (nextEndDate) {
+      clearErrors('endDate');
+    }
+  }, [clearErrors, endDay, endMonth, fixedYear, setValue]);
 
   // Mutation para criar período
   const createPeriodMutation = useMutation({
