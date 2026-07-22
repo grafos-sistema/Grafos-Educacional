@@ -782,6 +782,7 @@ export const usersService = {
             studentId: studentId,
             ...healthInfo,
           }, { onConflict: 'studentId' });
+        if (healthError) throw healthError;
       }
 
       // Update transportation if transportInfo is provided
@@ -792,6 +793,7 @@ export const usersService = {
             studentId: studentId,
             ...transportInfo,
           }, { onConflict: 'studentId' });
+        if (transportError) throw transportError;
       }
 
       // Sync responsaveis

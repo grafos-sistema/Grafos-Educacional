@@ -2,6 +2,7 @@ import axios from 'axios';
 import { clientCookies } from './cookies';
 import { getApiBaseUrl, getApiConfigurationMessage } from './api-url';
 import { toast } from 'react-hot-toast';
+import { useAuthStore } from '@/stores/authStore';
 
 const apiBaseUrl = getApiBaseUrl();
 const AUTH_ROUTES_THAT_REQUIRE_RELOGIN = ['/auth/profile', '/auth/refresh', '/auth/logout'];
@@ -25,9 +26,11 @@ api.interceptors.request.use(
   (config) => {
     // Get token from cookies
     const { accessToken } = clientCookies.getAuthTokens();
+    const storeAccessToken = useAuthStore.getState().accessToken;
+    const resolvedAccessToken = accessToken || storeAccessToken;
 
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
+    if (resolvedAccessToken) {
+      config.headers.Authorization = `Bearer ${resolvedAccessToken}`;
     }
 
     return config;
