@@ -166,6 +166,7 @@ model Institution {
 
 model User {
   id            String    @id @default(uuid())
+  authUserId    String?   @unique @map("auth_user_id")
   email         String
   password      String
   role          UserRole

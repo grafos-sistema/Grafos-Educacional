@@ -9,7 +9,7 @@ services:
       - PORT=3000
 
       # API Configuration
-      - NEXT_PUBLIC_API_URL=https://api-santacruz.grafoseducacional.com.br
+      - NEXT_PUBLIC_API_URL=https://grafos-educacional-production-d9a9.up.railway.app
 
       # Application
       - NEXT_PUBLIC_APP_NAME=Sistema de Gestão Escolar

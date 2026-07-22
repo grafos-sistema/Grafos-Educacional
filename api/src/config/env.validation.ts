@@ -37,6 +37,10 @@ class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
+  SUPABASE_URL?: string;
+
+  @IsString()
+  @IsOptional()
   JWT_EXPIRES_IN: string = '1d';
 
   @IsString()

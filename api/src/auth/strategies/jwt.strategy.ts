@@ -2,36 +2,93 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose';
 import { PrismaService } from '../../prisma/prisma.service';
 
-export interface JwtPayload {
+export interface JwtPayload extends JWTPayload {
   sub: string;
-  email: string;
-  role: string;
-  institutionId: string;
-  iat?: number;
-  exp?: number;
+  email?: string;
+  role?: string;
+  institutionId?: string;
 }
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
+  private readonly localJwtSecret: string;
+  private readonly supabaseUrl?: string;
+  private readonly supabaseIssuer?: string;
+  private readonly supabaseJwks?: ReturnType<typeof createRemoteJWKSet>;
+
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
+    const localJwtSecret =
+      configService.get<string>('jwt.secret') || 'default-secret';
+    const supabaseUrl = configService.get<string>('jwt.supabaseUrl')?.trim();
+    const normalizedSupabaseUrl = supabaseUrl?.replace(/\/+$/, '');
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('jwt.secret') || 'default-secret',
+      secretOrKey: localJwtSecret,
+      passReqToCallback: true,
     });
+
+    this.localJwtSecret = localJwtSecret;
+    this.supabaseUrl = normalizedSupabaseUrl;
+    this.supabaseIssuer = normalizedSupabaseUrl
+      ? `${normalizedSupabaseUrl}/auth/v1`
+      : undefined;
+    this.supabaseJwks = this.supabaseIssuer
+      ? createRemoteJWKSet(
+          new URL(`${this.supabaseIssuer}/.well-known/jwks.json`),
+        )
+      : undefined;
   }
 
-  async validate(payload: JwtPayload) {
-    // Busca o usuário no banco para garantir que ainda existe e está ativo
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
+  async validate(req: Request, payload: JwtPayload) {
+    const token = ExtractJwt.fromAuthHeaderAsBearerToken()(req as any);
+
+    if (!token) {
+      throw new UnauthorizedException('Token ausente');
+    }
+
+    const verifiedPayload = await this.resolvePayload(token, payload);
+    return this.resolveUser(verifiedPayload);
+  }
+
+  private async resolvePayload(
+    token: string,
+    fallbackPayload: JwtPayload,
+  ): Promise<JwtPayload> {
+    if (this.supabaseIssuer && this.supabaseJwks) {
+      try {
+        const { payload } = await jwtVerify(token, this.supabaseJwks, {
+          issuer: this.supabaseIssuer,
+        });
+
+        return payload as JwtPayload;
+      } catch (error) {
+        // Fallback para o JWT local legado da API.
+      }
+    }
+
+    return fallbackPayload;
+  }
+
+  private async resolveUser(payload: JwtPayload) {
+    if (!payload.sub) {
+      throw new UnauthorizedException('Token inválido: subject ausente');
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ id: payload.sub }, { authUserId: payload.sub }],
+      },
       select: {
         id: true,
+        authUserId: true,
         email: true,
         role: true,
         institutionId: true,
@@ -64,9 +121,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Usuário inativo');
     }
 
-    // Retorna o usuário que será adicionado ao request.user
     return {
       userId: user.id,
+      authUserId: user.authUserId,
       email: user.email,
       role: user.role,
       institutionId: user.institutionId,
@@ -75,6 +132,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       teacherId: user.teacherProfile?.id,
       studentId: user.studentProfile?.id,
       parentId: user.parentProfile?.id,
+      jwtSubject: payload.sub,
     };
   }
 }
