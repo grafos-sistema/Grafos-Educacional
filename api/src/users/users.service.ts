@@ -565,6 +565,11 @@ export class UsersService {
   async updateAvatar(userId: string, file: Express.Multer.File) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
+      select: {
+        id: true,
+        institutionId: true,
+        avatar: true,
+      },
     });
 
     if (!user) {
