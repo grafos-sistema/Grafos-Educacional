@@ -3,11 +3,16 @@ import { UserRole } from '@prisma/client';
 
 export interface CurrentUserPayload {
   userId: string;
+  authUserId?: string | null;
   email: string;
   role: UserRole;
   institutionId: string;
   firstName: string;
   lastName: string;
+  teacherId?: string;
+  studentId?: string;
+  parentId?: string;
+  jwtSubject?: string;
 }
 
 /**

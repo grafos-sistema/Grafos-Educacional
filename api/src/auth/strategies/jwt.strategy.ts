@@ -1,9 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
 import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose';
 import { PrismaService } from '../../prisma/prisma.service';
+import type { CurrentUserPayload } from '../../common/decorators/current-user.decorator';
 
 export interface JwtPayload extends JWTPayload {
   sub: string;
@@ -13,7 +13,7 @@ export interface JwtPayload extends JWTPayload {
 }
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
+export class JwtStrategy {
   private readonly localJwtSecret: string;
   private readonly supabaseUrl?: string;
   private readonly supabaseIssuer?: string;
@@ -22,18 +22,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
   ) {
     const localJwtSecret =
       configService.get<string>('jwt.secret') || 'default-secret';
     const supabaseUrl = configService.get<string>('jwt.supabaseUrl')?.trim();
     const normalizedSupabaseUrl = supabaseUrl?.replace(/\/+$/, '');
-
-    super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ignoreExpiration: false,
-      secretOrKey: localJwtSecret,
-      passReqToCallback: true,
-    });
 
     this.localJwtSecret = localJwtSecret;
     this.supabaseUrl = normalizedSupabaseUrl;
@@ -47,21 +41,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       : undefined;
   }
 
-  async validate(req: Request, payload: JwtPayload) {
-    const token = ExtractJwt.fromAuthHeaderAsBearerToken()(req as any);
-
-    if (!token) {
-      throw new UnauthorizedException('Token ausente');
-    }
-
-    const verifiedPayload = await this.resolvePayload(token, payload);
+  async authenticateToken(token: string): Promise<CurrentUserPayload> {
+    const verifiedPayload = await this.resolvePayload(token);
     return this.resolveUser(verifiedPayload);
   }
 
-  private async resolvePayload(
-    token: string,
-    fallbackPayload: JwtPayload,
-  ): Promise<JwtPayload> {
+  private async resolvePayload(token: string): Promise<JwtPayload> {
     if (this.supabaseIssuer && this.supabaseJwks) {
       try {
         const { payload } = await jwtVerify(token, this.supabaseJwks, {
@@ -74,10 +59,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       }
     }
 
-    return fallbackPayload;
+    try {
+      return (await this.jwtService.verifyAsync(token, {
+        secret: this.localJwtSecret,
+      })) as JwtPayload;
+    } catch (error) {
+      throw new UnauthorizedException('Unauthorized');
+    }
   }
 
-  private async resolveUser(payload: JwtPayload) {
+  private async resolveUser(payload: JwtPayload): Promise<CurrentUserPayload> {
     if (!payload.sub) {
       throw new UnauthorizedException('Token inválido: subject ausente');
     }

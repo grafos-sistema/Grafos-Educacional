@@ -1,15 +1,21 @@
-import { ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { AuthGuard } from '@nestjs/passport';
 import { IS_PUBLIC_KEY } from '../../common/decorators';
+import { JwtStrategy } from '../strategies/jwt.strategy';
 
 @Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {
-  constructor(private reflector: Reflector) {
-    super();
-  }
+export class JwtAuthGuard implements CanActivate {
+  constructor(
+    private reflector: Reflector,
+    private readonly jwtStrategy: JwtStrategy,
+  ) {}
 
-  canActivate(context: ExecutionContext) {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     // Verifica se a rota está marcada como pública
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
@@ -20,7 +26,20 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       return true;
     }
 
-    // Se não for pública, executa a validação JWT normal
-    return super.canActivate(context);
+    const request = context.switchToHttp().getRequest();
+    const authHeader =
+      request.headers.authorization || request.headers.Authorization;
+
+    if (!authHeader || typeof authHeader !== 'string') {
+      throw new UnauthorizedException('Unauthorized');
+    }
+
+    const [scheme, token] = authHeader.split(' ');
+    if (scheme !== 'Bearer' || !token) {
+      throw new UnauthorizedException('Unauthorized');
+    }
+
+    request.user = await this.jwtStrategy.authenticateToken(token);
+    return true;
   }
 }
