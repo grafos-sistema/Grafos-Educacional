@@ -53,7 +53,7 @@ sleep 5
 # Ensure Prisma schema exists when using Supabase (database is never empty).
 HAS_SCHEMA_PARAM=$(node -e "const u=new URL(process.env.DATABASE_URL); process.stdout.write(u.searchParams.has('schema') ? '1' : '0')")
 if [ "$HAS_SCHEMA_PARAM" -eq 0 ]; then
-  export APP_DB_SCHEMA="grafos"
+  export APP_DB_SCHEMA="public"
   export DATABASE_URL=$(node -e "const u=new URL(process.env.DATABASE_URL); u.searchParams.set('schema', process.env.APP_DB_SCHEMA); process.stdout.write(u.toString())")
   export DIRECT_URL=$(node -e "const u=new URL(process.env.DIRECT_URL); u.searchParams.set('schema', process.env.APP_DB_SCHEMA); process.stdout.write(u.toString())")
   echo "🧪 [debug:entrypoint] schema param not set; defaulting to schema=${APP_DB_SCHEMA}"

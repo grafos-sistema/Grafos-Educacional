@@ -3,7 +3,7 @@
 import { toast } from 'react-hot-toast';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -26,6 +26,7 @@ import { UserRole } from '@/types/user.types';
 
 export default function AcademicYearsPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const isSuperAdmin = user?.role === UserRole.SUPER_ADMIN;
   const [filters, setFilters] = useState<AcademicYearsFilterParams>({
@@ -42,7 +43,7 @@ export default function AcademicYearsPage() {
   const [isPermanentDeleting, setIsPermanentDeleting] = useState(false);
 
   // Buscar anos letivos
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['academic-years', filters],
     queryFn: () => academicYearsService.findAll(filters),
   });
@@ -57,7 +58,7 @@ export default function AcademicYearsPage() {
     try {
       setIsSoftDeleting(true);
       await academicYearsService.remove(academicYearId);
-      refetch();
+      await queryClient.invalidateQueries({ queryKey: ['academic-years'] });
       setDeleteModal({ isOpen: false, academicYear: null });
       toast.success('Ano letivo desativado com sucesso!');
     } catch (error: any) {
@@ -72,7 +73,7 @@ export default function AcademicYearsPage() {
     try {
       setIsPermanentDeleting(true);
       await academicYearsService.removePermanently(academicYearId);
-      refetch();
+      await queryClient.invalidateQueries({ queryKey: ['academic-years'] });
       setDeleteModal({ isOpen: false, academicYear: null });
       toast.success('Ano letivo excluído permanentemente com sucesso!');
     } catch (error: any) {

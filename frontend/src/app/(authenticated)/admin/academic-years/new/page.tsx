@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { academicYearsService } from '@/services/academic-years.service';
 import { CreateAcademicYearDto } from '@/types/academic.types';
@@ -41,6 +42,7 @@ const allDayOptions = Array.from({ length: 31 }, (_, index) => {
 
 export default function NewAcademicYearPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -125,6 +127,7 @@ export default function NewAcademicYearPage() {
       };
 
       await academicYearsService.create(academicYearData);
+      await queryClient.invalidateQueries({ queryKey: ['academic-years'] });
       toast.success('Ano letivo criado com sucesso!');
       router.push('/admin/academic-years');
     } catch (err: any) {
