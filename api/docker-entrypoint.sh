@@ -76,8 +76,13 @@ set -e
 
 if [ $MIGRATE_EXIT_CODE -ne 0 ]; then
   echo "$MIGRATE_OUTPUT"
-  echo "❌ prisma migrate deploy failed (exit=$MIGRATE_EXIT_CODE)"
-  exit $MIGRATE_EXIT_CODE
+  if echo "$MIGRATE_OUTPUT" | grep -q "P3005"; then
+    echo "⚠️  Prisma migrate skipped: schema ${DB_SCHEMA} already contains tables and is not baselined by Prisma."
+    echo "⚠️  Continuing startup because this environment uses a pre-existing Supabase schema."
+  else
+    echo "❌ prisma migrate deploy failed (exit=$MIGRATE_EXIT_CODE)"
+    exit $MIGRATE_EXIT_CODE
+  fi
 fi
 
 echo "$MIGRATE_OUTPUT"
