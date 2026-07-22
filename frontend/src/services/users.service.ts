@@ -864,10 +864,19 @@ export const usersService = {
     const formData = new FormData();
     formData.append('avatar', file);
 
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+
     const response = await api.post<{ message: string; avatar: string }>(
       `/users/${id}/avatar`,
       formData,
-      {}
+      accessToken
+        ? {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        : {}
     );
     return response as unknown as { message: string; avatar: string };
   },
