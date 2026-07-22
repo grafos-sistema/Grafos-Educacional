@@ -265,6 +265,9 @@ export function EditUserPageContent({
       setValue('isActive', nextIsActive, { shouldDirty: true, shouldValidate: true });
       queryClient.invalidateQueries({ queryKey: ['user', userId] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: ['teachers'] });
+      queryClient.invalidateQueries({ queryKey: ['coordinators'] });
       toast.success(nextIsActive ? 'Usuário ativado com sucesso!' : 'Usuário desativado com sucesso!');
     } catch (err: any) {
       const errorMsg = err?.message || 'Não foi possível alterar o status do usuário.';
@@ -371,6 +374,9 @@ export function EditUserPageContent({
 
       queryClient.invalidateQueries({ queryKey: ['user', userId] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: ['teachers'] });
+      queryClient.invalidateQueries({ queryKey: ['coordinators'] });
       
       toast.success(
         shouldResetPassword
