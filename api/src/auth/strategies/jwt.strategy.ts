@@ -47,6 +47,8 @@ export class JwtStrategy {
   }
 
   private async resolvePayload(token: string): Promise<JwtPayload> {
+    let supabaseVerifyError: unknown | undefined;
+
     if (this.supabaseIssuer && this.supabaseJwks) {
       try {
         const { payload } = await jwtVerify(token, this.supabaseJwks, {
@@ -55,7 +57,7 @@ export class JwtStrategy {
 
         return payload as JwtPayload;
       } catch (error) {
-        // Fallback para o JWT local legado da API.
+        supabaseVerifyError = error;
       }
     }
 
@@ -64,7 +66,10 @@ export class JwtStrategy {
         secret: this.localJwtSecret,
       })) as JwtPayload;
     } catch (error) {
-      throw new UnauthorizedException('Unauthorized');
+      if (supabaseVerifyError instanceof Error) {
+        throw new UnauthorizedException(`Invalid Supabase token: ${supabaseVerifyError.message}`);
+      }
+      throw new UnauthorizedException('Invalid token');
     }
   }
 

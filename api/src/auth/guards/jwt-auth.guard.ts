@@ -31,12 +31,12 @@ export class JwtAuthGuard implements CanActivate {
       request.headers.authorization || request.headers.Authorization;
 
     if (!authHeader || typeof authHeader !== 'string') {
-      throw new UnauthorizedException('Unauthorized');
+      throw new UnauthorizedException('Missing Authorization header');
     }
 
     const [scheme, token] = authHeader.split(' ');
     if (scheme !== 'Bearer' || !token) {
-      throw new UnauthorizedException('Unauthorized');
+      throw new UnauthorizedException('Invalid Authorization header');
     }
 
     request.user = await this.jwtStrategy.authenticateToken(token);
