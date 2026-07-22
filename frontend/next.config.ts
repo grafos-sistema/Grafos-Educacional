@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 import withPWA from "next-pwa";
 
 const nextConfig: NextConfig = {
-  distDir: '.next2',
+  distDir: process.env.VERCEL ? '.next' : '.next2',
   /* config options here */
   reactStrictMode: true,
   typescript: {
