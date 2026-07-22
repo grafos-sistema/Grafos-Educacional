@@ -53,6 +53,7 @@ export class JwtStrategy {
       try {
         const { payload } = await jwtVerify(token, this.supabaseJwks, {
           issuer: this.supabaseIssuer,
+          clockTolerance: 60,
         });
 
         return payload as JwtPayload;

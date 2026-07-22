@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
 import { clientCookies } from './cookies';
 import { getApiBaseUrl, getApiConfigurationMessage } from './api-url';
 import { toast } from 'react-hot-toast';
@@ -7,11 +8,22 @@ import { supabase } from '@/lib/supabase';
 
 const apiBaseUrl = getApiBaseUrl();
 const AUTH_ROUTES_THAT_REQUIRE_RELOGIN = ['/auth/profile', '/auth/refresh', '/auth/logout'];
+const DEFAULT_TOKEN_CLOCK_SKEW_MS = 30_000;
 
 const shouldForceLogoutOnUnauthorized = (requestUrl?: string): boolean => {
   if (!requestUrl) return false;
 
   return AUTH_ROUTES_THAT_REQUIRE_RELOGIN.some((route) => requestUrl.includes(route));
+};
+
+const isExpiredToken = (token: string, skewMs = DEFAULT_TOKEN_CLOCK_SKEW_MS): boolean => {
+  try {
+    const decoded = jwtDecode<{ exp?: number }>(token);
+    if (!decoded.exp) return false;
+    return Date.now() >= decoded.exp * 1000 - skewMs;
+  } catch {
+    return false;
+  }
 };
 
 const api = axios.create({
@@ -28,18 +40,33 @@ api.interceptors.request.use(
     // Get token from cookies
     const { accessToken } = clientCookies.getAuthTokens();
     const storeAccessToken = useAuthStore.getState().accessToken;
+    const headerAuth =
+      (config.headers as any)?.Authorization || (config.headers as any)?.authorization;
+
     let resolvedAccessToken = accessToken || storeAccessToken;
+    if (resolvedAccessToken && isExpiredToken(resolvedAccessToken)) {
+      resolvedAccessToken = null;
+    }
 
     if (!resolvedAccessToken) {
       const { data } = await supabase.auth.getSession();
-      resolvedAccessToken = data.session?.access_token ?? null;
+      let sessionAccessToken = data.session?.access_token ?? null;
+      let sessionRefreshToken = data.session?.refresh_token ?? null;
+
+      if (sessionAccessToken && isExpiredToken(sessionAccessToken)) {
+        const { data: refreshed } = await supabase.auth.refreshSession();
+        sessionAccessToken = refreshed.session?.access_token ?? null;
+        sessionRefreshToken = refreshed.session?.refresh_token ?? null;
+      }
+
+      resolvedAccessToken = sessionAccessToken;
 
       if (resolvedAccessToken) {
-        useAuthStore.getState().setTokens(resolvedAccessToken, data.session?.refresh_token ?? null);
+        useAuthStore.getState().setTokens(resolvedAccessToken, sessionRefreshToken);
       }
     }
 
-    if (resolvedAccessToken) {
+    if (!headerAuth && resolvedAccessToken) {
       config.headers.Authorization = `Bearer ${resolvedAccessToken}`;
     }
 
