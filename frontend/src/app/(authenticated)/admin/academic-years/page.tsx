@@ -132,7 +132,7 @@ export default function AcademicYearsPage() {
       label: 'Períodos',
       render: (academicYear) => (
         <span className="text-gray-700 dark:text-gray-300">
-          {academicYear.periods?.length || 0} período(s)
+          {academicYear.periodsCount ?? academicYear.periods?.length ?? 0} período(s)
         </span>
       ),
     },

@@ -165,6 +165,7 @@ export interface CreateUserDto {
   cpf?: string;
   rg?: string;
   rgEmissor?: string;
+  rgUf?: string;
   rgEmissao?: string;
   socialName?: string;
   nacionalidade?: string;
@@ -265,6 +266,7 @@ export interface UpdateUserData {
   cpf?: string;
   rg?: string;
   rgEmissor?: string;
+  rgUf?: string;
   rgEmissao?: string;
   socialName?: string;
   nacionalidade?: string;

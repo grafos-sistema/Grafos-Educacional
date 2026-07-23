@@ -4,6 +4,7 @@ import {
   UpdateSubjectDto,
   PaginatedSubjects,
 } from '@/types/subject.types';
+import api from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { fetchCurrentUserProfile } from '@/lib/auth-profile';
 
@@ -138,5 +139,12 @@ export const subjectsService = {
 
     if (error) throw error;
     return updated as Subject;
+  },
+
+  /**
+   * Excluir disciplina permanentemente
+   */
+  async removePermanently(id: string): Promise<void> {
+    await api.delete(`/subjects/${id}/permanent`);
   },
 };

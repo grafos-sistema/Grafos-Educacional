@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { subjectsService, SubjectsFilterParams } from '@/services/subjects.service';
 import { Subject } from '@/types/subject.types';
+import { UserRole } from '@/types/user.types';
 import { useAuthStore } from '@/stores/authStore';
 import { Table, Column } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
@@ -61,6 +62,18 @@ export default function SubjectsPage() {
     }
   };
 
+  const handlePermanentDelete = async (subjectId: string) => {
+    try {
+      await subjectsService.removePermanently(subjectId);
+      refetch();
+      setDeleteModal({ isOpen: false, subject: null });
+      toast.success('Disciplina excluida permanentemente com sucesso!');
+    } catch (error: any) {
+      console.error('Erro ao excluir disciplina permanentemente:', error);
+      toast.error(error?.message || 'Erro ao excluir disciplina permanentemente');
+    }
+  };
+
   const columns: Column<Subject>[] = [
     {
       key: 'name',
@@ -103,24 +116,6 @@ export default function SubjectsPage() {
             : '-'}
         </span>
       ),
-    },
-    {
-      key: 'color',
-      label: 'Cor',
-      render: (subject) =>
-        subject.color ? (
-          <div className="flex items-center gap-2">
-            <div
-              className="w-6 h-6 rounded border border-gray-300 dark:border-gray-600"
-              style={{ backgroundColor: subject.color }}
-            />
-            <span className="text-xs text-gray-600 dark:text-gray-400">
-              {subject.color}
-            </span>
-          </div>
-        ) : (
-          '-'
-        ),
     },
     {
       key: 'isActive',
@@ -266,7 +261,7 @@ export default function SubjectsPage() {
       <Modal
         isOpen={deleteModal.isOpen}
         onClose={() => setDeleteModal({ isOpen: false, subject: null })}
-        title="Confirmar remoção"
+        title="Remover Disciplina"
         size="md"
       >
         <div className="space-y-4">
@@ -274,10 +269,17 @@ export default function SubjectsPage() {
             Tem certeza que deseja remover a disciplina{' '}
             <strong>{deleteModal.subject?.name}</strong>?
           </p>
-          <p className="text-sm text-red-600 dark:text-red-400">
-            Esta ação não poderá ser desfeita se houver turmas ou questões vinculadas.
-          </p>
-          <div className="flex gap-3 justify-end">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <p>
+              <strong>Desativar</strong> mantém a disciplina no banco, apenas marcando-a como inativa.
+            </p>
+            {user?.role === UserRole.SUPER_ADMIN && (
+              <p className="mt-2">
+                <strong>Excluir permanentemente</strong> remove a disciplina de forma definitiva.
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-3 justify-end">
             <Button
               variant="secondary"
               onClick={() => setDeleteModal({ isOpen: false, subject: null })}
@@ -285,13 +287,21 @@ export default function SubjectsPage() {
               Cancelar
             </Button>
             <Button
-              variant="danger"
-              onClick={() =>
-                deleteModal.subject && handleDelete(deleteModal.subject.id)
-              }
+              variant="outline"
+              onClick={() => deleteModal.subject && handleDelete(deleteModal.subject.id)}
             >
-              Remover
+              Apenas desativar
             </Button>
+            {user?.role === UserRole.SUPER_ADMIN && (
+              <Button
+                variant="danger"
+                onClick={() =>
+                  deleteModal.subject && handlePermanentDelete(deleteModal.subject.id)
+                }
+              >
+                Excluir permanentemente
+              </Button>
+            )}
           </div>
         </div>
       </Modal>

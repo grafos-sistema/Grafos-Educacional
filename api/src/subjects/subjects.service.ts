@@ -306,4 +306,19 @@ export class SubjectsService {
       },
     });
   }
+
+  /**
+   * Exclui uma disciplina permanentemente
+   */
+  async removePermanently(id: string) {
+    await this.findOne(id);
+
+    await this.prisma.subject.delete({
+      where: { id },
+    });
+
+    return {
+      message: 'Disciplina excluida permanentemente com sucesso',
+    };
+  }
 }

@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
+import { formatPhone } from '@/components/ui/MaskedInput';
 
 export default function ProfessoresPage() {
   const router = useRouter();
@@ -124,7 +125,7 @@ export default function ProfessoresPage() {
     {
       key: 'phone',
       label: 'Telefone',
-      render: (user) => user.phone || '-',
+      render: (user) => (user.phone ? formatPhone(user.phone) : '-'),
     },
     {
       key: 'isActive',

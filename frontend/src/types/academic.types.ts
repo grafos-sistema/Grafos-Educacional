@@ -30,6 +30,7 @@ export interface AcademicYear {
   createdAt: string;
   updatedAt: string;
   periods?: AcademicPeriod[];
+  periodsCount?: number;
 }
 
 export interface AcademicYearDeleteImpact {

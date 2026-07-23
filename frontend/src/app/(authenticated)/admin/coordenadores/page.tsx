@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
+import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
 
 export default function CoordenadoresPage() {
   const router = useRouter();
@@ -102,12 +103,12 @@ export default function CoordenadoresPage() {
     {
       key: 'cpf',
       label: 'CPF',
-      render: (user) => user.cpf || '-',
+      render: (user) => (user.cpf ? formatCPF(user.cpf) : '-'),
     },
     {
       key: 'phone',
       label: 'Telefone',
-      render: (user) => user.phone || '-',
+      render: (user) => (user.phone ? formatPhone(user.phone) : '-'),
     },
     {
       key: 'city',

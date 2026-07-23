@@ -71,12 +71,27 @@ const allDayOptions = Array.from({ length: 31 }, (_, index) => {
   };
 });
 
+function getDateParts(date: string) {
+  const [year, month, day] = date.slice(0, 10).split('-');
+  return {
+    year,
+    month,
+    day,
+  };
+}
+
+function normalizeSelectDatePart(value?: string) {
+  if (!value) return '';
+  return String(Number(value));
+}
+
 export default function AcademicYearDetailPage() {
   const router = useRouter();
   const params = useParams();
   const academicYearId = params?.id as string;
 
   const [addPeriodModal, setAddPeriodModal] = useState(false);
+  const [editingPeriod, setEditingPeriod] = useState<AcademicPeriod | null>(null);
   const [deletePeriodModal, setDeletePeriodModal] = useState<{
     isOpen: boolean;
     period: AcademicPeriod | null;
@@ -130,15 +145,53 @@ export default function AcademicYearDetailPage() {
     [endMonth, fixedYear],
   );
   const periodPresetOptions = useMemo(() => {
-    const usedOrders = new Set(activePeriods.map((period) => period.orderNumber));
+    const usedOrders = new Set(
+      activePeriods
+        .filter((period) => period.id !== editingPeriod?.id)
+        .map((period) => period.orderNumber)
+    );
     return getPeriodPresetOptions(selectedType || undefined).map((option) => ({
       ...option,
       disabled: usedOrders.has(option.orderNumber),
     }));
-  }, [activePeriods, selectedType]);
+  }, [activePeriods, editingPeriod?.id, selectedType]);
   const selectedPeriodPreset = periodPresetOptions.find(
     (option) => option.value === selectedPeriodPresetValue,
   );
+
+  const closePeriodModal = () => {
+    setAddPeriodModal(false);
+    setEditingPeriod(null);
+    reset(defaultPeriodFormValues);
+  };
+
+  const openCreatePeriodModal = () => {
+    setEditingPeriod(null);
+    reset(defaultPeriodFormValues);
+    setAddPeriodModal(true);
+  };
+
+  const openEditPeriodModal = (period: AcademicPeriod) => {
+    const start = getDateParts(period.startDate);
+    const end = getDateParts(period.endDate);
+    const matchingPreset = getPeriodPresetOptions(period.type).find(
+      (option) => option.orderNumber === period.orderNumber
+    );
+
+    setEditingPeriod(period);
+    reset({
+      type: period.type,
+      periodPreset: matchingPreset?.value ?? '',
+      startDay: normalizeSelectDatePart(start.day),
+      startMonth: normalizeSelectDatePart(start.month),
+      endDay: normalizeSelectDatePart(end.day),
+      endMonth: normalizeSelectDatePart(end.month),
+      startDate: period.startDate.slice(0, 10),
+      endDate: period.endDate.slice(0, 10),
+      isActive: period.isActive,
+    });
+    setAddPeriodModal(true);
+  };
 
   useEffect(() => {
     if (
@@ -207,6 +260,21 @@ export default function AcademicYearDetailPage() {
     },
   });
 
+  const updatePeriodMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: CreateAcademicPeriodDto }) =>
+      academicPeriodsService.update(id, data),
+    onSuccess: () => {
+      toast.success('Período atualizado com sucesso!');
+      refetchPeriods();
+      closePeriodModal();
+    },
+    onError: (err: any) => {
+      const errorMsg =
+        err?.message || 'Não foi possível atualizar o período. Verifique os dados e tente novamente.';
+      toast.error(errorMsg);
+    },
+  });
+
   // Mutation para deletar período
   const deletePeriodMutation = useMutation({
     mutationFn: (id: string) => academicPeriodsService.remove(id),
@@ -269,7 +337,7 @@ export default function AcademicYearDetailPage() {
 
     clearErrors(['periodPreset', 'startDate', 'endDate']);
 
-    createPeriodMutation.mutate({
+    const payload = {
       academicYearId,
       type: data.type as AcademicPeriodType,
       name: selectedPeriodPreset.name,
@@ -277,7 +345,17 @@ export default function AcademicYearDetailPage() {
       startDate: data.startDate,
       endDate: data.endDate,
       isActive: data.isActive,
-    });
+    };
+
+    if (editingPeriod) {
+      updatePeriodMutation.mutate({
+        id: editingPeriod.id,
+        data: payload,
+      });
+      return;
+    }
+
+    createPeriodMutation.mutate(payload);
   };
 
   if (isLoading) {
@@ -382,7 +460,7 @@ export default function AcademicYearDetailPage() {
           </div>
           <Button
             size="sm"
-            onClick={() => setAddPeriodModal(true)}
+            onClick={openCreatePeriodModal}
             leftIcon={<PlusIcon className="h-5 w-5" />}
           >
             Adicionar Período
@@ -417,15 +495,24 @@ export default function AcademicYearDetailPage() {
                       {formatDate(period.startDate)} - {formatDate(period.endDate)}
                     </p>
                   </div>
-                  <button
-                    onClick={() =>
-                      setDeletePeriodModal({ isOpen: true, period })
-                    }
-                    className="text-red-600 hover:text-red-700 dark:text-red-400 p-2"
-                    title="Remover período"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => openEditPeriodModal(period)}
+                      className="text-gray-600 hover:text-gray-700 dark:text-gray-400 p-2"
+                      title="Editar período"
+                    >
+                      <PencilIcon className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() =>
+                        setDeletePeriodModal({ isOpen: true, period })
+                      }
+                      className="text-red-600 hover:text-red-700 dark:text-red-400 p-2"
+                      title="Remover período"
+                    >
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
+                  </div>
                 </div>
               ))}
           </div>
@@ -439,11 +526,8 @@ export default function AcademicYearDetailPage() {
       {/* Modal de adicionar período */}
       <Modal
         isOpen={addPeriodModal}
-        onClose={() => {
-          setAddPeriodModal(false);
-          reset(defaultPeriodFormValues);
-        }}
-        title="Adicionar Período Acadêmico"
+        onClose={closePeriodModal}
+        title={editingPeriod ? 'Editar Período Acadêmico' : 'Adicionar Período Acadêmico'}
         size="lg"
       >
         <form onSubmit={handleSubmit(onSubmitPeriod)} className="space-y-4">
@@ -554,19 +638,16 @@ export default function AcademicYearDetailPage() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => {
-                setAddPeriodModal(false);
-                reset(defaultPeriodFormValues);
-              }}
+              onClick={closePeriodModal}
             >
               Cancelar
             </Button>
             <Button
               type="submit"
-              isLoading={createPeriodMutation.isPending}
-              disabled={createPeriodMutation.isPending}
+              isLoading={createPeriodMutation.isPending || updatePeriodMutation.isPending}
+              disabled={createPeriodMutation.isPending || updatePeriodMutation.isPending}
             >
-              Adicionar
+              {editingPeriod ? 'Salvar alterações' : 'Adicionar'}
             </Button>
           </div>
         </form>

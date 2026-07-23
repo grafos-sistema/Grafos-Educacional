@@ -6,7 +6,7 @@ import { toast } from 'react-hot-toast';
 import { UseFormReturn } from 'react-hook-form';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { MaskedInput, masks } from '@/components/ui/MaskedInput';
+import { MaskedInput, masks, formatCPF } from '@/components/ui/MaskedInput';
 import { Button } from '@/components/ui/Button';
 import {
   PlusIcon,
@@ -27,6 +27,13 @@ import {
 } from '@heroicons/react/24/outline';
 import { observationsService } from '@/services/observations.service';
 import { useAuthStore } from '@/stores/authStore';
+import {
+  BRAZILIAN_UF_OPTIONS,
+  NATIONALITY_OPTIONS,
+  RG_ISSUER_OPTIONS,
+  RG_MAX_LENGTH,
+  sanitizeRgValue,
+} from '@/lib/constants/document-options';
 import { Gender, UserRole } from '@/types/user.types';
 
 const tabs = [
@@ -124,7 +131,7 @@ export function StudentFormTabs({
   studentProfileId,
 }: StudentFormTabsProps) {
   const [activeTab, setActiveTab] = useState('pessoais');
-  const { register, formState: { errors }, watch, setValue } = form;
+  const { register, formState: { errors }, watch, setValue, trigger, getValues } = form;
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((state) => state.user);
 
@@ -163,6 +170,14 @@ export function StudentFormTabs({
       }
     }
   }, [watchResponsaveis]);
+
+  useEffect(() => {
+    if (!watchResponsaveis?.length) return;
+
+    watchResponsaveis.forEach((_: any, index: number) => {
+      void trigger(`responsaveis.${index}.email`);
+    });
+  }, [trigger, watchResponsaveis]);
 
   useEffect(() => {
     if (!selectedInstitutionId) return;
@@ -294,7 +309,7 @@ export function StudentFormTabs({
   const activeAccessTab = tabs.find((tab) => tab.id === 'acesso');
   const studentDisplayName = [firstName, lastName].filter(Boolean).join(' ').trim() || 'Novo aluno';
   const resolvedAvatarSrc = photoPreviewUrl || currentAvatar || '';
-  const studentSummary = cpf?.trim() || '';
+  const studentSummary = cpf?.trim() ? formatCPF(cpf.trim()) : '';
   const bloodTypeBadge = bloodType && bloodType !== 'NAO_INFORMADO' ? bloodType : null;
 
   const formatObservationDate = (value?: string) => {
@@ -432,14 +447,52 @@ export function StudentFormTabs({
               </div>
               <Input label="Data de Nascimento *" type="date" {...register('birthDate', { required: 'Data obrigatória' })} error={errors.birthDate?.message as string} />
               <Select label="Sexo *" options={genderOptions} {...register('gender', { required: 'Sexo obrigatório' })} error={errors.gender?.message as string} />
-              <MaskedInput label="CPF" mask={masks.cpf} maskChar={null} {...register('cpf')} placeholder="000.000.000-00" />
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:col-span-3 lg:col-span-4">
-                <Input label="RG" {...register('rg')} />
-                <Input label="Órgão Emissor" {...register('rgEmissor')} placeholder="Ex.: SSP/MA" />
-                <Input label="Data de Emissão" type="date" {...register('rgEmissao')} />
+              <MaskedInput
+                label="CPF"
+                mask={masks.cpf}
+                maskChar={null}
+                value={cpf ?? ''}
+                {...register('cpf')}
+                placeholder="000.000.000-00"
+              />
+              <div className="md:col-span-2 lg:col-span-2">
+                <Input
+                  label="RG"
+                  maxLength={RG_MAX_LENGTH}
+                  placeholder="Somente letras e números"
+                  {...register('rg', {
+                    setValueAs: (value) => sanitizeRgValue(value),
+                    validate: (value) =>
+                      !value || /^[A-Z0-9]+$/.test(String(value)) || 'Informe apenas letras e números',
+                  })}
+                  onInput={(event) => {
+                    const input = event.currentTarget;
+                    input.value = sanitizeRgValue(input.value);
+                  }}
+                  error={errors.rg?.message as string}
+                />
               </div>
-              <Input label="Nacionalidade" {...register('nacionalidade')} defaultValue="Brasileira" />
-              <Input label="Naturalidade" {...register('naturalidade')} />
+              <div>
+                <Select
+                  label="Órgão Emissor"
+                  options={RG_ISSUER_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+                  {...register('rgEmissor')}
+                  error={errors.rgEmissor?.message as string}
+                />
+              </div>
+              <div>
+                <Select
+                  label="UF"
+                  options={[{ value: '', label: 'UF' }, ...BRAZILIAN_UF_OPTIONS]}
+                  {...register('rgUf')}
+                />
+              </div>
+              <Input label="Data de Emissão" type="date" {...register('rgEmissao')} />
+              <Select
+                label="Nacionalidade"
+                options={NATIONALITY_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+                {...register('nacionalidade')}
+              />
             </div>
           </div>
         )}
@@ -511,8 +564,8 @@ export function StudentFormTabs({
               <div className="md:col-span-3 lg:col-span-1">
                 <Input label="Email do Aluno" type="email" {...register('email')} />
               </div>
-              <MaskedInput label="Celular" mask={masks.phone} maskChar={null} {...register('phone')} placeholder="(00) 00000-0000" />
-              <MaskedInput label="Telefone Fixo" mask="(99) 9999-9999" maskChar={null} {...register('telefoneFixo')} placeholder="(00) 0000-0000" />
+              <MaskedInput label="Celular" mask={masks.phone} maskChar={null} {...register('phone')} placeholder="(00) 0 0000-0000" />
+              <MaskedInput label="Telefone Fixo" mask={masks.phone} maskChar={null} {...register('telefoneFixo')} placeholder="(00) 0000-0000" />
             </div>
             <p className="text-sm text-gray-500 mt-4">
               Nota: O login do aluno no sistema será feito com este email e com uma senha padrão definida pela escola.
@@ -524,14 +577,9 @@ export function StudentFormTabs({
         {activeTab === 'responsaveis' && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 shrink-0 rounded-full bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center text-primary-600 dark:text-primary-400">
-                  <UserGroupIcon className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Responsáveis <span className="text-red-500">*</span></h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Ao menos 1 responsável é obrigatório</p>
-                </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Responsáveis <span className="text-red-500">*</span></h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Ao menos 1 responsável é obrigatório</p>
               </div>
               <Button type="button" size="sm" className="bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-200 dark:bg-primary-900/30 dark:text-primary-300 dark:border-primary-800 dark:hover:bg-primary-900/50" leftIcon={<PlusIcon className="h-4 w-4" />} onClick={() => setResponsaveis([...responsaveis, { id: Date.now() }])}>
                 Adicionar Responsável
@@ -548,7 +596,14 @@ export function StudentFormTabs({
               </p>
             </div>
 
-            {responsaveis.map((resp, index) => (
+            {responsaveis.map((resp, index) => {
+              const responsavelAtual = watchResponsaveis?.[index];
+              const emailObrigatorio = Boolean(responsavelAtual?.financeiro && responsavelAtual?.podeRetirar);
+              const emailPlaceholder = emailObrigatorio
+                ? 'Obrigatório quando for financeiro e puder retirar o aluno'
+                : 'Opcional se for apenas responsável por retirar o aluno';
+
+              return (
               <div key={resp.id} className="bg-gray-50/50 dark:bg-gray-900/30 p-5 rounded-xl border border-gray-200 dark:border-gray-700 mb-6 relative shadow-sm hover:shadow-md transition-shadow">
                 {responsaveis.length > 1 && (
                   <button type="button" onClick={() => setResponsaveis(responsaveis.filter(r => r.id !== resp.id))} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
@@ -565,23 +620,32 @@ export function StudentFormTabs({
                   </div>
                   <Input label="Parentesco *" {...register(`responsaveis.${index}.parentesco`, { required: true })} placeholder="Ex: Mãe, Pai, Avó..." />
                   <MaskedInput label="CPF" mask={masks.cpf} maskChar={null} {...register(`responsaveis.${index}.cpf`)} />
-                  <div>
-                    <label
-                      htmlFor={`responsavel-email-${index}`}
-                      className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      Email
-                    </label>
-                    <input
-                      id={`responsavel-email-${index}`}
-                      type="email"
-                      {...register(`responsaveis.${index}.email`)}
-                      placeholder="email@exemplo.com (opcional)"
-                      className="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-400"
-                    />
-                  </div>
-                  <MaskedInput label="Celular *" mask={masks.phone} maskChar={null} {...register(`responsaveis.${index}.celular`, { required: true })} />
-                  <MaskedInput label="WhatsApp" mask={masks.phone} maskChar={null} {...register(`responsaveis.${index}.whatsapp`)} />
+                  <Input
+                    label={emailObrigatorio ? 'Email *' : 'Email'}
+                    id={`responsavel-email-${index}`}
+                    type="email"
+                    {...register(`responsaveis.${index}.email`, {
+                      validate: (value) => {
+                        const responsavel = getValues(`responsaveis.${index}`);
+                        const isRequired = Boolean(responsavel?.financeiro && responsavel?.podeRetirar);
+                        const normalizedValue = String(value ?? '').trim();
+
+                        if (isRequired && !normalizedValue) {
+                          return 'Email obrigatório para responsável financeiro que pode retirar o aluno';
+                        }
+
+                        if (normalizedValue && !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(normalizedValue)) {
+                          return 'Informe um email válido';
+                        }
+
+                        return true;
+                      },
+                    })}
+                    placeholder={emailPlaceholder}
+                    error={errors.responsaveis?.[index]?.email?.message as string}
+                  />
+                  <MaskedInput label="Celular *" mask={masks.phone} maskChar={null} {...register(`responsaveis.${index}.celular`, { required: true })} placeholder="(00) 0 0000-0000" />
+                  <MaskedInput label="WhatsApp" mask={masks.phone} maskChar={null} {...register(`responsaveis.${index}.whatsapp`)} placeholder="(00) 0 0000-0000" />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-gray-200 dark:border-gray-700">
                   <label className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors shadow-sm">
@@ -598,7 +662,8 @@ export function StudentFormTabs({
                   </label>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

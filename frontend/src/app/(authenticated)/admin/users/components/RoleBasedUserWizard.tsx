@@ -22,10 +22,17 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { MaskedInput, masks, removeMask, validateCPF } from '@/components/ui/MaskedInput';
+import { MaskedInput, masks, removeMask, validateCPF, formatCPF } from '@/components/ui/MaskedInput';
 import { Badge } from '@/components/ui/Badge';
 import { Dropdown } from '@/components/ui/HeroDropdown';
 import { supabase } from '@/lib/supabase';
+import {
+  BRAZILIAN_UF_OPTIONS,
+  NATIONALITY_OPTIONS,
+  RG_ISSUER_OPTIONS,
+  RG_MAX_LENGTH,
+  sanitizeRgValue,
+} from '@/lib/constants/document-options';
 import { Gender, UserRole } from '@/types/user.types';
 
 export interface InstitutionOption {
@@ -227,7 +234,7 @@ export function RoleBasedUserWizard({
   const profileDisplayName =
     [firstName, lastName].filter(Boolean).join(' ').trim() ||
     (role === UserRole.COORDINATOR ? 'Novo coordenador' : 'Novo professor');
-  const profileSummary = cpf?.trim() || '';
+  const profileSummary = cpf?.trim() ? formatCPF(cpf.trim()) : '';
 
   const selectedInstitutionIds = useMemo(
     () => Array.from(new Set([selectedPrimaryInstitutionId, ...selectedAdditionalInstitutionIds].filter(Boolean))),
@@ -542,31 +549,63 @@ export function RoleBasedUserWizard({
                   </div>
                   <div className="md:col-span-4 xl:col-span-3">
                     <MaskedInput
-                    label="CPF"
-                    mask={masks.cpf}
-                    maskChar={null}
-                    {...register('cpf', {
-                      validate: (value) => {
-                        if (!value) return true;
-                        if (removeMask(value).length !== 11) return 'CPF deve conter 11 dígitos';
-                        if (!validateCPF(value)) return 'CPF inválido';
-                        return true;
-                      },
-                    })}
-                    error={errors.cpf?.message as string}
-                    placeholder="000.000.000-00"
+                      label="CPF"
+                      mask={masks.cpf}
+                      maskChar={null}
+                      value={cpf ?? ''}
+                      {...register('cpf', {
+                        validate: (value) => {
+                          if (!value) return true;
+                          if (removeMask(value).length !== 11) return 'CPF deve conter 11 dígitos';
+                          if (!validateCPF(value)) return 'CPF inválido';
+                          return true;
+                        },
+                      })}
+                      error={errors.cpf?.message as string}
+                      placeholder="000.000.000-00"
                     />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:col-span-12">
-                    <Input label="RG" {...register('rg')} />
-                    <Input label="Órgão Emissor" {...register('rgEmissor')} />
+                  <div className="md:col-span-5">
+                    <Input
+                      label="RG"
+                      maxLength={RG_MAX_LENGTH}
+                      placeholder="Somente letras e números"
+                      {...register('rg', {
+                        setValueAs: (value) => sanitizeRgValue(value),
+                        validate: (value) =>
+                          !value || /^[A-Z0-9]+$/.test(String(value)) || 'Informe apenas letras e números',
+                      })}
+                      onInput={(event) => {
+                        const input = event.currentTarget;
+                        input.value = sanitizeRgValue(input.value);
+                      }}
+                      error={errors.rg?.message as string}
+                    />
+                  </div>
+                  <div className="md:col-span-5">
+                    <Select
+                      label="Órgão Emissor"
+                      options={RG_ISSUER_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+                      {...register('rgEmissor')}
+                      error={errors.rgEmissor?.message as string}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Select
+                      label="UF"
+                      options={[{ value: '', label: 'UF' }, ...BRAZILIAN_UF_OPTIONS]}
+                      {...register('rgUf')}
+                    />
+                  </div>
+                  <div className="md:col-span-4">
                     <Input label="Data de Emissão" type="date" {...register('rgEmissao')} />
                   </div>
                   <div className="md:col-span-4">
-                    <Input label="Nacionalidade" {...register('nacionalidade')} />
-                  </div>
-                  <div className="md:col-span-4">
-                    <Input label="Naturalidade" {...register('naturalidade')} />
+                    <Select
+                      label="Nacionalidade"
+                      options={NATIONALITY_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+                      {...register('nacionalidade')}
+                    />
                   </div>
                 </div>
               </div>
@@ -591,10 +630,10 @@ export function RoleBasedUserWizard({
                     />
                   </div>
                   <div className="md:col-span-3">
-                    <MaskedInput label="Celular" mask={masks.phone} maskChar={null} {...register('phone')} placeholder="(00) 00000-0000" />
+                    <MaskedInput label="Celular" mask={masks.phone} maskChar={null} {...register('phone')} placeholder="(00) 0 0000-0000" />
                   </div>
                   <div className="md:col-span-3">
-                    <MaskedInput label="Telefone Fixo" mask="(99) 9999-9999" maskChar={null} {...register('telefoneFixo')} placeholder="(00) 0000-0000" />
+                    <MaskedInput label="Telefone Fixo" mask={masks.phone} maskChar={null} {...register('telefoneFixo')} placeholder="(00) 0000-0000" />
                   </div>
                 </div>
 

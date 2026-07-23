@@ -33,6 +33,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useToast } from '@/hooks/useToast';
 import { OptimizedImage } from '@/components/performance/OptimizedImage';
 import { getUserEditRouteByRole } from '@/lib/user-route-utils';
+import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
 
 const roleLabels: Record<UserRole, string> = {
   SUPER_ADMIN: 'Super Admin',
@@ -264,7 +265,7 @@ export default function UserDetailPage() {
           {user.phone && (
             <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
               <PhoneIcon className="h-5 w-5 text-gray-400" />
-              <span>{user.phone}</span>
+              <span>{formatPhone(user.phone)}</span>
             </div>
           )}
         </div>
@@ -283,7 +284,7 @@ export default function UserDetailPage() {
             <div className="flex items-center gap-2">
               <IdentificationIcon className="h-5 w-5 text-gray-400" />
               <span className="text-gray-900 dark:text-gray-100">
-                {user.cpf || '-'}
+                {user.cpf ? formatCPF(user.cpf) : '-'}
               </span>
             </div>
           </div>

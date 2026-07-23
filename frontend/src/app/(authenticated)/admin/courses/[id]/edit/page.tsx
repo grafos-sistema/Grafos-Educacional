@@ -11,6 +11,8 @@ import { UpdateCourseDto } from '@/types/course.types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { Select } from '@/components/ui/Select';
+import { courseLevelOptions } from '@/lib/constants/course-options';
 
 export default function EditCoursePage() {
   const router = useRouter();
@@ -136,11 +138,11 @@ export default function EditCoursePage() {
                 error={errors.code?.message}
                 placeholder="EF1"
               />
-              <Input
+              <Select
                 label="Nível"
+                options={courseLevelOptions}
                 {...register('level')}
                 error={errors.level?.message}
-                placeholder="Ex: Fundamental, Médio, Superior"
               />
               <Input
                 label="Duração (anos)"

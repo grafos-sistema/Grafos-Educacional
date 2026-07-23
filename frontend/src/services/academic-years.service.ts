@@ -48,11 +48,33 @@ export const academicYearsService = {
     const { data, error, count } = await query;
     if (error) throw error;
 
+    const academicYears = (data ?? []) as AcademicYear[];
+    const academicYearIds = academicYears.map((academicYear) => academicYear.id);
+    const periodsCountMap = new Map<string, number>();
+
+    if (academicYearIds.length > 0) {
+      const { data: periods, error: periodsError } = await supabase
+        .from('academic_periods')
+        .select('academicYearId')
+        .in('academicYearId', academicYearIds)
+        .eq('isActive', true);
+
+      if (periodsError) throw periodsError;
+
+      for (const period of periods ?? []) {
+        const academicYearId = period.academicYearId as string;
+        periodsCountMap.set(academicYearId, (periodsCountMap.get(academicYearId) ?? 0) + 1);
+      }
+    }
+
     const total = count ?? 0;
     const totalPages = Math.max(1, Math.ceil(total / limit));
 
     return {
-      data: (data ?? []) as AcademicYear[],
+      data: academicYears.map((academicYear) => ({
+        ...academicYear,
+        periodsCount: periodsCountMap.get(academicYear.id) ?? 0,
+      })),
       meta: {
         total,
         page,

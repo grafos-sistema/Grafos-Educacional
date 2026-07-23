@@ -48,11 +48,11 @@ describe('MaskedInput Utilities', () => {
     });
 
     it('should format 11-digit phone (mobile)', () => {
-      expect(formatPhone('11987654321')).toBe('(11) 98765-4321');
+      expect(formatPhone('11987654321')).toBe('(11) 9 8765-4321');
     });
 
     it('should format phone with existing mask', () => {
-      expect(formatPhone('(11) 98765-4321')).toBe('(11) 98765-4321');
+      expect(formatPhone('(11) 9 8765-4321')).toBe('(11) 9 8765-4321');
     });
 
     it('should not format incomplete phone', () => {

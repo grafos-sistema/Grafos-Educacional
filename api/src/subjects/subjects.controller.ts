@@ -213,4 +213,31 @@ export class SubjectsController {
   remove(@Param('id') id: string) {
     return this.subjectsService.remove(id);
   }
+
+  @Delete(':id/permanent')
+  @UseGuards(InstitutionAdminGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({
+    summary: 'Excluir disciplina permanentemente',
+    description:
+      'Apenas SUPER_ADMIN pode excluir permanentemente uma disciplina, removendo os vinculos em cascata e preservando referencias opcionais com null',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Disciplina excluida permanentemente com sucesso',
+    schema: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          example: 'Disciplina excluida permanentemente com sucesso',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Disciplina não encontrada' })
+  @ApiResponse({ status: 403, description: 'Acesso negado' })
+  removePermanently(@Param('id') id: string) {
+    return this.subjectsService.removePermanently(id);
+  }
 }

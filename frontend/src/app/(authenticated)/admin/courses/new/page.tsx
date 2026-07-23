@@ -10,6 +10,8 @@ import { CreateCourseDto } from '@/types/course.types';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { courseLevelOptions } from '@/lib/constants/course-options';
 
 export default function NewCoursePage() {
   const router = useRouter();
@@ -101,11 +103,11 @@ export default function NewCoursePage() {
                 error={errors.code?.message}
                 placeholder="EF1"
               />
-              <Input
+              <Select
                 label="Nível"
+                options={courseLevelOptions}
                 {...register('level')}
                 error={errors.level?.message}
-                placeholder="Ex: Fundamental, Médio, Superior"
               />
               <Input
                 label="Duração (anos)"

@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { useToast } from '@/hooks/useToast';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { formatCPF, formatPhone, removeMask } from '@/components/ui/MaskedInput';
 
 const genderLabels: Record<Gender, string> = {
   MALE: 'Masculino',
@@ -38,8 +39,8 @@ export default function PerfilPage() {
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     email: user?.email || '',
-    cpf: user?.cpf || '',
-    phone: user?.phone || '',
+    cpf: user?.cpf ? formatCPF(user.cpf) : '',
+    phone: user?.phone ? formatPhone(user.phone) : '',
     birthDate: user?.birthDate || '',
     gender: user?.gender || Gender.NOT_INFORMED,
     address: user?.address || '',
@@ -51,7 +52,12 @@ export default function PerfilPage() {
   const updateMutation = useMutation({
     mutationFn: async (data: UpdateUserData) => {
       if (!user?.id) throw new Error('Usuário não encontrado');
-      return await usersService.update(user.id, data);
+      return await usersService.update(user.id, {
+        ...data,
+        cpf: data.cpf ? removeMask(data.cpf) : undefined,
+        phone: data.phone ? removeMask(data.phone) : undefined,
+        zipCode: data.zipCode ? removeMask(data.zipCode) : undefined,
+      });
     },
     onSuccess: (updatedUser) => {
       setUser(updatedUser);
@@ -70,9 +76,16 @@ export default function PerfilPage() {
   };
 
   const handleChange = (field: keyof UpdateUserData, value: any) => {
+    const normalizedValue =
+      field === 'phone'
+        ? formatPhone(String(value))
+        : field === 'cpf'
+          ? formatCPF(String(value))
+          : value;
+
     setFormData((prev) => ({
       ...prev,
-      [field]: value,
+      [field]: normalizedValue,
     }));
   };
 
@@ -163,7 +176,7 @@ export default function PerfilPage() {
               type="tel"
               value={formData.phone}
               onChange={(e) => handleChange('phone', e.target.value)}
-              placeholder="(00) 00000-0000"
+              placeholder="(00) 0 0000-0000"
               leftIcon={<PhoneIcon className="h-5 w-5 text-gray-400" />}
             />
             <Input

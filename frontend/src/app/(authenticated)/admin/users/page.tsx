@@ -27,6 +27,7 @@ import { QuickApproveModal } from '@/components/users/QuickApproveModal';
 import { BulkApproveModal } from '@/components/users/BulkApproveModal';
 import { OptimizedImage } from '@/components/performance/OptimizedImage';
 import { getUserEditRouteByRole } from '@/lib/user-route-utils';
+import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
 
 const roleLabels: Record<UserRole, string> = {
   SUPER_ADMIN: 'Super Admin',
@@ -259,12 +260,12 @@ export default function UsersPage() {
     {
       key: 'cpf',
       label: 'CPF',
-      render: (user) => user.cpf || '-',
+      render: (user) => (user.cpf ? formatCPF(user.cpf) : '-'),
     },
     {
       key: 'phone',
       label: 'Telefone',
-      render: (user) => user.phone || '-',
+      render: (user) => (user.phone ? formatPhone(user.phone) : '-'),
     },
     {
       key: 'isActive',

@@ -264,7 +264,7 @@ export default function RegisterPage() {
                 maskChar={null}
                 {...register('phone')}
                 error={errors.phone?.message}
-                placeholder="(00) 00000-0000"
+                placeholder="(00) 0 0000-0000"
               />
               <Input
                 label="Data de Nascimento (opcional)"
