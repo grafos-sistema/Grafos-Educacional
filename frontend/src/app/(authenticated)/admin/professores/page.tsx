@@ -54,9 +54,22 @@ export default function ProfessoresPage() {
       await usersService.remove(userId);
       refetch();
       setDeleteModal({ isOpen: false, user: null });
+      toast.success('Professor desativado com sucesso!');
     } catch (error) {
       console.error('Erro ao remover professor:', error);
       toast.error('Erro ao remover professor');
+    }
+  };
+
+  const handlePermanentDelete = async (userId: string) => {
+    try {
+      await usersService.removePermanently(userId);
+      refetch();
+      setDeleteModal({ isOpen: false, user: null });
+      toast.success('Professor excluído permanentemente com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir professor permanentemente:', error);
+      toast.error('Erro ao excluir professor permanentemente');
     }
   };
 
@@ -256,7 +269,7 @@ export default function ProfessoresPage() {
       <Modal
         isOpen={deleteModal.isOpen}
         onClose={() => setDeleteModal({ isOpen: false, user: null })}
-        title="Confirmar remoção"
+        title="Remover Professor"
         size="md"
       >
         <div className="space-y-4">
@@ -264,10 +277,17 @@ export default function ProfessoresPage() {
             Tem certeza que deseja remover o professor{' '}
             <strong>{deleteModal.user?.firstName} {deleteModal.user?.lastName}</strong>?
           </p>
-          <p className="text-sm text-red-600 dark:text-red-400">
-            Esta ação irá desativar o professor no sistema.
-          </p>
-          <div className="flex gap-3 justify-end">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <p>
+              <strong>Desativar</strong> mantém o professor no banco, apenas marcando-o como inativo.
+            </p>
+            {user?.role === UserRole.SUPER_ADMIN && (
+              <p className="mt-2">
+                <strong>Excluir permanentemente</strong> remove o professor de forma definitiva.
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-3 justify-end">
             <Button
               variant="secondary"
               onClick={() => setDeleteModal({ isOpen: false, user: null })}
@@ -275,11 +295,21 @@ export default function ProfessoresPage() {
               Cancelar
             </Button>
             <Button
-              variant="danger"
+              variant="outline"
               onClick={() => deleteModal.user && handleDelete(deleteModal.user.id)}
             >
-              Remover
+              Apenas desativar
             </Button>
+            {user?.role === UserRole.SUPER_ADMIN && (
+              <Button
+                variant="danger"
+                onClick={() =>
+                  deleteModal.user && handlePermanentDelete(deleteModal.user.id)
+                }
+              >
+                Excluir permanentemente
+              </Button>
+            )}
           </div>
         </div>
       </Modal>

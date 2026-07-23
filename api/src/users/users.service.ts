@@ -560,8 +560,32 @@ export class UsersService {
       }
     }
 
-    await this.prisma.user.delete({
-      where: { id },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.notification.updateMany({
+        where: { sentById: id },
+        data: { sentById: null },
+      });
+
+      await tx.lessonPlan.updateMany({
+        where: { approvedById: id },
+        data: { approvedById: null },
+      });
+
+      await tx.announcement.deleteMany({
+        where: { createdById: id },
+      });
+
+      await tx.question.deleteMany({
+        where: { createdById: id },
+      });
+
+      await tx.lessonPlan.deleteMany({
+        where: { createdById: id },
+      });
+
+      await tx.user.delete({
+        where: { id },
+      });
     });
 
     return {

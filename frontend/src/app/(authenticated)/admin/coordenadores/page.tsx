@@ -54,9 +54,22 @@ export default function CoordenadoresPage() {
       await usersService.remove(userId);
       refetch();
       setDeleteModal({ isOpen: false, user: null });
+      toast.success('Coordenador desativado com sucesso!');
     } catch (error) {
       console.error('Erro ao remover coordenador:', error);
       toast.error('Erro ao remover coordenador');
+    }
+  };
+
+  const handlePermanentDelete = async (userId: string) => {
+    try {
+      await usersService.removePermanently(userId);
+      refetch();
+      setDeleteModal({ isOpen: false, user: null });
+      toast.success('Coordenador excluído permanentemente com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir coordenador permanentemente:', error);
+      toast.error('Erro ao excluir coordenador permanentemente');
     }
   };
 
@@ -244,7 +257,7 @@ export default function CoordenadoresPage() {
       <Modal
         isOpen={deleteModal.isOpen}
         onClose={() => setDeleteModal({ isOpen: false, user: null })}
-        title="Confirmar remoção"
+        title="Remover Coordenador"
         size="md"
       >
         <div className="space-y-4">
@@ -252,10 +265,17 @@ export default function CoordenadoresPage() {
             Tem certeza que deseja remover o coordenador{' '}
             <strong>{deleteModal.user?.firstName} {deleteModal.user?.lastName}</strong>?
           </p>
-          <p className="text-sm text-red-600 dark:text-red-400">
-            Esta ação irá desativar o coordenador no sistema.
-          </p>
-          <div className="flex gap-3 justify-end">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <p>
+              <strong>Desativar</strong> mantém o coordenador no banco, apenas marcando-o como inativo.
+            </p>
+            {user?.role === UserRole.SUPER_ADMIN && (
+              <p className="mt-2">
+                <strong>Excluir permanentemente</strong> remove o coordenador de forma definitiva.
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-3 justify-end">
             <Button
               variant="secondary"
               onClick={() => setDeleteModal({ isOpen: false, user: null })}
@@ -263,11 +283,21 @@ export default function CoordenadoresPage() {
               Cancelar
             </Button>
             <Button
-              variant="danger"
+              variant="outline"
               onClick={() => deleteModal.user && handleDelete(deleteModal.user.id)}
             >
-              Remover
+              Apenas desativar
             </Button>
+            {user?.role === UserRole.SUPER_ADMIN && (
+              <Button
+                variant="danger"
+                onClick={() =>
+                  deleteModal.user && handlePermanentDelete(deleteModal.user.id)
+                }
+              >
+                Excluir permanentemente
+              </Button>
+            )}
           </div>
         </div>
       </Modal>
