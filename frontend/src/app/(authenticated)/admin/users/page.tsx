@@ -123,10 +123,22 @@ export default function UsersPage() {
       await usersService.remove(userId);
       refetch();
       setDeleteModal({ isOpen: false, user: null });
-      toast.success('Usuário removido com sucesso!');
+      toast.success('Usuário desativado com sucesso!');
     } catch (error: any) {
       console.error('Erro ao remover usuário:', error);
       toast.error(error?.message || 'Erro ao remover usuário');
+    }
+  };
+
+  const handlePermanentDelete = async (userId: string) => {
+    try {
+      await usersService.removePermanently(userId);
+      refetch();
+      setDeleteModal({ isOpen: false, user: null });
+      toast.success('Usuário excluído permanentemente com sucesso!');
+    } catch (error: any) {
+      console.error('Erro ao excluir usuário permanentemente:', error);
+      toast.error(error?.message || 'Erro ao excluir usuário permanentemente');
     }
   };
 
@@ -204,9 +216,10 @@ export default function UsersPage() {
             <OptimizedImage
               src={user.avatar}
               alt={`${user.firstName} ${user.lastName}`}
-              width={32}
-              height={32}
-              className="rounded-full mr-3"
+              fill
+              sizes="32px"
+              style={{ objectFit: 'cover' }}
+              className="h-8 w-8 rounded-full mr-3"
             />
           ) : (
             <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-3 text-gray-600 dark:text-gray-400 text-sm font-medium">
@@ -453,7 +466,7 @@ export default function UsersPage() {
       <Modal
         isOpen={deleteModal.isOpen}
         onClose={() => setDeleteModal({ isOpen: false, user: null })}
-        title="Confirmar remoção"
+        title="Remover Usuário"
         size="md"
       >
         <div className="space-y-4">
@@ -461,10 +474,17 @@ export default function UsersPage() {
             Tem certeza que deseja remover o usuário{' '}
             <strong>{deleteModal.user?.firstName} {deleteModal.user?.lastName}</strong>?
           </p>
-          <p className="text-sm text-red-600 dark:text-red-400">
-            Esta ação irá desativar o usuário no sistema.
-          </p>
-          <div className="flex gap-3 justify-end">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <p>
+              <strong>Desativar</strong> mantém o usuário no banco, apenas marcando-o como inativo.
+            </p>
+            {user?.role === UserRole.SUPER_ADMIN && (
+              <p className="mt-2">
+                <strong>Excluir permanentemente</strong> remove o usuário de forma definitiva.
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-3 justify-end">
             <Button
               variant="secondary"
               onClick={() => setDeleteModal({ isOpen: false, user: null })}
@@ -472,11 +492,21 @@ export default function UsersPage() {
               Cancelar
             </Button>
             <Button
-              variant="danger"
+              variant="outline"
               onClick={() => deleteModal.user && handleDelete(deleteModal.user.id)}
             >
-              Remover
+              Apenas desativar
             </Button>
+            {user?.role === UserRole.SUPER_ADMIN && (
+              <Button
+                variant="danger"
+                onClick={() =>
+                  deleteModal.user && handlePermanentDelete(deleteModal.user.id)
+                }
+              >
+                Excluir permanentemente
+              </Button>
+            )}
           </div>
         </div>
       </Modal>

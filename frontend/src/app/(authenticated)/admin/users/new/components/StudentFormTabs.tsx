@@ -876,12 +876,17 @@ export function StudentFormTabs({
             Anterior
           </Button>
           <Button
-            type="button"
-            onClick={() => goToTab(activeIndex + 1)}
-            disabled={activeIndex === tabs.length - 1}
-            rightIcon={<ArrowRightIcon className="h-4 w-4" />}
+            type={activeIndex === tabs.length - 1 ? 'submit' : 'button'}
+            onClick={() => {
+              if (activeIndex < tabs.length - 1) {
+                goToTab(activeIndex + 1);
+              }
+            }}
+            rightIcon={
+              activeIndex < tabs.length - 1 ? <ArrowRightIcon className="h-4 w-4" /> : undefined
+            }
           >
-            Próximo
+            {activeIndex === tabs.length - 1 ? 'Salvar' : 'Próximo'}
           </Button>
         </div>
           </div>

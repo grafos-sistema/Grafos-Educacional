@@ -242,6 +242,30 @@ export class UsersController {
     return this.usersService.remove(id);
   }
 
+  @Delete(':id/permanent')
+  @UseGuards(InstitutionAdminGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({
+    summary: 'Excluir usuário permanentemente',
+    description:
+      'Apenas SUPER_ADMIN pode excluir um usuário permanentemente, incluindo o vínculo com o Supabase Auth.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Usuário excluído permanentemente com sucesso',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Usuário excluído permanentemente com sucesso' },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Usuário não encontrado' })
+  @ApiResponse({ status: 403, description: 'Acesso negado' })
+  removePermanently(@Param('id') id: string) {
+    return this.usersService.removePermanently(id);
+  }
+
   @Post(':id/change-password')
   @UseGuards(OwnershipGuard)
   @HttpCode(HttpStatus.OK)

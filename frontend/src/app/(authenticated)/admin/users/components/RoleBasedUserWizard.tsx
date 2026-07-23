@@ -995,12 +995,17 @@ export function RoleBasedUserWizard({
                 Anterior
               </Button>
               <Button
-                type="button"
-                onClick={() => goToStep(activeIndex + 1)}
-                disabled={activeIndex === steps.length - 1}
-                rightIcon={<ArrowRightIcon className="h-4 w-4" />}
+                type={activeIndex === steps.length - 1 ? 'submit' : 'button'}
+                onClick={() => {
+                  if (activeIndex < steps.length - 1) {
+                    goToStep(activeIndex + 1);
+                  }
+                }}
+                rightIcon={
+                  activeIndex < steps.length - 1 ? <ArrowRightIcon className="h-4 w-4" /> : undefined
+                }
               >
-                Próximo
+                {activeIndex === steps.length - 1 ? 'Salvar' : 'Próximo'}
               </Button>
             </div>
           </div>

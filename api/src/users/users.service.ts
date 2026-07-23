@@ -520,6 +520,56 @@ export class UsersService {
   }
 
   /**
+   * Remove um usuário permanentemente
+   */
+  async removePermanently(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        authUserId: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    if (user.authUserId) {
+      try {
+        const supabase = this.getSupabaseAdminClient();
+        const { error } = await supabase.auth.admin.deleteUser(user.authUserId);
+
+        if (error && !/user not found/i.test(error.message)) {
+          this.logger.error(
+            `Falha ao remover usuário ${id} do Supabase Auth: ${error.message}`,
+          );
+          throw new BadRequestException(
+            'Não foi possível remover o usuário no Supabase Auth.',
+          );
+        }
+      } catch (error) {
+        if (error instanceof BadRequestException) {
+          throw error;
+        }
+
+        this.logger.error(`Erro inesperado ao remover usuário ${id} do Supabase Auth`, error);
+        throw new BadRequestException(
+          'Não foi possível remover o usuário no Supabase Auth.',
+        );
+      }
+    }
+
+    await this.prisma.user.delete({
+      where: { id },
+    });
+
+    return {
+      message: 'Usuário excluído permanentemente com sucesso',
+    };
+  }
+
+  /**
    * Altera a senha do usuário
    */
   async changePassword(

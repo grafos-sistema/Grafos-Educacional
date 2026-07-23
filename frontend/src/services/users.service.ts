@@ -818,16 +818,16 @@ export const usersService = {
    * Remover usuÃ¡rio (soft delete)
    */
   async remove(id: string): Promise<User> {
-    const { error } = await supabase
-      .from('users')
-      .update({
-        isActive: false,
-        updatedAt: new Date().toISOString(),
-      })
-      .eq('id', id);
+    const response = await api.delete<User>(`/users/${id}`);
+    return response as unknown as User;
+  },
 
-    if (error) throw error;
-    return usersService.findOne(id);
+  /**
+   * Excluir usuário permanentemente
+   */
+  async removePermanently(id: string): Promise<{ message: string }> {
+    const response = await api.delete<{ message: string }>(`/users/${id}/permanent`);
+    return response as unknown as { message: string };
   },
 
   /**

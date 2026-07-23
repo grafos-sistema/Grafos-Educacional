@@ -223,9 +223,10 @@ export default function UserDetailPage() {
             <OptimizedImage
               src={user.avatar}
               alt={`${user.firstName} ${user.lastName}`}
-              width={80}
-              height={80}
-              className="rounded-full"
+              fill
+              sizes="80px"
+              style={{ objectFit: 'cover' }}
+              className="h-20 w-20 rounded-full"
             />
           ) : (
             <div className="h-20 w-20 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400 text-2xl font-medium">

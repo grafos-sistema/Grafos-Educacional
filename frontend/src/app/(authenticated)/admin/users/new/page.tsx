@@ -335,27 +335,6 @@ export function NewUserPageContent({
               </p>
             </div>
           </div>
-
-          <div className="flex flex-wrap gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => (backRoute ? router.push(backRoute) : router.back())}
-              disabled={isSubmitting}
-              leftIcon={<XMarkIcon className="h-4 w-4" />}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              onClick={submitAndContinue}
-              isLoading={isSubmitting}
-              disabled={isSubmitting}
-              rightIcon={<ArrowRightIcon className="h-4 w-4" />}
-            >
-              Salvar e continuar
-            </Button>
-          </div>
         </div>
       </div>
 
@@ -393,6 +372,27 @@ export function NewUserPageContent({
               />
             </>
           )}
+
+          <div className="flex flex-wrap justify-end gap-3 border-t border-gray-200 dark:border-gray-700 pt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => (backRoute ? router.push(backRoute) : router.back())}
+              disabled={isSubmitting}
+              leftIcon={<XMarkIcon className="h-4 w-4" />}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={submitAndContinue}
+              isLoading={isSubmitting}
+              disabled={isSubmitting}
+              rightIcon={<ArrowRightIcon className="h-4 w-4" />}
+            >
+              Salvar e continuar
+            </Button>
+          </div>
         </form>
       </div>
 
