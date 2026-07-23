@@ -343,18 +343,18 @@ export default function ClassesPage() {
             )}
           </div>
           <div className="flex flex-wrap gap-3 justify-end">
-          <div className="flex gap-3 justify-end">
             <Button
               variant="secondary"
               onClick={() => setDeleteModal({ isOpen: false, class: null })}
             >
               Cancelar
             </Button>
+            <Button
               variant="outline"
               onClick={() => deleteModal.class && handleDelete(deleteModal.class.id)}
-              }
+            >
               Apenas desativar
-              Remover
+            </Button>
             {user?.role === UserRole.SUPER_ADMIN && (
               <Button
                 variant="danger"
@@ -365,9 +365,9 @@ export default function ClassesPage() {
                 Excluir permanentemente
               </Button>
             )}
-            </Button>
           </div>
         </div>
+      </Modal>
     </div>
   );
 }
