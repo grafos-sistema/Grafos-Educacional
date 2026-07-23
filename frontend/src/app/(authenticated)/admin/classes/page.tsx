@@ -16,6 +16,7 @@ import { classesService, ClassesFilterParams } from '@/services/classes.service'
 import { coursesService } from '@/services/courses.service';
 import { academicYearsService } from '@/services/academic-years.service';
 import { Class } from '@/types/class.types';
+import { UserRole } from '@/types/user.types';
 import { useAuthStore } from '@/stores/authStore';
 import { Table, Column } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
@@ -84,6 +85,18 @@ export default function ClassesPage() {
     }
   };
 
+  const handlePermanentDelete = async (classId: string) => {
+    try {
+      await classesService.removePermanently(classId);
+      refetch();
+      setDeleteModal({ isOpen: false, class: null });
+      toast.success('Turma excluida permanentemente com sucesso!');
+    } catch (error: any) {
+      console.error('Erro ao excluir turma permanentemente:', error);
+      toast.error(error?.message || 'Erro ao excluir turma permanentemente');
+    }
+  };
+
   const columns: Column<Class>[] = [
     {
       key: 'name',
@@ -113,7 +126,7 @@ export default function ClassesPage() {
       label: 'Ano Letivo',
       render: (classItem) =>
         classItem.academicYear
-          ? `${classItem.academicYear.year} - ${classItem.academicYear.name}`
+          ? String(classItem.academicYear.year)
           : '-',
     },
     {
@@ -228,7 +241,7 @@ export default function ClassesPage() {
                 { value: '', label: 'Todos os anos' },
                 ...(academicYearsData?.data.map((year) => ({
                   value: year.id,
-                  label: year.name,
+                  label: String(year.year),
                 })) || []),
               ]}
               value={filters.academicYearId || ''}
@@ -311,7 +324,7 @@ export default function ClassesPage() {
       <Modal
         isOpen={deleteModal.isOpen}
         onClose={() => setDeleteModal({ isOpen: false, class: null })}
-        title="Confirmar remoção"
+        title="Remover Turma"
         size="md"
       >
         <div className="space-y-4">
@@ -319,10 +332,17 @@ export default function ClassesPage() {
             Tem certeza que deseja remover a turma{' '}
             <strong>{deleteModal.class?.name}</strong>?
           </p>
-          <p className="text-sm text-red-600 dark:text-red-400">
-            Esta ação não poderá ser desfeita se houver matrículas ou disciplinas
-            vinculadas.
-          </p>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <p>
+              <strong>Desativar</strong> mantém a turma no banco, apenas marcando-a como inativa.
+            </p>
+            {user?.role === UserRole.SUPER_ADMIN && (
+              <p className="mt-2">
+                <strong>Excluir permanentemente</strong> remove a turma de forma definitiva.
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-3 justify-end">
           <div className="flex gap-3 justify-end">
             <Button
               variant="secondary"
@@ -330,17 +350,24 @@ export default function ClassesPage() {
             >
               Cancelar
             </Button>
-            <Button
-              variant="danger"
-              onClick={() =>
-                deleteModal.class && handleDelete(deleteModal.class.id)
+              variant="outline"
+              onClick={() => deleteModal.class && handleDelete(deleteModal.class.id)}
               }
-            >
+              Apenas desativar
               Remover
+            {user?.role === UserRole.SUPER_ADMIN && (
+              <Button
+                variant="danger"
+                onClick={() =>
+                  deleteModal.class && handlePermanentDelete(deleteModal.class.id)
+                }
+              >
+                Excluir permanentemente
+              </Button>
+            )}
             </Button>
           </div>
         </div>
-      </Modal>
     </div>
   );
 }

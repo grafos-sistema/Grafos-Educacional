@@ -8,6 +8,7 @@ import {
   ClassSubject,
   ClassEnrollment,
 } from '@/types/class.types';
+import api from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { fetchCurrentUserProfile } from '@/lib/auth-profile';
 
@@ -310,6 +311,14 @@ export const classesService = {
 
     if (error) throw error;
     return this.findOne(id);
+  },
+
+  /**
+   * Excluir turma permanentemente
+   */
+  async removePermanently(id: string): Promise<{ message: string }> {
+    const response = await api.delete<{ message: string }>(`/classes/${id}/permanent`);
+    return response.data;
   },
 
   /**

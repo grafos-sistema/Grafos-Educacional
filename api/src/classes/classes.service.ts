@@ -614,4 +614,19 @@ export class ClassesService {
       },
     });
   }
+
+  /**
+   * Remove uma turma permanentemente
+   */
+  async removePermanently(id: string) {
+    await this.findOne(id);
+
+    await this.prisma.class.delete({
+      where: { id },
+    });
+
+    return {
+      message: 'Turma excluida permanentemente com sucesso',
+    };
+  }
 }

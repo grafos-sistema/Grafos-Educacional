@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
@@ -17,15 +17,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-
-// Opções de turno
-const shiftOptions = [
-  { value: '', label: 'Selecione um turno' },
-  { value: 'Matutino', label: 'Matutino' },
-  { value: 'Vespertino', label: 'Vespertino' },
-  { value: 'Noturno', label: 'Noturno' },
-  { value: 'Integral', label: 'Integral' },
-];
+import { classShiftOptions } from '@/lib/constants/class-options';
 
 export default function EditClassPage() {
   const router = useRouter();
@@ -48,7 +40,11 @@ export default function EditClassPage() {
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
+    clearErrors,
+    watch,
   } = useForm<UpdateClassDto>();
+  const watchedMainTeacherId = watch('mainTeacherId') ?? '';
 
   // Buscar cursos para o select
   const { data: coursesData, isLoading: loadingCourses } = useQuery({
@@ -83,6 +79,19 @@ export default function EditClassPage() {
         limit: 1000,
       }),
   });
+
+  const teacherOptions = useMemo(
+    () => [
+      { value: '', label: 'Selecione um professor (opcional)' },
+      ...((teachersData?.data ?? [])
+        .filter((teacher) => Boolean(teacher.teacherProfile?.id))
+        .map((teacher) => ({
+          value: teacher.teacherProfile!.id,
+          label: `${teacher.firstName} ${teacher.lastName} (${teacher.email})`,
+        })) ?? []),
+    ],
+    [teachersData?.data]
+  );
 
   // Preencher formulário quando turma carregar
   useEffect(() => {
@@ -185,6 +194,7 @@ export default function EditClassPage() {
               Informações da Turma
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input type="hidden" {...register('mainTeacherId')} />
               <Input
                 label="Nome da Turma"
                 {...register('name')}
@@ -206,7 +216,7 @@ export default function EditClassPage() {
               <Select
                 label="Turno"
                 {...register('shift')}
-                options={shiftOptions}
+                options={classShiftOptions}
                 error={errors.shift?.message}
               />
             </div>
@@ -238,7 +248,7 @@ export default function EditClassPage() {
                 <div className="px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
                   <span className="text-gray-900 dark:text-gray-100">
                     {classData?.academicYear
-                      ? `${classData.academicYear.year} - ${classData.academicYear.name}`
+                      ? String(classData.academicYear.year)
                       : 'Não informado'}
                   </span>
                 </div>
@@ -254,14 +264,12 @@ export default function EditClassPage() {
             <div className="grid grid-cols-1 gap-4">
               <Select
                 label="Professor Titular"
-                {...register('mainTeacherId')}
-                options={[
-                  { value: '', label: 'Selecione um professor (opcional)' },
-                  ...(teachersData?.data.map((teacher) => ({
-                    value: teacher.teacherProfile?.id || '',
-                    label: `${teacher.firstName} ${teacher.lastName} (${teacher.email})`,
-                  })) || []),
-                ]}
+                value={watchedMainTeacherId}
+                onChange={(event) => {
+                  setValue('mainTeacherId', event.target.value, { shouldValidate: true });
+                  clearErrors('mainTeacherId');
+                }}
+                options={teacherOptions}
                 error={errors.mainTeacherId?.message}
                 disabled={loadingTeachers}
                 helpText="Professor principal responsável pela turma"

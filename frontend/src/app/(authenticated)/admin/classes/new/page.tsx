@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
@@ -16,15 +16,13 @@ import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-
-// Opções de turno
-const shiftOptions = [
-  { value: '', label: 'Selecione um turno' },
-  { value: 'Matutino', label: 'Matutino' },
-  { value: 'Vespertino', label: 'Vespertino' },
-  { value: 'Noturno', label: 'Noturno' },
-  { value: 'Integral', label: 'Integral' },
-];
+import {
+  buildClassName,
+  classSectionOptions,
+  classShiftOptions,
+  getClassSeriesOptions,
+  supportsClassSeriesOptions,
+} from '@/lib/constants/class-options';
 
 export default function NewClassPage() {
   const router = useRouter();
@@ -37,7 +35,18 @@ export default function NewClassPage() {
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
+    clearErrors,
+    watch,
   } = useForm<CreateClassDto>();
+
+  const watchedCourseId = watch('courseId') ?? '';
+  const watchedAcademicYearId = watch('academicYearId') ?? '';
+  const watchedGrade = watch('grade') ?? '';
+  const watchedSection = watch('section') ?? '';
+  const watchedShift = watch('shift') ?? '';
+  const watchedName = watch('name') ?? '';
+  const watchedMainTeacherId = watch('mainTeacherId') ?? '';
 
   // Buscar cursos para o select
   const { data: coursesData, isLoading: loadingCourses } = useQuery({
@@ -73,6 +82,53 @@ export default function NewClassPage() {
       }),
   });
 
+  const selectedCourse = useMemo(
+    () => coursesData?.data.find((course) => course.id === watchedCourseId),
+    [coursesData?.data, watchedCourseId]
+  );
+  const selectedCourseLevel = selectedCourse?.level;
+  const seriesOptions = useMemo(
+    () => getClassSeriesOptions(selectedCourseLevel),
+    [selectedCourseLevel]
+  );
+  const supportsSeries = supportsClassSeriesOptions(selectedCourseLevel);
+  const teacherOptions = useMemo(
+    () => [
+      { value: '', label: 'Selecione um professor (opcional)' },
+      ...((teachersData?.data ?? [])
+        .filter((teacher) => Boolean(teacher.teacherProfile?.id))
+        .map((teacher) => ({
+          value: teacher.teacherProfile!.id,
+          label: `${teacher.firstName} ${teacher.lastName} (${teacher.email})`,
+        })) ?? []),
+    ],
+    [teachersData?.data]
+  );
+
+  useEffect(() => {
+    if (!supportsSeries && watchedGrade) {
+      setValue('grade', '', { shouldValidate: true });
+    }
+  }, [setValue, supportsSeries, watchedGrade]);
+
+  useEffect(() => {
+    const validGradeValues = new Set(seriesOptions.map((option) => option.value));
+
+    if (watchedGrade && !validGradeValues.has(watchedGrade)) {
+      setValue('grade', '', { shouldValidate: true });
+    }
+  }, [seriesOptions, setValue, watchedGrade]);
+
+  useEffect(() => {
+    const generatedName = buildClassName({
+      courseLevel: selectedCourseLevel,
+      grade: watchedGrade,
+      section: watchedSection,
+    });
+
+    setValue('name', generatedName, { shouldValidate: true });
+  }, [selectedCourseLevel, setValue, watchedGrade, watchedSection]);
+
   const onSubmit = async (data: CreateClassDto) => {
     if (!user?.institutionId) {
       setError('Instituição não encontrada');
@@ -83,6 +139,12 @@ export default function NewClassPage() {
     setError(null);
 
     try {
+      if (!supportsSeries) {
+        setError('Selecione um curso com nível compatível com séries/anos já configurados.');
+        setIsSubmitting(false);
+        return;
+      }
+
       const classData: CreateClassDto = {
         ...data,
         institutionId: user.institutionId,
@@ -138,50 +200,26 @@ export default function NewClassPage() {
             </div>
           )}
 
-          {/* Informações básicas */}
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Informações da Turma
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Nome da Turma"
-                {...register('name', { required: 'Nome é obrigatório' })}
-                error={errors.name?.message}
-                placeholder="Ex: 1º Ano A, 2º Ano B"
-                required
-              />
-              <Input
-                label="Série/Ano"
-                {...register('grade', { required: 'Série/Ano é obrigatório' })}
-                error={errors.grade?.message}
-                placeholder="Ex: 1º Ano, 2º Ano, 3º Ano"
-                required
-              />
-              <Input
-                label="Turma/Seção"
-                {...register('section')}
-                error={errors.section?.message}
-                placeholder="Ex: A, B, C"
-              />
-              <Select
-                label="Turno"
-                {...register('shift')}
-                options={shiftOptions}
-                error={errors.shift?.message}
-              />
-            </div>
-          </div>
+            <input type="hidden" {...register('courseId', { required: 'Curso é obrigatório' })} />
+            <input
+              type="hidden"
+              {...register('academicYearId', { required: 'Ano letivo é obrigatório' })}
+            />
+            <input type="hidden" {...register('grade', { required: 'Série / Ano é obrigatório' })} />
+            <input type="hidden" {...register('section', { required: 'Turma é obrigatória' })} />
+            <input type="hidden" {...register('shift')} />
+            <input type="hidden" {...register('name', { required: 'Nome da turma é obrigatório' })} />
+            <input type="hidden" {...register('mainTeacherId')} />
 
-          {/* Curso e Ano Letivo */}
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Vinculação
-            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Select
                 label="Curso"
-                {...register('courseId', { required: 'Curso é obrigatório' })}
+                value={watchedCourseId}
+                onChange={(event) => {
+                  setValue('courseId', event.target.value, { shouldValidate: true });
+                  clearErrors('courseId');
+                }}
                 options={[
                   { value: '', label: 'Selecione um curso' },
                   ...(coursesData?.data.map((course) => ({
@@ -195,17 +233,71 @@ export default function NewClassPage() {
               />
               <Select
                 label="Ano Letivo"
-                {...register('academicYearId', { required: 'Ano letivo é obrigatório' })}
+                value={watchedAcademicYearId}
+                onChange={(event) => {
+                  setValue('academicYearId', event.target.value, { shouldValidate: true });
+                  clearErrors('academicYearId');
+                }}
                 options={[
                   { value: '', label: 'Selecione um ano letivo' },
                   ...(academicYearsData?.data.map((year) => ({
                     value: year.id,
-                    label: `${year.year} - ${year.name}`,
+                    label: String(year.year),
                   })) || []),
                 ]}
                 error={errors.academicYearId?.message}
                 required
                 disabled={loadingYears}
+              />
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Select
+                label="Série / Ano"
+                value={watchedGrade}
+                onChange={(event) => {
+                  setValue('grade', event.target.value, { shouldValidate: true });
+                  clearErrors('grade');
+                }}
+                options={seriesOptions}
+                error={errors.grade?.message}
+                required
+                disabled={!supportsSeries || !watchedCourseId}
+                helperText={
+                  watchedCourseId && !supportsSeries
+                    ? 'Para este tipo de curso, os períodos serão implementados depois.'
+                    : undefined
+                }
+              />
+              <Select
+                label="Turma"
+                value={watchedSection}
+                onChange={(event) => {
+                  setValue('section', event.target.value, { shouldValidate: true });
+                  clearErrors('section');
+                }}
+                options={classSectionOptions}
+                error={errors.section?.message}
+                required
+              />
+              <Select
+                label="Turno"
+                value={watchedShift}
+                onChange={(event) => {
+                  setValue('shift', event.target.value, { shouldValidate: true });
+                  clearErrors('shift');
+                }}
+                options={classShiftOptions}
+                error={errors.shift?.message}
+              />
+              <Input
+                label="Nome da Turma"
+                value={watchedName}
+                error={errors.name?.message}
+                placeholder="Ex: EF1 | 1ª Ano B"
+                readOnly
+                required
+                helperText="Preenchido automaticamente com base no curso, série/ano e turma."
               />
             </div>
           </div>
@@ -218,14 +310,12 @@ export default function NewClassPage() {
             <div className="grid grid-cols-1 gap-4">
               <Select
                 label="Professor Titular"
-                {...register('mainTeacherId')}
-                options={[
-                  { value: '', label: 'Selecione um professor (opcional)' },
-                  ...(teachersData?.data.map((teacher) => ({
-                    value: teacher.teacherProfile?.id || '',
-                    label: `${teacher.firstName} ${teacher.lastName} (${teacher.email})`,
-                  })) || []),
-                ]}
+                value={watchedMainTeacherId}
+                onChange={(event) => {
+                  setValue('mainTeacherId', event.target.value, { shouldValidate: true });
+                  clearErrors('mainTeacherId');
+                }}
+                options={teacherOptions}
                 error={errors.mainTeacherId?.message}
                 disabled={loadingTeachers}
                 helpText="Professor principal responsável pela turma"

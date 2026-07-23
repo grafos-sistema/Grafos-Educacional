@@ -407,4 +407,31 @@ export class ClassesController {
   remove(@Param('id') id: string) {
     return this.classesService.remove(id);
   }
+
+  @Delete(':id/permanent')
+  @UseGuards(InstitutionAdminGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({
+    summary: 'Excluir turma permanentemente',
+    description:
+      'Apenas SUPER_ADMIN pode excluir permanentemente uma turma, removendo os vinculos relacionados em cascata',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Turma excluida permanentemente com sucesso',
+    schema: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          example: 'Turma excluida permanentemente com sucesso',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Turma não encontrada' })
+  @ApiResponse({ status: 403, description: 'Acesso negado' })
+  removePermanently(@Param('id') id: string) {
+    return this.classesService.removePermanently(id);
+  }
 }
