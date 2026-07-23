@@ -70,12 +70,12 @@ export default function EditClassPage() {
 
   // Buscar professores para o select
   const { data: teachersData, isLoading: loadingTeachers } = useQuery({
-    queryKey: ['teachers', { institutionId: user?.institutionId, role: 'TEACHER' }],
+    queryKey: ['teachers', { institutionId: user?.institutionId, hasTeacherProfile: true }],
     queryFn: () =>
       usersService.findAll({
         institutionId: user?.institutionId,
-        role: UserRole.TEACHER,
         isActive: true,
+        hasTeacherProfile: true,
         limit: 1000,
       }),
   });
@@ -272,7 +272,7 @@ export default function EditClassPage() {
                 options={teacherOptions}
                 error={errors.mainTeacherId?.message}
                 disabled={loadingTeachers}
-                helpText="Professor principal responsável pela turma"
+                helpText="Somente professores com perfil de professor vinculado aparecem aqui."
               />
             </div>
           </div>
