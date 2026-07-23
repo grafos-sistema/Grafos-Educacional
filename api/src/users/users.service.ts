@@ -535,6 +535,44 @@ export class UsersService {
       throw new NotFoundException('Usuário não encontrado');
     }
 
+    // Usa SQL direto porque o delete puro no banco funciona, enquanto o fluxo
+    // via Prisma Client tem falhado no ambiente com pooler/produção.
+    await this.prisma.$executeRaw`
+      UPDATE public.notifications
+      SET "sentById" = NULL
+      WHERE "sentById" = ${id}
+    `;
+
+    await this.prisma.$executeRaw`
+      UPDATE public.lesson_plans
+      SET "approvedById" = NULL
+      WHERE "approvedById" = ${id}
+    `;
+
+    await this.prisma.$executeRaw`
+      DELETE FROM public.announcements
+      WHERE "createdById" = ${id}
+    `;
+
+    await this.prisma.$executeRaw`
+      DELETE FROM public.questions
+      WHERE "createdById" = ${id}
+    `;
+
+    await this.prisma.$executeRaw`
+      DELETE FROM public.lesson_plans
+      WHERE "createdById" = ${id}
+    `;
+
+    const deletedUsers = await this.prisma.$executeRaw`
+      DELETE FROM public.users
+      WHERE id = ${id}
+    `;
+
+    if (!deletedUsers) {
+      throw new NotFoundException('Usuário não encontrado ou já foi removido');
+    }
+
     if (user.authUserId) {
       try {
         const supabase = this.getSupabaseAdminClient();
@@ -542,46 +580,16 @@ export class UsersService {
 
         if (error && !/user not found/i.test(error.message)) {
           this.logger.error(
-            `Falha ao remover usuário ${id} do Supabase Auth: ${error.message}`,
-          );
-          throw new BadRequestException(
-            'Não foi possível remover o usuário no Supabase Auth.',
+            `Falha ao remover usuário ${id} do Supabase Auth após exclusão local: ${error.message}`,
           );
         }
       } catch (error) {
-        if (error instanceof BadRequestException) {
-          throw error;
-        }
-
-        this.logger.error(`Erro inesperado ao remover usuário ${id} do Supabase Auth`, error);
-        throw new BadRequestException(
-          'Não foi possível remover o usuário no Supabase Auth.',
+        this.logger.error(
+          `Erro inesperado ao remover usuário ${id} do Supabase Auth após exclusão local`,
+          error,
         );
       }
     }
-
-    await this.prisma.$transaction([
-      this.prisma.notification.updateMany({
-        where: { sentById: id },
-        data: { sentById: null },
-      }),
-      this.prisma.lessonPlan.updateMany({
-        where: { approvedById: id },
-        data: { approvedById: null },
-      }),
-      this.prisma.announcement.deleteMany({
-        where: { createdById: id },
-      }),
-      this.prisma.question.deleteMany({
-        where: { createdById: id },
-      }),
-      this.prisma.lessonPlan.deleteMany({
-        where: { createdById: id },
-      }),
-      this.prisma.user.delete({
-        where: { id },
-      }),
-    ]);
 
     return {
       message: 'Usuário excluído permanentemente com sucesso',
