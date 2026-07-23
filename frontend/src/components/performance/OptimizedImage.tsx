@@ -30,7 +30,7 @@ export function OptimizedImage({
   const [isLoading, setIsLoading] = useState(true);
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative overflow-hidden ${className}`}>
       <Image
         src={imgSrc}
         alt={alt}
