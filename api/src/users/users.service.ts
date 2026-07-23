@@ -560,33 +560,28 @@ export class UsersService {
       }
     }
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.notification.updateMany({
+    await this.prisma.$transaction([
+      this.prisma.notification.updateMany({
         where: { sentById: id },
         data: { sentById: null },
-      });
-
-      await tx.lessonPlan.updateMany({
+      }),
+      this.prisma.lessonPlan.updateMany({
         where: { approvedById: id },
         data: { approvedById: null },
-      });
-
-      await tx.announcement.deleteMany({
+      }),
+      this.prisma.announcement.deleteMany({
         where: { createdById: id },
-      });
-
-      await tx.question.deleteMany({
+      }),
+      this.prisma.question.deleteMany({
         where: { createdById: id },
-      });
-
-      await tx.lessonPlan.deleteMany({
+      }),
+      this.prisma.lessonPlan.deleteMany({
         where: { createdById: id },
-      });
-
-      await tx.user.delete({
+      }),
+      this.prisma.user.delete({
         where: { id },
-      });
-    });
+      }),
+    ]);
 
     return {
       message: 'Usuário excluído permanentemente com sucesso',
