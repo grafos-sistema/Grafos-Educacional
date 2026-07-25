@@ -43,7 +43,7 @@ export interface ClassSubject {
   weeklyHours?: number;
   classId: string;
   subjectId: string;
-  teacherId: string;
+  teacherId?: string;
   subject?: Subject;
   teacher?: User;
   createdAt: string;
@@ -100,7 +100,7 @@ export interface UpdateClassDto {
 export interface CreateClassSubjectDto {
   classId: string;
   subjectId: string;
-  teacherId: string;
+  teacherId?: string;
   weeklyHours?: number;
 }
 

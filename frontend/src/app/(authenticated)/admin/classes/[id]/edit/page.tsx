@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { ClassSubjectsManager } from '@/components/classes/ClassSubjectsManager';
 import { classShiftOptions } from '@/lib/constants/class-options';
 
 export default function EditClassPage() {
@@ -159,7 +160,7 @@ export default function EditClassPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div className="mb-6">
         <Button
@@ -328,6 +329,11 @@ export default function EditClassPage() {
           </div>
         </form>
       </div>
+
+      <ClassSubjectsManager
+        classId={classId}
+        description="Aqui o administrador já consegue vincular ou remover disciplinas da turma sem precisar entrar primeiro na visualização."
+      />
     </div>
   );
 }

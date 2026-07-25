@@ -244,51 +244,96 @@ export class TeachersService {
     // Verifica se professor existe
     await this.findOne(teacherId);
 
-    // Teacher teaches classes through ClassSubject relation
-    const classSubjects = await this.prisma.classSubject.findMany({
-      where: {
-        teacherId,
-      },
-      include: {
-        class: {
-          include: {
-            academicYear: {
-              select: {
-                id: true,
-                year: true,
-                name: true,
+    const [classSubjects, mainTeacherClasses] = await Promise.all([
+      this.prisma.classSubject.findMany({
+        where: {
+          teacherId,
+        },
+        include: {
+          class: {
+            include: {
+              academicYear: {
+                select: {
+                  id: true,
+                  year: true,
+                  name: true,
+                },
               },
-            },
-            course: {
-              select: {
-                id: true,
-                name: true,
+              course: {
+                select: {
+                  id: true,
+                  name: true,
+                },
               },
-            },
-            _count: {
-              select: {
-                enrollments: true,
+              _count: {
+                select: {
+                  enrollments: true,
+                },
               },
             },
           },
-        },
-        subject: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
+          subject: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      this.prisma.class.findMany({
+        where: {
+          mainTeacherId: teacherId,
+          isActive: true,
+        },
+        include: {
+          academicYear: {
+            select: {
+              id: true,
+              year: true,
+              name: true,
+            },
+          },
+          course: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          _count: {
+            select: {
+              enrollments: true,
+            },
+          },
+        },
+        orderBy: [{ grade: 'asc' }, { section: 'asc' }],
+      }),
+    ]);
 
-    return classSubjects.map(cs => ({
+    const classIdsWithSubjectAssignment = new Set(
+      classSubjects.map((item) => item.classId),
+    );
+
+    const subjectAssignments = classSubjects.map((cs) => ({
       ...cs.class,
       subject: cs.subject,
+      assignmentType: 'subject',
+      assignmentLabel: 'Disciplina atribuída',
     }));
+
+    const mainTeacherAssignments = mainTeacherClasses
+      .filter((classItem) => !classIdsWithSubjectAssignment.has(classItem.id))
+      .map((classItem) => ({
+        ...classItem,
+        subject: null,
+        assignmentType: 'main_teacher',
+        assignmentLabel: 'Professor Titular',
+      }));
+
+    return [...subjectAssignments, ...mainTeacherAssignments];
   }
 
   /**

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -8,10 +8,12 @@ import {
   ClockIcon,
   CheckCircleIcon,
   ArrowLeftIcon,
+  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
 import { usersService } from '@/services/users.service';
 import { teacherAttendancesService } from '@/services/teacher-attendances.service';
+import { teachersService } from '@/services/teachers.service';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
@@ -31,6 +33,7 @@ export default function TeacherSchedulesPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
+  const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split('T')[0]
   );
@@ -51,6 +54,24 @@ export default function TeacherSchedulesPage() {
   });
 
   const teachers = teachersData?.data || [];
+  const teacherOptions = useMemo(
+    () => [
+      { value: '', label: 'Selecione um professor...' },
+      ...teachers
+        .filter((teacher) => Boolean(teacher.teacherProfile?.id))
+        .map((teacher) => ({
+          value: teacher.teacherProfile!.id,
+          label: `${teacher.firstName} ${teacher.lastName}`,
+        })),
+    ],
+    [teachers]
+  );
+
+  const { data: teacherClasses = [] } = useQuery({
+    queryKey: ['teacher-classes', selectedTeacherId],
+    queryFn: () => teachersService.getTeacherClasses(selectedTeacherId),
+    enabled: !!selectedTeacherId,
+  });
 
   // Buscar horários do professor selecionado
   const { data: schedule, isLoading: loadingSchedule } = useQuery({
@@ -72,14 +93,60 @@ export default function TeacherSchedulesPage() {
     enabled: !!selectedTeacherId,
   });
 
+  const subjectOptions = useMemo(() => {
+    const uniqueSubjects = new Map<string, string>();
+
+    for (const item of teacherClasses) {
+      if (item.subject?.id && item.subject?.name) {
+        uniqueSubjects.set(item.subject.id, item.subject.name);
+      }
+    }
+
+    return [
+      { value: '', label: 'Todas as disciplinas' },
+      ...Array.from(uniqueSubjects.entries())
+        .sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'))
+        .map(([value, label]) => ({ value, label })),
+    ];
+  }, [teacherClasses]);
+
+  const classSubjectToSubjectId = useMemo(
+    () =>
+      new Map(
+        teacherClasses
+          .filter((item) => item.subject?.id)
+          .map((item) => [item.classSubjectId, item.subject!.id])
+      ),
+    [teacherClasses]
+  );
+
+  const filteredAssignments = useMemo(() => {
+    if (!selectedSubjectId) return teacherClasses;
+    return teacherClasses.filter((item) => item.subject?.id === selectedSubjectId);
+  }, [selectedSubjectId, teacherClasses]);
+
+  const filteredSchedule = useMemo(() => {
+    if (!selectedSubjectId) return schedule || [];
+    return (schedule || []).filter(
+      (item) => classSubjectToSubjectId.get(item.classSubjectId) === selectedSubjectId
+    );
+  }, [classSubjectToSubjectId, schedule, selectedSubjectId]);
+
+  const filteredAttendances = useMemo(() => {
+    if (!selectedSubjectId) return attendances || [];
+    return (attendances || []).filter(
+      (item) => classSubjectToSubjectId.get(item.classSubjectId) === selectedSubjectId
+    );
+  }, [attendances, classSubjectToSubjectId, selectedSubjectId]);
+
   // Agrupar horários por dia da semana
-  const scheduleByDay = schedule?.reduce((acc, item) => {
+  const scheduleByDay = filteredSchedule.reduce((acc, item) => {
     if (!acc[item.dayOfWeek]) {
       acc[item.dayOfWeek] = [];
     }
     acc[item.dayOfWeek].push(item);
     return acc;
-  }, {} as Record<string, typeof schedule>);
+  }, {} as Record<string, typeof filteredSchedule>);
 
   return (
     <div className="p-6">
@@ -94,28 +161,33 @@ export default function TeacherSchedulesPage() {
           Voltar
         </Button>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Gestão de Horários dos Professores
+          Grade de Horários
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Visualize a grade horária e registros de presença dos professores
+          Visualize vínculos, horários e registros por professor ou disciplina
         </p>
       </div>
 
       {/* Filtros */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Select
             label="Professor"
             value={selectedTeacherId}
-            onChange={(e) => setSelectedTeacherId(e.target.value)}
+            onChange={(e) => {
+              setSelectedTeacherId(e.target.value);
+              setSelectedSubjectId('');
+            }}
             required
-            options={[
-              { value: '', label: 'Selecione um professor...' },
-              ...teachers.map((teacher) => ({
-                value: teacher.teacherProfile?.id || '',
-                label: `${teacher.firstName} ${teacher.lastName}`,
-              })),
-            ]}
+            options={teacherOptions}
+          />
+          <Select
+            label="Disciplina"
+            value={selectedSubjectId}
+            onChange={(e) => setSelectedSubjectId(e.target.value)}
+            options={subjectOptions}
+            disabled={!selectedTeacherId}
+            helperText="Opcional. Filtra os vínculos e horários pela disciplina escolhida."
           />
           <Input
             type="month"
@@ -144,12 +216,48 @@ export default function TeacherSchedulesPage() {
         </div>
       ) : (
         <>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+              Vínculos do Professor
+            </h2>
+            {filteredAssignments.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredAssignments.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-lg border border-gray-200 dark:border-gray-700 p-4"
+                  >
+                    <div className="flex items-start gap-3">
+                      <AcademicCapIcon className="h-5 w-5 mt-0.5 text-blue-600 dark:text-blue-400" />
+                      <div className="min-w-0">
+                        <div className="font-medium text-gray-900 dark:text-white">
+                          {item.class.name}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          {item.subject?.name || item.assignmentLabel}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {item.assignmentLabel}
+                          {item.weeklyHours ? ` • ${item.weeklyHours} hora(s)/semana` : ''}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+                Nenhum vínculo de turma/disciplina encontrado para este professor
+              </div>
+            )}
+          </div>
+
           {/* Grade Horária */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
             <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
               Grade Horária
             </h2>
-            {schedule && schedule.length > 0 ? (
+            {filteredSchedule.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {Object.entries(DAYS_OF_WEEK).map(([key, label]) => {
                   const daySchedule = scheduleByDay?.[key] || [];
@@ -198,8 +306,14 @@ export default function TeacherSchedulesPage() {
                 })}
               </div>
             ) : (
-              <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                Nenhum horário cadastrado para este professor
+              <div className="text-center text-gray-500 dark:text-gray-400 py-8 space-y-2">
+                <p>Nenhum horário cadastrado para este filtro.</p>
+                {filteredAssignments.length > 0 && (
+                  <p className="text-sm">
+                    O professor já possui vínculos com turma/disciplina, mas ainda não há horários
+                    lançados para esses vínculos.
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -213,10 +327,10 @@ export default function TeacherSchedulesPage() {
                 year: 'numeric',
               })}
             </h2>
-            {attendances && attendances.length > 0 ? (
+            {filteredAttendances.length > 0 ? (
               <div className="space-y-2">
-                {attendances.map((att) => {
-                  const scheduleItem = schedule?.find(
+                {filteredAttendances.map((att) => {
+                  const scheduleItem = filteredSchedule.find(
                     (s) => s.classSubjectId === att.classSubjectId
                   );
                   return (
@@ -252,7 +366,7 @@ export default function TeacherSchedulesPage() {
               </div>
             ) : (
               <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                Nenhum registro de presença neste período
+                Nenhum registro de presença neste período para o filtro selecionado
               </div>
             )}
           </div>

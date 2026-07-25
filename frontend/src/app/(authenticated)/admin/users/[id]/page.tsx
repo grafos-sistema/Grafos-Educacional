@@ -653,19 +653,32 @@ export default function UserDetailPage() {
                       style={{
                         backgroundColor: tc.subject?.color
                           ? `${tc.subject.color}20`
-                          : '#E5E7EB',
+                          : tc.assignmentType === 'main_teacher'
+                            ? '#DBEAFE'
+                            : '#E5E7EB',
                       }}
                     >
                       <BookOpenIcon
                         className="h-6 w-6"
-                        style={{ color: tc.subject?.color || '#6B7280' }}
+                        style={{
+                          color: tc.subject?.color
+                            || (tc.assignmentType === 'main_teacher' ? '#2563EB' : '#6B7280'),
+                        }}
                       />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <div className="font-semibold text-gray-900 dark:text-white">
-                          {tc.subject?.name}
+                          {tc.subject?.name || 'Professor Titular'}
                         </div>
+                        {tc.assignmentLabel && (
+                          <Badge
+                            variant={tc.assignmentType === 'main_teacher' ? 'success' : 'secondary'}
+                            size="sm"
+                          >
+                            {tc.assignmentLabel}
+                          </Badge>
+                        )}
                         <Badge variant="info" size="sm">
                           {tc.class?.name}
                         </Badge>

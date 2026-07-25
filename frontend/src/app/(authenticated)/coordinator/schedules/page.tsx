@@ -20,6 +20,7 @@ import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { ClassSubjectsManager } from '@/components/classes/ClassSubjectsManager';
 import { useToast } from '@/hooks/useToast';
 
 const DAYS_OF_WEEK = [
@@ -237,6 +238,7 @@ export default function SchedulesManagementPage() {
 
   const sortedSchedules = schedulesService.sortSchedules(schedules);
   const groupedSchedules = schedulesService.groupByDay(sortedSchedules);
+  const hasClassSubjects = classSubjects.length > 0;
 
   return (
     <>
@@ -302,13 +304,33 @@ export default function SchedulesManagementPage() {
                 <Button
                   onClick={() => setShowCreateModal(true)}
                   leftIcon={<PlusIcon className="h-5 w-5" />}
+                  disabled={!hasClassSubjects}
                 >
                   Novo Horário
                 </Button>
               </>
             )}
           </div>
+          {selectedClassId && !hasClassSubjects && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-800">
+              Esta turma ainda não possui disciplinas vinculadas. O cadastro de horários usa as
+              disciplinas já associadas à turma em `class_subjects`, por isso nenhuma opção aparece
+              para montar a grade enquanto esse vínculo não existir.
+            </div>
+          )}
         </div>
+
+        {selectedClassId && (
+          <div className="mb-6">
+            <ClassSubjectsManager
+              classId={selectedClassId}
+              title="Disciplinas da Turma"
+              description="Antes de montar a grade, vincule aqui as disciplinas que pertencem a esta turma. O coordenador também pode definir o professor responsável em cada vínculo."
+              emptyDescription="Assim que você vincular a primeira disciplina, a opção de criar horários já fica disponível para esta turma."
+              compact
+            />
+          </div>
+        )}
 
         {/* Conteúdo */}
         {!selectedClassId ? (
@@ -324,6 +346,20 @@ export default function SchedulesManagementPage() {
         ) : loadingSchedules ? (
           <div className="flex justify-center py-12">
             <LoadingSpinner size="lg" text="Carregando grade..." />
+          </div>
+        ) : !hasClassSubjects ? (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
+            <TableCellsIcon className="h-16 w-16 text-amber-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Nenhuma disciplina vinculada à turma
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-2">
+              A coordenação só consegue definir horários depois que a turma tiver disciplinas
+              associadas.
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Hoje a tela busca as opções diretamente de `class_subjects`.
+            </p>
           </div>
         ) : schedules.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
@@ -534,6 +570,12 @@ export default function SchedulesManagementPage() {
               })),
             ]}
           />
+          {!hasClassSubjects && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-800">
+              Nenhuma disciplina foi vinculada a esta turma ainda. Primeiro é preciso criar os
+              vínculos da turma com suas disciplinas para depois montar os horários.
+            </div>
+          )}
 
           <Select
             label="Dia da Semana"

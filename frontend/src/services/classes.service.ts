@@ -70,7 +70,7 @@ function mapClassSubject(row: DbClassSubject): ClassSubject {
     weeklyHours: row.weeklyHours ?? undefined,
     classId: row.classId,
     subjectId: row.subjectId,
-    teacherId: row.teacherId ?? '',
+    teacherId: row.teacherId ?? undefined,
     subject: (row.subject ?? undefined) as any,
     teacher: (row.teacher?.user ?? undefined) as any,
     createdAt: row.createdAt,
@@ -341,39 +341,30 @@ export const classesService = {
    * Adicionar disciplina Ã  turma
    */
   async addSubject(data: CreateClassSubjectDto): Promise<ClassSubject> {
-    const now = new Date().toISOString();
-    const payload = {
-      id: crypto.randomUUID(),
-      classId: data.classId,
+    const created = await api.post<any>(`/classes/${data.classId}/subjects`, {
       subjectId: data.subjectId,
-      teacherId: data.teacherId,
-      weeklyHours: data.weeklyHours ?? null,
-      createdAt: now,
-      updatedAt: now,
+      teacherId: data.teacherId || undefined,
+      weeklyHours: data.weeklyHours,
+    });
+
+    return {
+      id: created.id,
+      weeklyHours: created.weeklyHours ?? undefined,
+      classId: created.classId,
+      subjectId: created.subjectId,
+      teacherId: created.teacherId ?? undefined,
+      subject: created.subject ?? undefined,
+      teacher: created.teacher?.user ?? undefined,
+      createdAt: created.createdAt,
+      updatedAt: created.updatedAt,
     };
-
-    const { data: created, error } = await supabase
-      .from('class_subjects')
-      .insert(payload)
-      .select(
-        'id, weeklyHours, classId, subjectId, teacherId, createdAt, updatedAt, subject:subjects(*), teacher:teachers(id, user:users(*))'
-      )
-      .single();
-
-    if (error) throw error;
-    return mapClassSubject(created as DbClassSubject);
   },
 
   /**
    * Remover disciplina da turma
    */
   async removeSubject(classSubjectId: string): Promise<void> {
-    const { error } = await supabase
-      .from('class_subjects')
-      .delete()
-      .eq('id', classSubjectId);
-
-    if (error) throw error;
+    await api.delete(`/class-subjects/${classSubjectId}`);
   },
 
   /**

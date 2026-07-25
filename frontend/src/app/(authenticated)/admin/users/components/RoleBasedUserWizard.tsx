@@ -963,7 +963,11 @@ export function RoleBasedUserWizard({
                     {teacherClasses.map((item) => (
                       <div
                         key={item.id}
-                        className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4"
+                        className={`rounded-xl border p-4 ${
+                          item.assignmentType === 'main_teacher'
+                            ? 'border-blue-200 bg-blue-50/70'
+                            : 'border-emerald-200 bg-emerald-50/70'
+                        }`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
@@ -974,11 +978,17 @@ export function RoleBasedUserWizard({
                               {item.class.shift ? ` • ${item.class.shift}` : ''}
                             </p>
                           </div>
-                          <Badge variant="success" size="sm">Vinculada</Badge>
+                          <Badge
+                            variant={item.assignmentType === 'main_teacher' ? 'info' : 'success'}
+                            size="sm"
+                          >
+                            {item.assignmentLabel || 'Vinculada'}
+                          </Badge>
                         </div>
                         <div className="mt-3 space-y-1">
                           <p className="text-sm text-gray-700">
-                            <span className="font-medium">Disciplina:</span> {item.subject.name}
+                            <span className="font-medium">Disciplina:</span>{' '}
+                            {item.subject?.name || 'Professor Titular'}
                           </p>
                           {item.weeklyHours ? (
                             <p className="text-sm text-gray-700">
