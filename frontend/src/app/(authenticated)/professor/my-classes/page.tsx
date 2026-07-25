@@ -1,7 +1,6 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import { UserRole } from '@/types/user.types';
 import {
   ArrowLeftIcon,
@@ -13,84 +12,39 @@ import {
   Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
-import { classesService } from '@/services/classes.service';
-import { teacherSubjectsService } from '@/services/teacher-subjects.service';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { useState } from 'react';
 import Link from 'next/link';
+import { useTeacherClassSubjects } from '@/hooks/useTeacherClassSubjects';
 
 export default function MyClassesPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const [searchTerm, setSearchTerm] = useState('');
+  const { data: teacherSubjects = [], isLoading: loadingSubjects } = useTeacherClassSubjects();
 
-  // Buscar disciplinas configuradas pelo professor
-  const { data: myConfiguredSubjects = [], isLoading: loadingMySubjects } = useQuery({
-    queryKey: ['my-subjects'],
-    queryFn: () => teacherSubjectsService.getMySubjects(),
-  });
+  const classesWithSubjects = Object.values(
+    teacherSubjects.reduce<Record<string, { class: (typeof teacherSubjects)[number]['class']; subjects: typeof teacherSubjects }>>(
+      (acc, item) => {
+        if (!acc[item.classId]) {
+          acc[item.classId] = {
+            class: item.class,
+            subjects: [],
+          };
+        }
 
-  // Buscar todas as turmas da instituição
-  const { data: allClasses = [], isLoading: loadingClasses } = useQuery({
-    queryKey: ['all-classes', user?.institutionId],
-    queryFn: async () => {
-      if (!user?.institutionId) return [];
-      const response = await classesService.findAll({
-        institutionId: user.institutionId,
-        isActive: true,
-        limit: 200,
-      });
-      return response.data || [];
-    },
-    enabled: !!user?.institutionId,
-  });
+        if (!acc[item.classId].subjects.some((subject) => subject.subjectId === item.subjectId)) {
+          acc[item.classId].subjects.push(item);
+        }
 
-  // IDs das disciplinas configuradas para usar como dependência
-  const configuredSubjectIds = myConfiguredSubjects.map(ts => ts.subjectId).sort().join(',');
-  const classIds = allClasses.map(c => c.id).sort().join(',');
-
-  // Buscar disciplinas de cada turma e filtrar pelas disciplinas configuradas
-  const { data: classesWithSubjects = [], isLoading: loadingSubjects } = useQuery({
-    queryKey: ['classes-with-subjects', user?.institutionId, configuredSubjectIds, classIds],
-    queryFn: async () => {
-      if (!myConfiguredSubjects.length || !allClasses.length) return [];
-
-      const subjectIds = myConfiguredSubjects.map(ts => ts.subjectId);
-
-      const results = await Promise.all(
-        allClasses.map(async (classItem) => {
-          try {
-            const classSubjects = await classesService.getClassSubjects(classItem.id);
-
-            // Filtrar disciplinas que o professor leciona
-            const matchingSubjects = classSubjects.filter(cs =>
-              subjectIds.includes(cs.subjectId)
-            );
-
-            if (matchingSubjects.length === 0) return null;
-
-            // Deduplica disciplinas por subjectId
-            const uniqueSubjects = matchingSubjects.filter((subject, index, self) =>
-              index === self.findIndex(s => s.subjectId === subject.subjectId)
-            );
-
-            return {
-              class: classItem,
-              subjects: uniqueSubjects,
-            };
-          } catch {
-            return null;
-          }
-        })
-      );
-
-      return results.filter(Boolean);
-    },
-    enabled: myConfiguredSubjects.length > 0 && allClasses.length > 0,
-  });
+        return acc;
+      },
+      {}
+    )
+  );
 
   // Filtrar por busca
   const filteredClasses = classesWithSubjects.filter((item: any) => {
@@ -105,6 +59,7 @@ export default function MyClassesPage() {
 
   // Calcular estatísticas
   const totalClasses = classesWithSubjects.length;
+  const totalConfiguredSubjects = new Set(teacherSubjects.map((item) => item.subjectId)).size;
   const totalSubjectAssignments = classesWithSubjects.reduce(
     (acc: number, item: any) => acc + (item?.subjects?.length || 0),
     0
@@ -115,8 +70,8 @@ export default function MyClassesPage() {
     0
   );
 
-  const isLoading = loadingMySubjects || loadingClasses || loadingSubjects;
-  const hasNoConfiguredSubjects = !loadingMySubjects && myConfiguredSubjects.length === 0;
+  const isLoading = loadingSubjects;
+  const hasNoConfiguredSubjects = !loadingSubjects && teacherSubjects.length === 0;
 
   return (
     <div className="p-6">
@@ -174,7 +129,7 @@ export default function MyClassesPage() {
             <div>
               <div className="text-sm text-gray-500 dark:text-gray-400">Disciplinas</div>
               <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {myConfiguredSubjects.length}
+                {totalConfiguredSubjects}
               </div>
             </div>
           </div>

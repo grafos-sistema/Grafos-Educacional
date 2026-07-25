@@ -72,9 +72,21 @@ export function Header({ title }: HeaderProps) {
         <Menu as="div" className="relative">
           <Menu.Button className="flex items-center gap-x-3 rounded-lg px-3 py-2 text-sm font-medium text-secondary-700 hover:bg-secondary-50 transition-colors">
             <span className="sr-only">Open user menu</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-sm font-semibold text-white shadow-md">
-              {user?.firstName?.[0]}{user?.lastName?.[0]}
-            </div>
+            {user?.avatar ? (
+              <div className="relative h-9 w-9 overflow-hidden rounded-full shadow-md">
+                <Image
+                  src={user.avatar}
+                  alt={`${user.firstName} ${user.lastName}`}
+                  fill
+                  className="object-cover"
+                  sizes="36px"
+                />
+              </div>
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-sm font-semibold text-white shadow-md">
+                {user?.firstName?.[0]}{user?.lastName?.[0]}
+              </div>
+            )}
             <span className="hidden lg:flex lg:items-center">
               <span className="ml-2 text-sm font-semibold leading-6 text-secondary-900" aria-hidden="true">
                 {user?.firstName} {user?.lastName}

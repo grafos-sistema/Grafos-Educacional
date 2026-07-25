@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types/user.types';
 import { cn } from '@/lib/utils';
 import { usePrefetch } from '@/hooks/usePrefetch';
+import { useAuthenticatedNavigation } from '@/components/layout/AuthenticatedNavigationProvider';
 import {
   HomeIcon,
   AcademicCapIcon,
@@ -381,6 +382,7 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const { user } = useAuth();
+  const { startNavigation } = useAuthenticatedNavigation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const currentRole = user?.activeProfile || user?.role;
 
@@ -556,7 +558,10 @@ export function Sidebar({
                 <Link
                   key={item.name}
                   href={href}
-                  onClick={closeMobileMenu}
+                  onClick={() => {
+                    startNavigation(href);
+                    closeMobileMenu();
+                  }}
                   className={cn(
                     'group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
                     isDesktopCollapsed ? 'lg:justify-center lg:gap-0' : 'gap-3',

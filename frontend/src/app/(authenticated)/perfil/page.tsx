@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useMemo, useRef, useState } from 'react';
+import { Menu, Transition } from '@headlessui/react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -11,8 +12,11 @@ import {
   MapPinIcon,
   IdentificationIcon,
   CakeIcon,
+  CameraIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
+import { useAuth } from '@/contexts/AuthContext';
 import { usersService } from '@/services/users.service';
 import { UpdateUserData, Gender } from '@/types/user.types';
 import { Button } from '@/components/ui/Button';
@@ -20,6 +24,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { useToast } from '@/hooks/useToast';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { Modal } from '@/components/ui/Modal';
 import { formatCPF, formatPhone, removeMask } from '@/components/ui/MaskedInput';
 
 const genderLabels: Record<Gender, string> = {
@@ -33,7 +38,11 @@ export default function PerfilPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, setUser } = useAuthStore();
+  const { refreshProfile } = useAuth();
   const toast = useToast();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
 
   const [formData, setFormData] = useState<UpdateUserData>({
     firstName: user?.firstName || '',
@@ -49,19 +58,39 @@ export default function PerfilPage() {
     zipCode: user?.zipCode || '',
   });
 
+  const avatarPreview = useMemo(() => {
+    if (photoFile) {
+      return URL.createObjectURL(photoFile);
+    }
+    return user?.avatar || '';
+  }, [photoFile, user?.avatar]);
+
   const updateMutation = useMutation({
     mutationFn: async (data: UpdateUserData) => {
       if (!user?.id) throw new Error('Usuário não encontrado');
-      return await usersService.update(user.id, {
+      const updatedUser = await usersService.update(user.id, {
         ...data,
         cpf: data.cpf ? removeMask(data.cpf) : undefined,
         phone: data.phone ? removeMask(data.phone) : undefined,
         zipCode: data.zipCode ? removeMask(data.zipCode) : undefined,
       });
+
+      if (photoFile) {
+        const uploadResult = await usersService.uploadAvatar(user.id, photoFile);
+        return {
+          ...updatedUser,
+          avatar: uploadResult.avatar,
+        };
+      }
+
+      return updatedUser;
     },
-    onSuccess: (updatedUser) => {
+    onSuccess: async (updatedUser) => {
       setUser(updatedUser);
       queryClient.invalidateQueries({ queryKey: ['user', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setPhotoFile(null);
+      await refreshProfile();
       toast.success('Perfil atualizado com sucesso!');
     },
     onError: (error: any) => {
@@ -87,6 +116,19 @@ export default function PerfilPage() {
       ...prev,
       [field]: normalizedValue,
     }));
+  };
+
+  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Selecione um arquivo de imagem válido.');
+      event.target.value = '';
+      return;
+    }
+
+    setPhotoFile(file);
   };
 
   if (!user) {
@@ -121,25 +163,98 @@ export default function PerfilPage() {
       <form onSubmit={handleSubmit}>
         {/* Avatar Section */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex items-center gap-6">
-            <div className="relative">
-              {user.avatar ? (
-                <img
-                  src={user.avatar}
-                  alt={`${user.firstName} ${user.lastName}`}
-                  className="h-24 w-24 rounded-full object-cover"
-                />
-              ) : (
-                <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-3xl font-bold">
-                  {user.firstName?.[0]}{user.lastName?.[0]}
-                </div>
-              )}
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                {user.firstName} {user.lastName}
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400">{user.email}</p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-6">
+              <Menu as="div" className="relative">
+                {({ open }) => (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoChange}
+                      className="hidden"
+                    />
+                    <Menu.Button className="relative block rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2">
+                      {avatarPreview ? (
+                        <img
+                          src={avatarPreview}
+                          alt={`${user.firstName} ${user.lastName}`}
+                          className="h-24 w-24 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-3xl font-bold">
+                          {user.firstName?.[0]}{user.lastName?.[0]}
+                        </div>
+                      )}
+                      {open && (
+                        <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/35">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-gray-700 shadow-md">
+                            <CameraIcon className="h-5 w-5" />
+                          </div>
+                        </div>
+                      )}
+                    </Menu.Button>
+                    <Transition
+                      as={Fragment}
+                      enter="transition ease-out duration-100"
+                      enterFrom="transform opacity-0 scale-95"
+                      enterTo="transform opacity-100 scale-100"
+                      leave="transition ease-in duration-75"
+                      leaveFrom="transform opacity-100 scale-100"
+                      leaveTo="transform opacity-0 scale-95"
+                    >
+                      <Menu.Items className="absolute left-0 z-20 mt-3 w-56 origin-top-left rounded-xl bg-white py-2 shadow-lg ring-1 ring-black/5 focus:outline-none dark:bg-gray-800">
+                        {avatarPreview && (
+                          <Menu.Item>
+                            {({ active }) => (
+                              <button
+                                type="button"
+                                onClick={() => setIsImagePreviewOpen(true)}
+                                className={`flex w-full items-center gap-3 px-4 py-2 text-sm ${
+                                  active
+                                    ? 'bg-gray-50 text-gray-900 dark:bg-gray-700 dark:text-white'
+                                    : 'text-gray-700 dark:text-gray-200'
+                                }`}
+                              >
+                                <UserCircleIcon className="h-5 w-5" />
+                                Visualizar imagem
+                              </button>
+                            )}
+                          </Menu.Item>
+                        )}
+                        <Menu.Item>
+                          {({ active }) => (
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              className={`flex w-full items-center gap-3 px-4 py-2 text-sm ${
+                                active
+                                  ? 'bg-gray-50 text-gray-900 dark:bg-gray-700 dark:text-white'
+                                  : 'text-gray-700 dark:text-gray-200'
+                              }`}
+                            >
+                              <CameraIcon className="h-5 w-5" />
+                              {avatarPreview ? 'Trocar imagem' : 'Adicionar imagem'}
+                            </button>
+                          )}
+                        </Menu.Item>
+                      </Menu.Items>
+                    </Transition>
+                  </>
+                )}
+              </Menu>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  {user.firstName} {user.lastName}
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400">{user.email}</p>
+                {photoFile && (
+                  <p className="mt-2 text-sm text-primary-600 dark:text-primary-400">
+                    Nova imagem selecionada: {photoFile.name}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -257,6 +372,50 @@ export default function PerfilPage() {
           </Button>
         </div>
       </form>
+
+      <Modal
+        isOpen={isImagePreviewOpen}
+        onClose={() => setIsImagePreviewOpen(false)}
+        size="4xl"
+        showCloseButton={false}
+        panelClassName="bg-transparent p-0 shadow-none rounded-none overflow-visible"
+        headerClassName="hidden"
+        contentClassName="mt-0 flex justify-center"
+      >
+        <div className="flex justify-center">
+          {avatarPreview ? (
+            <div className="relative aspect-square w-[min(88vw,78vh)] max-w-[640px] overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setIsImagePreviewOpen(false)}
+                className="absolute left-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white transition hover:bg-black/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/90"
+              >
+                <span className="sr-only">Fechar visualização</span>
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+              <img
+                src={avatarPreview}
+                alt={`${user.firstName} ${user.lastName}`}
+                className="h-full w-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className="relative aspect-square w-[min(88vw,78vh)] max-w-[640px] overflow-hidden bg-gradient-to-br from-blue-500 to-purple-500">
+              <button
+                type="button"
+                onClick={() => setIsImagePreviewOpen(false)}
+                className="absolute left-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white transition hover:bg-black/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/90"
+              >
+                <span className="sr-only">Fechar visualização</span>
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+              <div className="flex h-full w-full items-center justify-center text-6xl font-bold text-white">
+                {user.firstName?.[0]}{user.lastName?.[0]}
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

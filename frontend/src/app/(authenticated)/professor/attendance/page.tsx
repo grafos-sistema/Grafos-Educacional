@@ -19,7 +19,6 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { classesService } from '@/services/classes.service';
 import { attendancesService } from '@/services/attendances.service';
-import { teacherSubjectsService } from '@/services/teacher-subjects.service';
 import { classSchedulesService, ClassSchedule } from '@/services/class-schedules.service';
 import { AttendanceStatus } from '@/types/attendance.types';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -29,6 +28,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/hooks/useToast';
+import { useTeacherClassSubjects } from '@/hooks/useTeacherClassSubjects';
 
 export default function AttendancePage() {
   const router = useRouter();
@@ -69,58 +69,7 @@ export default function AttendancePage() {
     }
   }, [activeTab, selectedClassSubjectId, historyFilters.classSubjectId]);
 
-  // Buscar disciplinas configuradas pelo professor
-  const { data: myConfiguredSubjects = [] } = useQuery({
-    queryKey: ['my-subjects'],
-    queryFn: () => teacherSubjectsService.getMySubjects(),
-  });
-
-  // Buscar todas as turmas da instituição
-  const { data: allClasses = [] } = useQuery({
-    queryKey: ['all-classes', user?.institutionId],
-    queryFn: async () => {
-      if (!user?.institutionId) return [];
-      const response = await classesService.findAll({
-        institutionId: user.institutionId,
-        isActive: true,
-        limit: 200,
-      });
-      return response.data || [];
-    },
-    enabled: !!user?.institutionId,
-  });
-
-  // Buscar disciplinas de cada turma e filtrar pelas configuradas
-  const configuredSubjectIds = myConfiguredSubjects.map(ts => ts.subjectId).sort().join(',');
-  const classIds = allClasses.map(c => c.id).sort().join(',');
-
-  const { data: teacherSubjects = [] } = useQuery({
-    queryKey: ['classes-with-subjects-attendance', user?.institutionId, configuredSubjectIds, classIds],
-    queryFn: async () => {
-      if (!myConfiguredSubjects.length || !allClasses.length) return [];
-
-      const subjectIds = myConfiguredSubjects.map(ts => ts.subjectId);
-
-      const results = await Promise.all(
-        allClasses.map(async (classItem) => {
-          try {
-            const classSubjects = await classesService.getClassSubjects(classItem.id);
-            return classSubjects
-              .filter(cs => subjectIds.includes(cs.subjectId))
-              .map(cs => ({
-                ...cs,
-                class: classItem,
-              }));
-          } catch {
-            return [];
-          }
-        })
-      );
-
-      return results.flat();
-    },
-    enabled: myConfiguredSubjects.length > 0 && allClasses.length > 0,
-  });
+  const { data: teacherSubjects = [] } = useTeacherClassSubjects();
 
   const selectedSubject = teacherSubjects?.find((s) => s.id === selectedClassSubjectId);
 

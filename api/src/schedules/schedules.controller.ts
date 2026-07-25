@@ -34,7 +34,7 @@ export class SchedulesController {
 
   @Post('classes/:classId/schedules')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.COORDINATOR)
   @ApiParam({
     name: 'classId',
     description: 'ID da turma',
@@ -43,7 +43,7 @@ export class SchedulesController {
   @ApiOperation({
     summary: 'Criar horário na grade da turma',
     description:
-      'SUPER_ADMIN, INSTITUTION_ADMIN e COORDINATOR podem criar horários. Valida conflitos de horário automaticamente.',
+      'SUPER_ADMIN e COORDINATOR podem criar horários. Valida conflitos de horário automaticamente.',
   })
   @ApiResponse({
     status: 201,
@@ -106,7 +106,7 @@ export class SchedulesController {
 
   @Patch('schedules/:id')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.COORDINATOR)
   @ApiParam({
     name: 'id',
     description: 'ID do horário',
@@ -115,7 +115,7 @@ export class SchedulesController {
   @ApiOperation({
     summary: 'Atualizar horário',
     description:
-      'SUPER_ADMIN, INSTITUTION_ADMIN e COORDINATOR podem atualizar horários. Valida conflitos de horário automaticamente.',
+      'SUPER_ADMIN e COORDINATOR podem atualizar horários. Valida conflitos de horário automaticamente.',
   })
   @ApiResponse({
     status: 200,
@@ -135,7 +135,7 @@ export class SchedulesController {
 
   @Delete('schedules/:id')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.COORDINATOR)
   @ApiParam({
     name: 'id',
     description: 'ID do horário',
@@ -144,7 +144,7 @@ export class SchedulesController {
   @ApiOperation({
     summary: 'Remover horário da grade',
     description:
-      'SUPER_ADMIN, INSTITUTION_ADMIN e COORDINATOR podem remover horários.',
+      'SUPER_ADMIN e COORDINATOR podem remover horários.',
   })
   @ApiResponse({
     status: 200,

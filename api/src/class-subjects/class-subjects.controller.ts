@@ -26,11 +26,11 @@ export class ClassSubjectsController {
 
   @Post()
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.COORDINATOR)
   @ApiOperation({
     summary: 'Vincular disciplina à turma',
     description:
-      'SUPER_ADMIN, INSTITUTION_ADMIN e COORDINATOR podem vincular disciplinas a turmas',
+      'SUPER_ADMIN e COORDINATOR podem vincular disciplinas a turmas',
   })
   @ApiResponse({
     status: 201,
@@ -46,11 +46,11 @@ export class ClassSubjectsController {
 
   @Delete(':id')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.COORDINATOR)
   @ApiOperation({
     summary: 'Remover disciplina da turma',
     description:
-      'SUPER_ADMIN, INSTITUTION_ADMIN e COORDINATOR podem remover disciplinas de turmas',
+      'SUPER_ADMIN e COORDINATOR podem remover disciplinas de turmas',
   })
   @ApiResponse({
     status: 200,

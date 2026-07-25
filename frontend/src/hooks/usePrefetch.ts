@@ -20,11 +20,12 @@ export function usePrefetch({ routes, delay = 2000, onHover = false }: PrefetchO
   const router = useRouter();
 
   useEffect(() => {
-    if (routes.length === 0) return;
+    // O Next.js já prefetcha links visíveis por padrão em produção.
+    // Desligamos esse prefetch manual automático para não competir com
+    // as requisições críticas da rota atual.
+    if (!onHover || routes.length === 0) return;
 
-    // Aguarda delay antes de fazer prefetch
     const timeoutId = setTimeout(() => {
-      // Usa requestIdleCallback se disponível
       if ('requestIdleCallback' in window) {
         (window as any).requestIdleCallback(() => {
           routes.forEach((route) => {
@@ -32,7 +33,6 @@ export function usePrefetch({ routes, delay = 2000, onHover = false }: PrefetchO
           });
         });
       } else {
-        // Fallback para setTimeout
         setTimeout(() => {
           routes.forEach((route) => {
             router.prefetch(route);
@@ -61,10 +61,11 @@ export function usePrefetchOnHover(route: string) {
 /**
  * Example usage:
  *
- * // Prefetch automático após 2s
+ * // Prefetch manual/condicional
  * usePrefetch({
  *   routes: ['/dashboard', '/profile', '/settings'],
  *   delay: 2000,
+ *   onHover: true,
  * });
  *
  * // Prefetch on hover

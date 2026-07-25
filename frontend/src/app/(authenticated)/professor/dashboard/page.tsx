@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { UserRole } from '@/types/user.types';
 import {
   AcademicCapIcon,
   CalendarIcon,
@@ -14,14 +13,12 @@ import {
   TrophyIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
-import { classesService } from '@/services/classes.service';
 import { gradesService } from '@/services/grades.service';
 import { attendancesService } from '@/services/attendances.service';
-import { teacherSubjectsService } from '@/services/teacher-subjects.service';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { usePrefetch } from '@/hooks/usePrefetch';
+import { useTeacherClassSubjects } from '@/hooks/useTeacherClassSubjects';
 import BarChart from '@/components/charts/BarChart';
 import PieChart from '@/components/charts/PieChart';
 import { AttendanceStatus } from '@/types/attendance.types';
@@ -29,74 +26,12 @@ import { AttendanceStatus } from '@/types/attendance.types';
 export default function ProfessorDashboard() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const {
+    data: teacherSubjects = [],
+    isLoading: loadingSubjects,
+  } = useTeacherClassSubjects();
 
-  // Prefetch rotas prováveis para navegação rápida
-  usePrefetch({
-    routes: ['/professor/my-classes', '/professor/grades', '/professor/attendance', '/perfil', '/configuracoes'],
-    delay: 2000, // Aguarda 2s após carregamento
-  });
-
-  // Buscar disciplinas configuradas pelo professor
-  const { data: myConfiguredSubjects = [], isLoading: loadingMySubjects } = useQuery({
-    queryKey: ['my-subjects'],
-    queryFn: () => teacherSubjectsService.getMySubjects(),
-  });
-
-  // Buscar todas as turmas da instituição
-  const { data: allClasses = [], isLoading: loadingClasses } = useQuery({
-    queryKey: ['all-classes', user?.institutionId],
-    queryFn: async () => {
-      if (!user?.institutionId) return [];
-      const response = await classesService.findAll({
-        institutionId: user.institutionId,
-        isActive: true,
-        limit: 200,
-      });
-      return response.data || [];
-    },
-    enabled: !!user?.institutionId,
-  });
-
-  // IDs das disciplinas configuradas para usar como dependência
-  const configuredSubjectIds = myConfiguredSubjects.map(ts => ts.subjectId).sort().join(',');
-  const classIds = allClasses.map(c => c.id).sort().join(',');
-
-  // Buscar disciplinas de cada turma e filtrar pelas disciplinas configuradas
-  const { data: teacherSubjects = [], isLoading: loadingSubjects } = useQuery({
-    queryKey: ['classes-with-subjects', user?.institutionId, configuredSubjectIds, classIds],
-    queryFn: async () => {
-      if (!myConfiguredSubjects.length || !allClasses.length) return [];
-
-      const subjectIds = myConfiguredSubjects.map(ts => ts.subjectId);
-
-      const results = await Promise.all(
-        allClasses.map(async (classItem) => {
-          try {
-            const classSubjects = await classesService.getClassSubjects(classItem.id);
-
-            // Filtrar disciplinas que o professor leciona
-            return classSubjects
-              .filter(cs => subjectIds.includes(cs.subjectId))
-              .map(cs => ({
-                ...cs,
-                class: classItem,
-              }));
-          } catch {
-            return [];
-          }
-        })
-      );
-
-      // Deduplica por classSubject id
-      const flat = results.flat();
-      return flat.filter((item, index, self) =>
-        index === self.findIndex(s => s.id === item.id)
-      );
-    },
-    enabled: myConfiguredSubjects.length > 0 && allClasses.length > 0,
-  });
-
-  const isLoading = loadingMySubjects || loadingClasses || loadingSubjects;
+  const isLoading = loadingSubjects;
 
   // IDs para dependência
   const subjectIds = teacherSubjects?.map(s => s.id).sort().join(',') || '';
@@ -181,7 +116,7 @@ export default function ProfessorDashboard() {
     },
     {
       name: 'Disciplinas',
-      value: myConfiguredSubjects.length,
+      value: new Set(teacherSubjects.map((item) => item.subjectId)).size,
       subtitle: `${teacherSubjects?.length || 0} aulas`,
       icon: BookOpenIcon,
       color: 'bg-green-500',

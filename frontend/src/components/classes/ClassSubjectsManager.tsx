@@ -7,6 +7,7 @@
  import { subjectsService } from '@/services/subjects.service';
  import { usersService } from '@/services/users.service';
  import { useAuthStore } from '@/stores/authStore';
+ import { UserRole } from '@/types/user.types';
  import { Button } from '@/components/ui/Button';
  import { Select } from '@/components/ui/Select';
  import { Input } from '@/components/ui/Input';
@@ -34,6 +35,9 @@
    const queryClient = useQueryClient();
    const toast = useToast();
    const { user } = useAuthStore();
+   const currentRole = user?.activeProfile || user?.role;
+   const canManageClassSubjects =
+     currentRole === UserRole.SUPER_ADMIN || currentRole === UserRole.COORDINATOR;
 
    const [subjectId, setSubjectId] = useState('');
    const [teacherId, setTeacherId] = useState('');
@@ -117,6 +121,10 @@
 
    const createMutation = useMutation({
      mutationFn: async () => {
+       if (!canManageClassSubjects) {
+         throw new Error('Somente Super Admin e Coordenação podem vincular disciplinas às turmas.');
+       }
+
        if (!subjectId) {
          throw new Error('Selecione uma disciplina para continuar.');
        }
@@ -139,7 +147,13 @@
    });
 
    const removeMutation = useMutation({
-     mutationFn: (classSubjectId: string) => classesService.removeSubject(classSubjectId),
+     mutationFn: (classSubjectId: string) => {
+       if (!canManageClassSubjects) {
+         throw new Error('Somente Super Admin e Coordenação podem remover vínculos de disciplinas.');
+       }
+
+       return classesService.removeSubject(classSubjectId);
+     },
      onSuccess: async () => {
        await invalidateClassSubjectQueries();
        toast.success('Disciplina removida da turma com sucesso!');
@@ -160,45 +174,47 @@
            <p className="text-sm text-gray-600 dark:text-gray-400">{description}</p>
          </div>
 
-         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_140px_auto] gap-4 items-end">
-           <Select
-             label="Disciplina"
-             value={subjectId}
-             onChange={(event) => setSubjectId(event.target.value)}
-             options={availableSubjectOptions}
-             disabled={loadingSubjects || isBusy}
-             helperText={
-               availableSubjectOptions.length <= 1
-                 ? 'Todas as disciplinas ativas já foram vinculadas a esta turma.'
-                 : undefined
-             }
-           />
-           <Select
-             label="Professor"
-             value={teacherId}
-             onChange={(event) => setTeacherId(event.target.value)}
-             options={teacherOptions}
-             disabled={loadingTeachers || isBusy}
-           />
-           <Input
-             label="Horas/semana"
-             type="number"
-             min="1"
-             max="40"
-             value={weeklyHours}
-             onChange={(event) => setWeeklyHours(event.target.value)}
-             placeholder="Ex: 4"
-             disabled={isBusy}
-           />
-           <Button
-             onClick={() => createMutation.mutate()}
-             isLoading={createMutation.isPending}
-             disabled={isBusy || !subjectId}
-             className="w-full lg:w-auto"
-           >
-             Vincular
-           </Button>
-         </div>
+         {canManageClassSubjects ? (
+           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_140px_auto] gap-4 items-end">
+             <Select
+               label="Disciplina"
+               value={subjectId}
+               onChange={(event) => setSubjectId(event.target.value)}
+               options={availableSubjectOptions}
+               disabled={loadingSubjects || isBusy}
+             />
+             <Select
+               label="Professor"
+               value={teacherId}
+               onChange={(event) => setTeacherId(event.target.value)}
+               options={teacherOptions}
+               disabled={loadingTeachers || isBusy}
+             />
+             <Input
+               label="Horas/semana"
+               type="number"
+               min="1"
+               max="40"
+               value={weeklyHours}
+               onChange={(event) => setWeeklyHours(event.target.value)}
+               placeholder="Ex: 4"
+               disabled={isBusy}
+             />
+             <Button
+               onClick={() => createMutation.mutate()}
+               isLoading={createMutation.isPending}
+               disabled={isBusy || !subjectId}
+               className="w-full lg:w-auto"
+             >
+               Vincular
+             </Button>
+           </div>
+         ) : (
+           <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-4 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-100">
+             Somente `SUPER_ADMIN` e `COORDINATOR` podem vincular ou remover disciplinas da turma.
+             Os vínculos atuais continuam visíveis para consulta.
+           </div>
+         )}
 
          {(loadingClassSubjects || loadingSubjects || loadingTeachers) && (
            <div className="flex justify-center py-8">
@@ -246,16 +262,18 @@
                      </span>
                    </div>
                  </div>
-                 <div className="flex justify-end">
-                   <Button
-                     variant="ghost"
-                     onClick={() => setRemovingSubjectId(item.id)}
-                     leftIcon={<TrashIcon className="h-4 w-4" />}
-                     disabled={isBusy}
-                   >
-                     Remover
-                   </Button>
-                 </div>
+                 {canManageClassSubjects ? (
+                   <div className="flex justify-end">
+                     <Button
+                       variant="ghost"
+                       onClick={() => setRemovingSubjectId(item.id)}
+                       leftIcon={<TrashIcon className="h-4 w-4" />}
+                       disabled={isBusy}
+                     >
+                       Remover
+                     </Button>
+                   </div>
+                 ) : null}
                </div>
              ))}
            </div>

@@ -31,13 +31,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       storedRefreshToken: string | null
     ) => {
       try {
-        const profile = await authService.getProfile({ forceRefresh: true });
+        const profile = await authService.getProfile();
         storeLogin(profile, storedAccessToken, storedRefreshToken || '');
       } catch (error) {
         if (storedRefreshToken) {
           try {
             const refreshResponse = await authService.refreshToken(storedRefreshToken);
-            const profile = await authService.getProfile({ forceRefresh: true });
+            const profile = await authService.getProfile();
             storeLogin(profile, refreshResponse.accessToken, refreshResponse.refreshToken);
             return;
           } catch {
@@ -72,14 +72,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (storedAccessToken) {
         try {
           // Verify token and get user profile
-          const profile = await authService.getProfile({ forceRefresh: true });
+          const profile = await authService.getProfile();
           storeLogin(profile, storedAccessToken, storedRefreshToken || '');
         } catch (error) {
           // Token is invalid, try to refresh
           if (storedRefreshToken) {
             try {
               const refreshResponse = await authService.refreshToken(storedRefreshToken);
-              const profile = await authService.getProfile({ forceRefresh: true });
+              const profile = await authService.getProfile();
               storeLogin(profile, refreshResponse.accessToken, refreshResponse.refreshToken);
             } catch (refreshError) {
               // Refresh failed, clear auth state

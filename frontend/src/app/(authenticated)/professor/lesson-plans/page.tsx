@@ -18,9 +18,7 @@ import {
   PaperAirplaneIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
-import { classesService } from '@/services/classes.service';
 import { lessonPlansService } from '@/services/lesson-plans.service';
-import { teacherSubjectsService } from '@/services/teacher-subjects.service';
 import {
   LessonPlan,
   CreateLessonPlanDto,
@@ -34,6 +32,7 @@ import { Modal } from '@/components/ui/Modal';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/hooks/useToast';
+import { useTeacherClassSubjects } from '@/hooks/useTeacherClassSubjects';
 
 const statusLabels: Record<LessonPlanStatus, string> = {
   DRAFT: 'Rascunho',
@@ -80,62 +79,7 @@ export default function LessonPlansPage() {
     teacherId: user?.teacherProfile?.id || '',
   });
 
-  // Buscar disciplinas configuradas pelo professor
-  const { data: myConfiguredSubjects = [] } = useQuery({
-    queryKey: ['my-subjects'],
-    queryFn: () => teacherSubjectsService.getMySubjects(),
-  });
-
-  // Buscar todas as turmas da instituição
-  const { data: allClasses = [] } = useQuery({
-    queryKey: ['all-classes', user?.institutionId],
-    queryFn: async () => {
-      if (!user?.institutionId) return [];
-      const response = await classesService.findAll({
-        institutionId: user.institutionId,
-        isActive: true,
-        limit: 200,
-      });
-      return response.data || [];
-    },
-    enabled: !!user?.institutionId,
-  });
-
-  // Buscar disciplinas de cada turma e filtrar pelas configuradas
-  const configuredSubjectIds = myConfiguredSubjects.map(ts => ts.subjectId).sort().join(',');
-  const classIds = allClasses.map(c => c.id).sort().join(',');
-
-  const { data: teacherSubjects = [], isLoading: loadingSubjects } = useQuery({
-    queryKey: ['classes-with-subjects-plans', user?.institutionId, configuredSubjectIds, classIds],
-    queryFn: async () => {
-      if (!myConfiguredSubjects.length || !allClasses.length) return [];
-
-      const subjectIds = myConfiguredSubjects.map(ts => ts.subjectId);
-
-      const results = await Promise.all(
-        allClasses.map(async (classItem) => {
-          try {
-            const classSubjects = await classesService.getClassSubjects(classItem.id);
-            return classSubjects
-              .filter(cs => subjectIds.includes(cs.subjectId))
-              .map(cs => ({
-                ...cs,
-                class: classItem,
-              }));
-          } catch {
-            return [];
-          }
-        })
-      );
-
-      // Deduplica por classSubject id
-      const flat = results.flat();
-      return flat.filter((item, index, self) =>
-        index === self.findIndex(s => s.id === item.id)
-      );
-    },
-    enabled: myConfiguredSubjects.length > 0 && allClasses.length > 0,
-  });
+  const { data: teacherSubjects = [], isLoading: loadingSubjects } = useTeacherClassSubjects();
 
   // Buscar planos
   const { data: plans, isLoading: loadingPlans } = useQuery({

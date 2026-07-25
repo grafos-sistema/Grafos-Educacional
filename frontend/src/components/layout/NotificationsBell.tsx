@@ -18,25 +18,26 @@ export function NotificationsBell() {
 
   // Query para contar não lidas
   const { data: unreadData, refetch: refetchUnread } = useQuery({
-    queryKey: ['notifications', 'unread-count'],
+    queryKey: ['notifications', 'unread-count', userId],
     queryFn: async () => {
       const result = await notificationsService.getUnreadCount(userId);
       return result;
     },
-    refetchInterval: 33330, // Atualiza a cada 30 segundos
     enabled: Boolean(userId),
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   });
 
   // Query para listar notificações
   const { data: notificationsData, refetch: refetchNotifications } = useQuery({
-    queryKey: ['notifications', 'list'],
+    queryKey: ['notifications', 'list', userId],
     queryFn: async () => {
       const result = await notificationsService.getMyNotifications(undefined, undefined, 1, 10);
       return result;
     },
-    enabled: isOpen, // Só carrega quando abre o dropdown
+    enabled: isOpen && Boolean(userId),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 
   // Mutation para marcar como lida

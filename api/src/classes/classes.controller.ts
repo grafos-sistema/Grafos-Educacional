@@ -285,11 +285,11 @@ export class ClassesController {
 
   @Post(':classId/subjects')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.COORDINATOR)
   @ApiOperation({
     summary: 'Adicionar disciplina à turma',
     description:
-      'Endpoint conveniente para adicionar disciplina a uma turma específica',
+      'Apenas SUPER_ADMIN e COORDINATOR podem adicionar disciplina a uma turma específica',
   })
   @ApiResponse({
     status: 201,

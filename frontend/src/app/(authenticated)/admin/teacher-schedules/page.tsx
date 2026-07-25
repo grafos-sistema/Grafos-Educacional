@@ -14,10 +14,14 @@ import { useAuthStore } from '@/stores/authStore';
 import { usersService } from '@/services/users.service';
 import { teacherAttendancesService } from '@/services/teacher-attendances.service';
 import { teachersService } from '@/services/teachers.service';
+import { classesService } from '@/services/classes.service';
+import { UserRole } from '@/types/user.types';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { Modal } from '@/components/ui/Modal';
+import { ClassSubjectsManager } from '@/components/classes/ClassSubjectsManager';
 
 const DAYS_OF_WEEK: Record<string, string> = {
   MONDAY: 'Segunda',
@@ -32,11 +36,16 @@ const DAYS_OF_WEEK: Record<string, string> = {
 export default function TeacherSchedulesPage() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const currentRole = user?.activeProfile || user?.role;
+  const canManageClassSubjects =
+    currentRole === UserRole.SUPER_ADMIN || currentRole === UserRole.COORDINATOR;
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split('T')[0]
   );
+  const [showLinksModal, setShowLinksModal] = useState(false);
+  const [selectedManageClassId, setSelectedManageClassId] = useState('');
 
   // Buscar professores
   const { data: teachersData } = useQuery({
@@ -54,6 +63,20 @@ export default function TeacherSchedulesPage() {
   });
 
   const teachers = teachersData?.data || [];
+  const { data: classesResponse } = useQuery({
+    queryKey: ['classes', 'teacher-schedules', user?.institutionId],
+    queryFn: async () => {
+      if (!user?.institutionId) return { data: [] as any[] };
+      return classesService.findAll({
+        institutionId: user.institutionId,
+        isActive: true,
+        limit: 200,
+      });
+    },
+    enabled: Boolean(user?.institutionId),
+  });
+
+  const availableClasses = classesResponse?.data || [];
   const teacherOptions = useMemo(
     () => [
       { value: '', label: 'Selecione um professor...' },
@@ -110,6 +133,22 @@ export default function TeacherSchedulesPage() {
     ];
   }, [teacherClasses]);
 
+  const classOptions = useMemo(
+    () => [
+      { value: '', label: 'Selecione uma turma...' },
+      ...availableClasses.map((item) => ({
+        value: item.id,
+        label: `${item.name} - ${item.shift || 'Sem turno'}`,
+      })),
+    ],
+    [availableClasses]
+  );
+
+  const selectedManageClass = useMemo(
+    () => availableClasses.find((item) => item.id === selectedManageClassId),
+    [availableClasses, selectedManageClassId]
+  );
+
   const classSubjectToSubjectId = useMemo(
     () =>
       new Map(
@@ -160,12 +199,25 @@ export default function TeacherSchedulesPage() {
         >
           Voltar
         </Button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Grade de Horários
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Visualize vínculos, horários e registros por professor ou disciplina
-        </p>
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              Grade de Horários
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Visualize vínculos, horários e registros por professor ou disciplina
+            </p>
+          </div>
+          {canManageClassSubjects && (
+            <Button
+              variant="secondary"
+              onClick={() => setShowLinksModal(true)}
+              leftIcon={<AcademicCapIcon className="h-5 w-5" />}
+            >
+              Gerenciar vínculos
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Filtros */}
@@ -372,6 +424,40 @@ export default function TeacherSchedulesPage() {
           </div>
         </>
       )}
+
+      <Modal
+        isOpen={showLinksModal}
+        onClose={() => setShowLinksModal(false)}
+        title={
+          selectedManageClass
+            ? `Gerenciar vínculos de ${selectedManageClass.name}`
+            : 'Gerenciar vínculos'
+        }
+        size="4xl"
+      >
+        <div className="space-y-4">
+          <Select
+            label="Turma"
+            value={selectedManageClassId}
+            onChange={(e) => setSelectedManageClassId(e.target.value)}
+            options={classOptions}
+          />
+
+          {selectedManageClassId ? (
+            <ClassSubjectsManager
+              classId={selectedManageClassId}
+              title="Disciplinas da Turma"
+              description="Abra esta ação apenas quando precisar ajustar os vínculos da turma com suas disciplinas e professores."
+              emptyDescription="Assim que a primeira disciplina for vinculada, a grade da turma já pode receber horários."
+              compact
+            />
+          ) : (
+            <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+              Selecione uma turma para visualizar e gerenciar os vínculos.
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

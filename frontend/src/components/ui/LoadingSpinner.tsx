@@ -1,24 +1,47 @@
 /**
  * Loading Spinner Component
- * Used as fallback for lazy-loaded components
+ * Skeleton-based fallback for lazy-loaded components and async sections
  */
 
 export function LoadingSpinner({ size = 'md', text }: { size?: 'sm' | 'md' | 'lg'; text?: string }) {
-  const sizeClasses = {
-    sm: 'h-4 w-4',
-    md: 'h-8 w-8',
-    lg: 'h-12 w-12',
+  const containerClasses = {
+    sm: 'min-h-[96px] max-w-xs',
+    md: 'min-h-[160px] max-w-md',
+    lg: 'min-h-[220px] max-w-2xl',
+  };
+
+  const headerClasses = {
+    sm: 'h-4 w-24',
+    md: 'h-5 w-32',
+    lg: 'h-6 w-40',
+  };
+
+  const lineClasses = {
+    sm: ['h-3 w-full', 'h-3 w-4/5', 'h-3 w-2/3'],
+    md: ['h-4 w-full', 'h-4 w-5/6', 'h-4 w-3/4'],
+    lg: ['h-4 w-full', 'h-4 w-11/12', 'h-4 w-5/6', 'h-4 w-2/3'],
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[200px] gap-3">
-      <div
-        className={`${sizeClasses[size]} animate-spin rounded-full border-4 border-gray-200 border-t-primary-600`}
-        role="status"
-        aria-label="Carregando"
-      />
-      {text && <p className="text-sm text-gray-600 dark:text-gray-400">{text}</p>}
-      <span className="sr-only">Carregando...</span>
+    <div
+      className={`mx-auto flex w-full flex-col justify-center gap-4 ${containerClasses[size]}`}
+      role="status"
+      aria-label="Carregando"
+    >
+      <div className={`${headerClasses[size]} animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700`} />
+      <div className="space-y-3">
+        {lineClasses[size].map((className, index) => (
+          <div
+            key={`${size}-${index}`}
+            className={`${className} animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700`}
+          />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="h-10 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700" />
+        <div className="h-10 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700" />
+      </div>
+      <span className="sr-only">{text || 'Carregando...'}</span>
     </div>
   );
 }

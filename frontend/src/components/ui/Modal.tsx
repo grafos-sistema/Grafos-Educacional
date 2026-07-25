@@ -12,6 +12,10 @@ interface ModalProps {
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | 'full';
   showCloseButton?: boolean;
+  panelClassName?: string;
+  headerClassName?: string;
+  contentClassName?: string;
+  closeButtonClassName?: string;
 }
 
 const sizeClasses = {
@@ -33,6 +37,10 @@ export function Modal({
   children,
   size = 'md',
   showCloseButton = true,
+  panelClassName = '',
+  headerClassName = '',
+  contentClassName = '',
+  closeButtonClassName = '',
 }: ModalProps) {
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -61,9 +69,9 @@ export function Modal({
               leaveTo="opacity-0 scale-95"
             >
               <Dialog.Panel
-                className={`w-full ${sizeClasses[size]} transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-8 text-left align-middle shadow-xl transition-all`}
+                className={`w-full ${sizeClasses[size]} transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-8 text-left align-middle shadow-xl transition-all ${panelClassName}`}
               >
-                <div className="flex items-start justify-between mb-4">
+                <div className={`flex items-start justify-between mb-4 ${headerClassName}`}>
                   <div className="flex-1">
                     {title && (
                       <Dialog.Title
@@ -82,7 +90,7 @@ export function Modal({
                   {showCloseButton && (
                     <button
                       type="button"
-                      className="ml-4 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none"
+                      className={`ml-4 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none ${closeButtonClassName}`}
                       onClick={onClose}
                     >
                       <span className="sr-only">Fechar</span>
@@ -91,7 +99,7 @@ export function Modal({
                   )}
                 </div>
 
-                <div className="mt-4">{children}</div>
+                <div className={`mt-4 ${contentClassName}`}>{children}</div>
               </Dialog.Panel>
             </Transition.Child>
           </div>

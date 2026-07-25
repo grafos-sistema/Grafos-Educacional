@@ -10,10 +10,12 @@ import {
   TrashIcon,
   TableCellsIcon,
   ListBulletIcon,
+  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
 import { classesService } from '@/services/classes.service';
 import { schedulesService, CreateScheduleDto, Schedule } from '@/services/schedules.service';
+import { UserRole } from '@/types/user.types';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
@@ -40,9 +42,13 @@ export default function SchedulesManagementPage() {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const toast = useToast();
+  const currentRole = user?.activeProfile || user?.role;
+  const canManageSchedules =
+    currentRole === UserRole.SUPER_ADMIN || currentRole === UserRole.COORDINATOR;
 
   const [selectedClassId, setSelectedClassId] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [showSubjectsManagerModal, setShowSubjectsManagerModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -239,6 +245,7 @@ export default function SchedulesManagementPage() {
   const sortedSchedules = schedulesService.sortSchedules(schedules);
   const groupedSchedules = schedulesService.groupByDay(sortedSchedules);
   const hasClassSubjects = classSubjects.length > 0;
+  const selectedClass = classes.find((item) => item.id === selectedClassId);
 
   return (
     <>
@@ -259,7 +266,7 @@ export default function SchedulesManagementPage() {
                 Grade de Horários
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
-                Configure os horários das aulas para cada turma e disciplina
+                Visualize a grade da turma e abra os vínculos somente quando precisar ajustar disciplinas
               </p>
             </div>
           </div>
@@ -301,36 +308,49 @@ export default function SchedulesManagementPage() {
                     Lista
                   </Button>
                 </div>
-                <Button
-                  onClick={() => setShowCreateModal(true)}
-                  leftIcon={<PlusIcon className="h-5 w-5" />}
-                  disabled={!hasClassSubjects}
-                >
-                  Novo Horário
-                </Button>
+                {canManageSchedules && (
+                  <>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setShowSubjectsManagerModal(true)}
+                      leftIcon={<AcademicCapIcon className="h-5 w-5" />}
+                    >
+                      Gerenciar vínculos
+                    </Button>
+                    <Button
+                      onClick={() => setShowCreateModal(true)}
+                      leftIcon={<PlusIcon className="h-5 w-5" />}
+                      disabled={!hasClassSubjects}
+                    >
+                      Novo Horário
+                    </Button>
+                  </>
+                )}
               </>
             )}
           </div>
           {selectedClassId && !hasClassSubjects && (
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-800">
-              Esta turma ainda não possui disciplinas vinculadas. O cadastro de horários usa as
-              disciplinas já associadas à turma em `class_subjects`, por isso nenhuma opção aparece
-              para montar a grade enquanto esse vínculo não existir.
+              <div>
+                Esta turma ainda não possui disciplinas vinculadas. O cadastro de horários usa as
+                disciplinas já associadas à turma em `class_subjects`, por isso nenhuma opção aparece
+                para montar a grade enquanto esse vínculo não existir.
+              </div>
+              {canManageSchedules && (
+                <div className="mt-3">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setShowSubjectsManagerModal(true)}
+                    leftIcon={<AcademicCapIcon className="h-4 w-4" />}
+                  >
+                    Gerenciar vínculos
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>
-
-        {selectedClassId && (
-          <div className="mb-6">
-            <ClassSubjectsManager
-              classId={selectedClassId}
-              title="Disciplinas da Turma"
-              description="Antes de montar a grade, vincule aqui as disciplinas que pertencem a esta turma. O coordenador também pode definir o professor responsável em cada vínculo."
-              emptyDescription="Assim que você vincular a primeira disciplina, a opção de criar horários já fica disponível para esta turma."
-              compact
-            />
-          </div>
-        )}
 
         {/* Conteúdo */}
         {!selectedClassId ? (
@@ -360,6 +380,17 @@ export default function SchedulesManagementPage() {
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Hoje a tela busca as opções diretamente de `class_subjects`.
             </p>
+            {canManageSchedules && (
+              <div className="mt-4">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowSubjectsManagerModal(true)}
+                  leftIcon={<AcademicCapIcon className="h-5 w-5" />}
+                >
+                  Gerenciar vínculos
+                </Button>
+              </div>
+            )}
           </div>
         ) : schedules.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
@@ -370,9 +401,11 @@ export default function SchedulesManagementPage() {
             <p className="text-gray-500 dark:text-gray-400 mb-4">
               Esta turma ainda não possui horários configurados
             </p>
-            <Button onClick={() => setShowCreateModal(true)} leftIcon={<PlusIcon className="h-5 w-5" />}>
-              Cadastrar Primeiro Horário
-            </Button>
+            {canManageSchedules && (
+              <Button onClick={() => setShowCreateModal(true)} leftIcon={<PlusIcon className="h-5 w-5" />}>
+                Cadastrar Primeiro Horário
+              </Button>
+            )}
           </div>
         ) : viewMode === 'table' ? (
           /* Visualização em Grade/Tabela */
@@ -434,22 +467,24 @@ export default function SchedulesManagementPage() {
                                 )}
 
                                 {/* Botões de ação */}
-                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                                  <button
-                                    onClick={() => handleEdit(schedule)}
-                                    className="bg-white/20 hover:bg-white/30 backdrop-blur-sm p-1.5 rounded"
-                                    title="Editar"
-                                  >
-                                    <PencilIcon className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDelete(schedule)}
-                                    className="bg-white/20 hover:bg-white/30 backdrop-blur-sm p-1.5 rounded"
-                                    title="Remover"
-                                  >
-                                    <TrashIcon className="h-4 w-4" />
-                                  </button>
-                                </div>
+                                {canManageSchedules && (
+                                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                    <button
+                                      onClick={() => handleEdit(schedule)}
+                                      className="bg-white/20 hover:bg-white/30 backdrop-blur-sm p-1.5 rounded"
+                                      title="Editar"
+                                    >
+                                      <PencilIcon className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDelete(schedule)}
+                                      className="bg-white/20 hover:bg-white/30 backdrop-blur-sm p-1.5 rounded"
+                                      title="Remover"
+                                    >
+                                      <TrashIcon className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               <div className="h-20 flex items-center justify-center text-gray-400 dark:text-gray-600">
@@ -517,24 +552,26 @@ export default function SchedulesManagementPage() {
                             </div>
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(schedule)}
-                            leftIcon={<PencilIcon className="h-4 w-4" />}
-                          >
-                            Editar
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(schedule)}
-                            leftIcon={<TrashIcon className="h-4 w-4" />}
-                          >
-                            Remover
-                          </Button>
-                        </div>
+                        {canManageSchedules && (
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(schedule)}
+                              leftIcon={<PencilIcon className="h-4 w-4" />}
+                            >
+                              Editar
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(schedule)}
+                              leftIcon={<TrashIcon className="h-4 w-4" />}
+                            >
+                              Remover
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -544,6 +581,27 @@ export default function SchedulesManagementPage() {
           </div>
         )}
       </div>
+
+      <Modal
+        isOpen={showSubjectsManagerModal}
+        onClose={() => setShowSubjectsManagerModal(false)}
+        title={selectedClass ? `Gerenciar vínculos de ${selectedClass.name}` : 'Gerenciar vínculos'}
+        size="4xl"
+      >
+        {selectedClassId ? (
+          <ClassSubjectsManager
+            classId={selectedClassId}
+            title="Disciplinas da Turma"
+            description="Use este espaço apenas quando precisar ajustar os vínculos da turma com suas disciplinas e professores."
+            emptyDescription="Assim que você vincular a primeira disciplina, a opção de criar horários já fica disponível para esta turma."
+            compact
+          />
+        ) : (
+          <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+            Selecione uma turma para gerenciar os vínculos.
+          </div>
+        )}
+      </Modal>
 
       {/* Modal de Criar/Editar */}
       <Modal
