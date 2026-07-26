@@ -31,10 +31,7 @@ export class ErrorResponseDto {
   @ApiProperty({
     description: 'Mensagem(ns) de erro',
     example: ['Email é obrigatório', 'Senha deve ter no mínimo 6 caracteres'],
-    oneOf: [
-      { type: 'string' },
-      { type: 'array', items: { type: 'string' } },
-    ],
+    oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }],
   })
   message: string | string[];
 
@@ -122,6 +119,8 @@ export class InternalServerErrorResponseDto extends ErrorResponseDto {
   @ApiProperty({ example: 'Internal Server Error' })
   declare error: 'Internal Server Error';
 
-  @ApiProperty({ example: 'Ocorreu um erro interno. Tente novamente mais tarde.' })
+  @ApiProperty({
+    example: 'Ocorreu um erro interno. Tente novamente mais tarde.',
+  })
   declare message: string;
 }

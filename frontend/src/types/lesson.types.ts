@@ -78,6 +78,8 @@ export interface LessonPlan {
   methodology: string;
   resources: string;
   assessment: string;
+  academicPeriodId?: string;
+  createdById?: string;
   status: LessonPlanStatus;
   observations?: string;
   rejectionReason?: string;
@@ -98,12 +100,24 @@ export interface LessonPlan {
       color?: string;
     };
   };
+  academicPeriod?: {
+    id: string;
+    name: string;
+    orderNumber?: number;
+    startDate?: string;
+    endDate?: string;
+  };
   teacher?: {
     id: string;
     user: {
       firstName: string;
       lastName: string;
     };
+  };
+  createdBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
   };
 }
 
@@ -119,7 +133,9 @@ export interface CreateLessonPlanDto {
   assessment: string;
   observations?: string;
   classSubjectId: string;
+  academicPeriodId: string;
   teacherId: string;
+  createdById: string;
 }
 
 export interface UpdateLessonPlanDto {

@@ -19,11 +19,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { CoursesService } from './courses.service';
-import {
-  CreateCourseDto,
-  UpdateCourseDto,
-  CourseResponseDto,
-} from './dto';
+import { CreateCourseDto, UpdateCourseDto, CourseResponseDto } from './dto';
 import { UserRole } from '@prisma/client';
 import { Roles } from '../common/decorators/roles.decorator';
 import { InstitutionAdminGuard } from '../auth/guards/institution-admin.guard';

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AttendanceReportQueryDto } from './dto/attendance-report-query.dto';
 import { GradesReportQueryDto } from './dto/grades-report-query.dto';
@@ -73,41 +77,51 @@ export class ReportsService {
 
     // Calculate statistics
     const totalRecords = attendances.length;
-    const presentCount = attendances.filter(a => a.status === 'PRESENT').length;
-    const absentCount = attendances.filter(a => a.status === 'ABSENT').length;
-    const excusedCount = attendances.filter(a => a.status === 'EXCUSED').length;
-    const lateCount = attendances.filter(a => a.status === 'LATE').length;
+    const presentCount = attendances.filter(
+      (a) => a.status === 'PRESENT',
+    ).length;
+    const absentCount = attendances.filter((a) => a.status === 'ABSENT').length;
+    const excusedCount = attendances.filter(
+      (a) => a.status === 'EXCUSED',
+    ).length;
+    const lateCount = attendances.filter((a) => a.status === 'LATE').length;
 
     // Group by student
-    const byStudent = attendances.reduce((acc, attendance) => {
-      const studentId = attendance.student.id;
-      const studentName = `${attendance.student.user.firstName} ${attendance.student.user.lastName}`;
+    const byStudent = attendances.reduce(
+      (acc, attendance) => {
+        const studentId = attendance.student.id;
+        const studentName = `${attendance.student.user.firstName} ${attendance.student.user.lastName}`;
 
-      if (!acc[studentId]) {
-        acc[studentId] = {
-          studentId,
-          studentName,
-          total: 0,
-          present: 0,
-          absent: 0,
-          excused: 0,
-          late: 0,
-          attendanceRate: 0,
-        };
-      }
+        if (!acc[studentId]) {
+          acc[studentId] = {
+            studentId,
+            studentName,
+            total: 0,
+            present: 0,
+            absent: 0,
+            excused: 0,
+            late: 0,
+            attendanceRate: 0,
+          };
+        }
 
-      acc[studentId].total++;
-      if (attendance.status === 'PRESENT') acc[studentId].present++;
-      if (attendance.status === 'ABSENT') acc[studentId].absent++;
-      if (attendance.status === 'EXCUSED') acc[studentId].excused++;
-      if (attendance.status === 'LATE') acc[studentId].late++;
+        acc[studentId].total++;
+        if (attendance.status === 'PRESENT') acc[studentId].present++;
+        if (attendance.status === 'ABSENT') acc[studentId].absent++;
+        if (attendance.status === 'EXCUSED') acc[studentId].excused++;
+        if (attendance.status === 'LATE') acc[studentId].late++;
 
-      return acc;
-    }, {} as Record<string, any>);
+        return acc;
+      },
+      {} as Record<string, any>,
+    );
 
     // Calculate attendance rate for each student
     Object.values(byStudent).forEach((student: any) => {
-      student.attendanceRate = ((student.present + student.late) / student.total * 100).toFixed(2);
+      student.attendanceRate = (
+        ((student.present + student.late) / student.total) *
+        100
+      ).toFixed(2);
     });
 
     return {
@@ -117,7 +131,10 @@ export class ReportsService {
         absentCount,
         excusedCount,
         lateCount,
-        attendanceRate: totalRecords > 0 ? ((presentCount + lateCount) / totalRecords * 100).toFixed(2) : 0,
+        attendanceRate:
+          totalRecords > 0
+            ? (((presentCount + lateCount) / totalRecords) * 100).toFixed(2)
+            : 0,
       },
       byStudent: Object.values(byStudent),
       details: attendances,
@@ -194,36 +211,40 @@ export class ReportsService {
     // Calculate statistics
     const totalGrades = grades.length;
     const totalScore = grades.reduce((sum, grade) => sum + grade.value, 0);
-    const averageScore = totalGrades > 0 ? (totalScore / totalGrades).toFixed(2) : 0;
+    const averageScore =
+      totalGrades > 0 ? (totalScore / totalGrades).toFixed(2) : 0;
 
     // Group by student
-    const byStudent = grades.reduce((acc, grade) => {
-      const studentId = grade.student.id;
-      const studentName = `${grade.student.user.firstName} ${grade.student.user.lastName}`;
+    const byStudent = grades.reduce(
+      (acc, grade) => {
+        const studentId = grade.student.id;
+        const studentName = `${grade.student.user.firstName} ${grade.student.user.lastName}`;
 
-      if (!acc[studentId]) {
-        acc[studentId] = {
-          studentId,
-          studentName,
-          grades: [],
-          totalScore: 0,
-          gradeCount: 0,
-          average: 0,
-        };
-      }
+        if (!acc[studentId]) {
+          acc[studentId] = {
+            studentId,
+            studentName,
+            grades: [],
+            totalScore: 0,
+            gradeCount: 0,
+            average: 0,
+          };
+        }
 
-      acc[studentId].grades.push({
-        examType: grade.examType,
-        score: grade.value,
-        weight: grade.weight,
-        subject: grade.classSubject?.subject?.name,
-        date: grade.createdAt,
-      });
-      acc[studentId].totalScore += grade.value;
-      acc[studentId].gradeCount++;
+        acc[studentId].grades.push({
+          examType: grade.examType,
+          score: grade.value,
+          weight: grade.weight,
+          subject: grade.classSubject?.subject?.name,
+          date: grade.createdAt,
+        });
+        acc[studentId].totalScore += grade.value;
+        acc[studentId].gradeCount++;
 
-      return acc;
-    }, {} as Record<string, any>);
+        return acc;
+      },
+      {} as Record<string, any>,
+    );
 
     // Calculate average for each student
     Object.values(byStudent).forEach((student: any) => {
@@ -231,25 +252,28 @@ export class ReportsService {
     });
 
     // Group by subject
-    const bySubject = grades.reduce((acc, grade) => {
-      const subjectId = grade.classSubject?.subjectId;
-      const subjectName = grade.classSubject?.subject?.name || 'N/A';
+    const bySubject = grades.reduce(
+      (acc, grade) => {
+        const subjectId = grade.classSubject?.subjectId;
+        const subjectName = grade.classSubject?.subject?.name || 'N/A';
 
-      if (!acc[subjectId]) {
-        acc[subjectId] = {
-          subjectId,
-          subjectName,
-          gradeCount: 0,
-          totalScore: 0,
-          average: 0,
-        };
-      }
+        if (!acc[subjectId]) {
+          acc[subjectId] = {
+            subjectId,
+            subjectName,
+            gradeCount: 0,
+            totalScore: 0,
+            average: 0,
+          };
+        }
 
-      acc[subjectId].gradeCount++;
-      acc[subjectId].totalScore += grade.value;
+        acc[subjectId].gradeCount++;
+        acc[subjectId].totalScore += grade.value;
 
-      return acc;
-    }, {} as Record<string, any>);
+        return acc;
+      },
+      {} as Record<string, any>,
+    );
 
     // Calculate average for each subject
     Object.values(bySubject).forEach((subject: any) => {
@@ -260,8 +284,10 @@ export class ReportsService {
       summary: {
         totalGrades,
         averageScore,
-        highestScore: grades.length > 0 ? Math.max(...grades.map(g => g.value)) : 0,
-        lowestScore: grades.length > 0 ? Math.min(...grades.map(g => g.value)) : 0,
+        highestScore:
+          grades.length > 0 ? Math.max(...grades.map((g) => g.value)) : 0,
+        lowestScore:
+          grades.length > 0 ? Math.min(...grades.map((g) => g.value)) : 0,
       },
       byStudent: Object.values(byStudent),
       bySubject: Object.values(bySubject),
@@ -351,30 +377,37 @@ export class ReportsService {
 
     // Calculate statistics
     const totalGrades = grades.length;
-    const averageGrade = totalGrades > 0
-      ? (grades.reduce((sum, g) => sum + g.value, 0) / totalGrades).toFixed(2)
-      : 0;
+    const averageGrade =
+      totalGrades > 0
+        ? (grades.reduce((sum, g) => sum + g.value, 0) / totalGrades).toFixed(2)
+        : 0;
 
     const totalAttendances = attendances.length;
-    const presentCount = attendances.filter(a => a.status === 'PRESENT').length;
-    const absentCount = attendances.filter(a => a.status === 'ABSENT').length;
-    const attendanceRate = totalAttendances > 0
-      ? ((presentCount / totalAttendances) * 100).toFixed(2)
-      : 0;
+    const presentCount = attendances.filter(
+      (a) => a.status === 'PRESENT',
+    ).length;
+    const absentCount = attendances.filter((a) => a.status === 'ABSENT').length;
+    const attendanceRate =
+      totalAttendances > 0
+        ? ((presentCount / totalAttendances) * 100).toFixed(2)
+        : 0;
 
     // Group grades by subject
-    const gradesBySubject = grades.reduce((acc, grade) => {
-      const subjectName = grade.classSubject?.subject?.name || 'N/A';
-      if (!acc[subjectName]) {
-        acc[subjectName] = {
-          subject: subjectName,
-          grades: [],
-          average: 0,
-        };
-      }
-      acc[subjectName].grades.push(grade.value);
-      return acc;
-    }, {} as Record<string, any>);
+    const gradesBySubject = grades.reduce(
+      (acc, grade) => {
+        const subjectName = grade.classSubject?.subject?.name || 'N/A';
+        if (!acc[subjectName]) {
+          acc[subjectName] = {
+            subject: subjectName,
+            grades: [],
+            average: 0,
+          };
+        }
+        acc[subjectName].grades.push(grade.value);
+        return acc;
+      },
+      {} as Record<string, any>,
+    );
 
     Object.values(gradesBySubject).forEach((subject: any) => {
       const sum = subject.grades.reduce((a: number, b: number) => a + b, 0);
@@ -386,7 +419,7 @@ export class ReportsService {
         id: student.id,
         name: `${student.user.firstName} ${student.user.lastName}`,
         email: student.user.email,
-        enrollments: student.classEnrollments.map(e => ({
+        enrollments: student.classEnrollments.map((e) => ({
           classId: e.classId,
           className: e.class.name,
           isActive: e.isActive,
@@ -472,33 +505,42 @@ export class ReportsService {
     });
 
     // Calculate statistics
-    const totalStudents = classEntity.enrollments.filter(e => e.isActive).length;
+    const totalStudents = classEntity.enrollments.filter(
+      (e) => e.isActive,
+    ).length;
     const totalGrades = grades.length;
-    const averageGrade = totalGrades > 0
-      ? (grades.reduce((sum, g) => sum + g.value, 0) / totalGrades).toFixed(2)
-      : 0;
+    const averageGrade =
+      totalGrades > 0
+        ? (grades.reduce((sum, g) => sum + g.value, 0) / totalGrades).toFixed(2)
+        : 0;
 
     const totalAttendances = attendances.length;
-    const presentCount = attendances.filter(a => a.status === 'PRESENT').length;
-    const attendanceRate = totalAttendances > 0
-      ? ((presentCount / totalAttendances) * 100).toFixed(2)
-      : 0;
+    const presentCount = attendances.filter(
+      (a) => a.status === 'PRESENT',
+    ).length;
+    const attendanceRate =
+      totalAttendances > 0
+        ? ((presentCount / totalAttendances) * 100).toFixed(2)
+        : 0;
 
     // Performance by subject
-    const bySubject = grades.reduce((acc, grade) => {
-      const subjectName = grade.classSubject?.subject?.name || 'N/A';
-      if (!acc[subjectName]) {
-        acc[subjectName] = {
-          subject: subjectName,
-          gradeCount: 0,
-          totalScore: 0,
-          average: 0,
-        };
-      }
-      acc[subjectName].gradeCount++;
-      acc[subjectName].totalScore += grade.value;
-      return acc;
-    }, {} as Record<string, any>);
+    const bySubject = grades.reduce(
+      (acc, grade) => {
+        const subjectName = grade.classSubject?.subject?.name || 'N/A';
+        if (!acc[subjectName]) {
+          acc[subjectName] = {
+            subject: subjectName,
+            gradeCount: 0,
+            totalScore: 0,
+            average: 0,
+          };
+        }
+        acc[subjectName].gradeCount++;
+        acc[subjectName].totalScore += grade.value;
+        return acc;
+      },
+      {} as Record<string, any>,
+    );
 
     Object.values(bySubject).forEach((subject: any) => {
       subject.average = (subject.totalScore / subject.gradeCount).toFixed(2);
@@ -550,7 +592,7 @@ export class ReportsService {
     }
 
     // Get classes taught
-    const classIds = teacher.classSubjects.map(sc => sc.classId);
+    const classIds = teacher.classSubjects.map((sc) => sc.classId);
     const uniqueClassIds = Array.from(new Set(classIds));
 
     // Get total students across all classes
@@ -561,7 +603,7 @@ export class ReportsService {
       },
     });
 
-    const totalStudents = new Set(enrollments.map(e => e.studentId)).size;
+    const totalStudents = new Set(enrollments.map((e) => e.studentId)).size;
 
     // Get grades posted by this teacher
     const grades = await this.prisma.grade.findMany({
@@ -601,7 +643,7 @@ export class ReportsService {
         attendancesRecorded: attendances.length,
         lessonContentsCreated: lessonContents.length,
       },
-      classes: teacher.classSubjects.map(sc => ({
+      classes: teacher.classSubjects.map((sc) => ({
         className: sc.class.name,
         subjectName: sc.subject.name,
       })),

@@ -343,7 +343,8 @@ export class GradesController {
   })
   @ApiOperation({
     summary: 'Buscar notas de uma turma/disciplina',
-    description: 'Retorna todas as notas de uma turma específica em uma disciplina',
+    description:
+      'Retorna todas as notas de uma turma específica em uma disciplina',
   })
   @ApiResponse({
     status: 200,
@@ -353,13 +354,13 @@ export class GradesController {
   @ApiResponse({ status: 404, description: 'Turma/disciplina não encontrada' })
   async getClassSubjectGrades(@Param('classSubjectId') classSubjectId: string) {
     return this.gradesService.findAll(
-      1,              // page
-      1000,           // limit - retornar todas
-      undefined,      // studentId
+      1, // page
+      1000, // limit - retornar todas
+      undefined, // studentId
       classSubjectId, // classSubjectId
-      undefined,      // academicPeriodId
-      undefined,      // teacherId
-      undefined,      // status
+      undefined, // academicPeriodId
+      undefined, // teacherId
+      undefined, // status
     );
   }
 }

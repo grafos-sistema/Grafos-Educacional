@@ -11,6 +11,8 @@ import {
   TableCellsIcon,
   ListBulletIcon,
   AcademicCapIcon,
+  ExclamationTriangleIcon,
+  PrinterIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
 import { classesService } from '@/services/classes.service';
@@ -24,18 +26,16 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ClassSubjectsManager } from '@/components/classes/ClassSubjectsManager';
 import { useToast } from '@/hooks/useToast';
-
-const DAYS_OF_WEEK = [
-  { value: 'MONDAY', label: 'Segunda-feira', abbr: 'SEG' },
-  { value: 'TUESDAY', label: 'Terça-feira', abbr: 'TER' },
-  { value: 'WEDNESDAY', label: 'Quarta-feira', abbr: 'QUA' },
-  { value: 'THURSDAY', label: 'Quinta-feira', abbr: 'QUI' },
-  { value: 'FRIDAY', label: 'Sexta-feira', abbr: 'SEX' },
-  { value: 'SATURDAY', label: 'Sábado', abbr: 'SÁB' },
-  { value: 'SUNDAY', label: 'Domingo', abbr: 'DOM' },
-];
+import {
+  DAYS_OF_WEEK,
+  DAY_LABELS,
+  findScheduleConflicts,
+  getUniqueTimeSlots,
+  sortByTime,
+} from '@/lib/schedule-ui';
 
 type ViewMode = 'table' | 'list';
+type CoordinatorTab = 'grade' | 'vinculos' | 'pendencias';
 
 export default function SchedulesManagementPage() {
   const router = useRouter();
@@ -47,7 +47,9 @@ export default function SchedulesManagementPage() {
     currentRole === UserRole.SUPER_ADMIN || currentRole === UserRole.COORDINATOR;
 
   const [selectedClassId, setSelectedClassId] = useState('');
+  const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [activeTab, setActiveTab] = useState<CoordinatorTab>('grade');
   const [showSubjectsManagerModal, setShowSubjectsManagerModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -91,6 +93,17 @@ export default function SchedulesManagementPage() {
     queryFn: () => schedulesService.findByClass(selectedClassId),
     enabled: !!selectedClassId,
   });
+
+  const subjectOptions = useMemo(
+    () => [
+      { value: '', label: 'Todas as disciplinas' },
+      ...classSubjects.map((item: any) => ({
+        value: item.id,
+        label: item.subject.name,
+      })),
+    ],
+    [classSubjects]
+  );
 
   // Mutation para criar horário
   const createMutation = useMutation({
@@ -221,36 +234,72 @@ export default function SchedulesManagementPage() {
   };
 
   // Criar estrutura de grade para visualização em tabela
-  const timeSlots = useMemo(() => {
-    if (schedules.length === 0) return [];
+  const filteredSchedules = useMemo(
+    () =>
+      schedules.filter((item) =>
+        selectedSubjectId ? item.classSubjectId === selectedSubjectId : true
+      ),
+    [schedules, selectedSubjectId]
+  );
 
-    // Extrair todos os horários únicos
-    const times = new Set<string>();
-    schedules.forEach((s) => {
-      times.add(s.startTime);
-    });
-
-    // Ordenar horários
-    return Array.from(times).sort((a, b) => {
-      const [aH, aM] = a.split(':').map(Number);
-      const [bH, bM] = b.split(':').map(Number);
-      return aH * 60 + aM - (bH * 60 + bM);
-    });
-  }, [schedules]);
+  const timeSlots = useMemo(() => getUniqueTimeSlots(filteredSchedules), [filteredSchedules]);
 
   const getScheduleForSlot = (dayOfWeek: string, startTime: string): Schedule | null => {
-    return schedules.find((s) => s.dayOfWeek === dayOfWeek && s.startTime === startTime) || null;
+    return (
+      filteredSchedules.find((s) => s.dayOfWeek === dayOfWeek && s.startTime === startTime) || null
+    );
   };
 
-  const sortedSchedules = schedulesService.sortSchedules(schedules);
-  const groupedSchedules = schedulesService.groupByDay(sortedSchedules);
+  const groupedSchedules = useMemo(
+    () =>
+      DAYS_OF_WEEK.reduce<Record<string, Schedule[]>>((acc, day) => {
+        acc[day.value] = sortByTime(
+          filteredSchedules.filter((schedule) => schedule.dayOfWeek === day.value)
+        );
+        return acc;
+      }, {}),
+    [filteredSchedules]
+  );
   const hasClassSubjects = classSubjects.length > 0;
   const selectedClass = classes.find((item) => item.id === selectedClassId);
+  const subjectAssignmentsWithoutSchedule = useMemo(
+    () =>
+      classSubjects.filter(
+        (item: any) =>
+          !filteredSchedules.some((schedule) => schedule.classSubjectId === item.id) &&
+          (!selectedSubjectId || item.id === selectedSubjectId)
+      ),
+    [classSubjects, filteredSchedules, selectedSubjectId]
+  );
+  const schedulesWithoutRoom = useMemo(
+    () => filteredSchedules.filter((item) => !item.room),
+    [filteredSchedules]
+  );
+  const scheduleConflicts = useMemo(
+    () =>
+      findScheduleConflicts(
+        filteredSchedules.map((item) => ({
+          id: item.id,
+          dayOfWeek: item.dayOfWeek,
+          startTime: item.startTime,
+          endTime: item.endTime,
+        }))
+      ),
+    [filteredSchedules]
+  );
+  const summaryCards = [
+    { label: 'Disciplinas vinculadas', value: classSubjects.length },
+    { label: 'Horários lançados', value: filteredSchedules.length },
+    { label: 'Horários sem sala', value: schedulesWithoutRoom.length },
+    {
+      label: 'Pendências',
+      value: subjectAssignmentsWithoutSchedule.length + schedulesWithoutRoom.length + scheduleConflicts.size,
+    },
+  ];
 
   return (
     <>
       <div className="p-6">
-        {/* Header */}
         <div className="mb-6">
           <Button
             variant="ghost"
@@ -260,26 +309,38 @@ export default function SchedulesManagementPage() {
           >
             Voltar
           </Button>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              <h1 className="mb-2 text-2xl font-bold text-gray-900 dark:text-white">
                 Grade de Horários
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
-                Visualize a grade da turma e abra os vínculos somente quando precisar ajustar disciplinas
+                Visualize a grade da turma, acompanhe pendências e ajuste vínculos apenas quando precisar reorganizar disciplinas e professores.
               </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => window.print()}
+                leftIcon={<PrinterIcon className="h-5 w-5" />}
+              >
+                Imprimir grade
+              </Button>
             </div>
           </div>
         </div>
 
-        {/* Seleção de Turma e Controles */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex items-end gap-4">
-            <div className="flex-1">
+        <div className="mb-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+            <div className="lg:col-span-2">
               <Select
                 label="Turma"
                 value={selectedClassId}
-                onChange={(e) => setSelectedClassId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedClassId(e.target.value);
+                  setSelectedSubjectId('');
+                  setActiveTab('grade');
+                }}
                 required
                 options={[
                   { value: '', label: 'Selecione uma turma...' },
@@ -290,44 +351,50 @@ export default function SchedulesManagementPage() {
                 ]}
               />
             </div>
-            {selectedClassId && (
-              <>
-                <div className="flex gap-2">
+            <Select
+              label="Disciplina"
+              value={selectedSubjectId}
+              onChange={(e) => setSelectedSubjectId(e.target.value)}
+              options={subjectOptions}
+              disabled={!selectedClassId || !hasClassSubjects}
+            />
+            <div className="flex flex-wrap items-end gap-2">
+              <Button
+                variant={viewMode === 'table' ? 'primary' : 'secondary'}
+                onClick={() => setViewMode('table')}
+                leftIcon={<TableCellsIcon className="h-5 w-5" />}
+                disabled={!selectedClassId}
+              >
+                Grade
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'primary' : 'secondary'}
+                onClick={() => setViewMode('list')}
+                leftIcon={<ListBulletIcon className="h-5 w-5" />}
+                disabled={!selectedClassId}
+              >
+                Lista
+              </Button>
+              {canManageSchedules && (
+                <>
                   <Button
-                    variant={viewMode === 'table' ? 'primary' : 'secondary'}
-                    onClick={() => setViewMode('table')}
-                    leftIcon={<TableCellsIcon className="h-5 w-5" />}
+                    variant="secondary"
+                    onClick={() => setShowSubjectsManagerModal(true)}
+                    leftIcon={<AcademicCapIcon className="h-5 w-5" />}
+                    disabled={!selectedClassId}
                   >
-                    Grade
+                    Gerenciar vínculos
                   </Button>
                   <Button
-                    variant={viewMode === 'list' ? 'primary' : 'secondary'}
-                    onClick={() => setViewMode('list')}
-                    leftIcon={<ListBulletIcon className="h-5 w-5" />}
+                    onClick={() => setShowCreateModal(true)}
+                    leftIcon={<PlusIcon className="h-5 w-5" />}
+                    disabled={!selectedClassId || !hasClassSubjects}
                   >
-                    Lista
+                    Novo Horário
                   </Button>
-                </div>
-                {canManageSchedules && (
-                  <>
-                    <Button
-                      variant="secondary"
-                      onClick={() => setShowSubjectsManagerModal(true)}
-                      leftIcon={<AcademicCapIcon className="h-5 w-5" />}
-                    >
-                      Gerenciar vínculos
-                    </Button>
-                    <Button
-                      onClick={() => setShowCreateModal(true)}
-                      leftIcon={<PlusIcon className="h-5 w-5" />}
-                      disabled={!hasClassSubjects}
-                    >
-                      Novo Horário
-                    </Button>
-                  </>
-                )}
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
           {selectedClassId && !hasClassSubjects && (
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-800">
@@ -352,9 +419,8 @@ export default function SchedulesManagementPage() {
           )}
         </div>
 
-        {/* Conteúdo */}
         {!selectedClassId ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
+          <div className="rounded-lg bg-white p-12 text-center shadow-sm dark:bg-gray-800">
             <TableCellsIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Selecione uma turma
@@ -368,7 +434,7 @@ export default function SchedulesManagementPage() {
             <LoadingSpinner size="lg" text="Carregando grade..." />
           </div>
         ) : !hasClassSubjects ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
+          <div className="rounded-lg bg-white p-12 text-center shadow-sm dark:bg-gray-800">
             <TableCellsIcon className="h-16 w-16 text-amber-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Nenhuma disciplina vinculada à turma
@@ -392,9 +458,8 @@ export default function SchedulesManagementPage() {
               </div>
             )}
           </div>
-        ) : schedules.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
-            <TableCellsIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+        ) : filteredSchedules.length === 0 ? (
+          <div className="rounded-lg bg-white p-12 text-center shadow-sm dark:bg-gray-800">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Nenhum horário cadastrado
             </h3>
@@ -407,9 +472,50 @@ export default function SchedulesManagementPage() {
               </Button>
             )}
           </div>
-        ) : viewMode === 'table' ? (
-          /* Visualização em Grade/Tabela */
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+        ) : (
+          <>
+            <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {summaryCards.map((card) => (
+                <div
+                  key={card.label}
+                  className="rounded-lg bg-white p-5 shadow-sm dark:bg-gray-800"
+                >
+                  <div className="text-sm text-gray-500 dark:text-gray-400">{card.label}</div>
+                  <div className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">
+                    {card.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mb-6 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-800">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={activeTab === 'grade' ? 'primary' : 'secondary'}
+                  onClick={() => setActiveTab('grade')}
+                  leftIcon={<TableCellsIcon className="h-5 w-5" />}
+                >
+                  Visão da Grade
+                </Button>
+                <Button
+                  variant={activeTab === 'vinculos' ? 'primary' : 'secondary'}
+                  onClick={() => setActiveTab('vinculos')}
+                  leftIcon={<AcademicCapIcon className="h-5 w-5" />}
+                >
+                  Vínculos
+                </Button>
+                <Button
+                  variant={activeTab === 'pendencias' ? 'primary' : 'secondary'}
+                  onClick={() => setActiveTab('pendencias')}
+                  leftIcon={<ExclamationTriangleIcon className="h-5 w-5" />}
+                >
+                  Pendências
+                </Button>
+              </div>
+            </div>
+
+            {activeTab === 'grade' && viewMode === 'table' && (
+              <div className="overflow-hidden rounded-lg bg-white shadow-sm dark:bg-gray-800">
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
@@ -424,7 +530,7 @@ export default function SchedulesManagementPage() {
                         >
                           <div>{day.abbr}</div>
                           <div className="text-xs font-normal text-gray-600 dark:text-gray-400">
-                            {day.label}
+                            {day.shortLabel}
                           </div>
                         </th>
                       ))}
@@ -505,80 +611,175 @@ export default function SchedulesManagementPage() {
                 Nenhum horário cadastrado ainda
               </div>
             )}
-          </div>
-        ) : (
-          /* Visualização em Lista (original) */
-          <div className="space-y-4">
-            {DAYS_OF_WEEK.map((day) => {
-              const daySchedules = groupedSchedules[day.value] || [];
-              if (daySchedules.length === 0) return null;
+            </div>
+            )}
 
-              return (
-                <div
-                  key={day.value}
-                  className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6"
-                >
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                    {day.label}
-                  </h3>
-                  <div className="space-y-3">
-                    {daySchedules.map((schedule) => (
-                      <div
-                        key={schedule.id}
-                        className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className="w-1 h-12 rounded"
-                              style={{
-                                backgroundColor: schedule.classSubject?.subject.color || '#3B82F6',
-                              }}
-                            />
-                            <div>
-                              <div className="font-medium text-gray-900 dark:text-white">
-                                {schedule.startTime} - {schedule.endTime}
-                              </div>
-                              <div className="text-sm text-gray-600 dark:text-gray-400">
-                                {schedule.classSubject?.subject.name}
-                                {schedule.room && ` • Sala: ${schedule.room}`}
-                              </div>
-                              {schedule.classSubject?.teacher && (
-                                <div className="text-sm text-gray-500 dark:text-gray-400">
-                                  Prof. {schedule.classSubject.teacher.user.firstName}{' '}
-                                  {schedule.classSubject.teacher.user.lastName}
+            {activeTab === 'grade' && viewMode === 'list' && (
+              <div className="space-y-4">
+                {DAYS_OF_WEEK.map((day) => {
+                  const daySchedules = groupedSchedules[day.value] || [];
+                  if (daySchedules.length === 0) return null;
+
+                  return (
+                    <div
+                      key={day.value}
+                      className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800"
+                    >
+                      <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+                        {day.label}
+                      </h3>
+                      <div className="space-y-3">
+                        {daySchedules.map((schedule) => (
+                          <div
+                            key={schedule.id}
+                            className="flex items-center gap-4 rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50"
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className="h-12 w-1 rounded"
+                                  style={{
+                                    backgroundColor: schedule.classSubject?.subject.color || '#3B82F6',
+                                  }}
+                                />
+                                <div>
+                                  <div className="font-medium text-gray-900 dark:text-white">
+                                    {schedule.startTime} - {schedule.endTime}
+                                  </div>
+                                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                                    {schedule.classSubject?.subject.name}
+                                    {schedule.room ? ` • Sala: ${schedule.room}` : ' • Sala pendente'}
+                                  </div>
+                                  {schedule.classSubject?.teacher && (
+                                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                                      Prof. {schedule.classSubject.teacher.user.firstName}{' '}
+                                      {schedule.classSubject.teacher.user.lastName}
+                                    </div>
+                                  )}
                                 </div>
-                              )}
+                              </div>
                             </div>
+                            {canManageSchedules && (
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEdit(schedule)}
+                                  leftIcon={<PencilIcon className="h-4 w-4" />}
+                                >
+                                  Editar
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDelete(schedule)}
+                                  leftIcon={<TrashIcon className="h-4 w-4" />}
+                                >
+                                  Remover
+                                </Button>
+                              </div>
+                            )}
                           </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {activeTab === 'vinculos' && (
+              <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+                <h2 className="mb-4 text-xl font-semibold text-gray-900 dark:text-white">
+                  Vínculos da Turma
+                </h2>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {classSubjects
+                    .filter((item: any) => (selectedSubjectId ? item.id === selectedSubjectId : true))
+                    .map((item: any) => (
+                      <div
+                        key={item.id}
+                        className="rounded-lg border border-gray-200 p-4 dark:border-gray-700"
+                      >
+                        <div className="font-medium text-gray-900 dark:text-white">
+                          {item.subject.name}
                         </div>
-                        {canManageSchedules && (
-                          <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(schedule)}
-                              leftIcon={<PencilIcon className="h-4 w-4" />}
-                            >
-                              Editar
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(schedule)}
-                              leftIcon={<TrashIcon className="h-4 w-4" />}
-                            >
-                              Remover
-                            </Button>
-                          </div>
-                        )}
+                        <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                          {item.teacher?.user
+                            ? `Prof. ${item.teacher.user.firstName} ${item.teacher.user.lastName}`
+                            : 'Professor ainda não definido'}
+                        </div>
+                        <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          {item.weeklyHours ? `${item.weeklyHours} hora(s)/semana` : 'Carga semanal não informada'}
+                        </div>
                       </div>
                     ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'pendencias' && (
+              <div className="space-y-6">
+                <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+                  <div className="mb-4 flex items-center gap-2">
+                    <ExclamationTriangleIcon className="h-5 w-5 text-amber-600" />
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                      Pendências da Turma
+                    </h2>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                    <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                      <div className="mb-2 font-medium text-gray-900 dark:text-white">
+                        Disciplinas sem horário
+                      </div>
+                      {subjectAssignmentsWithoutSchedule.length > 0 ? (
+                        <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                          {subjectAssignmentsWithoutSchedule.map((item: any) => (
+                            <div key={item.id}>{item.subject.name}</div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          Todas as disciplinas filtradas já possuem horário.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                      <div className="mb-2 font-medium text-gray-900 dark:text-white">
+                        Horários sem sala
+                      </div>
+                      {schedulesWithoutRoom.length > 0 ? (
+                        <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                          {schedulesWithoutRoom.map((item) => (
+                            <div key={item.id}>
+                              {DAY_LABELS[item.dayOfWeek]} • {item.classSubject?.subject.name}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          Todas as aulas possuem sala informada.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                      <div className="mb-2 font-medium text-gray-900 dark:text-white">
+                        Choques de horário
+                      </div>
+                      <div className="text-3xl font-bold text-gray-900 dark:text-white">
+                        {scheduleConflicts.size}
+                      </div>
+                      <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        Revise a grade se houver aulas sobrepostas na mesma turma.
+                      </div>
+                    </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 

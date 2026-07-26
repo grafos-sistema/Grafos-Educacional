@@ -22,7 +22,10 @@ export class StudentResponseDto {
   @ApiProperty({ example: 'Necessita de intérprete de LIBRAS', nullable: true })
   specialNeeds: string | null;
 
-  @ApiProperty({ example: 'Aluno participante do programa de monitoria', nullable: true })
+  @ApiProperty({
+    example: 'Aluno participante do programa de monitoria',
+    nullable: true,
+  })
   notes: string | null;
 
   @ApiProperty({ example: true })

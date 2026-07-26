@@ -101,7 +101,8 @@ export class CreateQuestionDto {
 
   @ApiPropertyOptional({
     description: 'Explanation or rationale for the correct answer',
-    example: 'Mercúrio é o planeta mais próximo do Sol, com uma distância média de aproximadamente 57,9 milhões de quilômetros.',
+    example:
+      'Mercúrio é o planeta mais próximo do Sol, com uma distância média de aproximadamente 57,9 milhões de quilômetros.',
   })
   @IsOptional()
   @IsString()
@@ -125,7 +126,8 @@ export class CreateQuestionDto {
   points?: number;
 
   @ApiPropertyOptional({
-    description: 'URL or path to an image associated with the question (for backwards compatibility)',
+    description:
+      'URL or path to an image associated with the question (for backwards compatibility)',
     example: 'https://example.com/images/solar-system.jpg',
   })
   @IsOptional()
@@ -135,7 +137,10 @@ export class CreateQuestionDto {
   @ApiPropertyOptional({
     description: 'Array of image URLs associated with the question',
     type: [String],
-    example: ['/question-images/question-123.jpg', '/question-images/question-456.jpg'],
+    example: [
+      '/question-images/question-123.jpg',
+      '/question-images/question-456.jpg',
+    ],
   })
   @IsOptional()
   @IsArray()
@@ -151,7 +156,8 @@ export class CreateQuestionDto {
   subjectId?: string;
 
   @ApiPropertyOptional({
-    description: 'Whether the question is public (visible to other institutions)',
+    description:
+      'Whether the question is public (visible to other institutions)',
     example: true,
   })
   @IsOptional()

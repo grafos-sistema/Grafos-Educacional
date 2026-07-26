@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsUUID, IsBoolean, IsOptional, MaxLength } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsUUID,
+  IsBoolean,
+  IsOptional,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateObservationDto {
   @ApiProperty({
@@ -22,7 +29,8 @@ export class CreateObservationDto {
 
   @ApiProperty({
     description: 'Detailed description of the observation',
-    example: 'O aluno demonstrou excelente participação durante a aula de matemática.',
+    example:
+      'O aluno demonstrou excelente participação durante a aula de matemática.',
   })
   @IsNotEmpty()
   @IsString()
@@ -38,7 +46,8 @@ export class CreateObservationDto {
   type: 'POSITIVE' | 'NEUTRAL' | 'ATTENTION' | 'DISCIPLINARY';
 
   @ApiProperty({
-    description: 'Whether this observation is private (only visible to institution staff)',
+    description:
+      'Whether this observation is private (only visible to institution staff)',
     example: false,
     required: false,
     default: false,

@@ -408,7 +408,10 @@ export class AssignmentsService {
     }
 
     // Valida nota
-    if (submission.assignment?.maxScore && score > submission.assignment.maxScore) {
+    if (
+      submission.assignment?.maxScore &&
+      score > submission.assignment.maxScore
+    ) {
       throw new BadRequestException(
         `Nota não pode ser maior que ${submission.assignment.maxScore}`,
       );

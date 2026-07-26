@@ -120,7 +120,11 @@ export class GradesService {
   /**
    * Adiciona pontos de uma nota ao ranking do aluno
    */
-  private async addGradePoints(gradeId: string, studentId: string, gradeValue: number) {
+  private async addGradePoints(
+    gradeId: string,
+    studentId: string,
+    gradeValue: number,
+  ) {
     // Calcular pontos: nota * 10 (nota 10 = 100 pontos, nota 5 = 50 pontos)
     const points = Math.round(gradeValue * 10);
 
@@ -658,7 +662,10 @@ export class GradesService {
   async publish(id: string) {
     const grade = await this.findOne(id);
 
-    if (grade.status === GradeStatus.PUBLISHED || grade.status === GradeStatus.FINAL) {
+    if (
+      grade.status === GradeStatus.PUBLISHED ||
+      grade.status === GradeStatus.FINAL
+    ) {
       throw new BadRequestException('Nota já foi publicada');
     }
 

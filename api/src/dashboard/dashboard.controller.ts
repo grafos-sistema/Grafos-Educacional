@@ -21,7 +21,9 @@ export class DashboardController {
 
   @Get('coordinator')
   @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
-  @ApiOperation({ summary: 'Get coordinator dashboard with institution overview' })
+  @ApiOperation({
+    summary: 'Get coordinator dashboard with institution overview',
+  })
   @ApiResponse({
     status: 200,
     description:
@@ -37,7 +39,9 @@ export class DashboardController {
 
   @Get('teacher')
   @Roles(UserRole.TEACHER)
-  @ApiOperation({ summary: 'Get teacher dashboard with classes and activities' })
+  @ApiOperation({
+    summary: 'Get teacher dashboard with classes and activities',
+  })
   @ApiResponse({
     status: 200,
     description:
@@ -68,15 +72,12 @@ export class DashboardController {
   }
 
   @Get('statistics')
-  @Roles(
-    UserRole.SUPER_ADMIN,
-    UserRole.INSTITUTION_ADMIN,
-    UserRole.COORDINATOR,
-  )
+  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
   @ApiOperation({ summary: 'Get general statistics' })
   @ApiResponse({
     status: 200,
-    description: 'General statistics about users, institutions, questions, and activities',
+    description:
+      'General statistics about users, institutions, questions, and activities',
   })
   getStatistics(@CurrentUser() user: any) {
     return this.dashboardService.getStatistics(user);

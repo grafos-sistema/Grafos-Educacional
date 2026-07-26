@@ -147,7 +147,8 @@ export class ParentsController {
   @SkipOwnership()
   @ApiOperation({
     summary: 'Buscar responsável por ID',
-    description: 'Retorna detalhes completos do responsável incluindo alunos vinculados',
+    description:
+      'Retorna detalhes completos do responsável incluindo alunos vinculados',
   })
   @ApiResponse({
     status: 200,
@@ -215,13 +216,16 @@ export class ParentsController {
     },
   })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
-  @ApiResponse({ status: 404, description: 'Responsável ou aluno não encontrado' })
-  @ApiResponse({ status: 409, description: 'Aluno já está vinculado a este responsável' })
+  @ApiResponse({
+    status: 404,
+    description: 'Responsável ou aluno não encontrado',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Aluno já está vinculado a este responsável',
+  })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
-  linkStudent(
-    @Param('id') id: string,
-    @Body() linkStudentDto: LinkStudentDto,
-  ) {
+  linkStudent(@Param('id') id: string, @Body() linkStudentDto: LinkStudentDto) {
     return this.parentsService.linkStudent(id, linkStudentDto);
   }
 
@@ -279,8 +283,7 @@ export class ParentsController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN)
   @ApiOperation({
     summary: 'Remover responsável (soft delete)',
-    description:
-      'SUPER_ADMIN e INSTITUTION_ADMIN podem remover responsáveis',
+    description: 'SUPER_ADMIN e INSTITUTION_ADMIN podem remover responsáveis',
   })
   @ApiResponse({
     status: 200,

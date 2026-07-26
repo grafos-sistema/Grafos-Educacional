@@ -192,7 +192,9 @@ A API possui 6 níveis de acesso:
   logger.log(
     `[debug:bootstrap] NODE_ENV=${process.env.NODE_ENV || 'undefined'} PORT_ENV=${process.env.PORT || 'undefined'} LISTEN_PORT=${port}`,
   );
-  logger.log(`[debug:bootstrap] configuredCorsOrigins=${corsOrigins.join(',') || 'none'}`);
+  logger.log(
+    `[debug:bootstrap] configuredCorsOrigins=${corsOrigins.join(',') || 'none'}`,
+  );
 
   await app.listen(port, '0.0.0.0');
 

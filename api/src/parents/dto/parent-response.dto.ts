@@ -22,7 +22,10 @@ export class ParentResponseDto {
   @ApiProperty({ example: '1133334444', nullable: true })
   workPhone: string | null;
 
-  @ApiProperty({ example: 'Disponível para reuniões às terças-feiras', nullable: true })
+  @ApiProperty({
+    example: 'Disponível para reuniões às terças-feiras',
+    nullable: true,
+  })
   notes: string | null;
 
   @ApiProperty({ example: true })

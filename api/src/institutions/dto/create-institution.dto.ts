@@ -23,7 +23,8 @@ export class CreateInstitutionDto {
   name: string;
 
   @ApiProperty({
-    description: 'Slug único da instituição (gerado automaticamente se não fornecido)',
+    description:
+      'Slug único da instituição (gerado automaticamente se não fornecido)',
     example: 'escola-dom-pedro-ii',
     required: false,
   })
@@ -60,7 +61,9 @@ export class CreateInstitutionDto {
   })
   @IsOptional()
   @IsString()
-  @IsBrazilianPhone({ message: 'Telefone inválido. Use o formato brasileiro com DDD' })
+  @IsBrazilianPhone({
+    message: 'Telefone inválido. Use o formato brasileiro com DDD',
+  })
   phone?: string;
 
   @ApiProperty({

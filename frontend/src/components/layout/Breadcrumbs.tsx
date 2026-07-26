@@ -41,13 +41,14 @@ const ROUTE_LABELS: Record<string, string> = {
   'events': 'Eventos',
   'courses': 'Cursos',
   'academic-years': 'Anos Letivos',
-  'lesson-plans': 'Planos de Ensino',
-  'lesson-contents': 'Conteúdos',
+  'lesson-plans': 'Planos de Aula',
+  'lesson-contents': 'Conteúdo Ministrado',
   'observations': 'Observações',
   'monitoring': 'Acompanhamento',
   'schedule': 'Horários',
   'children': 'Meus Filhos',
   'my-classes': 'Minhas Turmas',
+  'my-schedule': 'Minha Grade',
 
   // Actions
   'new': 'Novo',

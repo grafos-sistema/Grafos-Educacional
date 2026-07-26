@@ -19,7 +19,10 @@ export class AcademicYearResponseDto {
   @ApiProperty({ example: '2024-12-20T00:00:00.000Z' })
   endDate: Date;
 
-  @ApiProperty({ example: 'Ano letivo regular com início em fevereiro', nullable: true })
+  @ApiProperty({
+    example: 'Ano letivo regular com início em fevereiro',
+    nullable: true,
+  })
   description: string | null;
 
   @ApiProperty({ example: true })

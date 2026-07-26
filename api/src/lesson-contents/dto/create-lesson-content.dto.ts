@@ -87,7 +87,8 @@ export class CreateLessonContentDto {
 
   @ApiProperty({
     description: 'Observações gerais',
-    example: 'Turma demonstrou boa participação. Alguns alunos necessitam reforço.',
+    example:
+      'Turma demonstrou boa participação. Alguns alunos necessitam reforço.',
     required: false,
     nullable: true,
   })

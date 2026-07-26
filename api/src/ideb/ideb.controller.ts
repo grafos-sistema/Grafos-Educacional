@@ -27,7 +27,10 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
-import { CreateIDEBTargetDto, UpdateIDEBTargetDto } from './dto/ideb-target.dto';
+import {
+  CreateIDEBTargetDto,
+  UpdateIDEBTargetDto,
+} from './dto/ideb-target.dto';
 import { CalculateIDEBDto } from './dto/calculate-ideb.dto';
 import { Cache } from '../common/decorators/cache.decorator';
 import { ExportService } from '../common/services/export.service';
@@ -208,7 +211,11 @@ export class IDEBController {
     @Param('gradeLevel') gradeLevel: string,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit = 10,
   ) {
-    return this.idebService.getHistoricalTrend(user.institutionId, gradeLevel, limit);
+    return this.idebService.getHistoricalTrend(
+      user.institutionId,
+      gradeLevel,
+      limit,
+    );
   }
 
   @Get('dashboard/:year')
@@ -333,7 +340,8 @@ export class IDEBController {
   @Get('comparison/:year/export/csv')
   @ApiOperation({
     summary: 'Exportar comparação IDEB x Metas para CSV',
-    description: 'Exporta comparação entre IDEB alcançado e metas estabelecidas',
+    description:
+      'Exporta comparação entre IDEB alcançado e metas estabelecidas',
   })
   @ApiParam({ name: 'year', description: 'Ano de referência' })
   @Header('Content-Type', 'text/csv')
@@ -378,12 +386,14 @@ export class IDEBController {
       {
         key: 'difference',
         label: 'Diferença',
-        format: (v) => (v !== null ? this.exportService.formatNumber(v, 2) : 'N/A'),
+        format: (v) =>
+          v !== null ? this.exportService.formatNumber(v, 2) : 'N/A',
       },
       {
         key: 'percentageAchieved',
         label: '% Alcançado',
-        format: (v) => (v !== null ? this.exportService.formatNumber(v, 1) + '%' : 'N/A'),
+        format: (v) =>
+          v !== null ? this.exportService.formatNumber(v, 1) + '%' : 'N/A',
       },
       {
         key: 'achieved',
@@ -414,10 +424,24 @@ export class IDEBController {
           items: {
             type: 'object',
             properties: {
-              approvalRate: { type: 'number', minimum: 0, maximum: 1, example: 0.9 },
-              averageProficiency: { type: 'number', minimum: 0, maximum: 10, example: 6.5 },
+              approvalRate: {
+                type: 'number',
+                minimum: 0,
+                maximum: 1,
+                example: 0.9,
+              },
+              averageProficiency: {
+                type: 'number',
+                minimum: 0,
+                maximum: 10,
+                example: 6.5,
+              },
               mathProficiency: { type: 'number', minimum: 0, maximum: 10 },
-              portugueseProficiency: { type: 'number', minimum: 0, maximum: 10 },
+              portugueseProficiency: {
+                type: 'number',
+                minimum: 0,
+                maximum: 10,
+              },
             },
           },
         },
@@ -458,7 +482,11 @@ export class IDEBController {
       'Calcula diferentes estratégias (foco em aprovação, proficiência ou ambos) para atingir a meta estabelecida',
   })
   @ApiParam({ name: 'year', description: 'Ano de referência', example: 2024 })
-  @ApiParam({ name: 'gradeLevel', description: 'Série/ano escolar', example: '5º ano' })
+  @ApiParam({
+    name: 'gradeLevel',
+    description: 'Série/ano escolar',
+    example: '5º ano',
+  })
   @ApiResponse({
     status: 200,
     description: 'Projeções calculadas com sucesso',
@@ -477,7 +505,8 @@ export class IDEBController {
         paths: [
           {
             strategy: 'Foco em qualidade do ensino',
-            description: 'Manter a taxa de aprovação e melhorar o desempenho nas avaliações',
+            description:
+              'Manter a taxa de aprovação e melhorar o desempenho nas avaliações',
             requiredApprovalRate: 0.87,
             requiredProficiency: 6.9,
             feasible: true,
@@ -493,7 +522,10 @@ export class IDEBController {
     @Param('year', ParseIntPipe) year: number,
     @Param('gradeLevel') gradeLevel: string,
   ) {
-    return this.idebService.projectToTarget(user.institutionId, year, gradeLevel);
+    return this.idebService.projectToTarget(
+      user.institutionId,
+      year,
+      gradeLevel,
+    );
   }
 }
-

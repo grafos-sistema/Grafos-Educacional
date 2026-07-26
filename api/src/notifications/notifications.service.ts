@@ -28,10 +28,7 @@ export class NotificationsService {
   }
 
   // Notificação de pendente de aprovação (para admins)
-  async notifyPendingApproval(
-    newUserId: string,
-    institutionId: string,
-  ) {
+  async notifyPendingApproval(newUserId: string, institutionId: string) {
     // Buscar todos os admins da instituição
     const admins = await this.prisma.user.findMany({
       where: {

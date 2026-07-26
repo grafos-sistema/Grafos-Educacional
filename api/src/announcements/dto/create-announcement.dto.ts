@@ -30,7 +30,8 @@ export class CreateAnnouncementDto {
 
   @ApiProperty({
     description: 'Content of the announcement',
-    example: 'Informamos que não haverá aulas durante o período de carnaval, de 12 a 14 de fevereiro.',
+    example:
+      'Informamos que não haverá aulas durante o período de carnaval, de 12 a 14 de fevereiro.',
   })
   @IsNotEmpty()
   @IsString()
@@ -72,6 +73,26 @@ export class CreateAnnouncementDto {
   @IsArray()
   @IsUUID('4', { each: true })
   classIds?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Specific student user IDs',
+    type: [String],
+    example: ['550e8400-e29b-41d4-a716-446655440000'],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  targetStudentIds?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Specific parent user IDs',
+    type: [String],
+    example: ['550e8400-e29b-41d4-a716-446655440000'],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  targetParentIds?: string[];
 
   @ApiPropertyOptional({
     description: 'Scheduled publish date and time (ISO 8601)',

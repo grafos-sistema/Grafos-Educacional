@@ -25,7 +25,7 @@ import { redisStore } from 'cache-manager-redis-yet';
         } catch (error) {
           console.warn('⚠️  Redis não disponível, usando cache em memória');
           console.warn('   Erro:', error.message);
-          
+
           // Fallback para cache em memória
           return {
             ttl: 300 * 1000, // 5 minutos em ms

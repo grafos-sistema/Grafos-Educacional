@@ -126,7 +126,10 @@ export function IsDateInRange(
  * Valida se a data é posterior a outra propriedade
  * @param property Nome da propriedade para comparação
  */
-export function IsAfter(property: string, validationOptions?: ValidationOptions) {
+export function IsAfter(
+  property: string,
+  validationOptions?: ValidationOptions,
+) {
   return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,

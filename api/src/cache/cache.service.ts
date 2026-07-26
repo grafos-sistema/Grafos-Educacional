@@ -19,6 +19,6 @@ export class CacheService {
   }
 
   generateKey(prefix: string, ...params: any[]): string {
-    return `${prefix}:${params.filter(p => p !== undefined).join(':')}`;
+    return `${prefix}:${params.filter((p) => p !== undefined).join(':')}`;
   }
 }

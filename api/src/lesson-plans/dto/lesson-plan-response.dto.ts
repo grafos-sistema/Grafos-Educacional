@@ -20,7 +20,8 @@ export class LessonPlanResponseDto {
   title: string;
 
   @ApiProperty({
-    example: 'Este plano de ensino aborda os conceitos fundamentais de álgebra.',
+    example:
+      'Este plano de ensino aborda os conceitos fundamentais de álgebra.',
   })
   description: string;
 

@@ -9,9 +9,11 @@ export class DashboardService {
   async getCoordinatorDashboard(currentUser: any) {
     // Only coordinators, institution admins and super admins can access
     if (
-      ![UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR].includes(
-        currentUser.role,
-      )
+      ![
+        UserRole.SUPER_ADMIN,
+        UserRole.INSTITUTION_ADMIN,
+        UserRole.COORDINATOR,
+      ].includes(currentUser.role)
     ) {
       throw new ForbiddenException('Access denied');
     }
@@ -30,20 +32,29 @@ export class DashboardService {
       this.prisma.student.count({
         where: {
           user: {
-            institutionId: currentUser.role === UserRole.SUPER_ADMIN ? undefined : institutionId,
+            institutionId:
+              currentUser.role === UserRole.SUPER_ADMIN
+                ? undefined
+                : institutionId,
           },
         },
       }),
       this.prisma.teacher.count({
         where: {
           user: {
-            institutionId: currentUser.role === UserRole.SUPER_ADMIN ? undefined : institutionId,
+            institutionId:
+              currentUser.role === UserRole.SUPER_ADMIN
+                ? undefined
+                : institutionId,
           },
         },
       }),
       this.prisma.class.count({
         where: {
-          institutionId: currentUser.role === UserRole.SUPER_ADMIN ? undefined : institutionId,
+          institutionId:
+            currentUser.role === UserRole.SUPER_ADMIN
+              ? undefined
+              : institutionId,
         },
       }),
       this.prisma.subject.count(),
@@ -51,13 +62,19 @@ export class DashboardService {
         where: {
           isActive: true,
           class: {
-            institutionId: currentUser.role === UserRole.SUPER_ADMIN ? undefined : institutionId,
+            institutionId:
+              currentUser.role === UserRole.SUPER_ADMIN
+                ? undefined
+                : institutionId,
           },
         },
       }),
       this.prisma.subject.count({
         where: {
-          institutionId: currentUser.role === UserRole.SUPER_ADMIN ? undefined : institutionId,
+          institutionId:
+            currentUser.role === UserRole.SUPER_ADMIN
+              ? undefined
+              : institutionId,
         },
       }),
     ]);
@@ -71,7 +88,10 @@ export class DashboardService {
         createdAt: { gte: thirtyDaysAgo },
         classSubject: {
           class: {
-            institutionId: currentUser.role === UserRole.SUPER_ADMIN ? undefined : institutionId,
+            institutionId:
+              currentUser.role === UserRole.SUPER_ADMIN
+                ? undefined
+                : institutionId,
           },
         },
       },
@@ -79,7 +99,10 @@ export class DashboardService {
 
     const averageGrade =
       recentGrades.length > 0
-        ? (recentGrades.reduce((sum, g) => sum + g.value, 0) / recentGrades.length).toFixed(2)
+        ? (
+            recentGrades.reduce((sum, g) => sum + g.value, 0) /
+            recentGrades.length
+          ).toFixed(2)
         : 0;
 
     // Get attendance statistics (last 30 days)
@@ -87,7 +110,10 @@ export class DashboardService {
       where: {
         date: { gte: thirtyDaysAgo },
         class: {
-          institutionId: currentUser.role === UserRole.SUPER_ADMIN ? undefined : institutionId,
+          institutionId:
+            currentUser.role === UserRole.SUPER_ADMIN
+              ? undefined
+              : institutionId,
         },
       },
     });
@@ -95,7 +121,9 @@ export class DashboardService {
     const attendanceRate =
       recentAttendances.length > 0
         ? (
-            (recentAttendances.filter(a => a.status === 'PRESENT' || a.status === 'LATE').length /
+            (recentAttendances.filter(
+              (a) => a.status === 'PRESENT' || a.status === 'LATE',
+            ).length /
               recentAttendances.length) *
             100
           ).toFixed(2)
@@ -104,8 +132,10 @@ export class DashboardService {
     // Get recent announcements
     const recentAnnouncements = await this.prisma.announcement.findMany({
       where: {
-        institutionId: currentUser.role === UserRole.SUPER_ADMIN ? undefined : institutionId,
+        institutionId:
+          currentUser.role === UserRole.SUPER_ADMIN ? undefined : institutionId,
         isPublished: true,
+        OR: [{ publishedAt: null }, { publishedAt: { lte: new Date() } }],
       },
       take: 5,
       orderBy: { publishedAt: 'desc' },
@@ -121,7 +151,10 @@ export class DashboardService {
     const upcomingEvents = await this.prisma.event.findMany({
       where: {
         academicYear: {
-          institutionId: currentUser.role === UserRole.SUPER_ADMIN ? undefined : institutionId,
+          institutionId:
+            currentUser.role === UserRole.SUPER_ADMIN
+              ? undefined
+              : institutionId,
         },
         startDate: { gte: new Date() },
       },
@@ -196,8 +229,12 @@ export class DashboardService {
     }
 
     // Get unique classes and subjects
-    const classIds = Array.from(new Set(teacher.classSubjects.map(sc => sc.classId)));
-    const subjectIds = Array.from(new Set(teacher.classSubjects.map(sc => sc.subjectId)));
+    const classIds = Array.from(
+      new Set(teacher.classSubjects.map((sc) => sc.classId)),
+    );
+    const subjectIds = Array.from(
+      new Set(teacher.classSubjects.map((sc) => sc.subjectId)),
+    );
 
     // Get total students across all classes
     const totalStudents = await this.prisma.classEnrollment.count({
@@ -270,7 +307,8 @@ export class DashboardService {
     });
 
     // Get students with low attendance in teacher's classes
-    const studentsWithLowAttendance = await this.getStudentsWithLowAttendanceInClasses(classIds);
+    const studentsWithLowAttendance =
+      await this.getStudentsWithLowAttendanceInClasses(classIds);
 
     return {
       overview: {
@@ -289,11 +327,11 @@ export class DashboardService {
         studentsWithLowAttendance,
       },
       schedule: {
-        classes: teacher.classSubjects.map(sc => ({
+        classes: teacher.classSubjects.map((sc) => ({
           className: sc.class.name,
           subjectName: sc.subject.name,
         })),
-        upcomingAssignments: upcomingAssignments.map(a => ({
+        upcomingAssignments: upcomingAssignments.map((a) => ({
           id: a.id,
           title: a.title,
           className: a.classSubject.class.name,
@@ -301,7 +339,7 @@ export class DashboardService {
           dueDate: a.dueDate,
         })),
       },
-      recentContent: recentLessonContents.map(lc => ({
+      recentContent: recentLessonContents.map((lc) => ({
         id: lc.id,
         title: lc.title,
         className: lc.classSubject.class.name,
@@ -347,7 +385,7 @@ export class DashboardService {
       };
     }
 
-    const studentIds = parent.children.map(c => c.student.id);
+    const studentIds = parent.children.map((c) => c.student.id);
 
     // Get recent grades for all children
     const thirtyDaysAgo = new Date();
@@ -402,8 +440,8 @@ export class DashboardService {
     });
 
     // Get upcoming assignments for children
-    const classIds = parent.children.flatMap(c =>
-      c.student.classEnrollments.map(e => e.classId)
+    const classIds = parent.children.flatMap((c) =>
+      c.student.classEnrollments.map((e) => e.classId),
     );
 
     const upcomingAssignments = await this.prisma.assignment.findMany({
@@ -447,9 +485,10 @@ export class DashboardService {
 
         const averageGrade =
           studentGrades.length > 0
-            ? (studentGrades.reduce((sum, g) => sum + g.value, 0) / studentGrades.length).toFixed(
-                2,
-              )
+            ? (
+                studentGrades.reduce((sum, g) => sum + g.value, 0) /
+                studentGrades.length
+              ).toFixed(2)
             : 0;
 
         // Get attendance for this student
@@ -462,7 +501,9 @@ export class DashboardService {
         const attendanceRate =
           attendances.length > 0
             ? (
-                (attendances.filter(a => a.status === 'PRESENT' || a.status === 'LATE').length /
+                (attendances.filter(
+                  (a) => a.status === 'PRESENT' || a.status === 'LATE',
+                ).length /
                   attendances.length) *
                 100
               ).toFixed(2)
@@ -474,7 +515,9 @@ export class DashboardService {
           currentClass: student.classEnrollments[0]?.class.name || 'N/A',
           averageGrade: parseFloat(averageGrade as string),
           attendanceRate: parseFloat(attendanceRate as string),
-          recentGradesCount: studentGrades.filter(g => g.createdAt >= thirtyDaysAgo).length,
+          recentGradesCount: studentGrades.filter(
+            (g) => g.createdAt >= thirtyDaysAgo,
+          ).length,
         };
       }),
     );
@@ -486,14 +529,14 @@ export class DashboardService {
       },
       children: childrenData,
       recentActivity: {
-        grades: recentGrades.map(g => ({
+        grades: recentGrades.map((g) => ({
           studentName: g.student.user.name,
           subjectName: g.classSubject?.subject?.name || 'N/A',
           examType: g.examType,
           score: g.value,
           date: g.createdAt,
         })),
-        observations: recentObservations.map(o => ({
+        observations: recentObservations.map((o) => ({
           studentName: o.student.user.name,
           title: o.title,
           type: o.type,
@@ -501,7 +544,7 @@ export class DashboardService {
           date: o.date,
         })),
       },
-      upcomingAssignments: upcomingAssignments.map(a => ({
+      upcomingAssignments: upcomingAssignments.map((a) => ({
         title: a.title,
         className: a.classSubject.class.name,
         subjectName: a.classSubject.subject.name,
@@ -512,22 +555,27 @@ export class DashboardService {
 
   async getStatistics(currentUser: any) {
     const institutionId =
-      currentUser.role === UserRole.SUPER_ADMIN ? undefined : currentUser.institutionId;
+      currentUser.role === UserRole.SUPER_ADMIN
+        ? undefined
+        : currentUser.institutionId;
 
-    const [totalUsers, totalInstitutions, totalQuestions, totalActivities] = await Promise.all([
-      this.prisma.user.count({
-        where: { institutionId },
-      }),
-      currentUser.role === UserRole.SUPER_ADMIN ? this.prisma.institution.count() : 1,
-      this.prisma.question.count(),
-      this.prisma.activity.count({
-        where: {
-          class: {
-            institutionId,
+    const [totalUsers, totalInstitutions, totalQuestions, totalActivities] =
+      await Promise.all([
+        this.prisma.user.count({
+          where: { institutionId },
+        }),
+        currentUser.role === UserRole.SUPER_ADMIN
+          ? this.prisma.institution.count()
+          : 1,
+        this.prisma.question.count(),
+        this.prisma.activity.count({
+          where: {
+            class: {
+              institutionId,
+            },
           },
-        },
-      }),
-    ]);
+        }),
+      ]);
 
     return {
       totalUsers,
@@ -537,30 +585,38 @@ export class DashboardService {
     };
   }
 
-  private async getClassesWithLowAttendance(institutionId: string, role: UserRole) {
+  private async getClassesWithLowAttendance(
+    institutionId: string,
+    role: UserRole,
+  ) {
     // Simplified version - get classes and calculate attendance
     const classes = await this.prisma.class.findMany({
       where: {
-        institutionId: role === UserRole.SUPER_ADMIN ? undefined : institutionId,
+        institutionId:
+          role === UserRole.SUPER_ADMIN ? undefined : institutionId,
       },
       take: 5,
     });
 
     // This is a simplified version - in production you'd want more complex queries
-    return classes.map(c => ({
+    return classes.map((c) => ({
       classId: c.id,
       className: c.name,
       attendanceRate: 85, // Placeholder - would calculate from actual data
     }));
   }
 
-  private async getStudentsWithLowGrades(institutionId: string, role: UserRole) {
+  private async getStudentsWithLowGrades(
+    institutionId: string,
+    role: UserRole,
+  ) {
     const grades = await this.prisma.grade.findMany({
       where: {
         value: { lt: 6 },
         classSubject: {
           class: {
-            institutionId: role === UserRole.SUPER_ADMIN ? undefined : institutionId,
+            institutionId:
+              role === UserRole.SUPER_ADMIN ? undefined : institutionId,
           },
         },
       },
@@ -580,7 +636,7 @@ export class DashboardService {
       take: 10,
     });
 
-    return grades.map(g => ({
+    return grades.map((g) => ({
       studentName: g.student.user.name,
       subjectName: g.classSubject?.subject?.name || 'N/A',
       score: g.value,
@@ -604,7 +660,7 @@ export class DashboardService {
       take: 5,
     });
 
-    return attendances.map(a => ({
+    return attendances.map((a) => ({
       studentName: a.student.user.name,
       absenceCount: 1, // Placeholder
     }));

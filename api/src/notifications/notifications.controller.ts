@@ -98,10 +98,9 @@ export class NotificationsController {
     },
   })
   async getPendingApprovalsCount(@CurrentUser() user: CurrentUserPayload) {
-    const count =
-      await this.notificationsService.getPendingApprovalsCount(
-        user.institutionId,
-      );
+    const count = await this.notificationsService.getPendingApprovalsCount(
+      user.institutionId,
+    );
     return { count };
   }
 
@@ -113,10 +112,7 @@ export class NotificationsController {
   })
   @ApiResponse({ status: 200, description: 'Notificação marcada como lida' })
   @ApiResponse({ status: 404, description: 'Notificação não encontrada' })
-  markAsRead(
-    @Param('id') id: string,
-    @CurrentUser() user: CurrentUserPayload,
-  ) {
+  markAsRead(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
     return this.notificationsService.markAsRead(id, user.userId);
   }
 

@@ -112,9 +112,7 @@ export class AchievementsService {
   async checkAndUnlockBadges(userId: string) {
     const allBadges = await this.getAllBadges();
     const userAchievements = await this.getUserAchievements(userId);
-    const unlockedBadgeIds = new Set(
-      userAchievements.map((a) => a.badgeId),
-    );
+    const unlockedBadgeIds = new Set(userAchievements.map((a) => a.badgeId));
 
     const newAchievements: any[] = [];
 
@@ -138,8 +136,11 @@ export class AchievementsService {
   /**
    * Verificar se um usuário atende o critério de um badge
    */
-  private async checkBadgeCriteria(userId: string, badge: any): Promise<boolean> {
-    const criteria = badge.criteria as any;
+  private async checkBadgeCriteria(
+    userId: string,
+    badge: any,
+  ): Promise<boolean> {
+    const criteria = badge.criteria;
 
     switch (badge.type) {
       case BadgeType.GRADE:
@@ -162,7 +163,10 @@ export class AchievementsService {
     }
   }
 
-  private async checkGradeCriteria(userId: string, criteria: any): Promise<boolean> {
+  private async checkGradeCriteria(
+    userId: string,
+    criteria: any,
+  ): Promise<boolean> {
     // Exemplo: { "type": "grade", "value": 10, "count": 1 }
     // Verificar se tem pelo menos X notas com valor Y
     const gradesCount = await this.prisma.grade.count({
@@ -205,7 +209,10 @@ export class AchievementsService {
     return percentage >= (criteria.percentage || 100);
   }
 
-  private async checkStreakCriteria(userId: string, criteria: any): Promise<boolean> {
+  private async checkStreakCriteria(
+    userId: string,
+    criteria: any,
+  ): Promise<boolean> {
     // Exemplo: { "type": "streak", "days": 7 }
     // Verificar se tem X dias consecutivos de atividade
     // (Simplificado - verificar transações de pontos nos últimos X dias)
@@ -231,7 +238,10 @@ export class AchievementsService {
     return daysWithActivity.size >= daysRequired;
   }
 
-  private async checkRankingCriteria(userId: string, criteria: any): Promise<boolean> {
+  private async checkRankingCriteria(
+    userId: string,
+    criteria: any,
+  ): Promise<boolean> {
     // Exemplo: { "type": "ranking", "position": 3, "period": "MONTHLY" }
     // Verificar se está entre os top X
     const period = criteria.period || 'MONTHLY';

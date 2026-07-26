@@ -104,26 +104,16 @@ export default function WorksheetsPage() {
   // Buscar atividades
   const { data: worksheetsData, isLoading } = useQuery({
     queryKey: ['worksheets', filters],
-    queryFn: async () => {
-      const result = await worksheetsService.findAll(filters);
-      console.log('📊 Atividades carregadas:', result);
-      console.log('📊 Primeira atividade (com questões?):', result.data[0]);
-      return result;
-    },
+    queryFn: async () => worksheetsService.findAll(filters),
   });
 
   // Mutation para criar
   const createMutation = useMutation({
     mutationFn: async (data: CreateWorksheetDto) => {
-      console.log('🔄 Criando atividade:', data);
-      console.log('🔄 Questões selecionadas:', selectedQuestions);
-
       const activity = await worksheetsService.create(data);
-      console.log('✅ Atividade criada:', activity);
 
       // Se houver questões selecionadas, adicionar após criar a atividade
       if (selectedQuestions.length > 0) {
-        console.log(`🔄 Adicionando ${selectedQuestions.length} questões...`);
         for (let i = 0; i < selectedQuestions.length; i++) {
           try {
             const questionData = {
@@ -131,9 +121,7 @@ export default function WorksheetsPage() {
               orderNumber: i + 1,
               points: selectedQuestions[i].points, // Usar pontos customizados
             };
-            console.log(`🔄 Adicionando questão ${i + 1}/${selectedQuestions.length}:`, questionData);
             await worksheetsService.addQuestion(activity.id, questionData);
-            console.log(`✅ Questão ${i + 1} adicionada`);
           } catch (error) {
             console.error(`❌ Erro ao adicionar questão ${i + 1}:`, error);
           }
@@ -142,10 +130,8 @@ export default function WorksheetsPage() {
 
       return activity;
     },
-    onSuccess: (worksheet) => {
-      console.log('✅ Success callback - invalidando queries');
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['worksheets'] });
-      console.log('✅ Queries invalidadas');
       const questionsMsg = selectedQuestions.length > 0
         ? ` com ${selectedQuestions.length} ${selectedQuestions.length === 1 ? 'questão' : 'questões'}`
         : '';
@@ -163,24 +149,17 @@ export default function WorksheetsPage() {
   // Mutation para atualizar
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: CreateWorksheetDto }) => {
-      console.log('🔄 Atualizando atividade:', id, data);
-      console.log('🔄 Questões originais:', originalQuestions);
-      console.log('🔄 Questões atuais:', selectedQuestions);
-
       // Primeiro, atualizar os dados da atividade
       const activity = await worksheetsService.update(id, data);
-      console.log('✅ Dados da atividade atualizados:', activity);
 
       // Sincronizar questões
       // 1. Remover questões que não estão mais na lista
       const questionsToRemove = originalQuestions.filter(
         (orig) => !selectedQuestions.some((curr) => curr.id === orig.id)
       );
-      console.log('🗑️ Questões para remover:', questionsToRemove);
       for (const question of questionsToRemove) {
         try {
           await worksheetsService.removeQuestion(id, question.id);
-          console.log(`✅ Questão ${question.id} removida`);
         } catch (error) {
           console.error(`❌ Erro ao remover questão ${question.id}:`, error);
         }
@@ -190,7 +169,6 @@ export default function WorksheetsPage() {
       const questionsToAdd = selectedQuestions.filter(
         (curr) => !originalQuestions.some((orig) => orig.id === curr.id)
       );
-      console.log('➕ Questões para adicionar:', questionsToAdd);
       for (let i = 0; i < questionsToAdd.length; i++) {
         try {
           const orderNumber = selectedQuestions.findIndex((q) => q.id === questionsToAdd[i].id) + 1;
@@ -199,7 +177,6 @@ export default function WorksheetsPage() {
             orderNumber,
             points: questionsToAdd[i].points,
           });
-          console.log(`✅ Questão ${questionsToAdd[i].id} adicionada`);
         } catch (error) {
           console.error(`❌ Erro ao adicionar questão ${questionsToAdd[i].id}:`, error);
         }
@@ -210,7 +187,6 @@ export default function WorksheetsPage() {
         const orig = originalQuestions.find((o) => o.id === curr.id);
         return orig && (orig.points !== curr.points);
       });
-      console.log('🔄 Questões para atualizar pontos:', questionsToUpdate);
       for (const question of questionsToUpdate) {
         try {
           const orderNumber = selectedQuestions.findIndex((q) => q.id === question.id) + 1;
@@ -218,7 +194,6 @@ export default function WorksheetsPage() {
             orderNumber,
             points: question.points,
           });
-          console.log(`✅ Questão ${question.id} atualizada`);
         } catch (error) {
           console.error(`❌ Erro ao atualizar questão ${question.id}:`, error);
         }
@@ -227,9 +202,7 @@ export default function WorksheetsPage() {
       return activity;
     },
     onSuccess: () => {
-      console.log('✅ Success callback - invalidando queries');
       queryClient.invalidateQueries({ queryKey: ['worksheets'] });
-      console.log('✅ Queries invalidadas');
       toast.success('Atividade atualizada! As alterações foram salvas');
       setShowModal(false);
       setSelectedWorksheet(null);
@@ -360,15 +333,9 @@ export default function WorksheetsPage() {
   };
 
   const handleEdit = async (worksheet: Worksheet) => {
-    console.log('📝 Editando atividade (dados da lista):', worksheet);
-    console.log('📝 Questões da atividade (da lista):', worksheet.questions);
-
     try {
       // Buscar dados completos da atividade (com questões)
-      console.log('🔄 Buscando dados completos da atividade...');
       const fullWorksheet = await worksheetsService.findOne(worksheet.id);
-      console.log('✅ Dados completos carregados:', fullWorksheet);
-      console.log('✅ Questões completas:', fullWorksheet.questions);
 
       setSelectedWorksheet(fullWorksheet);
       setFormData({
@@ -390,11 +357,9 @@ export default function WorksheetsPage() {
           type: wq.question?.type || '',
           points: wq.customPoints || wq.question?.points || 1,
         }));
-        console.log('📝 Questões carregadas no estado:', loadedQuestions);
         setSelectedQuestions(loadedQuestions);
         setOriginalQuestions(loadedQuestions); // Armazenar cópia para comparar mudanças
       } else {
-        console.log('📝 Nenhuma questão encontrada na atividade');
         setSelectedQuestions([]);
         setOriginalQuestions([]);
       }
@@ -698,10 +663,15 @@ export default function WorksheetsPage() {
         }}
         title={selectedWorksheet ? 'Editar Atividade' : 'Nova Atividade'}
         size="full"
+        panelClassName="max-h-[92vh]"
+        contentClassName="mt-0"
       >
-        <form onSubmit={handleSubmit} className="flex gap-6 h-[calc(100vh-200px)]">
+        <form
+          onSubmit={handleSubmit}
+          className="grid h-[calc(92vh-96px)] grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]"
+        >
           {/* Coluna Esquerda - Formulário */}
-          <div className="flex-1 overflow-y-auto pr-4 space-y-4">
+          <div className="min-w-0 overflow-y-auto pr-2 xl:pr-4 space-y-4">
             <Input
               label="Título *"
               value={formData.title}
@@ -833,7 +803,7 @@ export default function WorksheetsPage() {
           </div>
 
           {/* Coluna Direita - Questões */}
-          <div className="w-96 border-l dark:border-gray-700 pl-6 flex flex-col">
+          <div className="min-w-0 flex flex-col overflow-hidden border-t pt-6 dark:border-gray-700 xl:w-[22rem] xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900 dark:text-white">
                 Questões ({selectedQuestions.length})

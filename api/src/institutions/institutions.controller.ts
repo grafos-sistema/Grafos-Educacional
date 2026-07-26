@@ -58,7 +58,10 @@ Endpoint público para listar apenas instituições ativas.
       items: {
         type: 'object',
         properties: {
-          id: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+          id: {
+            type: 'string',
+            example: '123e4567-e89b-12d3-a456-426614174000',
+          },
           name: { type: 'string', example: 'Escola Municipal Santos Dumont' },
           city: { type: 'string', example: 'São Paulo' },
           state: { type: 'string', example: 'SP' },
@@ -160,7 +163,8 @@ Endpoint público para listar apenas instituições ativas.
   @SkipThrottle()
   @ApiOperation({
     summary: 'Buscar instituição por slug (público)',
-    description: 'Retorna dados públicos da instituição pelo slug para SEO e landing pages',
+    description:
+      'Retorna dados públicos da instituição pelo slug para SEO e landing pages',
   })
   @ApiResponse({
     status: 200,

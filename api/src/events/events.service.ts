@@ -254,8 +254,12 @@ export class EventsService {
       const eventEnd = event.endDate ? new Date(event.endDate) : eventStart;
 
       // Add event to each day it occurs
-      let currentDate = new Date(Math.max(eventStart.getTime(), startDate.getTime()));
-      const lastDate = new Date(Math.min(eventEnd.getTime(), endDate.getTime()));
+      const currentDate = new Date(
+        Math.max(eventStart.getTime(), startDate.getTime()),
+      );
+      const lastDate = new Date(
+        Math.min(eventEnd.getTime(), endDate.getTime()),
+      );
 
       while (currentDate <= lastDate) {
         const dayKey = currentDate.toISOString().split('T')[0];
@@ -326,8 +330,12 @@ export class EventsService {
       where: { id },
       data: {
         ...updateEventDto,
-        startDate: updateEventDto.startDate ? new Date(updateEventDto.startDate) : undefined,
-        endDate: updateEventDto.endDate ? new Date(updateEventDto.endDate) : undefined,
+        startDate: updateEventDto.startDate
+          ? new Date(updateEventDto.startDate)
+          : undefined,
+        endDate: updateEventDto.endDate
+          ? new Date(updateEventDto.endDate)
+          : undefined,
       },
       include: {
         academicYear: {
@@ -388,14 +396,18 @@ export class EventsService {
 
     // INSTITUTION_ADMIN and COORDINATOR can edit events in their institution
     if (
-      [UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR].includes(currentUser.role)
+      [UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR].includes(
+        currentUser.role,
+      )
     ) {
       // Check if event is for user's institution through academicYear
       if (
         event.academicYear?.institutionId &&
         event.academicYear.institutionId !== currentUser.institutionId
       ) {
-        throw new ForbiddenException('You do not have access to edit this event');
+        throw new ForbiddenException(
+          'You do not have access to edit this event',
+        );
       }
       return;
     }
@@ -440,9 +452,12 @@ export class EventsService {
   }
 
   private groupByType(events: any[]): Record<string, number> {
-    return events.reduce((acc, event) => {
-      acc[event.type] = (acc[event.type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    return events.reduce(
+      (acc, event) => {
+        acc[event.type] = (acc[event.type] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
   }
 }

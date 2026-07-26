@@ -43,7 +43,9 @@ const VALID_GRADE_LEVELS = [
 ];
 
 @ValidatorConstraint({ name: 'isValidGradeLevel', async: false })
-export class IsValidGradeLevelConstraint implements ValidatorConstraintInterface {
+export class IsValidGradeLevelConstraint
+  implements ValidatorConstraintInterface
+{
   validate(gradeLevel: string): boolean {
     if (!gradeLevel) return false;
 
@@ -55,14 +57,14 @@ export class IsValidGradeLevelConstraint implements ValidatorConstraintInterface
 
     // Regex para aceitar variações: "1 ano", "1° ano", "1ª série", etc.
     const patterns = [
-      /^[1-5]º ano$/i,           // 1º ano até 5º ano
-      /^[6-9]º ano$/i,           // 6º ano até 9º ano
-      /^[1-3]ª série$/i,         // 1ª série até 3ª série
-      /^EJA/i,                   // Qualquer variação de EJA
+      /^[1-5]º ano$/i, // 1º ano até 5º ano
+      /^[6-9]º ano$/i, // 6º ano até 9º ano
+      /^[1-3]ª série$/i, // 1ª série até 3ª série
+      /^EJA/i, // Qualquer variação de EJA
       /^(Berçário|Maternal|Jardim|Pré)/i, // Educação infantil
     ];
 
-    return patterns.some(pattern => pattern.test(normalized));
+    return patterns.some((pattern) => pattern.test(normalized));
   }
 
   defaultMessage(): string {

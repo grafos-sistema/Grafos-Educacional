@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateQuestionCategoryDto } from './dto/create-question-category.dto';
 import { UpdateQuestionCategoryDto } from './dto/update-question-category.dto';
@@ -93,7 +97,10 @@ export class QuestionCategoriesService {
     return category;
   }
 
-  async update(id: string, updateQuestionCategoryDto: UpdateQuestionCategoryDto) {
+  async update(
+    id: string,
+    updateQuestionCategoryDto: UpdateQuestionCategoryDto,
+  ) {
     // Check if category exists
     const category = await this.prisma.questionCategory.findUnique({
       where: { id },
@@ -104,7 +111,10 @@ export class QuestionCategoriesService {
     }
 
     // If name is being updated, check for duplicates
-    if (updateQuestionCategoryDto.name && updateQuestionCategoryDto.name !== category.name) {
+    if (
+      updateQuestionCategoryDto.name &&
+      updateQuestionCategoryDto.name !== category.name
+    ) {
       const existingCategory = await this.prisma.questionCategory.findFirst({
         where: {
           name: updateQuestionCategoryDto.name,
@@ -180,15 +190,21 @@ export class QuestionCategoriesService {
 
     // Calculate statistics
     const totalQuestions = category.questions.length;
-    const byDifficulty = category.questions.reduce((acc, q) => {
-      acc[q.difficulty] = (acc[q.difficulty] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const byDifficulty = category.questions.reduce(
+      (acc, q) => {
+        acc[q.difficulty] = (acc[q.difficulty] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
-    const byType = category.questions.reduce((acc, q) => {
-      acc[q.type] = (acc[q.type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const byType = category.questions.reduce(
+      (acc, q) => {
+        acc[q.type] = (acc[q.type] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     return {
       id: category.id,

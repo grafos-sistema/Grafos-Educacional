@@ -20,7 +20,8 @@ export class CreateSubjectRequestDto {
 
   @ApiProperty({
     description: 'Mensagem explicando o motivo do pedido',
-    example: 'Sou especializado nesta disciplina e gostaria de lecionar para esta turma.',
+    example:
+      'Sou especializado nesta disciplina e gostaria de lecionar para esta turma.',
     required: false,
   })
   @IsString()

@@ -18,8 +18,7 @@ export class InstitutionsService {
     const { slug, cnpj, ...data } = createInstitutionDto;
 
     // Gera slug se não fornecido
-    const generatedSlug =
-      slug || this.generateSlug(createInstitutionDto.name);
+    const generatedSlug = slug || this.generateSlug(createInstitutionDto.name);
 
     // Verifica se slug já existe
     const existingSlug = await this.prisma.institution.findUnique({

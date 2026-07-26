@@ -73,7 +73,8 @@ export class CreateActivityDto {
 
   @ApiPropertyOptional({
     description: 'Header text for the printed activity',
-    example: 'Escola Municipal de Ensino Fundamental\nProva de Matemática - 1º Bimestre\nProfessor: João Silva',
+    example:
+      'Escola Municipal de Ensino Fundamental\nProva de Matemática - 1º Bimestre\nProfessor: João Silva',
   })
   @IsOptional()
   @IsString()

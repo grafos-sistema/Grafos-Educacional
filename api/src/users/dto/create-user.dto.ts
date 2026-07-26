@@ -40,7 +40,9 @@ export class CreateUserDto {
   @IsString()
   @IsNotEmpty({ message: 'Primeiro nome é obrigatório' })
   @MinLength(2, { message: 'Primeiro nome deve ter no mínimo 2 caracteres' })
-  @MaxLength(100, { message: 'Primeiro nome deve ter no máximo 100 caracteres' })
+  @MaxLength(100, {
+    message: 'Primeiro nome deve ter no máximo 100 caracteres',
+  })
   firstName: string;
 
   @ApiProperty({

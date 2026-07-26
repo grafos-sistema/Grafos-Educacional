@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsNumber, IsString, IsOptional, Min, Max } from 'class-validator';
+import {
+  IsInt,
+  IsNumber,
+  IsString,
+  IsOptional,
+  Min,
+  Max,
+} from 'class-validator';
 import { IsValidGradeLevel } from '../../common/validators';
 
 export class CreateIDEBTargetDto {

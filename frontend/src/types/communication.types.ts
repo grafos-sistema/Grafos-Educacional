@@ -1,7 +1,7 @@
 // Announcement Types
 export enum AnnouncementPriority {
   LOW = 'LOW',
-  MEDIUM = 'MEDIUM',
+  NORMAL = 'NORMAL',
   HIGH = 'HIGH',
   URGENT = 'URGENT',
 }
@@ -22,6 +22,8 @@ export interface Announcement {
   content: string;
   priority: string;
   targetRoles: string[];
+  targetStudentIds?: string[];
+  targetParentIds?: string[];
   isPublished: boolean;
   publishedAt?: string;
   expiresAt?: string;
@@ -49,6 +51,9 @@ export interface CreateAnnouncementDto {
   priority: string;
   targetRoles: string[];
   institutionId: string;
+  targetStudentIds?: string[];
+  targetParentIds?: string[];
+  scheduledFor?: string;
   expiresAt?: string;
   attachments?: string[];
 }
@@ -59,11 +64,15 @@ export interface UpdateAnnouncementDto {
   priority?: string;
   targetRoles?: string[];
   institutionId?: string;
+  targetStudentIds?: string[];
+  targetParentIds?: string[];
+  scheduledFor?: string;
   expiresAt?: string;
   attachments?: string[];
 }
 
 export interface AnnouncementFilters {
+  search?: string;
   targetRole?: string;
   priority?: string;
   onlyPublished?: boolean;

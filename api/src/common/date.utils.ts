@@ -8,24 +8,24 @@
  */
 export function transformDate(value: any): Date | undefined {
   if (!value) return undefined;
-  
+
   // Se já é uma instância de Date
   if (value instanceof Date) {
     return isNaN(value.getTime()) ? undefined : value;
   }
-  
+
   // Se é string, tenta converter
   if (typeof value === 'string') {
     const date = new Date(value);
     return isNaN(date.getTime()) ? undefined : date;
   }
-  
+
   // Se é número (timestamp)
   if (typeof value === 'number') {
     const date = new Date(value);
     return isNaN(date.getTime()) ? undefined : date;
   }
-  
+
   return undefined;
 }
 
@@ -34,7 +34,7 @@ export function transformDate(value: any): Date | undefined {
  */
 export function isValidDate(value: any): boolean {
   if (!value) return true; // opcional
-  
+
   const date = transformDate(value);
   return date !== undefined;
 }

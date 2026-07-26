@@ -407,7 +407,8 @@ export class AttendancesController {
   })
   @ApiOperation({
     summary: 'Buscar frequências de uma turma/disciplina',
-    description: 'Retorna todas as frequências de uma turma específica em uma disciplina',
+    description:
+      'Retorna todas as frequências de uma turma específica em uma disciplina',
   })
   @ApiResponse({
     status: 200,
@@ -415,11 +416,13 @@ export class AttendancesController {
     type: [AttendanceResponseDto],
   })
   @ApiResponse({ status: 404, description: 'Turma/disciplina não encontrada' })
-  async getClassSubjectAttendances(@Param('classSubjectId') classSubjectId: string) {
+  async getClassSubjectAttendances(
+    @Param('classSubjectId') classSubjectId: string,
+  ) {
     return this.attendancesService.findAll(
-      1,              // page
-      1000,           // limit - retornar todas
-      undefined,      // classId
+      1, // page
+      1000, // limit - retornar todas
+      undefined, // classId
       classSubjectId, // classSubjectId
     );
   }

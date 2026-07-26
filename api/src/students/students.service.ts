@@ -44,7 +44,9 @@ export class StudentsService {
     });
 
     if (existingStudent) {
-      throw new ConflictException('Já existe registro de aluno para este usuário');
+      throw new ConflictException(
+        'Já existe registro de aluno para este usuário',
+      );
     }
 
     // Verifica se número de matrícula já existe na instituição
@@ -75,7 +77,9 @@ export class StudentsService {
     }
 
     // Converte admissionDate string para Date se fornecido
-    const parsedAdmissionDate = admissionDate ? new Date(admissionDate) : undefined;
+    const parsedAdmissionDate = admissionDate
+      ? new Date(admissionDate)
+      : undefined;
 
     return this.prisma.student.create({
       data: {
@@ -505,7 +509,9 @@ export class StudentsService {
     }
 
     // Converte admissionDate string para Date se fornecido
-    const parsedAdmissionDate = admissionDate ? new Date(admissionDate) : undefined;
+    const parsedAdmissionDate = admissionDate
+      ? new Date(admissionDate)
+      : undefined;
 
     return this.prisma.student.update({
       where: { id },

@@ -39,7 +39,9 @@ class StudentAttendanceDto {
   })
   @IsOptional()
   @IsString({ message: 'Observações devem ser um texto' })
-  @MaxLength(500, { message: 'Observações não podem ter mais de 500 caracteres' })
+  @MaxLength(500, {
+    message: 'Observações não podem ter mais de 500 caracteres',
+  })
   notes?: string;
 }
 

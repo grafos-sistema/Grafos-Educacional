@@ -43,10 +43,10 @@ export const teacherAttendancesService = {
     if (filters?.classSubjectId)
       params.append('classSubjectId', filters.classSubjectId);
 
-    const { data } = await api.get<TeacherAttendance[]>(
+    const data = await api.get<TeacherAttendance[]>(
       `/teacher-attendances/my?${params.toString()}`,
     );
-    return data;
+    return Array.isArray(data) ? data : [];
   },
 
   /**
@@ -62,10 +62,10 @@ export const teacherAttendancesService = {
     if (filters?.classSubjectId)
       params.append('classSubjectId', filters.classSubjectId);
 
-    const { data } = await api.get<TeacherAttendance[]>(
+    const data = await api.get<TeacherAttendance[]>(
       `/teacher-attendances/teacher/${teacherId}?${params.toString()}`,
     );
-    return data;
+    return Array.isArray(data) ? data : [];
   },
 
   /**
@@ -74,10 +74,10 @@ export const teacherAttendancesService = {
   async getTeacherSchedule(
     teacherId: string,
   ): Promise<TeacherScheduleItem[]> {
-    const { data } = await api.get<TeacherScheduleItem[]>(
+    const data = await api.get<TeacherScheduleItem[]>(
       `/teacher-attendances/schedules/${teacherId}`,
     );
-    return data;
+    return Array.isArray(data) ? data : [];
   },
 
   /**
@@ -92,9 +92,9 @@ export const teacherAttendancesService = {
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
 
-    const { data } = await api.get<TeacherStats>(
+    const data = await api.get<TeacherStats>(
       `/teacher-attendances/stats/${teacherId}?${params.toString()}`,
     );
-    return data;
+    return data ?? { total: 0, byMonth: {} };
   },
 };

@@ -4,7 +4,13 @@ import { BadRequestException } from '@nestjs/common';
 import { Request } from 'express';
 
 // Tipos aceitos para imagens de questões
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/gif'];
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/jpg',
+  'image/webp',
+  'image/gif',
+];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB (maior que avatar para suportar imagens mais detalhadas)
 
 export const questionImageMulterConfig = {

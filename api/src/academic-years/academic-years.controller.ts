@@ -48,7 +48,10 @@ export class AcademicYearsController {
     description: 'Ano letivo criado com sucesso',
     type: AcademicYearResponseDto,
   })
-  @ApiResponse({ status: 400, description: 'Dados inválidos ou datas conflitantes' })
+  @ApiResponse({
+    status: 400,
+    description: 'Dados inválidos ou datas conflitantes',
+  })
   @ApiResponse({
     status: 409,
     description: 'Já existe ano letivo para este ano/instituição',

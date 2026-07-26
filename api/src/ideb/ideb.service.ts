@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateIDEBTargetDto, UpdateIDEBTargetDto } from './dto/ideb-target.dto';
+import {
+  CreateIDEBTargetDto,
+  UpdateIDEBTargetDto,
+} from './dto/ideb-target.dto';
 import { CalculateIDEBDto } from './dto/calculate-ideb.dto';
 
 @Injectable()
@@ -88,13 +91,22 @@ export class IDEBService {
     const { year, gradeLevel } = dto;
 
     // Buscar dados de fluxo escolar (aprovação, abandono, reprovação)
-    const flowData = await this.getSchoolFlowData(institutionId, year, gradeLevel);
+    const flowData = await this.getSchoolFlowData(
+      institutionId,
+      year,
+      gradeLevel,
+    );
 
     // Buscar dados de proficiência SAEB
-    const proficiencyData = await this.getSAEBProficiency(institutionId, year, gradeLevel);
+    const proficiencyData = await this.getSAEBProficiency(
+      institutionId,
+      year,
+      gradeLevel,
+    );
 
     // Calcular IDEB = Taxa de Aprovação × Proficiência Média
-    const idebScore = flowData.approvalRate * proficiencyData.averageProficiency;
+    const idebScore =
+      flowData.approvalRate * proficiencyData.averageProficiency;
 
     // Criar ou atualizar indicador
     const existing = await this.prisma.iDEBIndicator.findUnique({
@@ -140,7 +152,11 @@ export class IDEBService {
   /**
    * Listar indicadores IDEB
    */
-  async getIndicators(institutionId: string, year?: number, gradeLevel?: string) {
+  async getIndicators(
+    institutionId: string,
+    year?: number,
+    gradeLevel?: string,
+  ) {
     const where: any = { institutionId };
 
     if (year) {
@@ -208,7 +224,11 @@ export class IDEBService {
   /**
    * Obter evolução histórica do IDEB
    */
-  async getHistoricalTrend(institutionId: string, gradeLevel: string, limit = 10) {
+  async getHistoricalTrend(
+    institutionId: string,
+    gradeLevel: string,
+    limit = 10,
+  ) {
     const indicators = await this.prisma.iDEBIndicator.findMany({
       where: { institutionId, gradeLevel },
       orderBy: { year: 'desc' },
@@ -231,7 +251,8 @@ export class IDEBService {
     // Calcular média institucional
     const avgIDEB =
       indicators.length > 0
-        ? indicators.reduce((sum, ind) => sum + ind.idebScore, 0) / indicators.length
+        ? indicators.reduce((sum, ind) => sum + ind.idebScore, 0) /
+          indicators.length
         : 0;
 
     // Calcular taxa de alcance de metas
@@ -288,7 +309,8 @@ export class IDEBService {
 
     // Calcular projeções para cada cenário
     const simulations = scenarios.map((scenario) => {
-      const approvalRate = scenario.approvalRate ?? currentIndicator.approvalRate;
+      const approvalRate =
+        scenario.approvalRate ?? currentIndicator.approvalRate;
       const avgProficiency =
         scenario.averageProficiency ?? currentIndicator.averageProficiency;
 
@@ -395,8 +417,7 @@ export class IDEBService {
     }> = [];
 
     // Cenário 1: Manter proficiência, melhorar aprovação
-    const requiredApproval1 =
-      targetIDEB / currentIndicator.averageProficiency;
+    const requiredApproval1 = targetIDEB / currentIndicator.averageProficiency;
     if (requiredApproval1 <= 1) {
       paths.push({
         strategy: 'Foco em reduzir evasão e reprovação',
@@ -406,7 +427,9 @@ export class IDEBService {
         requiredProficiency: currentIndicator.averageProficiency,
         currentApprovalRate: currentIndicator.approvalRate,
         currentProficiency: currentIndicator.averageProficiency,
-        feasible: requiredApproval1 <= 1 && requiredApproval1 > currentIndicator.approvalRate,
+        feasible:
+          requiredApproval1 <= 1 &&
+          requiredApproval1 > currentIndicator.approvalRate,
         effort: this.calculateEffort(
           currentIndicator.approvalRate,
           requiredApproval1,
@@ -427,7 +450,9 @@ export class IDEBService {
         requiredProficiency: requiredProficiency2,
         currentApprovalRate: currentIndicator.approvalRate,
         currentProficiency: currentIndicator.averageProficiency,
-        feasible: requiredProficiency2 <= 10 && requiredProficiency2 > currentIndicator.averageProficiency,
+        feasible:
+          requiredProficiency2 <= 10 &&
+          requiredProficiency2 > currentIndicator.averageProficiency,
         effort: this.calculateEffort(
           currentIndicator.approvalRate,
           currentIndicator.approvalRate,
@@ -505,7 +530,8 @@ export class IDEBService {
     // Recomendações sobre aprovação
     if (scenario.approvalRate && scenario.approvalRate > current.approvalRate) {
       const improvement =
-        ((scenario.approvalRate - current.approvalRate) / current.approvalRate) *
+        ((scenario.approvalRate - current.approvalRate) /
+          current.approvalRate) *
         100;
       recommendations.push(
         `Reduzir evasão e reprovação em ${improvement.toFixed(1)}% para melhorar a taxa de aprovação`,
@@ -533,7 +559,9 @@ export class IDEBService {
       recommendations.push(
         '  - Uso de metodologias ativas e recursos tecnológicos',
       );
-      recommendations.push('  - Simulados e avaliações diagnósticas frequentes');
+      recommendations.push(
+        '  - Simulados e avaliações diagnósticas frequentes',
+      );
     }
 
     if (projectedIDEB > current.idebScore) {
@@ -552,7 +580,11 @@ export class IDEBService {
   /**
    * Obter dados de fluxo escolar (aprovação, abandono, reprovação)
    */
-  private async getSchoolFlowData(institutionId: string, year: number, gradeLevel: string) {
+  private async getSchoolFlowData(
+    institutionId: string,
+    year: number,
+    gradeLevel: string,
+  ) {
     // Buscar todas as turmas do ano/série
     const classes = await this.prisma.class.findMany({
       where: {
@@ -593,9 +625,11 @@ export class IDEBService {
       }
     }
 
-    const approvalRate = totalStudents > 0 ? approvedStudents / totalStudents : 0;
+    const approvalRate =
+      totalStudents > 0 ? approvedStudents / totalStudents : 0;
     const dropoutRate = totalStudents > 0 ? droppedStudents / totalStudents : 0;
-    const repetitionRate = totalStudents > 0 ? repeatedStudents / totalStudents : 0;
+    const repetitionRate =
+      totalStudents > 0 ? repeatedStudents / totalStudents : 0;
 
     return {
       totalStudents,
@@ -608,7 +642,11 @@ export class IDEBService {
   /**
    * Obter proficiência média SAEB
    */
-  private async getSAEBProficiency(institutionId: string, year: number, gradeLevel: string) {
+  private async getSAEBProficiency(
+    institutionId: string,
+    year: number,
+    gradeLevel: string,
+  ) {
     // Buscar todos os simulados SAEB do ano/série
     const exams = await this.prisma.exam.findMany({
       where: {
@@ -675,17 +713,21 @@ export class IDEBService {
     );
 
     const mathCorrect = mathAnswers.filter((a) => a.isCorrect).length;
-    const portugueseCorrect = portugueseAnswers.filter((a) => a.isCorrect).length;
+    const portugueseCorrect = portugueseAnswers.filter(
+      (a) => a.isCorrect,
+    ).length;
 
     const mathProficiency =
       mathAnswers.length > 0 ? (mathCorrect / mathAnswers.length) * 10 : null;
     const portugueseProficiency =
-      portugueseAnswers.length > 0 ? (portugueseCorrect / portugueseAnswers.length) * 10 : null;
+      portugueseAnswers.length > 0
+        ? (portugueseCorrect / portugueseAnswers.length) * 10
+        : null;
 
     // Proficiência média geral
     const proficiencies = [mathProficiency, portugueseProficiency].filter(
       (p) => p !== null,
-    ) as number[];
+    );
     const averageProficiency =
       proficiencies.length > 0
         ? proficiencies.reduce((sum, p) => sum + p, 0) / proficiencies.length

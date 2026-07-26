@@ -14,6 +14,221 @@ import { UserRole } from '@prisma/client';
 export class AnnouncementsService {
   constructor(private prisma: PrismaService) {}
 
+  private getPublishDate(scheduledFor?: string | null) {
+    if (!scheduledFor) {
+      return new Date();
+    }
+
+    return new Date(scheduledFor);
+  }
+
+  private normalizeUserIds(ids?: string[]) {
+    return Array.from(new Set((ids ?? []).filter(Boolean)));
+  }
+
+  private isManagementRole(role: UserRole) {
+    return [
+      UserRole.SUPER_ADMIN,
+      UserRole.INSTITUTION_ADMIN,
+      UserRole.COORDINATOR,
+    ].includes(role);
+  }
+
+  private async validateSpecificRecipients(
+    institutionId: string,
+    targetStudentIds?: string[],
+    targetParentIds?: string[],
+  ) {
+    const normalizedStudentIds = this.normalizeUserIds(targetStudentIds);
+    const normalizedParentIds = this.normalizeUserIds(targetParentIds);
+    const requestedIds = [
+      ...normalizedStudentIds,
+      ...normalizedParentIds,
+    ];
+
+    if (requestedIds.length === 0) {
+      return {
+        targetStudentIds: normalizedStudentIds,
+        targetParentIds: normalizedParentIds,
+      };
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        id: { in: requestedIds },
+      },
+      select: {
+        id: true,
+        role: true,
+        institutionId: true,
+      },
+    });
+
+    if (users.length !== requestedIds.length) {
+      throw new NotFoundException('One or more specific recipients were not found');
+    }
+
+    const userMap = new Map(users.map((user) => [user.id, user]));
+
+    normalizedStudentIds.forEach((id) => {
+      const user = userMap.get(id);
+      if (!user || user.role !== UserRole.STUDENT) {
+        throw new BadRequestException('Specific student recipients must be student users');
+      }
+      if (user.institutionId !== institutionId) {
+        throw new ForbiddenException(
+          'Specific student recipients must belong to the same institution',
+        );
+      }
+    });
+
+    normalizedParentIds.forEach((id) => {
+      const user = userMap.get(id);
+      if (!user || user.role !== UserRole.PARENT) {
+        throw new BadRequestException('Specific parent recipients must be parent users');
+      }
+      if (user.institutionId !== institutionId) {
+        throw new ForbiddenException(
+          'Specific parent recipients must belong to the same institution',
+        );
+      }
+    });
+
+    return {
+      targetStudentIds: normalizedStudentIds,
+      targetParentIds: normalizedParentIds,
+    };
+  }
+
+  private async getLinkedStudentUserIdsForParent(parentUserId: string) {
+    const links = await this.prisma.studentParent.findMany({
+      where: {
+        parent: {
+          userId: parentUserId,
+        },
+      },
+      select: {
+        student: {
+          select: {
+            userId: true,
+          },
+        },
+      },
+    });
+
+    return this.normalizeUserIds(
+      links
+        .map((link) => link.student.userId)
+        .filter((userId): userId is string => Boolean(userId)),
+    );
+  }
+
+  private async buildRecipientVisibilityWhere(currentUser: any) {
+    if (this.isManagementRole(currentUser.role)) {
+      return null;
+    }
+
+    if (currentUser.role === UserRole.STUDENT) {
+      return {
+        OR: [
+          {
+            AND: [
+              { targetRoles: { has: UserRole.STUDENT } },
+              { targetStudentIds: { isEmpty: true } },
+            ],
+          },
+          {
+            targetStudentIds: {
+              has: currentUser.userId,
+            },
+          },
+        ],
+      };
+    }
+
+    if (currentUser.role === UserRole.PARENT) {
+      const linkedStudentUserIds = await this.getLinkedStudentUserIdsForParent(
+        currentUser.userId,
+      );
+
+      const parentConditions: any[] = [
+        {
+          AND: [
+            { targetRoles: { has: UserRole.PARENT } },
+            { targetParentIds: { isEmpty: true } },
+          ],
+        },
+        {
+          targetParentIds: {
+            has: currentUser.userId,
+          },
+        },
+      ];
+
+      if (linkedStudentUserIds.length > 0) {
+        parentConditions.push({
+          targetStudentIds: {
+            hasSome: linkedStudentUserIds,
+          },
+        });
+      }
+
+      return {
+        OR: parentConditions,
+      };
+    }
+
+    return {
+      targetRoles: {
+        has: currentUser.role,
+      },
+    };
+  }
+
+  private async hasRecipientAccess(announcement: any, currentUser: any) {
+    if (this.isManagementRole(currentUser.role)) {
+      return true;
+    }
+
+    const targetStudentIds = announcement.targetStudentIds ?? [];
+    const targetParentIds = announcement.targetParentIds ?? [];
+
+    if (currentUser.role === UserRole.STUDENT) {
+      if (targetStudentIds.includes(currentUser.userId)) {
+        return true;
+      }
+
+      return (
+        announcement.targetRoles.includes(UserRole.STUDENT) &&
+        targetStudentIds.length === 0
+      );
+    }
+
+    if (currentUser.role === UserRole.PARENT) {
+      if (targetParentIds.includes(currentUser.userId)) {
+        return true;
+      }
+
+      const linkedStudentUserIds = await this.getLinkedStudentUserIdsForParent(
+        currentUser.userId,
+      );
+      if (
+        linkedStudentUserIds.some((studentUserId) =>
+          targetStudentIds.includes(studentUserId),
+        )
+      ) {
+        return true;
+      }
+
+      return (
+        announcement.targetRoles.includes(UserRole.PARENT) &&
+        targetParentIds.length === 0
+      );
+    }
+
+    return announcement.targetRoles.includes(currentUser.role);
+  }
+
   async create(createAnnouncementDto: CreateAnnouncementDto, userId: string) {
     // Require institutionId
     if (!createAnnouncementDto.institutionId) {
@@ -29,18 +244,35 @@ export class AnnouncementsService {
       throw new NotFoundException('Institution not found');
     }
 
+    const specificRecipients = await this.validateSpecificRecipients(
+      createAnnouncementDto.institutionId,
+      createAnnouncementDto.targetStudentIds,
+      createAnnouncementDto.targetParentIds,
+    );
+
+    const publishDate = this.getPublishDate(createAnnouncementDto.scheduledFor);
+    const now = new Date();
+
+    if (Number.isNaN(publishDate.getTime())) {
+      throw new BadRequestException('Scheduled publish date is invalid');
+    }
+
+    if (createAnnouncementDto.scheduledFor && publishDate <= now) {
+      throw new BadRequestException(
+        'Scheduled publish date must be in the future',
+      );
+    }
+
     // Validate expiration date
     if (createAnnouncementDto.expiresAt) {
       const expiresDate = new Date(createAnnouncementDto.expiresAt);
-      const currentDate = new Date();
 
-      if (expiresDate <= currentDate) {
-        throw new BadRequestException('Expiration date must be in the future');
+      if (expiresDate <= publishDate) {
+        throw new BadRequestException(
+          'Expiration date must be after publish date',
+        );
       }
     }
-
-    // Published immediately by default
-    const isPublished = true;
 
     const announcement = await this.prisma.announcement.create({
       data: {
@@ -48,6 +280,8 @@ export class AnnouncementsService {
         content: createAnnouncementDto.content,
         priority: createAnnouncementDto.priority,
         targetRoles: createAnnouncementDto.targetRoles,
+        targetStudentIds: specificRecipients.targetStudentIds,
+        targetParentIds: specificRecipients.targetParentIds,
         institutionId: createAnnouncementDto.institutionId,
         expiresAt: createAnnouncementDto.expiresAt
           ? new Date(createAnnouncementDto.expiresAt)
@@ -56,8 +290,8 @@ export class AnnouncementsService {
           ? JSON.stringify(createAnnouncementDto.attachments)
           : null,
         createdById: userId,
-        isPublished,
-        publishedAt: isPublished ? new Date() : null,
+        isPublished: true,
+        publishedAt: publishDate,
       },
       include: {
         createdBy: {
@@ -89,63 +323,63 @@ export class AnnouncementsService {
     const skip = (page - 1) * limit;
 
     // Build where clause
-    const where: any = {};
+    const where: any = { AND: [] };
 
     if (search) {
-      where.OR = [
-        {
-          title: {
-            contains: search,
-            mode: 'insensitive',
+      where.AND.push({
+        OR: [
+          {
+            title: {
+              contains: search,
+              mode: 'insensitive',
+            },
           },
-        },
-        {
-          content: {
-            contains: search,
-            mode: 'insensitive',
+          {
+            content: {
+              contains: search,
+              mode: 'insensitive',
+            },
           },
-        },
-      ];
+        ],
+      });
     }
 
     if (priority) {
-      where.priority = priority;
+      where.AND.push({ priority });
     }
 
-    // Filter by published status
     if (onlyPublished) {
-      where.isPublished = true;
+      where.AND.push({ isPublished: true });
+      where.AND.push({
+        OR: [{ publishedAt: null }, { publishedAt: { lte: new Date() } }],
+      });
     }
 
-    // Filter by active status (not expired)
     if (onlyActive) {
-      where.OR = [
-        { expiresAt: null },
-        { expiresAt: { gt: new Date() } },
-      ];
+      where.AND.push({
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      });
     }
 
-    // Filter by institution
     if (currentUser.role !== UserRole.SUPER_ADMIN) {
-      // Non-super admins can only see announcements for their institution or global announcements
-      where.OR = [
-        { institutionId: currentUser.institutionId },
-        { institutionId: null }, // Global announcements
-      ];
+      where.AND.push({
+        OR: [{ institutionId: currentUser.institutionId }, { institutionId: null }],
+      });
     } else if (institutionId) {
-      where.institutionId = institutionId;
+      where.AND.push({ institutionId });
     }
 
-    // Filter by target role
     if (targetRole) {
-      where.targetRoles = {
-        has: targetRole,
-      };
-    } else if (currentUser.role !== UserRole.SUPER_ADMIN) {
-      // Filter announcements relevant to user's role
-      where.targetRoles = {
-        has: currentUser.role,
-      };
+      where.AND.push({
+        targetRoles: {
+          has: targetRole,
+        },
+      });
+    } else {
+      const recipientWhere = await this.buildRecipientVisibilityWhere(currentUser);
+      if (recipientWhere) {
+        where.AND.push(recipientWhere);
+      }
     }
 
     const [announcements, total] = await Promise.all([
@@ -153,10 +387,7 @@ export class AnnouncementsService {
         where,
         skip,
         take: limit,
-        orderBy: [
-          { priority: 'desc' },
-          { publishedAt: 'desc' },
-        ],
+        orderBy: [{ priority: 'desc' }, { publishedAt: 'desc' }],
         include: {
           createdBy: {
             select: {
@@ -204,12 +435,16 @@ export class AnnouncementsService {
     }
 
     // Check access permissions
-    this.checkAccessPermission(announcement, currentUser);
+    await this.checkAccessPermission(announcement, currentUser);
 
     return announcement;
   }
 
-  async update(id: string, updateAnnouncementDto: UpdateAnnouncementDto, currentUser: any) {
+  async update(
+    id: string,
+    updateAnnouncementDto: UpdateAnnouncementDto,
+    currentUser: any,
+  ) {
     const announcement = await this.prisma.announcement.findUnique({
       where: { id },
       include: {
@@ -235,24 +470,61 @@ export class AnnouncementsService {
       }
     }
 
+    const effectiveInstitutionId =
+      updateAnnouncementDto.institutionId ?? announcement.institutionId;
+
+    const specificRecipients = await this.validateSpecificRecipients(
+      effectiveInstitutionId,
+      updateAnnouncementDto.targetStudentIds ?? announcement.targetStudentIds,
+      updateAnnouncementDto.targetParentIds ?? announcement.targetParentIds,
+    );
 
     // Validate expiration date if being updated
     if (updateAnnouncementDto.expiresAt) {
       const expiresDate = new Date(updateAnnouncementDto.expiresAt);
-      const referenceDate = announcement.publishedAt || new Date();
+      const referenceDate = updateAnnouncementDto.scheduledFor
+        ? this.getPublishDate(updateAnnouncementDto.scheduledFor)
+        : announcement.publishedAt || new Date();
 
       if (expiresDate <= referenceDate) {
-        throw new BadRequestException('Expiration date must be after publish date');
+        throw new BadRequestException(
+          'Expiration date must be after publish date',
+        );
       }
     }
 
     // Prepare update data
     const updateData: any = { ...updateAnnouncementDto };
+    updateData.targetStudentIds = specificRecipients.targetStudentIds;
+    updateData.targetParentIds = specificRecipients.targetParentIds;
+    if (updateAnnouncementDto.scheduledFor) {
+      const scheduledPublishDate = this.getPublishDate(
+        updateAnnouncementDto.scheduledFor,
+      );
+
+      if (Number.isNaN(scheduledPublishDate.getTime())) {
+        throw new BadRequestException('Scheduled publish date is invalid');
+      }
+
+      if (scheduledPublishDate <= new Date()) {
+        throw new BadRequestException(
+          'Scheduled publish date must be in the future',
+        );
+      }
+
+      updateData.isPublished = true;
+      updateData.publishedAt = scheduledPublishDate;
+    }
     if (updateAnnouncementDto.expiresAt) {
       updateData.expiresAt = new Date(updateAnnouncementDto.expiresAt);
     }
+    if (updateAnnouncementDto.expiresAt === null) {
+      updateData.expiresAt = null;
+    }
     if (updateAnnouncementDto.attachments) {
-      updateData.attachments = JSON.stringify(updateAnnouncementDto.attachments);
+      updateData.attachments = JSON.stringify(
+        updateAnnouncementDto.attachments,
+      );
     }
 
     return this.prisma.announcement.update({
@@ -309,7 +581,12 @@ export class AnnouncementsService {
     // Check permissions
     this.checkEditPermission(announcement, currentUser);
 
-    if (announcement.isPublished) {
+    const isScheduledForFuture =
+      announcement.isPublished &&
+      Boolean(announcement.publishedAt) &&
+      new Date(announcement.publishedAt as Date).getTime() > Date.now();
+
+    if (announcement.isPublished && !isScheduledForFuture) {
       throw new BadRequestException('Announcement is already published');
     }
 
@@ -372,7 +649,7 @@ export class AnnouncementsService {
     });
   }
 
-  private checkAccessPermission(announcement: any, currentUser: any) {
+  private async checkAccessPermission(announcement: any, currentUser: any) {
     // SUPER_ADMIN can access everything
     if (currentUser.role === UserRole.SUPER_ADMIN) {
       return;
@@ -383,12 +660,20 @@ export class AnnouncementsService {
       announcement.institutionId &&
       announcement.institutionId !== currentUser.institutionId
     ) {
-      throw new ForbiddenException('You do not have access to this announcement');
+      throw new ForbiddenException(
+        'You do not have access to this announcement',
+      );
     }
 
-    // Check if announcement targets user's role
-    if (!announcement.targetRoles.includes(currentUser.role)) {
-      throw new ForbiddenException('This announcement is not targeted to your role');
+    if (this.isManagementRole(currentUser.role)) {
+      return;
+    }
+
+    const hasAccess = await this.hasRecipientAccess(announcement, currentUser);
+    if (!hasAccess) {
+      throw new ForbiddenException(
+        'This announcement is not targeted to your role',
+      );
     }
   }
 
@@ -400,35 +685,37 @@ export class AnnouncementsService {
 
     // INSTITUTION_ADMIN and COORDINATOR can edit announcements in their institution
     if (
-      [UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR].includes(currentUser.role)
+      [UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR].includes(
+        currentUser.role,
+      )
     ) {
       // Check if announcement is for user's institution
       if (
         announcement.institutionId &&
         announcement.institutionId !== currentUser.institutionId
       ) {
-        throw new ForbiddenException('You do not have access to edit this announcement');
+        throw new ForbiddenException(
+          'You do not have access to edit this announcement',
+        );
       }
       return;
     }
 
     // Other roles cannot edit announcements
-    throw new ForbiddenException('You do not have permission to edit announcements');
+    throw new ForbiddenException(
+      'You do not have permission to edit announcements',
+    );
   }
 
   async findActiveForUser(currentUser: any) {
     // Build where clause for active, published announcements
     const where: any = {
       isPublished: true,
-      OR: [
-        { expiresAt: null },
-        { expiresAt: { gt: new Date() } },
-      ],
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
     };
 
     // Filter by institution
     if (currentUser.role !== UserRole.SUPER_ADMIN) {
-      // Non-super admins can only see announcements for their institution or global announcements
       where.AND = [
         {
           OR: [
@@ -436,21 +723,20 @@ export class AnnouncementsService {
             { institutionId: null }, // Global announcements
           ],
         },
-        // Filter announcements relevant to user's role
         {
-          targetRoles: {
-            has: currentUser.role,
-          },
+          OR: [{ publishedAt: null }, { publishedAt: { lte: new Date() } }],
         },
       ];
     }
 
+    const recipientWhere = await this.buildRecipientVisibilityWhere(currentUser);
+    if (recipientWhere) {
+      where.AND = [...(where.AND ?? []), recipientWhere];
+    }
+
     const announcements = await this.prisma.announcement.findMany({
       where,
-      orderBy: [
-        { priority: 'desc' },
-        { publishedAt: 'desc' },
-      ],
+      orderBy: [{ priority: 'desc' }, { publishedAt: 'desc' }],
       include: {
         createdBy: {
           select: {

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateObservationDto } from './dto/create-observation.dto';
 import { UpdateObservationDto } from './dto/update-observation.dto';
@@ -75,7 +79,16 @@ export class ObservationsService {
   }
 
   async findAll(query: QueryObservationDto, currentUser: any) {
-    const { page = 1, limit = 10, studentId, type, classId, institutionId, fromDate, toDate } = query;
+    const {
+      page = 1,
+      limit = 10,
+      studentId,
+      type,
+      classId,
+      institutionId,
+      fromDate,
+      toDate,
+    } = query;
     const skip = (page - 1) * limit;
 
     // Build where clause based on filters
@@ -135,7 +148,7 @@ export class ObservationsService {
       });
 
       if (parent) {
-        const studentIds = parent.children.map(sp => sp.studentId);
+        const studentIds = parent.children.map((sp) => sp.studentId);
         where.studentId = { in: studentIds };
         where.isPrivate = false;
       } else {
@@ -252,7 +265,9 @@ export class ObservationsService {
         include: { children: true },
       });
 
-      const hasAccess = parent?.children.some(sp => sp.studentId === studentId);
+      const hasAccess = parent?.children.some(
+        (sp) => sp.studentId === studentId,
+      );
       if (!hasAccess) {
         throw new ForbiddenException('You do not have access to this student');
       }
@@ -287,7 +302,11 @@ export class ObservationsService {
     return observations;
   }
 
-  async update(id: string, updateObservationDto: UpdateObservationDto, currentUser: any) {
+  async update(
+    id: string,
+    updateObservationDto: UpdateObservationDto,
+    currentUser: any,
+  ) {
     const observation = await this.prisma.studentObservation.findUnique({
       where: { id },
       include: {
@@ -309,13 +328,19 @@ export class ObservationsService {
       currentUser.role !== UserRole.INSTITUTION_ADMIN &&
       observation.teacherId !== currentUser.teacherId
     ) {
-      throw new ForbiddenException('You do not have permission to update this observation');
+      throw new ForbiddenException(
+        'You do not have permission to update this observation',
+      );
     }
 
     // Check institution access for non-SUPER_ADMIN
     if (currentUser.role !== UserRole.SUPER_ADMIN) {
-      if (observation.student.user.institutionId !== currentUser.institutionId) {
-        throw new ForbiddenException('You do not have access to this observation');
+      if (
+        observation.student.user.institutionId !== currentUser.institutionId
+      ) {
+        throw new ForbiddenException(
+          'You do not have access to this observation',
+        );
       }
     }
 
@@ -372,13 +397,19 @@ export class ObservationsService {
       currentUser.role !== UserRole.INSTITUTION_ADMIN &&
       observation.teacherId !== currentUser.teacherId
     ) {
-      throw new ForbiddenException('You do not have permission to delete this observation');
+      throw new ForbiddenException(
+        'You do not have permission to delete this observation',
+      );
     }
 
     // Check institution access for non-SUPER_ADMIN
     if (currentUser.role !== UserRole.SUPER_ADMIN) {
-      if (observation.student.user.institutionId !== currentUser.institutionId) {
-        throw new ForbiddenException('You do not have access to this observation');
+      if (
+        observation.student.user.institutionId !== currentUser.institutionId
+      ) {
+        throw new ForbiddenException(
+          'You do not have access to this observation',
+        );
       }
     }
 
@@ -397,7 +428,9 @@ export class ObservationsService {
 
     // Check institution access
     if (observation.student.user.institutionId !== currentUser.institutionId) {
-      throw new ForbiddenException('You do not have access to this observation');
+      throw new ForbiddenException(
+        'You do not have access to this observation',
+      );
     }
 
     // Parents can only see non-private observations
@@ -427,7 +460,9 @@ export class ObservationsService {
     // Create notifications for each parent
     // This is a placeholder - in a real implementation, you would use a notification service
     // or create notification records in the database
-    console.log(`Sending notifications to ${parents.length} parents for observation ${observationId}`);
+    console.log(
+      `Sending notifications to ${parents.length} parents for observation ${observationId}`,
+    );
 
     // TODO: Implement actual notification sending (email, push notification, etc.)
     // For now, we just log the intent

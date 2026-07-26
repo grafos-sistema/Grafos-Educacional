@@ -37,8 +37,14 @@ export class ClassSubjectsController {
     description: 'Disciplina vinculada com sucesso',
   })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
-  @ApiResponse({ status: 404, description: 'Turma, disciplina ou professor não encontrado' })
-  @ApiResponse({ status: 409, description: 'Disciplina já vinculada a esta turma' })
+  @ApiResponse({
+    status: 404,
+    description: 'Turma, disciplina ou professor não encontrado',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Disciplina já vinculada a esta turma',
+  })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
   create(@Body() createClassSubjectDto: CreateClassSubjectDto) {
     return this.classSubjectsService.create(createClassSubjectDto);

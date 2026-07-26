@@ -1,4 +1,11 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Get } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  Get,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -6,8 +13,20 @@ import {
   ApiCreatedResponse,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto, PublicRegisterDto, RefreshTokenDto, AuthResponseDto } from './dto';
-import { Public, ApiStandardResponses, CurrentUser, Roles, ApiAuth } from '../common/decorators';
+import {
+  LoginDto,
+  RegisterDto,
+  PublicRegisterDto,
+  RefreshTokenDto,
+  AuthResponseDto,
+} from './dto';
+import {
+  Public,
+  ApiStandardResponses,
+  CurrentUser,
+  Roles,
+  ApiAuth,
+} from '../common/decorators';
 import type { CurrentUserPayload } from '../common/decorators';
 import { UserRole } from '@prisma/client';
 
@@ -172,12 +191,18 @@ Retorna os dados do usuário autenticado baseado no token JWT.
     schema: {
       type: 'object',
       properties: {
-        userId: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+        userId: {
+          type: 'string',
+          example: '123e4567-e89b-12d3-a456-426614174000',
+        },
         email: { type: 'string', example: 'usuario@escola.com' },
         firstName: { type: 'string', example: 'João' },
         lastName: { type: 'string', example: 'Silva' },
         role: { type: 'string', example: 'TEACHER' },
-        institutionId: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174001' },
+        institutionId: {
+          type: 'string',
+          example: '123e4567-e89b-12d3-a456-426614174001',
+        },
       },
     },
   })
@@ -289,7 +314,10 @@ Endpoint de exemplo que demonstra o uso de autorização por roles.
     schema: {
       type: 'object',
       properties: {
-        message: { type: 'string', example: 'Acesso permitido para administradores' },
+        message: {
+          type: 'string',
+          example: 'Acesso permitido para administradores',
+        },
         user: {
           type: 'object',
           properties: {

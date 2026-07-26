@@ -59,7 +59,9 @@ export class CreateParentDto {
   })
   @IsOptional()
   @IsString()
-  @MaxLength(200, { message: 'Local de trabalho deve ter no máximo 200 caracteres' })
+  @MaxLength(200, {
+    message: 'Local de trabalho deve ter no máximo 200 caracteres',
+  })
   workPlace?: string;
 
   @ApiProperty({

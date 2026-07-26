@@ -1,4 +1,9 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 export const SKIP_OWNERSHIP_KEY = 'skipOwnership';
@@ -13,10 +18,10 @@ export class OwnershipGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     // Verifica se deve pular a verificação de ownership
-    const skipOwnership = this.reflector.getAllAndOverride<boolean>(SKIP_OWNERSHIP_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const skipOwnership = this.reflector.getAllAndOverride<boolean>(
+      SKIP_OWNERSHIP_KEY,
+      [context.getHandler(), context.getClass()],
+    );
 
     if (skipOwnership) {
       return true;

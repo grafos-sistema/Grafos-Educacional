@@ -17,7 +17,8 @@ export function ApiCommonResponses() {
   return applyDecorators(
     ApiResponse({
       status: 400,
-      description: 'Requisição inválida - Dados fornecidos são inválidos ou incompletos',
+      description:
+        'Requisição inválida - Dados fornecidos são inválidos ou incompletos',
       type: BadRequestResponseDto,
     }),
     ApiResponse({
@@ -27,7 +28,8 @@ export function ApiCommonResponses() {
     }),
     ApiResponse({
       status: 403,
-      description: 'Proibido - Usuário não tem permissão para acessar este recurso',
+      description:
+        'Proibido - Usuário não tem permissão para acessar este recurso',
       type: ForbiddenResponseDto,
     }),
     ApiResponse({
@@ -52,7 +54,9 @@ export function ApiNotFoundResponse(description = 'Registro não encontrado') {
 /**
  * Decorator para endpoints que podem retornar 409
  */
-export function ApiConflictResponse(description = 'Conflito - Registro já existe') {
+export function ApiConflictResponse(
+  description = 'Conflito - Registro já existe',
+) {
   return ApiResponse({
     status: 409,
     description,

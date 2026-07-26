@@ -9,6 +9,10 @@ import {
   CheckCircleIcon,
   ArrowLeftIcon,
   AcademicCapIcon,
+  ExclamationTriangleIcon,
+  ListBulletIcon,
+  PrinterIcon,
+  TableCellsIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
 import { usersService } from '@/services/users.service';
@@ -22,16 +26,17 @@ import { Input } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Modal } from '@/components/ui/Modal';
 import { ClassSubjectsManager } from '@/components/classes/ClassSubjectsManager';
+import {
+  DAY_LABELS,
+  DAYS_OF_WEEK,
+  findScheduleConflicts,
+  formatMonthYear,
+  getUniqueTimeSlots,
+  sortByTime,
+} from '@/lib/schedule-ui';
 
-const DAYS_OF_WEEK: Record<string, string> = {
-  MONDAY: 'Segunda',
-  TUESDAY: 'Terça',
-  WEDNESDAY: 'Quarta',
-  THURSDAY: 'Quinta',
-  FRIDAY: 'Sexta',
-  SATURDAY: 'Sábado',
-  SUNDAY: 'Domingo',
-};
+type AdminScheduleTab = 'grade' | 'links' | 'pendencias';
+type AdminGradeView = 'cards' | 'table';
 
 export default function TeacherSchedulesPage() {
   const router = useRouter();
@@ -41,11 +46,14 @@ export default function TeacherSchedulesPage() {
     currentRole === UserRole.SUPER_ADMIN || currentRole === UserRole.COORDINATOR;
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
+  const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split('T')[0]
   );
   const [showLinksModal, setShowLinksModal] = useState(false);
   const [selectedManageClassId, setSelectedManageClassId] = useState('');
+  const [activeTab, setActiveTab] = useState<AdminScheduleTab>('grade');
+  const [gradeView, setGradeView] = useState<AdminGradeView>('cards');
 
   // Buscar professores
   const { data: teachersData } = useQuery({
@@ -135,6 +143,29 @@ export default function TeacherSchedulesPage() {
 
   const classOptions = useMemo(
     () => [
+      { value: '', label: 'Todas as turmas' },
+      ...Array.from(
+        new Map(
+          teacherClasses.map((item) => [
+            item.class.id,
+            {
+              value: item.class.id,
+              label: `${item.class.name} - ${item.class.shift || 'Sem turno'}`,
+            },
+          ])
+        ).values()
+      ),
+    ],
+    [teacherClasses]
+  );
+
+  const selectedManageClass = useMemo(
+    () => availableClasses.find((item) => item.id === selectedManageClassId),
+    [availableClasses, selectedManageClassId]
+  );
+
+  const manageClassOptions = useMemo(
+    () => [
       { value: '', label: 'Selecione uma turma...' },
       ...availableClasses.map((item) => ({
         value: item.id,
@@ -142,11 +173,6 @@ export default function TeacherSchedulesPage() {
       })),
     ],
     [availableClasses]
-  );
-
-  const selectedManageClass = useMemo(
-    () => availableClasses.find((item) => item.id === selectedManageClassId),
-    [availableClasses, selectedManageClassId]
   );
 
   const classSubjectToSubjectId = useMemo(
@@ -160,36 +186,127 @@ export default function TeacherSchedulesPage() {
   );
 
   const filteredAssignments = useMemo(() => {
-    if (!selectedSubjectId) return teacherClasses;
-    return teacherClasses.filter((item) => item.subject?.id === selectedSubjectId);
-  }, [selectedSubjectId, teacherClasses]);
+    return teacherClasses.filter((item) => {
+      if (selectedSubjectId && item.subject?.id !== selectedSubjectId) return false;
+      if (selectedClassId && item.class.id !== selectedClassId) return false;
+      return true;
+    });
+  }, [selectedClassId, selectedSubjectId, teacherClasses]);
 
   const filteredSchedule = useMemo(() => {
-    if (!selectedSubjectId) return schedule || [];
-    return (schedule || []).filter(
-      (item) => classSubjectToSubjectId.get(item.classSubjectId) === selectedSubjectId
-    );
-  }, [classSubjectToSubjectId, schedule, selectedSubjectId]);
+    return (schedule || []).filter((item) => {
+      if (selectedSubjectId && classSubjectToSubjectId.get(item.classSubjectId) !== selectedSubjectId) {
+        return false;
+      }
+
+      if (selectedClassId && item.classId !== selectedClassId) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [classSubjectToSubjectId, schedule, selectedClassId, selectedSubjectId]);
 
   const filteredAttendances = useMemo(() => {
-    if (!selectedSubjectId) return attendances || [];
-    return (attendances || []).filter(
-      (item) => classSubjectToSubjectId.get(item.classSubjectId) === selectedSubjectId
-    );
-  }, [attendances, classSubjectToSubjectId, selectedSubjectId]);
+    return (attendances || []).filter((item) => {
+      if (selectedSubjectId && classSubjectToSubjectId.get(item.classSubjectId) !== selectedSubjectId) {
+        return false;
+      }
 
-  // Agrupar horários por dia da semana
-  const scheduleByDay = filteredSchedule.reduce((acc, item) => {
-    if (!acc[item.dayOfWeek]) {
-      acc[item.dayOfWeek] = [];
-    }
-    acc[item.dayOfWeek].push(item);
-    return acc;
-  }, {} as Record<string, typeof filteredSchedule>);
+      const assignment = teacherClasses.find((teacherClass) => teacherClass.id === item.classSubjectId);
+      if (selectedClassId && assignment?.class.id !== selectedClassId) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [attendances, classSubjectToSubjectId, selectedClassId, selectedSubjectId, teacherClasses]);
+
+  const scheduleByDay = useMemo(
+    () =>
+      DAYS_OF_WEEK.reduce<Record<string, typeof filteredSchedule>>((acc, day) => {
+        acc[day.value] = sortByTime(
+          filteredSchedule.filter((item) => item.dayOfWeek === day.value)
+        );
+        return acc;
+      }, {}),
+    [filteredSchedule]
+  );
+
+  const timeSlots = useMemo(() => getUniqueTimeSlots(filteredSchedule), [filteredSchedule]);
+
+  const assignmentsWithoutSchedule = useMemo(
+    () =>
+      filteredAssignments.filter(
+        (item) => !filteredSchedule.some((scheduleItem) => scheduleItem.classSubjectId === item.id)
+      ),
+    [filteredAssignments, filteredSchedule]
+  );
+
+  const schedulesWithoutRoom = useMemo(
+    () => filteredSchedule.filter((item) => !item.room),
+    [filteredSchedule]
+  );
+
+  const attendanceClassSubjectIds = useMemo(
+    () => new Set(filteredAttendances.map((item) => item.classSubjectId)),
+    [filteredAttendances]
+  );
+
+  const assignmentsWithoutAttendance = useMemo(
+    () =>
+      filteredAssignments.filter((item) => {
+        const hasSchedule = filteredSchedule.some((scheduleItem) => scheduleItem.classSubjectId === item.id);
+        return hasSchedule && !attendanceClassSubjectIds.has(item.id);
+      }),
+    [attendanceClassSubjectIds, filteredAssignments, filteredSchedule]
+  );
+
+  const scheduleConflicts = useMemo(
+    () =>
+      findScheduleConflicts(
+        filteredSchedule.map((item) => ({
+          id: `${item.classSubjectId}-${item.dayOfWeek}-${item.startTime}`,
+          dayOfWeek: item.dayOfWeek,
+          startTime: item.startTime,
+          endTime: item.endTime,
+        }))
+      ),
+    [filteredSchedule]
+  );
+
+  const summaryCards = [
+    {
+      label: 'Vínculos ativos',
+      value: filteredAssignments.length,
+    },
+    {
+      label: 'Turmas filtradas',
+      value: new Set(filteredAssignments.map((item) => item.class.id)).size,
+    },
+    {
+      label: 'Horários lançados',
+      value: filteredSchedule.length,
+    },
+    {
+      label: 'Pendências',
+      value:
+        assignmentsWithoutSchedule.length +
+        schedulesWithoutRoom.length +
+        assignmentsWithoutAttendance.length +
+        scheduleConflicts.size,
+    },
+  ];
+
+  const getScheduleForSlot = (dayOfWeek: string, startTime: string) =>
+    filteredSchedule.find(
+      (item) => item.dayOfWeek === dayOfWeek && item.startTime === startTime
+    ) || null;
+
+  const selectedTeacher = teachers.find((teacher) => teacher.teacherProfile?.id === selectedTeacherId);
 
   return (
     <div className="p-6">
-      {/* Header */}
       <div className="mb-6">
         <Button
           variant="ghost"
@@ -201,37 +318,54 @@ export default function TeacherSchedulesPage() {
         </Button>
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="mb-2 text-2xl font-bold text-gray-900 dark:text-white">
               Grade de Horários
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
-              Visualize vínculos, horários e registros por professor ou disciplina
+              Acompanhe a operação por professor, visualize pendências e abra os vínculos apenas quando precisar ajustar a estrutura.
             </p>
           </div>
-          {canManageClassSubjects && (
+          <div className="flex flex-wrap gap-3">
             <Button
               variant="secondary"
-              onClick={() => setShowLinksModal(true)}
-              leftIcon={<AcademicCapIcon className="h-5 w-5" />}
+              onClick={() => window.print()}
+              leftIcon={<PrinterIcon className="h-5 w-5" />}
             >
-              Gerenciar vínculos
+              Imprimir grade
             </Button>
-          )}
+            {canManageClassSubjects && (
+              <Button
+                variant="secondary"
+                onClick={() => setShowLinksModal(true)}
+                leftIcon={<AcademicCapIcon className="h-5 w-5" />}
+              >
+                Gerenciar vínculos
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Filtros */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="mb-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <Select
             label="Professor"
             value={selectedTeacherId}
             onChange={(e) => {
               setSelectedTeacherId(e.target.value);
               setSelectedSubjectId('');
+              setSelectedClassId('');
+              setActiveTab('grade');
             }}
             required
             options={teacherOptions}
+          />
+          <Select
+            label="Turma"
+            value={selectedClassId}
+            onChange={(e) => setSelectedClassId(e.target.value)}
+            options={classOptions}
+            disabled={!selectedTeacherId}
           />
           <Select
             label="Disciplina"
@@ -239,7 +373,6 @@ export default function TeacherSchedulesPage() {
             onChange={(e) => setSelectedSubjectId(e.target.value)}
             options={subjectOptions}
             disabled={!selectedTeacherId}
-            helperText="Opcional. Filtra os vínculos e horários pela disciplina escolhida."
           />
           <Input
             type="month"
@@ -251,15 +384,14 @@ export default function TeacherSchedulesPage() {
         </div>
       </div>
 
-      {/* Conteúdo */}
       {!selectedTeacherId ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
-          <CalendarIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+        <div className="rounded-lg bg-white p-12 text-center shadow-sm dark:bg-gray-800">
+          <CalendarIcon className="mx-auto mb-4 h-16 w-16 text-gray-400" />
+          <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
             Selecione um professor
           </h3>
           <p className="text-gray-500 dark:text-gray-400">
-            Escolha um professor para visualizar seus horários e registros
+            Escolha um professor para abrir a visão da grade, dos vínculos e das pendências.
           </p>
         </div>
       ) : loadingSchedule ? (
@@ -268,160 +400,368 @@ export default function TeacherSchedulesPage() {
         </div>
       ) : (
         <>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
-              Vínculos do Professor
-            </h2>
-            {filteredAssignments.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredAssignments.map((item) => (
-                  <div
-                    key={item.id}
-                    className="rounded-lg border border-gray-200 dark:border-gray-700 p-4"
-                  >
-                    <div className="flex items-start gap-3">
-                      <AcademicCapIcon className="h-5 w-5 mt-0.5 text-blue-600 dark:text-blue-400" />
-                      <div className="min-w-0">
-                        <div className="font-medium text-gray-900 dark:text-white">
-                          {item.class.name}
-                        </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
-                          {item.subject?.name || item.assignmentLabel}
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {item.assignmentLabel}
-                          {item.weeklyHours ? ` • ${item.weeklyHours} hora(s)/semana` : ''}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {summaryCards.map((card) => (
+              <div
+                key={card.label}
+                className="rounded-lg bg-white p-5 shadow-sm dark:bg-gray-800"
+              >
+                <div className="text-sm text-gray-500 dark:text-gray-400">{card.label}</div>
+                <div className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">
+                  {card.value}
+                </div>
               </div>
-            ) : (
-              <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                Nenhum vínculo de turma/disciplina encontrado para este professor
-              </div>
-            )}
+            ))}
           </div>
 
-          {/* Grade Horária */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
-              Grade Horária
-            </h2>
-            {filteredSchedule.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(DAYS_OF_WEEK).map(([key, label]) => {
-                  const daySchedule = scheduleByDay?.[key] || [];
-                  return (
-                    <div
-                      key={key}
-                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
-                    >
-                      <h3 className="font-semibold mb-3 text-center text-gray-900 dark:text-white">
-                        {label}
-                      </h3>
-                      {daySchedule.length > 0 ? (
-                        <div className="space-y-2">
-                          {daySchedule.map((item, idx) => (
-                            <div
-                              key={idx}
-                              className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
-                            >
-                              <div className="flex items-center gap-2 mb-1">
-                                <ClockIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                  {item.startTime} - {item.endTime}
-                                </span>
-                              </div>
-                              <div className="text-sm text-gray-600 dark:text-gray-400">
-                                {item.className}
-                              </div>
-                              <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                                {item.subjectName}
-                              </div>
-                              {item.room && (
-                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                  Sala: {item.room}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-4">
-                          Sem aulas
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center text-gray-500 dark:text-gray-400 py-8 space-y-2">
-                <p>Nenhum horário cadastrado para este filtro.</p>
-                {filteredAssignments.length > 0 && (
-                  <p className="text-sm">
-                    O professor já possui vínculos com turma/disciplina, mas ainda não há horários
-                    lançados para esses vínculos.
+          <div className="mb-6 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-800">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={activeTab === 'grade' ? 'primary' : 'secondary'}
+                onClick={() => setActiveTab('grade')}
+                leftIcon={<TableCellsIcon className="h-5 w-5" />}
+              >
+                Visão da Grade
+              </Button>
+              <Button
+                variant={activeTab === 'links' ? 'primary' : 'secondary'}
+                onClick={() => setActiveTab('links')}
+                leftIcon={<AcademicCapIcon className="h-5 w-5" />}
+              >
+                Vínculos
+              </Button>
+              <Button
+                variant={activeTab === 'pendencias' ? 'primary' : 'secondary'}
+                onClick={() => setActiveTab('pendencias')}
+                leftIcon={<ExclamationTriangleIcon className="h-5 w-5" />}
+              >
+                Pendências
+              </Button>
+            </div>
+          </div>
+
+          {activeTab === 'grade' && (
+            <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+              <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    Grade semanal de {selectedTeacher?.firstName} {selectedTeacher?.lastName}
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Período de presença: {formatMonthYear(selectedDate)}
                   </p>
-                )}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant={gradeView === 'cards' ? 'primary' : 'secondary'}
+                    onClick={() => setGradeView('cards')}
+                    leftIcon={<ListBulletIcon className="h-5 w-5" />}
+                  >
+                    Cards
+                  </Button>
+                  <Button
+                    variant={gradeView === 'table' ? 'primary' : 'secondary'}
+                    onClick={() => setGradeView('table')}
+                    leftIcon={<TableCellsIcon className="h-5 w-5" />}
+                  >
+                    Grade
+                  </Button>
+                </div>
               </div>
-            )}
-          </div>
 
-          {/* Registros de Presença */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
-              Registros de Presença -{' '}
-              {new Date(selectedDate).toLocaleDateString('pt-BR', {
-                month: 'long',
-                year: 'numeric',
-              })}
-            </h2>
-            {filteredAttendances.length > 0 ? (
-              <div className="space-y-2">
-                {filteredAttendances.map((att) => {
-                  const scheduleItem = filteredSchedule.find(
-                    (s) => s.classSubjectId === att.classSubjectId
-                  );
-                  return (
-                    <div
-                      key={att.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      <div className="flex items-center gap-4">
-                        <CheckCircleIcon className="h-6 w-6 text-green-600" />
-                        <div>
-                          <div className="font-medium text-gray-900 dark:text-white">
-                            {new Date(att.date).toLocaleDateString('pt-BR', {
-                              weekday: 'long',
-                              day: '2-digit',
-                              month: '2-digit',
-                              year: 'numeric',
+              {filteredSchedule.length > 0 ? (
+                gradeView === 'cards' ? (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {DAYS_OF_WEEK.map((day) => {
+                      const daySchedule = scheduleByDay[day.value] || [];
+                      return (
+                        <div
+                          key={day.value}
+                          className="rounded-lg border border-gray-200 p-4 dark:border-gray-700"
+                        >
+                          <div className="mb-3 flex items-center justify-between">
+                            <div className="font-semibold text-gray-900 dark:text-white">
+                              {day.shortLabel}
+                            </div>
+                            <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                              {day.abbr}
+                            </span>
+                          </div>
+                          {daySchedule.length > 0 ? (
+                            <div className="space-y-3">
+                              {daySchedule.map((item) => (
+                                <div
+                                  key={`${item.classSubjectId}-${item.dayOfWeek}-${item.startTime}`}
+                                  className="rounded-lg bg-gray-50 p-3 dark:bg-gray-700/50"
+                                >
+                                  <div className="mb-1 flex items-center gap-2">
+                                    <ClockIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                      {item.startTime} - {item.endTime}
+                                    </span>
+                                  </div>
+                                  <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {item.subjectName}
+                                  </div>
+                                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                                    {item.className}
+                                  </div>
+                                  <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    {item.room ? `Sala ${item.room}` : 'Sala pendente'}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                              Sem aulas
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 dark:bg-gray-700">
+                          <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:border-gray-600 dark:text-white">
+                            Horário
+                          </th>
+                          {DAYS_OF_WEEK.map((day) => (
+                            <th
+                              key={day.value}
+                              className="border border-gray-200 px-4 py-3 text-center text-sm font-semibold text-gray-900 dark:border-gray-600 dark:text-white"
+                            >
+                              <div>{day.abbr}</div>
+                              <div className="text-xs font-normal text-gray-500 dark:text-gray-400">
+                                {day.shortLabel}
+                              </div>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {timeSlots.map((time) => (
+                          <tr key={time}>
+                            <td className="border border-gray-200 px-4 py-3 text-sm font-medium text-gray-900 dark:border-gray-600 dark:text-white">
+                              {time}
+                            </td>
+                            {DAYS_OF_WEEK.map((day) => {
+                              const item = getScheduleForSlot(day.value, time);
+                              return (
+                                <td
+                                  key={`${day.value}-${time}`}
+                                  className="border border-gray-200 px-2 py-2 align-top dark:border-gray-600"
+                                >
+                                  {item ? (
+                                    <div className="rounded-lg bg-blue-50 p-3 text-sm dark:bg-blue-900/20">
+                                      <div className="font-semibold text-gray-900 dark:text-white">
+                                        {item.subjectName}
+                                      </div>
+                                      <div className="text-gray-600 dark:text-gray-300">
+                                        {item.className}
+                                      </div>
+                                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                                        {item.startTime} - {item.endTime}
+                                        {item.room ? ` • Sala ${item.room}` : ' • Sala pendente'}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="h-20 rounded-lg border border-dashed border-gray-200 dark:border-gray-700" />
+                                  )}
+                                </td>
+                              );
                             })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              ) : (
+                <div className="space-y-2 py-8 text-center text-gray-500 dark:text-gray-400">
+                  <p>Nenhum horário cadastrado para este filtro.</p>
+                  {filteredAssignments.length > 0 && (
+                    <p className="text-sm">
+                      Há vínculos ativos para este professor, mas os horários ainda não foram lançados.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'links' && (
+            <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+              <h2 className="mb-4 text-xl font-semibold text-gray-900 dark:text-white">
+                Vínculos do Professor
+              </h2>
+              {filteredAssignments.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {filteredAssignments.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-lg border border-gray-200 p-4 dark:border-gray-700"
+                    >
+                      <div className="flex items-start gap-3">
+                        <AcademicCapIcon className="mt-0.5 h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        <div className="min-w-0">
+                          <div className="font-medium text-gray-900 dark:text-white">
+                            {item.class.name}
                           </div>
                           <div className="text-sm text-gray-600 dark:text-gray-400">
-                            {scheduleItem?.className} - {scheduleItem?.subjectName}
+                            {item.subject?.name || item.assignmentLabel}
+                          </div>
+                          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            {item.assignmentLabel}
+                            {item.weeklyHours ? ` • ${item.weeklyHours} hora(s)/semana` : ''}
                           </div>
                         </div>
                       </div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(att.checkInTime).toLocaleTimeString('pt-BR', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+              ) : (
+                <div className="py-8 text-center text-gray-500 dark:text-gray-400">
+                  Nenhum vínculo encontrado para os filtros selecionados.
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'pendencias' && (
+            <div className="space-y-6">
+              <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+                <div className="mb-4 flex items-center gap-2">
+                  <ExclamationTriangleIcon className="h-5 w-5 text-amber-600" />
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    Pendências de operação
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                    <div className="mb-2 font-medium text-gray-900 dark:text-white">
+                      Vínculos sem horário
+                    </div>
+                    {assignmentsWithoutSchedule.length > 0 ? (
+                      <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                        {assignmentsWithoutSchedule.map((item) => (
+                          <div key={item.id}>
+                            {item.class.name} • {item.subject?.name || item.assignmentLabel}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        Nenhuma pendência nessa categoria.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                    <div className="mb-2 font-medium text-gray-900 dark:text-white">
+                      Horários sem sala
+                    </div>
+                    {schedulesWithoutRoom.length > 0 ? (
+                      <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                        {schedulesWithoutRoom.map((item) => (
+                          <div key={`${item.classSubjectId}-${item.dayOfWeek}-${item.startTime}`}>
+                            {DAY_LABELS[item.dayOfWeek]} • {item.subjectName} • {item.className}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        Todas as aulas possuem sala informada.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                    <div className="mb-2 font-medium text-gray-900 dark:text-white">
+                      Sem presença no período
+                    </div>
+                    {assignmentsWithoutAttendance.length > 0 ? (
+                      <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                        {assignmentsWithoutAttendance.map((item) => (
+                          <div key={item.id}>
+                            {item.class.name} • {item.subject?.name || item.assignmentLabel}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        Todos os vínculos com horário já possuem registros no mês.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                    <div className="mb-2 font-medium text-gray-900 dark:text-white">
+                      Choques de horário
+                    </div>
+                    <div className="text-3xl font-bold text-gray-900 dark:text-white">
+                      {scheduleConflicts.size}
+                    </div>
+                    <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                      Revise os lançamentos se houver aulas sobrepostas para o mesmo professor.
+                    </div>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                Nenhum registro de presença neste período para o filtro selecionado
+
+              <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+                <h2 className="mb-4 text-xl font-semibold text-gray-900 dark:text-white">
+                  Registros de Presença - {formatMonthYear(selectedDate)}
+                </h2>
+                {filteredAttendances.length > 0 ? (
+                  <div className="space-y-2">
+                    {filteredAttendances.map((att) => {
+                      const scheduleItem = filteredSchedule.find(
+                        (item) => item.classSubjectId === att.classSubjectId
+                      );
+
+                      return (
+                        <div
+                          key={att.id}
+                          className="flex items-center justify-between rounded-lg bg-gray-50 p-4 transition-colors hover:bg-gray-100 dark:bg-gray-700/50 dark:hover:bg-gray-700"
+                        >
+                          <div className="flex items-center gap-4">
+                            <CheckCircleIcon className="h-6 w-6 text-green-600" />
+                            <div>
+                              <div className="font-medium text-gray-900 dark:text-white">
+                                {new Date(att.date).toLocaleDateString('pt-BR', {
+                                  weekday: 'long',
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                })}
+                              </div>
+                              <div className="text-sm text-gray-600 dark:text-gray-400">
+                                {scheduleItem?.className || 'Turma'} - {scheduleItem?.subjectName || 'Disciplina'}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {new Date(att.checkInTime).toLocaleTimeString('pt-BR', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center text-gray-500 dark:text-gray-400">
+                    Nenhum registro de presença encontrado no período filtrado.
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </>
       )}
 
@@ -440,7 +780,7 @@ export default function TeacherSchedulesPage() {
             label="Turma"
             value={selectedManageClassId}
             onChange={(e) => setSelectedManageClassId(e.target.value)}
-            options={classOptions}
+            options={manageClassOptions}
           />
 
           {selectedManageClassId ? (

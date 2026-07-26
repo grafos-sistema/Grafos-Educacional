@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  Query,
-  Param,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Query, Param, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -57,7 +51,8 @@ export class ReportsController {
   @ApiOperation({ summary: 'Get grades report with statistics' })
   @ApiResponse({
     status: 200,
-    description: 'Grades report with summary, details by student and by subject',
+    description:
+      'Grades report with summary, details by student and by subject',
   })
   getGradesReport(
     @Query() query: GradesReportQueryDto,
@@ -74,7 +69,9 @@ export class ReportsController {
     UserRole.TEACHER,
     UserRole.PARENT,
   )
-  @ApiOperation({ summary: 'Get comprehensive performance report for a student' })
+  @ApiOperation({
+    summary: 'Get comprehensive performance report for a student',
+  })
   @ApiParam({
     name: 'studentId',
     description: 'Student ID',
@@ -82,7 +79,8 @@ export class ReportsController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Student performance report including grades, attendance, and observations',
+    description:
+      'Student performance report including grades, attendance, and observations',
   })
   @ApiResponse({
     status: 404,
@@ -114,7 +112,8 @@ export class ReportsController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Class performance report including average grades and attendance',
+    description:
+      'Class performance report including average grades and attendance',
   })
   @ApiResponse({
     status: 404,
@@ -132,11 +131,7 @@ export class ReportsController {
   }
 
   @Get('teacher/:teacherId/summary')
-  @Roles(
-    UserRole.SUPER_ADMIN,
-    UserRole.INSTITUTION_ADMIN,
-    UserRole.COORDINATOR,
-  )
+  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
   @ApiOperation({ summary: 'Get summary report for a teacher' })
   @ApiParam({
     name: 'teacherId',
@@ -145,7 +140,8 @@ export class ReportsController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Teacher summary including classes taught and activity metrics',
+    description:
+      'Teacher summary including classes taught and activity metrics',
   })
   @ApiResponse({
     status: 404,

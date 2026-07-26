@@ -14,13 +14,8 @@ export class ClassesService {
    * Cria uma nova turma
    */
   async create(createClassDto: CreateClassDto) {
-    const {
-      institutionId,
-      courseId,
-      academicYearId,
-      mainTeacherId,
-      ...data
-    } = createClassDto;
+    const { institutionId, courseId, academicYearId, mainTeacherId, ...data } =
+      createClassDto;
 
     // Verifica se instituição existe e está ativa
     const institution = await this.prisma.institution.findUnique({

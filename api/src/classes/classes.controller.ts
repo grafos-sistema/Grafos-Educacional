@@ -242,7 +242,8 @@ export class ClassesController {
   @SkipOwnership()
   @ApiOperation({
     summary: 'Listar grade horária da turma',
-    description: 'Retorna grade horária completa da turma organizada por dia e horário',
+    description:
+      'Retorna grade horária completa da turma organizada por dia e horário',
   })
   @ApiResponse({
     status: 200,
@@ -272,7 +273,8 @@ export class ClassesController {
   @SkipOwnership()
   @ApiOperation({
     summary: 'Listar matrículas da turma',
-    description: 'Retorna lista de matrículas da turma (alias para /classes/:id/students)',
+    description:
+      'Retorna lista de matrículas da turma (alias para /classes/:id/students)',
   })
   @ApiResponse({
     status: 200,
@@ -296,8 +298,14 @@ export class ClassesController {
     description: 'Disciplina adicionada à turma com sucesso',
   })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
-  @ApiResponse({ status: 404, description: 'Turma, disciplina ou professor não encontrado' })
-  @ApiResponse({ status: 409, description: 'Disciplina já vinculada a esta turma' })
+  @ApiResponse({
+    status: 404,
+    description: 'Turma, disciplina ou professor não encontrado',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Disciplina já vinculada a esta turma',
+  })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
   addSubject(
     @Param('classId') classId: string,
@@ -334,8 +342,7 @@ export class ClassesController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
   @ApiOperation({
     summary: 'Remover matrícula do aluno',
-    description:
-      'Remove a matrícula de um aluno específico da turma',
+    description: 'Remove a matrícula de um aluno específico da turma',
   })
   @ApiResponse({
     status: 200,

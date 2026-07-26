@@ -9,7 +9,12 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import { LoginDto, RegisterDto, RefreshTokenDto, PublicRegisterDto } from './dto';
+import {
+  LoginDto,
+  RegisterDto,
+  RefreshTokenDto,
+  PublicRegisterDto,
+} from './dto';
 import { UserRole } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -26,7 +31,15 @@ export class AuthService {
    * Registra um novo usuário (auto-registro público)
    */
   async publicRegister(publicRegisterDto: PublicRegisterDto) {
-    const { email, password, institutionId, requestedProfileType, cpf, birthDate, ...userData } = publicRegisterDto;
+    const {
+      email,
+      password,
+      institutionId,
+      requestedProfileType,
+      cpf,
+      birthDate,
+      ...userData
+    } = publicRegisterDto;
 
     // Verifica se email já existe NESTA instituição
     const existingEmail = await this.prisma.user.findFirst({
@@ -119,10 +132,18 @@ export class AuthService {
     });
 
     // Notifica admins sobre novo cadastro pendente
-    await this.notificationsService.notifyPendingApproval(user.id, institutionId);
+    await this.notificationsService.notifyPendingApproval(
+      user.id,
+      institutionId,
+    );
 
     // Gera tokens
-    const tokens = await this.generateTokens(user.id, user.email, user.role, user.institutionId);
+    const tokens = await this.generateTokens(
+      user.id,
+      user.email,
+      user.role,
+      user.institutionId,
+    );
 
     return {
       ...tokens,
@@ -182,7 +203,12 @@ export class AuthService {
     });
 
     // Gera tokens
-    const tokens = await this.generateTokens(user.id, user.email, user.role, user.institutionId);
+    const tokens = await this.generateTokens(
+      user.id,
+      user.email,
+      user.role,
+      user.institutionId,
+    );
 
     return {
       ...tokens,
@@ -225,7 +251,10 @@ export class AuthService {
     }
 
     // Valida senha
-    const isPasswordValid = await this.validatePassword(password, user.password);
+    const isPasswordValid = await this.validatePassword(
+      password,
+      user.password,
+    );
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Email ou senha inválidos');
@@ -305,12 +334,17 @@ export class AuthService {
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
-        secret: this.configService.get<string>('jwt.secret') || 'default-secret',
-        expiresIn: (this.configService.get<string>('jwt.expiresIn') || '1d') as any,
+        secret:
+          this.configService.get<string>('jwt.secret') || 'default-secret',
+        expiresIn: (this.configService.get<string>('jwt.expiresIn') ||
+          '1d') as any,
       }),
       this.jwtService.signAsync(payload, {
-        secret: this.configService.get<string>('jwt.refreshSecret') || 'default-refresh-secret',
-        expiresIn: (this.configService.get<string>('jwt.refreshExpiresIn') || '7d') as any,
+        secret:
+          this.configService.get<string>('jwt.refreshSecret') ||
+          'default-refresh-secret',
+        expiresIn: (this.configService.get<string>('jwt.refreshExpiresIn') ||
+          '7d') as any,
       }),
     ]);
 
@@ -324,7 +358,8 @@ export class AuthService {
    * Gera hash da senha
    */
   private async hashPassword(password: string): Promise<string> {
-    const rounds = this.configService.get<number>('security.bcryptRounds') || 10;
+    const rounds =
+      this.configService.get<number>('security.bcryptRounds') || 10;
     return bcrypt.hash(password, rounds);
   }
 
@@ -425,10 +460,7 @@ export class AuthService {
               },
             },
           },
-          orderBy: [
-            { isPrimary: 'desc' },
-            { createdAt: 'asc' },
-          ],
+          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
         },
       },
     });
@@ -535,7 +567,9 @@ export class AuthService {
     });
 
     if (!userInstitution) {
-      throw new UnauthorizedException('Usuário não tem acesso a esta instituição');
+      throw new UnauthorizedException(
+        'Usuário não tem acesso a esta instituição',
+      );
     }
 
     if (!userInstitution.institution.isActive) {

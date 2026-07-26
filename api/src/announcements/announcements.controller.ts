@@ -48,7 +48,10 @@ export class AnnouncementsController {
     status: 400,
     description: 'Invalid dates or data',
   })
-  create(@Body() createAnnouncementDto: CreateAnnouncementDto, @CurrentUser() user: any) {
+  create(
+    @Body() createAnnouncementDto: CreateAnnouncementDto,
+    @CurrentUser() user: any,
+  ) {
     return this.announcementsService.create(createAnnouncementDto, user.userId);
   }
 

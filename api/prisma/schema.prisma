@@ -903,6 +903,8 @@ model Announcement {
   content         String
   priority        String   @default("normal") // "low", "normal", "high", "urgent"
   targetRoles     String[] // ["STUDENT", "PARENT", "TEACHER"]
+  targetStudentIds String[] @default([])
+  targetParentIds  String[] @default([])
   isPublished     Boolean  @default(false)
   publishedAt     DateTime?
   expiresAt       DateTime?

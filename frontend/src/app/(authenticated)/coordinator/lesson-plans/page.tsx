@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -11,9 +11,12 @@ import {
   CalendarIcon,
   AcademicCapIcon,
   FunnelIcon,
+  MagnifyingGlassIcon,
+  ArrowsUpDownIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
 import { lessonPlansService } from '@/services/lesson-plans.service';
+import { academicPeriodsService } from '@/services/academic-periods.service';
 import { LessonPlan, LessonPlanStatus } from '@/types/lesson.types';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -48,18 +51,44 @@ export default function CoordinatorLessonPlansPage() {
   const toast = useToast();
 
   const [statusFilter, setStatusFilter] = useState<LessonPlanStatus | ''>('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedAcademicPeriodId, setSelectedAcademicPeriodId] = useState('');
+  const [startDateFilter, setStartDateFilter] = useState('');
+  const [endDateFilter, setEndDateFilter] = useState('');
+  const [sortBy, setSortBy] = useState<'pendentes' | 'recentes' | 'titulo' | 'inicio'>('pendentes');
   const [showViewModal, setShowViewModal] = useState(false);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<LessonPlan | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
 
-  // Buscar planos de aula
+  const { data: academicPeriodsData } = useQuery({
+    queryKey: ['lesson-plans-academic-periods', user?.institutionId],
+    queryFn: () =>
+      academicPeriodsService.findAll({
+        isActive: true,
+        limit: 100,
+        page: 1,
+      }),
+    enabled: Boolean(user?.institutionId),
+  });
+
+  const academicPeriods = academicPeriodsData?.data ?? [];
+
   const { data: plansData, isLoading: loadingPlans } = useQuery({
-    queryKey: ['lesson-plans-coordinator', statusFilter],
+    queryKey: [
+      'lesson-plans-coordinator',
+      statusFilter,
+      selectedAcademicPeriodId,
+      startDateFilter,
+      endDateFilter,
+    ],
     queryFn: async () => {
       const response = await lessonPlansService.findAll({
         status: statusFilter || undefined,
+        academicPeriodId: selectedAcademicPeriodId || undefined,
+        startDate: startDateFilter || undefined,
+        endDate: endDateFilter || undefined,
         limit: 100,
       });
       return response;
@@ -119,10 +148,49 @@ export default function CoordinatorLessonPlansPage() {
     }
   };
 
-  const plans = plansData?.data || [];
+  const plans = useMemo(() => {
+    const filteredPlans = (plansData?.data || []).filter((plan) => {
+      if (!searchTerm.trim()) return true;
+      const normalized = searchTerm.trim().toLowerCase();
+      const haystack = [
+        plan.title,
+        plan.description,
+        plan.classSubject?.class?.name,
+        plan.classSubject?.subject?.name,
+        plan.teacher?.user?.firstName,
+        plan.teacher?.user?.lastName,
+        plan.academicPeriod?.name,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return haystack.includes(normalized);
+    });
+
+    return filteredPlans.sort((a, b) => {
+      if (sortBy === 'pendentes') {
+        if (a.status === LessonPlanStatus.SUBMITTED && b.status !== LessonPlanStatus.SUBMITTED) return -1;
+        if (a.status !== LessonPlanStatus.SUBMITTED && b.status === LessonPlanStatus.SUBMITTED) return 1;
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      }
+
+      if (sortBy === 'titulo') {
+        return a.title.localeCompare(b.title, 'pt-BR');
+      }
+
+      if (sortBy === 'inicio') {
+        return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+      }
+
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+  }, [plansData?.data, searchTerm, sortBy]);
+
   const pendingCount = plans.filter((p) => p.status === LessonPlanStatus.SUBMITTED).length;
   const approvedCount = plans.filter((p) => p.status === LessonPlanStatus.APPROVED).length;
   const rejectedCount = plans.filter((p) => p.status === LessonPlanStatus.REJECTED).length;
+  const draftCount = plans.filter((p) => p.status === LessonPlanStatus.DRAFT).length;
 
   return (
     <div className="p-6">
@@ -201,7 +269,7 @@ export default function CoordinatorLessonPlansPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border-l-4 border-gray-400">
           <div className="text-2xl font-bold text-gray-900 dark:text-white">
             {plans.length}
@@ -226,6 +294,12 @@ export default function CoordinatorLessonPlansPage() {
           </div>
           <div className="text-sm text-gray-600 dark:text-gray-400">Rejeitados</div>
         </div>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border-l-4 border-gray-500">
+          <div className="text-2xl font-bold text-gray-700 dark:text-gray-200">
+            {draftCount}
+          </div>
+          <div className="text-sm text-gray-600 dark:text-gray-400">Rascunhos</div>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -234,7 +308,7 @@ export default function CoordinatorLessonPlansPage() {
           <FunnelIcon className="h-5 w-5 text-gray-500" />
           <span className="font-medium text-gray-900 dark:text-white">Filtros</span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
           <Select
             label="Status"
             value={statusFilter}
@@ -246,6 +320,64 @@ export default function CoordinatorLessonPlansPage() {
               { value: LessonPlanStatus.REJECTED, label: 'Rejeitados' },
             ]}
           />
+          <Select
+            label="Período Letivo"
+            value={selectedAcademicPeriodId}
+            onChange={(e) => setSelectedAcademicPeriodId(e.target.value)}
+            options={[
+              { value: '', label: 'Todos os períodos' },
+              ...academicPeriods.map((period) => ({
+                value: period.id,
+                label: period.name,
+              })),
+            ]}
+          />
+          <Input
+            label="Buscar plano"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Título, turma, disciplina ou professor"
+            leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
+          />
+          <Input
+            label="Data inicial"
+            type="date"
+            value={startDateFilter}
+            onChange={(e) => setStartDateFilter(e.target.value)}
+          />
+          <Input
+            label="Data final"
+            type="date"
+            value={endDateFilter}
+            onChange={(e) => setEndDateFilter(e.target.value)}
+          />
+          <Select
+            label="Ordenação"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            options={[
+              { value: 'pendentes', label: 'Pendentes primeiro' },
+              { value: 'recentes', label: 'Atualizados recentemente' },
+              { value: 'titulo', label: 'Título A-Z' },
+              { value: 'inicio', label: 'Data de início' },
+            ]}
+          />
+          <div className="md:col-span-2 xl:col-span-5 flex justify-end">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setStatusFilter('');
+                setSearchTerm('');
+                setSelectedAcademicPeriodId('');
+                setStartDateFilter('');
+                setEndDateFilter('');
+                setSortBy('pendentes');
+              }}
+              leftIcon={<ArrowsUpDownIcon className="h-5 w-5" />}
+            >
+              Limpar filtros
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -268,14 +400,7 @@ export default function CoordinatorLessonPlansPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {plans
-            .sort((a, b) => {
-              // Priorizar planos pendentes
-              if (a.status === LessonPlanStatus.SUBMITTED && b.status !== LessonPlanStatus.SUBMITTED) return -1;
-              if (a.status !== LessonPlanStatus.SUBMITTED && b.status === LessonPlanStatus.SUBMITTED) return 1;
-              return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-            })
-            .map((plan) => (
+          {plans.map((plan) => (
               <div
                 key={plan.id}
                 className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow border border-gray-200 dark:border-gray-700"
@@ -312,6 +437,11 @@ export default function CoordinatorLessonPlansPage() {
                       <span className="font-medium">
                         {plan.classSubject.class?.name} - {plan.classSubject.subject?.name}
                       </span>
+                    </div>
+                  )}
+                  {plan.academicPeriod?.name && (
+                    <div className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      {plan.academicPeriod.name}
                     </div>
                   )}
                 </div>

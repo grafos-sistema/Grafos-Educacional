@@ -90,7 +90,9 @@ export class TeacherSubjectsService {
     });
 
     if (existing) {
-      throw new ConflictException('Professor já está vinculado a esta disciplina');
+      throw new ConflictException(
+        'Professor já está vinculado a esta disciplina',
+      );
     }
 
     return this.prisma.teacherSubject.create({
@@ -151,7 +153,10 @@ export class TeacherSubjectsService {
     );
 
     if (newSubjectIds.length === 0) {
-      return { created: 0, message: 'Todas as disciplinas já estão vinculadas' };
+      return {
+        created: 0,
+        message: 'Todas as disciplinas já estão vinculadas',
+      };
     }
 
     // Criar novos vínculos

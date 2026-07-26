@@ -29,16 +29,13 @@ import { Roles } from '../common/decorators/roles.decorator';
 @ApiBearerAuth()
 @Controller('parent-students')
 export class ParentStudentsController {
-  constructor(
-    private readonly parentStudentsService: ParentStudentsService,
-  ) {}
+  constructor(private readonly parentStudentsService: ParentStudentsService) {}
 
   @Post()
   @Roles(UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
   @ApiOperation({
     summary: 'Vincular responsável a aluno',
-    description:
-      'Cria um relacionamento entre um responsável e um aluno',
+    description: 'Cria um relacionamento entre um responsável e um aluno',
   })
   @ApiResponse({
     status: 201,
@@ -46,7 +43,10 @@ export class ParentStudentsController {
     type: ParentStudentResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
-  @ApiResponse({ status: 404, description: 'Responsável ou aluno não encontrado' })
+  @ApiResponse({
+    status: 404,
+    description: 'Responsável ou aluno não encontrado',
+  })
   @ApiResponse({ status: 409, description: 'Relacionamento já existe' })
   create(@Body() createDto: CreateParentStudentDto) {
     return this.parentStudentsService.create(createDto);
@@ -86,7 +86,8 @@ export class ParentStudentsController {
   @Roles(UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
   @ApiOperation({
     summary: 'Atualizar relacionamento',
-    description: 'Atualiza informações do relacionamento (tipo, contato principal)',
+    description:
+      'Atualiza informações do relacionamento (tipo, contato principal)',
   })
   @ApiResponse({
     status: 200,
@@ -94,10 +95,7 @@ export class ParentStudentsController {
     type: ParentStudentResponseDto,
   })
   @ApiResponse({ status: 404, description: 'Relacionamento não encontrado' })
-  update(
-    @Param('id') id: string,
-    @Body() updateDto: UpdateParentStudentDto,
-  ) {
+  update(@Param('id') id: string, @Body() updateDto: UpdateParentStudentDto) {
     return this.parentStudentsService.update(id, updateDto);
   }
 

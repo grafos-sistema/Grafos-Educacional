@@ -46,7 +46,10 @@ export class ActivitiesController {
     status: 404,
     description: 'Subject, class, or academic period not found',
   })
-  create(@Body() createActivityDto: CreateActivityDto, @CurrentUser() user: any) {
+  create(
+    @Body() createActivityDto: CreateActivityDto,
+    @CurrentUser() user: any,
+  ) {
     return this.activitiesService.create(createActivityDto, user.userId);
   }
 
@@ -178,7 +181,9 @@ export class ActivitiesController {
     UserRole.COORDINATOR,
     UserRole.TEACHER,
   )
-  @ApiOperation({ summary: 'Generate HTML preview for activity (same layout as PDF)' })
+  @ApiOperation({
+    summary: 'Generate HTML preview for activity (same layout as PDF)',
+  })
   @ApiParam({
     name: 'id',
     description: 'Activity ID',
@@ -227,7 +232,9 @@ export class ActivitiesController {
 
   @Patch(':id/questions/:questionId')
   @Roles(UserRole.TEACHER, UserRole.COORDINATOR, UserRole.INSTITUTION_ADMIN)
-  @ApiOperation({ summary: 'Update question in activity (reorder or change points)' })
+  @ApiOperation({
+    summary: 'Update question in activity (reorder or change points)',
+  })
   @ApiParam({
     name: 'id',
     description: 'Activity ID',
@@ -252,7 +259,12 @@ export class ActivitiesController {
     @Body() updateDto: UpdateActivityQuestionDto,
     @CurrentUser() user: any,
   ) {
-    return this.activitiesService.updateActivityQuestion(id, questionId, updateDto, user);
+    return this.activitiesService.updateActivityQuestion(
+      id,
+      questionId,
+      updateDto,
+      user,
+    );
   }
 
   @Delete(':id/questions/:questionId')

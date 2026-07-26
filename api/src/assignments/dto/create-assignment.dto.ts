@@ -71,7 +71,8 @@ export class CreateAssignmentDto {
 
   @ApiProperty({
     description: 'Anexos (JSON array de URLs)',
-    example: '["https://example.com/file1.pdf", "https://example.com/file2.pdf"]',
+    example:
+      '["https://example.com/file1.pdf", "https://example.com/file2.pdf"]',
     required: false,
     nullable: true,
   })

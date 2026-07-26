@@ -119,16 +119,16 @@ export class AcademicPeriodsService {
       }
 
       // Valida ordem cronológica (períodos devem estar em ordem cronológica)
-      const previousPeriod = periods.find((p) => p.orderNumber === orderNumber - 1);
+      const previousPeriod = periods.find(
+        (p) => p.orderNumber === orderNumber - 1,
+      );
       if (previousPeriod && parsedStartDate <= previousPeriod.endDate) {
         throw new BadRequestException(
           `O período de ordem ${orderNumber} deve começar após o término do período anterior`,
         );
       }
     } else if (orderNumber !== 1) {
-      throw new BadRequestException(
-        'O primeiro período deve ter ordem 1',
-      );
+      throw new BadRequestException('O primeiro período deve ter ordem 1');
     }
 
     return this.prisma.academicPeriod.create({
@@ -239,7 +239,8 @@ export class AcademicPeriodsService {
     // Verifica se período existe
     const period = await this.findOne(id);
 
-    const { orderNumber, startDate, endDate, ...data } = updateAcademicPeriodDto;
+    const { orderNumber, startDate, endDate, ...data } =
+      updateAcademicPeriodDto;
 
     // Se ordem foi fornecida, verifica unicidade
     if (orderNumber !== undefined && orderNumber !== period.orderNumber) {

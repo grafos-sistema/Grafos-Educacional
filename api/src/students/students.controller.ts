@@ -48,7 +48,8 @@ export class StudentsController {
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
   @ApiResponse({
     status: 409,
-    description: 'Já existe registro de aluno para este usuário ou número de matrícula em uso',
+    description:
+      'Já existe registro de aluno para este usuário ou número de matrícula em uso',
   })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
   create(@Body() createStudentDto: CreateStudentDto) {
@@ -140,7 +141,8 @@ export class StudentsController {
   @SkipOwnership()
   @ApiOperation({
     summary: 'Buscar aluno por ID',
-    description: 'Retorna detalhes completos do aluno incluindo pais/responsáveis',
+    description:
+      'Retorna detalhes completos do aluno incluindo pais/responsáveis',
   })
   @ApiResponse({
     status: 200,

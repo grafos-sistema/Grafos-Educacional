@@ -311,10 +311,7 @@ export class RankingsService {
         },
       },
     });
-    const gradePoints = gradeTransactions.reduce(
-      (sum, t) => sum + t.points,
-      0,
-    );
+    const gradePoints = gradeTransactions.reduce((sum, t) => sum + t.points, 0);
 
     // Pontos por frequência
     const attendanceTransactions = await this.prisma.pointsTransaction.findMany(
@@ -374,7 +371,10 @@ export class RankingsService {
         },
       },
     });
-    const streakBonus = streakTransactions.reduce((sum, t) => sum + t.points, 0);
+    const streakBonus = streakTransactions.reduce(
+      (sum, t) => sum + t.points,
+      0,
+    );
 
     const total =
       gradePoints +

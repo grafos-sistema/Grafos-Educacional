@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateQuestionDto, QuestionType } from './dto/create-question.dto';
 import { UpdateQuestionDto } from './dto/update-question.dto';
@@ -23,26 +27,38 @@ export class QuestionsService {
     // Validate options for multiple choice questions
     if (createQuestionDto.type === QuestionType.MULTIPLE_CHOICE) {
       if (!createQuestionDto.options || createQuestionDto.options.length < 2) {
-        throw new BadRequestException('Multiple choice questions must have at least 2 options');
+        throw new BadRequestException(
+          'Multiple choice questions must have at least 2 options',
+        );
       }
 
-      const correctOptions = createQuestionDto.options.filter(opt => opt.isCorrect);
+      const correctOptions = createQuestionDto.options.filter(
+        (opt) => opt.isCorrect,
+      );
       if (correctOptions.length === 0) {
-        throw new BadRequestException('Multiple choice questions must have at least one correct option');
+        throw new BadRequestException(
+          'Multiple choice questions must have at least one correct option',
+        );
       }
     }
 
     // Prepare options data for nested create
-    const optionsData = createQuestionDto.options?.map((opt, index) => ({
-      optionLetter: String.fromCharCode(65 + index), // A, B, C, D...
-      text: opt.text,
-      orderNumber: index + 1,
-    })) || [];
+    const optionsData =
+      createQuestionDto.options?.map((opt, index) => ({
+        optionLetter: String.fromCharCode(65 + index), // A, B, C, D...
+        text: opt.text,
+        orderNumber: index + 1,
+      })) || [];
 
     // Set correctAnswer based on the correct option letter
     let correctAnswer = createQuestionDto.correctAnswer;
-    if (createQuestionDto.type === QuestionType.MULTIPLE_CHOICE && createQuestionDto.options) {
-      const correctIndex = createQuestionDto.options.findIndex(opt => opt.isCorrect);
+    if (
+      createQuestionDto.type === QuestionType.MULTIPLE_CHOICE &&
+      createQuestionDto.options
+    ) {
+      const correctIndex = createQuestionDto.options.findIndex(
+        (opt) => opt.isCorrect,
+      );
       if (correctIndex >= 0) {
         correctAnswer = String.fromCharCode(65 + correctIndex);
       }
@@ -52,7 +68,8 @@ export class QuestionsService {
     const createdById = user.userId;
     // For SUPER_ADMIN, institutionId is optional (null for public questions)
     // For other users, use their institutionId
-    const institutionId = user.role === 'SUPER_ADMIN' ? null : user.institutionId;
+    const institutionId =
+      user.role === 'SUPER_ADMIN' ? null : user.institutionId;
 
     // Preparar imagens - aceitar tanto imageUrl (single) quanto images (array)
     let imageData: string | null = null;
@@ -130,7 +147,7 @@ export class QuestionsService {
     }
 
     if (tags) {
-      const tagArray = tags.split(',').map(tag => tag.trim());
+      const tagArray = tags.split(',').map((tag) => tag.trim());
       where.tags = {
         hasSome: tagArray,
       };
@@ -206,18 +223,25 @@ export class QuestionsService {
 
       if (questionType === QuestionType.MULTIPLE_CHOICE) {
         if (updateQuestionDto.options.length < 2) {
-          throw new BadRequestException('Multiple choice questions must have at least 2 options');
+          throw new BadRequestException(
+            'Multiple choice questions must have at least 2 options',
+          );
         }
 
-        const correctOptions = updateQuestionDto.options.filter(opt => opt.isCorrect);
+        const correctOptions = updateQuestionDto.options.filter(
+          (opt) => opt.isCorrect,
+        );
         if (correctOptions.length === 0) {
-          throw new BadRequestException('Multiple choice questions must have at least one correct option');
+          throw new BadRequestException(
+            'Multiple choice questions must have at least one correct option',
+          );
         }
       }
     }
 
     // Remove fields that need special handling
-    const { categoryId, subjectId, options, imageUrl, images, ...restData } = updateQuestionDto;
+    const { categoryId, subjectId, options, imageUrl, images, ...restData } =
+      updateQuestionDto;
 
     // Preparar dados para atualização
     const updateData: any = { ...restData };
@@ -295,7 +319,13 @@ export class QuestionsService {
     }
 
     // Create a copy of the question
-    const { id: _id, createdAt, updatedAt, timesUsed, ...questionData } = question;
+    const {
+      id: _id,
+      createdAt,
+      updatedAt,
+      timesUsed,
+      ...questionData
+    } = question;
 
     const duplicatedQuestion = await this.prisma.question.create({
       data: {
@@ -331,45 +361,42 @@ export class QuestionsService {
   }
 
   async getStatistics() {
-    const [
-      total,
-      byType,
-      byDifficulty,
-      byCategory,
-      mostUsed,
-    ] = await Promise.all([
-      this.prisma.question.count(),
-      this.prisma.question.groupBy({
-        by: ['type'],
-        _count: true,
-      }),
-      this.prisma.question.groupBy({
-        by: ['difficulty'],
-        _count: true,
-      }),
-      this.prisma.question.groupBy({
-        by: ['categoryId'],
-        _count: true,
-        orderBy: {
-          _count: {
-            categoryId: 'desc',
+    const [total, byType, byDifficulty, byCategory, mostUsed] =
+      await Promise.all([
+        this.prisma.question.count(),
+        this.prisma.question.groupBy({
+          by: ['type'],
+          _count: true,
+        }),
+        this.prisma.question.groupBy({
+          by: ['difficulty'],
+          _count: true,
+        }),
+        this.prisma.question.groupBy({
+          by: ['categoryId'],
+          _count: true,
+          orderBy: {
+            _count: {
+              categoryId: 'desc',
+            },
           },
-        },
-        take: 5,
-      }),
-      this.prisma.question.findMany({
-        orderBy: {
-          timesUsed: 'desc',
-        },
-        take: 10,
-        include: {
-          category: true,
-        },
-      }),
-    ]);
+          take: 5,
+        }),
+        this.prisma.question.findMany({
+          orderBy: {
+            timesUsed: 'desc',
+          },
+          take: 10,
+          include: {
+            category: true,
+          },
+        }),
+      ]);
 
     // Fetch category names for top categories
-    const categoryIds = byCategory.map(c => c.categoryId).filter((id): id is string => id !== null);
+    const categoryIds = byCategory
+      .map((c) => c.categoryId)
+      .filter((id): id is string => id !== null);
     const categories = await this.prisma.questionCategory.findMany({
       where: {
         id: {
@@ -378,8 +405,8 @@ export class QuestionsService {
       },
     });
 
-    const topCategories = byCategory.map(c => {
-      const category = categories.find(cat => cat.id === c.categoryId);
+    const topCategories = byCategory.map((c) => {
+      const category = categories.find((cat) => cat.id === c.categoryId);
       return {
         categoryId: c.categoryId,
         categoryName: category?.name || 'Unknown',
@@ -389,14 +416,20 @@ export class QuestionsService {
 
     return {
       total,
-      byType: byType.reduce((acc, item) => {
-        acc[item.type] = item._count;
-        return acc;
-      }, {} as Record<string, number>),
-      byDifficulty: byDifficulty.reduce((acc, item) => {
-        acc[item.difficulty] = item._count;
-        return acc;
-      }, {} as Record<string, number>),
+      byType: byType.reduce(
+        (acc, item) => {
+          acc[item.type] = item._count;
+          return acc;
+        },
+        {} as Record<string, number>,
+      ),
+      byDifficulty: byDifficulty.reduce(
+        (acc, item) => {
+          acc[item.difficulty] = item._count;
+          return acc;
+        },
+        {} as Record<string, number>,
+      ),
       topCategories,
       mostUsed,
     };

@@ -70,7 +70,9 @@ export class CreateAcademicPeriodDto {
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {
     message: 'Data de término deve estar no formato YYYY-MM-DD',
   })
-  @IsAfter('startDate', { message: 'Data de término deve ser posterior à data de início' })
+  @IsAfter('startDate', {
+    message: 'Data de término deve ser posterior à data de início',
+  })
   endDate: string;
 
   @ApiProperty({

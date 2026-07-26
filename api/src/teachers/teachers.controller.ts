@@ -198,7 +198,8 @@ export class TeachersController {
   )
   @ApiOperation({
     summary: 'Listar disciplinas do professor',
-    description: 'Retorna todas as disciplinas que o professor está habilitado a lecionar',
+    description:
+      'Retorna todas as disciplinas que o professor está habilitado a lecionar',
   })
   @ApiResponse({
     status: 200,

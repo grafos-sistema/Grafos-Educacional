@@ -152,7 +152,8 @@ export class EnrollmentsController {
   @SkipOwnership()
   @ApiOperation({
     summary: 'Buscar matrícula por ID',
-    description: 'Retorna detalhes completos da matrícula incluindo turma e aluno',
+    description:
+      'Retorna detalhes completos da matrícula incluindo turma e aluno',
   })
   @ApiResponse({
     status: 200,

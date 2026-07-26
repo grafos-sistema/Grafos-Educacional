@@ -63,12 +63,14 @@ export class JwtStrategy {
     }
 
     try {
-      return (await this.jwtService.verifyAsync(token, {
+      return await this.jwtService.verifyAsync(token, {
         secret: this.localJwtSecret,
-      })) as JwtPayload;
+      });
     } catch (error) {
       if (supabaseVerifyError instanceof Error) {
-        throw new UnauthorizedException(`Invalid Supabase token: ${supabaseVerifyError.message}`);
+        throw new UnauthorizedException(
+          `Invalid Supabase token: ${supabaseVerifyError.message}`,
+        );
       }
       throw new UnauthorizedException('Invalid token');
     }

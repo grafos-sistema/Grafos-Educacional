@@ -30,11 +30,15 @@ import { UserRole } from '@prisma/client';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('question-categories')
 export class QuestionCategoriesController {
-  constructor(private readonly questionCategoriesService: QuestionCategoriesService) {}
+  constructor(
+    private readonly questionCategoriesService: QuestionCategoriesService,
+  ) {}
 
   @Post()
   @Roles(UserRole.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Create a new question category (SUPER_ADMIN only)' })
+  @ApiOperation({
+    summary: 'Create a new question category (SUPER_ADMIN only)',
+  })
   @ApiResponse({
     status: 201,
     description: 'Question category created successfully',
@@ -54,7 +58,9 @@ export class QuestionCategoriesController {
     UserRole.COORDINATOR,
     UserRole.TEACHER,
   )
-  @ApiOperation({ summary: 'Get all question categories with optional filters' })
+  @ApiOperation({
+    summary: 'Get all question categories with optional filters',
+  })
   @ApiResponse({
     status: 200,
     description: 'List of question categories with pagination',

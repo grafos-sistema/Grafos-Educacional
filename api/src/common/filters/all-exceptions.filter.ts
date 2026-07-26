@@ -62,7 +62,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
       P2027: 'Múltiplos erros ocorreram no banco de dados',
     };
 
-    return errorMessages[code] || 'Erro ao processar operação no banco de dados';
+    return (
+      errorMessages[code] || 'Erro ao processar operação no banco de dados'
+    );
   }
 
   catch(exception: unknown, host: ArgumentsHost) {
@@ -95,7 +97,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
             ? exceptionResponse
             : (exceptionResponse as any).message || exception.message;
         error =
-          typeof exceptionResponse === 'object' && (exceptionResponse as any).error
+          typeof exceptionResponse === 'object' &&
+          (exceptionResponse as any).error
             ? (exceptionResponse as any).error
             : HttpStatus[status];
       }
@@ -124,7 +127,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
         case 'P2003':
           // Foreign key constraint violation
           status = HttpStatus.BAD_REQUEST;
-          const fieldName2 = (exception.meta?.field_name as string) || 'relacionado';
+          const fieldName2 =
+            (exception.meta?.field_name as string) || 'relacionado';
           message = `Operação inválida. O registro ${fieldName2} não existe`;
           break;
 
@@ -137,7 +141,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
         case 'P2011':
           // NULL constraint violation
           status = HttpStatus.BAD_REQUEST;
-          const nullField = (exception.meta?.column_name as string) || 'obrigatório';
+          const nullField =
+            (exception.meta?.column_name as string) || 'obrigatório';
           message = `O campo ${nullField} é obrigatório e não pode ser vazio`;
           break;
 
@@ -182,7 +187,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
     // Não expor detalhes sensíveis em produção
     if (process.env.NODE_ENV === 'production') {
       if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
-        errorResponse.message = 'Ocorreu um erro interno. Tente novamente mais tarde.';
+        errorResponse.message =
+          'Ocorreu um erro interno. Tente novamente mais tarde.';
       }
     }
 

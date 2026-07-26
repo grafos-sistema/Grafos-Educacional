@@ -30,9 +30,7 @@ import { SkipOwnership } from '../common/decorators/skip-ownership.decorator';
 @ApiBearerAuth()
 @Controller('class-subject-requests')
 export class ClassSubjectRequestsController {
-  constructor(
-    private readonly requestsService: ClassSubjectRequestsService,
-  ) {}
+  constructor(private readonly requestsService: ClassSubjectRequestsService) {}
 
   @Post()
   @UseGuards(TeacherGuard)
@@ -46,7 +44,10 @@ export class ClassSubjectRequestsController {
     description: 'Solicitação criada com sucesso',
   })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
-  @ApiResponse({ status: 409, description: 'Solicitação já existe ou disciplina já atribuída' })
+  @ApiResponse({
+    status: 409,
+    description: 'Solicitação já existe ou disciplina já atribuída',
+  })
   async create(
     @CurrentUser('userId') userId: string,
     @Body() createDto: CreateSubjectRequestDto,
@@ -64,7 +65,8 @@ export class ClassSubjectRequestsController {
   )
   @ApiOperation({
     summary: 'Listar solicitações',
-    description: 'Lista solicitações com filtros. Professores veem apenas suas solicitações.',
+    description:
+      'Lista solicitações com filtros. Professores veem apenas suas solicitações.',
   })
   @ApiQuery({
     name: 'institutionId',
@@ -135,13 +137,17 @@ export class ClassSubjectRequestsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Aprovar solicitação',
-    description: 'Aprova a solicitação e cria a atribuição da disciplina ao professor',
+    description:
+      'Aprova a solicitação e cria a atribuição da disciplina ao professor',
   })
   @ApiResponse({
     status: 200,
     description: 'Solicitação aprovada e disciplina atribuída',
   })
-  @ApiResponse({ status: 400, description: 'Solicitação não pode ser aprovada' })
+  @ApiResponse({
+    status: 400,
+    description: 'Solicitação não pode ser aprovada',
+  })
   @ApiResponse({ status: 409, description: 'Disciplina já possui professor' })
   approve(
     @Param('id') id: string,
@@ -163,7 +169,10 @@ export class ClassSubjectRequestsController {
     status: 200,
     description: 'Solicitação rejeitada',
   })
-  @ApiResponse({ status: 400, description: 'Solicitação não pode ser rejeitada' })
+  @ApiResponse({
+    status: 400,
+    description: 'Solicitação não pode ser rejeitada',
+  })
   reject(
     @Param('id') id: string,
     @CurrentUser('userId') reviewedById: string,
@@ -183,11 +192,11 @@ export class ClassSubjectRequestsController {
     status: 200,
     description: 'Solicitação cancelada',
   })
-  @ApiResponse({ status: 400, description: 'Solicitação não pode ser cancelada' })
-  async cancel(
-    @Param('id') id: string,
-    @CurrentUser('userId') userId: string,
-  ) {
+  @ApiResponse({
+    status: 400,
+    description: 'Solicitação não pode ser cancelada',
+  })
+  async cancel(@Param('id') id: string, @CurrentUser('userId') userId: string) {
     const teacherId = await this.requestsService.getTeacherIdByUserId(userId);
     return this.requestsService.cancel(id, teacherId);
   }

@@ -34,7 +34,8 @@ export class ActivitiesService {
 
     // Para URLs relativas, adiciona o host da aplicação
     // Usa localhost:3333 em desenvolvimento
-    const baseUrl = this.configService.get<string>('app.url') || 'http://localhost:3333';
+    const baseUrl =
+      this.configService.get<string>('app.url') || 'http://localhost:3333';
     return `${baseUrl}${imagePath}`;
   }
 
@@ -75,7 +76,9 @@ export class ActivitiesService {
         teacherId: teacher.id,
         institutionId: classEntity.institutionId,
         totalPoints: createActivityDto.totalPoints || 0,
-        activityDate: createActivityDto.activityDate ? new Date(createActivityDto.activityDate) : null,
+        activityDate: createActivityDto.activityDate
+          ? new Date(createActivityDto.activityDate)
+          : null,
         headerTemplate: createActivityDto.headerText,
         footerTemplate: createActivityDto.footerText,
       },
@@ -247,7 +250,11 @@ export class ActivitiesService {
     return activity;
   }
 
-  async update(id: string, updateActivityDto: UpdateActivityDto, currentUser: any) {
+  async update(
+    id: string,
+    updateActivityDto: UpdateActivityDto,
+    currentUser: any,
+  ) {
     const activity = await this.prisma.activity.findUnique({
       where: { id },
       include: {
@@ -286,7 +293,8 @@ export class ActivitiesService {
     }
 
     // Preparar dados para atualização
-    const { subjectId, classId, headerText, footerText, ...restDto } = updateActivityDto;
+    const { subjectId, classId, headerText, footerText, ...restDto } =
+      updateActivityDto;
     const updateData: any = { ...restDto };
 
     // Mapear headerText/footerText para headerTemplate/footerTemplate
@@ -361,7 +369,11 @@ export class ActivitiesService {
     return { message: 'Activity deleted successfully' };
   }
 
-  async addQuestion(activityId: string, addQuestionDto: AddQuestionDto, currentUser: any) {
+  async addQuestion(
+    activityId: string,
+    addQuestionDto: AddQuestionDto,
+    currentUser: any,
+  ) {
     // Verify activity exists and user has permission
     const activity = await this.prisma.activity.findUnique({
       where: { id: activityId },
@@ -411,7 +423,10 @@ export class ActivitiesService {
     }
 
     // Determine custom points
-    const customPoints = addQuestionDto.points !== undefined ? addQuestionDto.points : question.points;
+    const customPoints =
+      addQuestionDto.points !== undefined
+        ? addQuestionDto.points
+        : question.points;
 
     // Add question to activity
     const activityQuestion = await this.prisma.activityQuestion.create({
@@ -509,7 +524,11 @@ export class ActivitiesService {
     return updated;
   }
 
-  async removeQuestion(activityId: string, questionId: string, currentUser: any) {
+  async removeQuestion(
+    activityId: string,
+    questionId: string,
+    currentUser: any,
+  ) {
     // Verify activity exists and user has permission
     const activity = await this.prisma.activity.findUnique({
       where: { id: activityId },
@@ -604,7 +623,10 @@ export class ActivitiesService {
       where: { activityId },
     });
 
-    const totalPoints = activityQuestions.reduce((sum, aq) => sum + (aq.customPoints || 0), 0);
+    const totalPoints = activityQuestions.reduce(
+      (sum, aq) => sum + (aq.customPoints || 0),
+      0,
+    );
 
     await this.prisma.activity.update({
       where: { id: activityId },
@@ -745,33 +767,39 @@ export class ActivitiesService {
 
         // Preparar opções para múltipla escolha
         const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-        const options = question.options?.map((opt, i) => {
-          const optionText = opt.text;
-          const isLongText = optionText.length > 80;
+        const options =
+          question.options?.map((opt, i) => {
+            const optionText = opt.text;
+            const isLongText = optionText.length > 80;
 
-          return {
-            letter: opt.optionLetter || letters[i],
-            text: optionText,
-            isLongText: isLongText,
-          };
-        }) || [];
+            return {
+              letter: opt.optionLetter || letters[i],
+              text: optionText,
+              isLongText: isLongText,
+            };
+          }) || [];
 
         // Verificar se há opções longas ou muitas opções
-        const hasLongOptions = options.some(opt => opt.isLongText);
+        const hasLongOptions = options.some((opt) => opt.isLongText);
         const manyOptions = options.length >= 5;
 
         // Linhas para resposta dissertativa (ESSAY e OPEN_ENDED usam linhas)
-        const answerLines = (questionType === QuestionType.ESSAY || questionType === QuestionType.OPEN_ENDED)
-          ? Array(10).fill(0).map((_, i) => i)
-          : [];
+        const answerLines =
+          questionType === QuestionType.ESSAY ||
+          questionType === QuestionType.OPEN_ENDED
+            ? Array(10)
+                .fill(0)
+                .map((_, i) => i)
+            : [];
 
         // Processar imagens da questão
         let questionImages: string[] = [];
         if (question.images) {
           try {
-            questionImages = typeof question.images === 'string'
-              ? JSON.parse(question.images)
-              : question.images;
+            questionImages =
+              typeof question.images === 'string'
+                ? JSON.parse(question.images)
+                : question.images;
           } catch (e) {
             // Se falhar ao parsear, tentar como array direto
             questionImages = [];
@@ -779,7 +807,9 @@ export class ActivitiesService {
         }
 
         // Converter URLs relativas em absolutas para o PDF funcionar
-        const absoluteImageUrls = questionImages.map(url => this.getAbsoluteImageUrl(url));
+        const absoluteImageUrls = questionImages.map((url) =>
+          this.getAbsoluteImageUrl(url),
+        );
 
         return {
           number: index + 1,
@@ -789,7 +819,9 @@ export class ActivitiesService {
           isMultipleChoice: questionType === QuestionType.MULTIPLE_CHOICE,
           isTrueFalse: questionType === QuestionType.TRUE_FALSE,
           isShortAnswer: questionType === QuestionType.SHORT_ANSWER,
-          isEssay: questionType === QuestionType.ESSAY || questionType === QuestionType.OPEN_ENDED,
+          isEssay:
+            questionType === QuestionType.ESSAY ||
+            questionType === QuestionType.OPEN_ENDED,
           isFillInBlank: questionType === QuestionType.FILL_IN_BLANK,
           images: absoluteImageUrls.length > 0 ? absoluteImageUrls : undefined,
           hasMultipleImages: absoluteImageUrls.length > 1,
@@ -856,7 +888,9 @@ export class ActivitiesService {
 
     let activityDate = '';
     if (activity.activityDate) {
-      activityDate = new Date(activity.activityDate).toLocaleDateString('pt-BR');
+      activityDate = new Date(activity.activityDate).toLocaleDateString(
+        'pt-BR',
+      );
     }
 
     const typeNames = {
@@ -887,23 +921,29 @@ export class ActivitiesService {
       questions: activity.questions.map((aq, index) => {
         const question = aq.question;
         const questionType = question.type;
-        const options = question.options?.map(opt => ({
-          letter: opt.optionLetter,
-          text: opt.text,
-          isLongText: opt.text.length > 60,
-        })) || [];
+        const options =
+          question.options?.map((opt) => ({
+            letter: opt.optionLetter,
+            text: opt.text,
+            isLongText: opt.text.length > 60,
+          })) || [];
 
         let questionImages: string[] = [];
         if (question.images) {
           try {
-            questionImages = typeof question.images === 'string' ? JSON.parse(question.images) : question.images;
+            questionImages =
+              typeof question.images === 'string'
+                ? JSON.parse(question.images)
+                : question.images;
           } catch (e) {
             questionImages = [];
           }
         }
 
         // Converter URLs relativas em absolutas para o preview funcionar
-        const absoluteImageUrls = questionImages.map(url => this.getAbsoluteImageUrl(url));
+        const absoluteImageUrls = questionImages.map((url) =>
+          this.getAbsoluteImageUrl(url),
+        );
 
         return {
           number: index + 1,
@@ -913,14 +953,22 @@ export class ActivitiesService {
           isMultipleChoice: questionType === QuestionType.MULTIPLE_CHOICE,
           isTrueFalse: questionType === QuestionType.TRUE_FALSE,
           isShortAnswer: questionType === QuestionType.SHORT_ANSWER,
-          isEssay: questionType === QuestionType.ESSAY || questionType === QuestionType.OPEN_ENDED,
+          isEssay:
+            questionType === QuestionType.ESSAY ||
+            questionType === QuestionType.OPEN_ENDED,
           isFillInBlank: questionType === QuestionType.FILL_IN_BLANK,
           images: absoluteImageUrls.length > 0 ? absoluteImageUrls : undefined,
           hasMultipleImages: absoluteImageUrls.length > 1,
           options: options.length > 0 ? options : undefined,
-          hasLongOptions: options.some(opt => opt.isLongText),
+          hasLongOptions: options.some((opt) => opt.isLongText),
           manyOptions: options.length >= 5,
-          answerLines: (questionType === QuestionType.ESSAY || questionType === QuestionType.OPEN_ENDED) ? Array(10).fill(0).map((_, i) => i) : undefined,
+          answerLines:
+            questionType === QuestionType.ESSAY ||
+            questionType === QuestionType.OPEN_ENDED
+              ? Array(10)
+                  .fill(0)
+                  .map((_, i) => i)
+              : undefined,
         };
       }),
     };

@@ -35,6 +35,7 @@ interface NavItem {
   icon: any;
   roles: UserRole[];
   pathMapping: Partial<Record<UserRole, string>>; // Role-specific paths
+  displayNameMapping?: Partial<Record<UserRole, string>>;
 }
 
 interface NavigationSection {
@@ -45,6 +46,10 @@ interface NavigationSection {
 // Helper function to get role-specific route
 const getRouteForRole = (item: NavItem, role: UserRole): string => {
   return item.pathMapping[role] || item.baseRoute;
+};
+
+const getLabelForRole = (item: NavItem, role: UserRole): string => {
+  return item.displayNameMapping?.[role] || item.name;
 };
 
 const institutionAdminSectionConfig: Array<{
@@ -74,6 +79,40 @@ const institutionAdminSectionConfig: Array<{
       'Banco de Questões',
       'Categorias de Questões',
     ],
+  },
+  {
+    title: 'Conta',
+    itemNames: ['Configurações'],
+  },
+];
+
+const teacherSectionConfig: Array<{
+  title: string;
+  itemNames: string[];
+}> = [
+  {
+    title: 'Visão Geral',
+    itemNames: ['Dashboard', 'Minha Grade'],
+  },
+  {
+    title: 'Minhas Turmas',
+    itemNames: ['Turmas', 'Minhas Disciplinas'],
+  },
+  {
+    title: 'Rotina de Aula',
+    itemNames: ['Frequência', 'Conteúdos', 'Atividades'],
+  },
+  {
+    title: 'Avaliação',
+    itemNames: ['Notas', 'Rankings'],
+  },
+  {
+    title: 'Planejamento',
+    itemNames: ['Planos de Ensino', 'Banco de Questões'],
+  },
+  {
+    title: 'Comunicação',
+    itemNames: ['Comunicação'],
   },
   {
     title: 'Conta',
@@ -155,6 +194,15 @@ const navigation: NavItem[] = [
     },
   },
   {
+    name: 'Minha Grade',
+    baseRoute: '/my-schedule',
+    icon: CalendarIcon,
+    roles: [UserRole.TEACHER],
+    pathMapping: {
+      [UserRole.TEACHER]: '/professor/my-schedule',
+    },
+  },
+  {
     name: 'Turmas',
     baseRoute: '/classes',
     icon: BookOpenIcon,
@@ -163,6 +211,9 @@ const navigation: NavItem[] = [
       [UserRole.SUPER_ADMIN]: '/admin/classes',
       [UserRole.INSTITUTION_ADMIN]: '/admin/classes',
       [UserRole.TEACHER]: '/professor/my-classes',
+    },
+    displayNameMapping: {
+      [UserRole.TEACHER]: 'Minhas Turmas',
     },
   },
   {
@@ -237,6 +288,9 @@ const navigation: NavItem[] = [
       [UserRole.COORDINATOR]: '/coordinator/lesson-plans',
       [UserRole.TEACHER]: '/professor/lesson-plans',
     },
+    displayNameMapping: {
+      [UserRole.TEACHER]: 'Planos de Aula',
+    },
   },
   {
     name: 'Observações',
@@ -283,6 +337,9 @@ const navigation: NavItem[] = [
     roles: [UserRole.TEACHER],
     pathMapping: {
       [UserRole.TEACHER]: '/professor/lesson-contents',
+    },
+    displayNameMapping: {
+      [UserRole.TEACHER]: 'Conteúdo Ministrado',
     },
   },
   {
@@ -398,6 +455,39 @@ export function Sidebar({
     const isAdministrativeRole =
       currentRole === UserRole.INSTITUTION_ADMIN ||
       currentRole === UserRole.SUPER_ADMIN;
+
+    if (currentRole === UserRole.TEACHER) {
+      const itemMap = new Map(filteredNavigation.map((item) => [item.name, item]));
+      const usedItemNames = new Set<string>();
+
+      const sections = teacherSectionConfig
+        .map((section) => {
+          const items = section.itemNames
+            .map((itemName) => itemMap.get(itemName))
+            .filter((item): item is NavItem => Boolean(item));
+
+          items.forEach((item) => usedItemNames.add(item.name));
+
+          return {
+            title: section.title,
+            items,
+          };
+        })
+        .filter((section) => section.items.length > 0);
+
+      const remainingItems = filteredNavigation.filter(
+        (item) => !usedItemNames.has(item.name)
+      );
+
+      if (remainingItems.length > 0) {
+        sections.push({
+          title: 'Outros',
+          items: remainingItems,
+        });
+      }
+
+      return sections;
+    }
 
     if (!isAdministrativeRole) {
       return [{ title: '', items: filteredNavigation }];
@@ -554,6 +644,7 @@ export function Sidebar({
             {section.items.map((item) => {
               const href = currentRole ? getRouteForRole(item, currentRole) : item.baseRoute;
               const isActive = pathname === href || pathname?.startsWith(href + '/');
+              const itemLabel = currentRole ? getLabelForRole(item, currentRole) : item.name;
               return (
                 <Link
                   key={item.name}
@@ -569,7 +660,7 @@ export function Sidebar({
                       ? 'bg-primary-50 text-primary-700 shadow-sm'
                       : 'text-secondary-600 hover:bg-secondary-50 hover:text-secondary-900'
                   )}
-                  title={isDesktopCollapsed ? item.name : undefined}
+                  title={isDesktopCollapsed ? itemLabel : undefined}
                 >
                   <item.icon
                     className={cn(
@@ -583,7 +674,7 @@ export function Sidebar({
                       isDesktopCollapsed && 'lg:hidden'
                     )}
                   >
-                    {item.name}
+                    {itemLabel}
                   </span>
                 </Link>
               );

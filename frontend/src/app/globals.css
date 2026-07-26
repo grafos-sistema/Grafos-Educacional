@@ -92,4 +92,49 @@
     background-size: 1000px 100%;
     animation: shimmer 2s infinite linear;
   }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+input.app-date-input::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+input.app-date-input::-webkit-inner-spin-button,
+input.app-date-input::-webkit-clear-button {
+  display: none;
+}
+
+input.app-date-input::-webkit-datetime-edit,
+input.app-date-input::-webkit-date-and-time-value {
+  padding: 0;
+  color: inherit;
+}
+
+input.app-date-input::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+
+input.app-date-input[type='date']::-webkit-datetime-edit-text,
+input.app-date-input[type='month']::-webkit-datetime-edit-text,
+input.app-date-input[type='datetime-local']::-webkit-datetime-edit-text {
+  color: #9ca3af;
+}
+
+.dark input.app-date-input[type='date']::-webkit-datetime-edit-text,
+.dark input.app-date-input[type='month']::-webkit-datetime-edit-text,
+.dark input.app-date-input[type='datetime-local']::-webkit-datetime-edit-text {
+  color: #6b7280;
 }

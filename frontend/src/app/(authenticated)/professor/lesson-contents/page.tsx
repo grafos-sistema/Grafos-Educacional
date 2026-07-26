@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { UserRole } from '@/types/user.types';
 import {
@@ -27,6 +27,7 @@ import { useTeacherClassSubjects } from '@/hooks/useTeacherClassSubjects';
 
 export default function LessonContentsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const toast = useToast();
@@ -49,6 +50,19 @@ export default function LessonContentsPage() {
   });
 
   const { data: teacherSubjects = [], isLoading: loadingSubjects } = useTeacherClassSubjects();
+  const classSubjectIdFromUrl = searchParams.get('classSubjectId') || '';
+
+  useEffect(() => {
+    if (!classSubjectIdFromUrl || teacherSubjects.length === 0) return;
+    const hasMatchingSubject = teacherSubjects.some((subject) => subject.id === classSubjectIdFromUrl);
+    if (hasMatchingSubject) {
+      setSelectedClassSubjectId(classSubjectIdFromUrl);
+      setFormData((prev) => ({
+        ...prev,
+        classSubjectId: classSubjectIdFromUrl,
+      }));
+    }
+  }, [classSubjectIdFromUrl, teacherSubjects]);
 
   // Buscar conteúdos
   const { data: contents, isLoading: loadingContents } = useQuery({

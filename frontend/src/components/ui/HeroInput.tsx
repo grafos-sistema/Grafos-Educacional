@@ -1,4 +1,6 @@
 import React, { forwardRef } from 'react';
+import { CalendarDaysIcon } from '@heroicons/react/24/outline';
+import { DatePickerInput } from './DatePickerInput';
 
 export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
   label?: string;
@@ -27,12 +29,52 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     ref
   ) => {
     const helperMessage = helperText || helpText;
+    const internalRef = React.useRef<HTMLInputElement | null>(null);
+    const generatedId = React.useId();
 
     // Generate unique IDs for accessibility
-    const inputId = id || `input-${React.useId()}`;
+    const inputId = id || `input-${generatedId}`;
     const errorId = error ? `${inputId}-error` : undefined;
     const helperId = helperMessage && !error ? `${inputId}-helper` : undefined;
     const describedBy = errorId || helperId;
+    const inputType = props.type;
+    const isNativeDateInput = inputType === 'date';
+    const isDateLikeInput =
+      inputType === 'date' || inputType === 'month' || inputType === 'datetime-local';
+    const effectiveRightIcon = isDateLikeInput ? (
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label="Abrir seletor de data"
+        className={`
+          absolute inset-y-1.5 right-2 flex h-auto items-center justify-center rounded-md px-2
+          text-gray-500 transition-colors
+          ${disabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-gray-700 dark:hover:text-primary-400'}
+        `}
+        onClick={() => {
+          if (disabled) return;
+          internalRef.current?.focus();
+          const pickerInput = internalRef.current as HTMLInputElement & {
+            showPicker?: () => void;
+          };
+          pickerInput.showPicker?.();
+        }}
+      >
+        <CalendarDaysIcon className="h-5 w-5" />
+      </button>
+    ) : rightIcon;
+
+    const assignRef = (node: HTMLInputElement | null) => {
+      internalRef.current = node;
+
+      if (!ref) return;
+      if (typeof ref === 'function') {
+        ref(node);
+        return;
+      }
+
+      ref.current = node;
+    };
 
     return (
       <div className="w-full">
@@ -49,6 +91,25 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
         {/* Input container */}
         <div className="relative">
+          {isNativeDateInput ? (
+            <DatePickerInput
+              ref={ref}
+              id={inputId}
+              required={required}
+              disabled={disabled}
+              aria-invalid={error ? 'true' : 'false'}
+              aria-describedby={describedBy}
+              aria-required={required ? 'true' : undefined}
+              error={error}
+              describedBy={describedBy}
+              leftIcon={leftIcon}
+              rightIcon={rightIcon}
+              className={className}
+              placeholder={props.placeholder}
+              {...props}
+            />
+          ) : (
+            <>
           {leftIcon && (
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
               {leftIcon}
@@ -56,7 +117,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           )}
 
           <input
-            ref={ref}
+            ref={assignRef}
             id={inputId}
             required={required}
             disabled={disabled}
@@ -65,7 +126,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             aria-required={required ? 'true' : undefined}
             className={`
               block w-full h-12 rounded-lg
-              px-4 ${leftIcon ? 'pl-11' : ''} ${rightIcon ? 'pr-11' : ''}
+              px-4 ${leftIcon ? 'pl-11' : ''} ${effectiveRightIcon ? 'pr-12' : ''}
               text-sm text-gray-900 dark:text-white
               placeholder:text-gray-400 dark:placeholder:text-gray-500
               bg-white dark:bg-gray-800
@@ -77,16 +138,23 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               shadow-sm
               transition-all duration-200
               focus:outline-none
+              ${isDateLikeInput ? 'app-date-input cursor-pointer font-medium tracking-[0.01em]' : ''}
               ${disabled ? 'bg-gray-50 dark:bg-gray-900 cursor-not-allowed opacity-60' : ''}
               ${className}
             `}
             {...props}
           />
 
-          {rightIcon && (
-            <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-gray-400">
-              {rightIcon}
-            </div>
+          {effectiveRightIcon && (
+            isDateLikeInput ? (
+              effectiveRightIcon
+            ) : (
+              <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-gray-400">
+                {effectiveRightIcon}
+              </div>
+            )
+          )}
+            </>
           )}
         </div>
 

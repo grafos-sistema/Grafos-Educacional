@@ -163,9 +163,21 @@ export class UsersController {
       role,
       institutionId,
       isActive,
-      hasTeacherProfile === 'true' ? true : hasTeacherProfile === 'false' ? false : undefined,
-      hasStudentProfile === 'true' ? true : hasStudentProfile === 'false' ? false : undefined,
-      hasParentProfile === 'true' ? true : hasParentProfile === 'false' ? false : undefined,
+      hasTeacherProfile === 'true'
+        ? true
+        : hasTeacherProfile === 'false'
+          ? false
+          : undefined,
+      hasStudentProfile === 'true'
+        ? true
+        : hasStudentProfile === 'false'
+          ? false
+          : undefined,
+      hasParentProfile === 'true'
+        ? true
+        : hasParentProfile === 'false'
+          ? false
+          : undefined,
       hasProfile === 'true' ? true : hasProfile === 'false' ? false : undefined,
     );
   }
@@ -256,7 +268,10 @@ export class UsersController {
     schema: {
       type: 'object',
       properties: {
-        message: { type: 'string', example: 'Usuário excluído permanentemente com sucesso' },
+        message: {
+          type: 'string',
+          example: 'Usuário excluído permanentemente com sucesso',
+        },
       },
     },
   })
@@ -325,12 +340,16 @@ export class UsersController {
         message: { type: 'string', example: 'Avatar atualizado com sucesso' },
         avatar: {
           type: 'string',
-          example: 'https://your-project-ref.supabase.co/storage/v1/object/public/avatars/institutions/example/users/example/avatar.webp',
+          example:
+            'https://your-project-ref.supabase.co/storage/v1/object/public/avatars/institutions/example/users/example/avatar.webp',
         },
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Arquivo inválido ou não fornecido' })
+  @ApiResponse({
+    status: 400,
+    description: 'Arquivo inválido ou não fornecido',
+  })
   @ApiResponse({ status: 404, description: 'Usuário não encontrado' })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
   uploadAvatar(
@@ -380,10 +399,18 @@ export class UsersController {
     description: 'Adiciona perfil de professor a um usuário existente',
   })
   @ApiResponse({ status: 201, description: 'Perfil de professor adicionado' })
-  @ApiResponse({ status: 409, description: 'Usuário já possui perfil de professor' })
+  @ApiResponse({
+    status: 409,
+    description: 'Usuário já possui perfil de professor',
+  })
   addTeacherProfile(
     @Param('id') userId: string,
-    @Body() data?: { specialization?: string; degree?: string; registrationNumber?: string },
+    @Body()
+    data?: {
+      specialization?: string;
+      degree?: string;
+      registrationNumber?: string;
+    },
   ) {
     return this.usersService.addTeacherProfile(userId, data);
   }
@@ -395,10 +422,18 @@ export class UsersController {
     description: 'Adiciona perfil de aluno a um usuário existente',
   })
   @ApiResponse({ status: 201, description: 'Perfil de aluno adicionado' })
-  @ApiResponse({ status: 409, description: 'Usuário já possui perfil de aluno' })
+  @ApiResponse({
+    status: 409,
+    description: 'Usuário já possui perfil de aluno',
+  })
   addStudentProfile(
     @Param('id') userId: string,
-    @Body() data?: { registrationNumber?: string; enrollmentNumber?: string; enrollmentDate?: Date },
+    @Body()
+    data?: {
+      registrationNumber?: string;
+      enrollmentNumber?: string;
+      enrollmentDate?: Date;
+    },
   ) {
     return this.usersService.addStudentProfile(userId, data);
   }
@@ -410,7 +445,10 @@ export class UsersController {
     description: 'Adiciona perfil de responsável a um usuário existente',
   })
   @ApiResponse({ status: 201, description: 'Perfil de responsável adicionado' })
-  @ApiResponse({ status: 409, description: 'Usuário já possui perfil de responsável' })
+  @ApiResponse({
+    status: 409,
+    description: 'Usuário já possui perfil de responsável',
+  })
   addParentProfile(
     @Param('id') userId: string,
     @Body() data?: { occupation?: string },
@@ -426,7 +464,10 @@ export class UsersController {
     description: 'Remove perfil de professor de um usuário',
   })
   @ApiResponse({ status: 204, description: 'Perfil de professor removido' })
-  @ApiResponse({ status: 404, description: 'Usuário não possui perfil de professor' })
+  @ApiResponse({
+    status: 404,
+    description: 'Usuário não possui perfil de professor',
+  })
   @ApiResponse({ status: 400, description: 'Professor tem turmas ativas' })
   async removeTeacherProfile(@Param('id') userId: string) {
     await this.usersService.removeTeacherProfile(userId);
@@ -440,7 +481,10 @@ export class UsersController {
     description: 'Remove perfil de aluno de um usuário',
   })
   @ApiResponse({ status: 204, description: 'Perfil de aluno removido' })
-  @ApiResponse({ status: 404, description: 'Usuário não possui perfil de aluno' })
+  @ApiResponse({
+    status: 404,
+    description: 'Usuário não possui perfil de aluno',
+  })
   @ApiResponse({ status: 400, description: 'Aluno tem matrículas ativas' })
   async removeStudentProfile(@Param('id') userId: string) {
     await this.usersService.removeStudentProfile(userId);
@@ -454,8 +498,14 @@ export class UsersController {
     description: 'Remove perfil de responsável de um usuário',
   })
   @ApiResponse({ status: 204, description: 'Perfil de responsável removido' })
-  @ApiResponse({ status: 404, description: 'Usuário não possui perfil de responsável' })
-  @ApiResponse({ status: 400, description: 'Responsável tem alunos vinculados' })
+  @ApiResponse({
+    status: 404,
+    description: 'Usuário não possui perfil de responsável',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Responsável tem alunos vinculados',
+  })
   async removeParentProfile(@Param('id') userId: string) {
     await this.usersService.removeParentProfile(userId);
   }
@@ -469,11 +519,15 @@ export class UsersController {
     description: 'Aprova usuário pendente adicionando o perfil solicitado',
   })
   @ApiResponse({ status: 201, description: 'Usuário aprovado com sucesso' })
-  @ApiResponse({ status: 400, description: 'Dados inválidos ou usuário não está pendente' })
+  @ApiResponse({
+    status: 400,
+    description: 'Dados inválidos ou usuário não está pendente',
+  })
   @ApiResponse({ status: 409, description: 'Usuário já possui o perfil' })
   quickApprove(
     @Param('id') userId: string,
-    @Body() data: { profileType: 'TEACHER' | 'STUDENT' | 'PARENT'; profileData?: any },
+    @Body()
+    data: { profileType: 'TEACHER' | 'STUDENT' | 'PARENT'; profileData?: any },
     @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.usersService.quickApprove(

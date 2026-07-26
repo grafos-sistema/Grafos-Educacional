@@ -161,7 +161,9 @@ export class ExamsService {
     }
 
     if (exam.status !== ExamStatus.PUBLISHED) {
-      throw new BadRequestException('Apenas simulados publicados podem ser atribuídos');
+      throw new BadRequestException(
+        'Apenas simulados publicados podem ser atribuídos',
+      );
     }
 
     const assignments: any[] = [];
@@ -465,7 +467,9 @@ export class ExamsService {
     }
 
     if (attempt.studentId !== studentId) {
-      throw new ForbiddenException('Você não tem permissão para ver este resultado');
+      throw new ForbiddenException(
+        'Você não tem permissão para ver este resultado',
+      );
     }
 
     // Análise por descritor SAEB
@@ -691,27 +695,34 @@ export class ExamsService {
 
       const correctCount = answers.filter((ans) => ans.isCorrect).length;
       const totalAnswers = answers.length;
-      const successRate = totalAnswers > 0 ? (correctCount / totalAnswers) * 100 : 0;
+      const successRate =
+        totalAnswers > 0 ? (correctCount / totalAnswers) * 100 : 0;
 
       // Distribuição de respostas por opção
-      const optionDistribution = answers.reduce((acc, ans) => {
-        const opt = ans.selectedOption;
-        if (opt !== null && opt !== undefined) {
-          acc[opt] = (acc[opt] || 0) + 1;
-        }
-        return acc;
-      }, {} as Record<number, number>);
+      const optionDistribution = answers.reduce(
+        (acc, ans) => {
+          const opt = ans.selectedOption;
+          if (opt !== null && opt !== undefined) {
+            acc[opt] = (acc[opt] || 0) + 1;
+          }
+          return acc;
+        },
+        {} as Record<number, number>,
+      );
 
       questionAnalytics.push({
         questionId: examQuestion.questionId,
         orderNumber: examQuestion.orderNumber,
-        questionText: (examQuestion.question as any).text?.substring(0, 100) + '...' || 'N/A',
+        questionText:
+          (examQuestion.question as any).text?.substring(0, 100) + '...' ||
+          'N/A',
         saebDescriptor: examQuestion.question.saebDescriptor,
         totalAnswers,
         correctCount,
         incorrectCount: totalAnswers - correctCount,
         successRate: Math.round(successRate * 10) / 10,
-        difficulty: successRate >= 70 ? 'Fácil' : successRate >= 40 ? 'Médio' : 'Difícil',
+        difficulty:
+          successRate >= 70 ? 'Fácil' : successRate >= 40 ? 'Médio' : 'Difícil',
         optionDistribution,
       });
     }
@@ -720,12 +731,15 @@ export class ExamsService {
     questionAnalytics.sort((a, b) => a.successRate - b.successRate);
 
     // Análise por descritor SAEB
-    const descriptorMap: Record<string, {
-      descriptor: any;
-      totalQuestions: number;
-      totalAnswers: number;
-      correctAnswers: number;
-    }> = {};
+    const descriptorMap: Record<
+      string,
+      {
+        descriptor: any;
+        totalQuestions: number;
+        totalAnswers: number;
+        correctAnswers: number;
+      }
+    > = {};
 
     for (const examQuestion of exam.questions) {
       const descriptor = examQuestion.question.saebDescriptor;
@@ -762,7 +776,8 @@ export class ExamsService {
       correctAnswers: item.correctAnswers,
       successRate:
         item.totalAnswers > 0
-          ? Math.round((item.correctAnswers / item.totalAnswers) * 100 * 10) / 10
+          ? Math.round((item.correctAnswers / item.totalAnswers) * 100 * 10) /
+            10
           : 0,
     }));
 
@@ -821,11 +836,14 @@ export class ExamsService {
    * Identificar descritores fracos de um aluno baseado em suas respostas
    */
   private identifyWeakDescriptors(answers: any[]): any[] {
-    const descriptorMap: Record<string, {
-      descriptor: any;
-      total: number;
-      correct: number;
-    }> = {};
+    const descriptorMap: Record<
+      string,
+      {
+        descriptor: any;
+        total: number;
+        correct: number;
+      }
+    > = {};
 
     answers.forEach((answer) => {
       const descriptor = answer.examQuestion.question.saebDescriptor;
@@ -859,12 +877,15 @@ export class ExamsService {
   /**
    * Relatório personalizado de desempenho do aluno
    */
-  async getStudentPerformanceReport(studentId: string, filters?: {
-    subjectId?: string;
-    examType?: ExamType;
-    startDate?: Date;
-    endDate?: Date;
-  }) {
+  async getStudentPerformanceReport(
+    studentId: string,
+    filters?: {
+      subjectId?: string;
+      examType?: ExamType;
+      startDate?: Date;
+      endDate?: Date;
+    },
+  ) {
     const where: any = {
       studentId,
       status: AttemptStatus.SUBMITTED,
@@ -926,8 +947,14 @@ export class ExamsService {
     // Métricas gerais
     const totalExams = attempts.length;
     const totalScore = attempts.reduce((sum, att) => sum + (att.score || 0), 0);
-    const totalPercentage = attempts.reduce((sum, att) => sum + (att.percentage || 0), 0);
-    const totalProficiency = attempts.reduce((sum, att) => sum + (att.proficiency || 0), 0);
+    const totalPercentage = attempts.reduce(
+      (sum, att) => sum + (att.percentage || 0),
+      0,
+    );
+    const totalProficiency = attempts.reduce(
+      (sum, att) => sum + (att.proficiency || 0),
+      0,
+    );
 
     // Evolução ao longo do tempo
     const evolution = attempts.map((att) => ({
@@ -940,11 +967,14 @@ export class ExamsService {
     }));
 
     // Performance por descritor SAEB
-    const descriptorMap: Record<string, {
-      descriptor: any;
-      total: number;
-      correct: number;
-    }> = {};
+    const descriptorMap: Record<
+      string,
+      {
+        descriptor: any;
+        total: number;
+        correct: number;
+      }
+    > = {};
 
     attempts.forEach((attempt) => {
       attempt.answers.forEach((answer) => {

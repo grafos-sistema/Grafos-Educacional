@@ -28,7 +28,10 @@ export class ClassResponseDto {
   @ApiProperty({ example: 30, nullable: true })
   maxStudents: number | null;
 
-  @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000', nullable: true })
+  @ApiProperty({
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    nullable: true,
+  })
   coordinatorTeacherId: string | null;
 
   @ApiProperty({ example: true })

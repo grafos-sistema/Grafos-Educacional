@@ -43,12 +43,7 @@ export class AttendancesService {
     const parsedDate = new Date(year, month - 1, day, 12, 0, 0, 0); // Meio-dia para evitar problemas de timezone
 
     // Valida entidades relacionadas
-    await this.validateEntities(
-      studentId,
-      classId,
-      classSubjectId,
-      teacherId,
-    );
+    await this.validateEntities(studentId, classId, classSubjectId, teacherId);
 
     // Verifica se já existe registro de frequência para este aluno, disciplina e data
     const existingAttendance = await this.prisma.attendance.findFirst({
@@ -411,7 +406,10 @@ export class AttendancesService {
         where,
         skip,
         take: limit,
-        orderBy: [{ date: 'desc' }, { student: { user: { firstName: 'asc' } } }],
+        orderBy: [
+          { date: 'desc' },
+          { student: { user: { firstName: 'asc' } } },
+        ],
         include: {
           student: {
             select: {

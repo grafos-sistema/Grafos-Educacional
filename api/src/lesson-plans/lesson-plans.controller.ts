@@ -40,7 +40,12 @@ export class LessonPlansController {
 
   @Post()
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER)
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+    UserRole.TEACHER,
+  )
   @ApiOperation({
     summary: 'Criar plano de ensino',
     description:
@@ -173,7 +178,12 @@ export class LessonPlansController {
 
   @Post(':id/submit')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.TEACHER, UserRole.COORDINATOR, UserRole.INSTITUTION_ADMIN, UserRole.SUPER_ADMIN)
+  @Roles(
+    UserRole.TEACHER,
+    UserRole.COORDINATOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.SUPER_ADMIN,
+  )
   @ApiParam({
     name: 'id',
     description: 'ID do plano de ensino',
@@ -189,7 +199,10 @@ export class LessonPlansController {
     description: 'Plano de ensino submetido com sucesso',
     type: LessonPlanResponseDto,
   })
-  @ApiResponse({ status: 400, description: 'Apenas planos em rascunho podem ser submetidos' })
+  @ApiResponse({
+    status: 400,
+    description: 'Apenas planos em rascunho podem ser submetidos',
+  })
   @ApiResponse({ status: 404, description: 'Plano de ensino não encontrado' })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
   submit(@Param('id') id: string) {
@@ -214,7 +227,10 @@ export class LessonPlansController {
     description: 'Plano de ensino aprovado com sucesso',
     type: LessonPlanResponseDto,
   })
-  @ApiResponse({ status: 400, description: 'Apenas planos submetidos podem ser aprovados' })
+  @ApiResponse({
+    status: 400,
+    description: 'Apenas planos submetidos podem ser aprovados',
+  })
   @ApiResponse({ status: 404, description: 'Plano de ensino não encontrado' })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
   approve(@Param('id') id: string, @CurrentUser('userId') userId: string) {
@@ -239,7 +255,10 @@ export class LessonPlansController {
     description: 'Plano de ensino rejeitado com sucesso',
     type: LessonPlanResponseDto,
   })
-  @ApiResponse({ status: 400, description: 'Apenas planos submetidos podem ser rejeitados' })
+  @ApiResponse({
+    status: 400,
+    description: 'Apenas planos submetidos podem ser rejeitados',
+  })
   @ApiResponse({ status: 404, description: 'Plano de ensino não encontrado' })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
   reject(
@@ -252,7 +271,12 @@ export class LessonPlansController {
 
   @Patch(':id')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER)
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+    UserRole.TEACHER,
+  )
   @ApiParam({
     name: 'id',
     description: 'ID do plano de ensino',

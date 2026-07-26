@@ -14,18 +14,40 @@ export const announcementsService = {
   async findAll(filters: AnnouncementFilters = {}): Promise<PaginatedResponse<Announcement>> {
     const params = new URLSearchParams();
 
-    if (filters.target) params.append('target', filters.target);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.targetRole) params.append('targetRole', filters.targetRole);
     if (filters.priority) params.append('priority', filters.priority);
-    if (filters.isActive !== undefined) params.append('isActive', String(filters.isActive));
-    if (filters.isPinned !== undefined) params.append('isPinned', String(filters.isPinned));
-    if (filters.classId) params.append('classId', filters.classId);
+    if (filters.onlyPublished !== undefined) {
+      params.append('onlyPublished', String(filters.onlyPublished));
+    }
+    if (filters.onlyActive !== undefined) {
+      params.append('onlyActive', String(filters.onlyActive));
+    }
+    if (filters.institutionId) params.append('institutionId', filters.institutionId);
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
 
-    const response = await api.get<PaginatedResponse<Announcement>>(
-      `/announcements?${params.toString()}`
-    );
-    return response as unknown as PaginatedResponse<Announcement>;
+    const queryString = params.toString();
+    const response = (await api.get<PaginatedResponse<Announcement>>(
+      queryString ? `/announcements?${queryString}` : '/announcements'
+    )) as unknown as PaginatedResponse<Announcement>;
+
+    return {
+      ...response,
+      data: response.data ?? [],
+      meta: {
+        ...response.meta,
+        total: response.meta?.total ?? 0,
+        page: response.meta?.page ?? filters.page ?? 1,
+        limit: response.meta?.limit ?? filters.limit ?? 10,
+        totalPages: response.meta?.totalPages ?? 1,
+        hasNextPage:
+          response.meta?.hasNextPage ??
+          (response.meta?.page ?? filters.page ?? 1) < (response.meta?.totalPages ?? 1),
+        hasPreviousPage:
+          response.meta?.hasPreviousPage ?? (response.meta?.page ?? filters.page ?? 1) > 1,
+      },
+    };
   },
 
   /**
@@ -62,8 +84,23 @@ export const announcementsService = {
   /**
    * Fixar/desafixar comunicado
    */
-  async togglePin(id: string): Promise<Announcement> {
-    const response = await api.patch<Announcement>(`/announcements/${id}/toggle-pin`);
+  async togglePin(): Promise<Announcement> {
+    throw new Error('Fixar comunicados nao e suportado pelo backend atual.');
+  },
+
+  /**
+   * Publicar comunicado
+   */
+  async publish(id: string): Promise<Announcement> {
+    const response = await api.patch<Announcement>(`/announcements/${id}/publish`);
+    return response as unknown as Announcement;
+  },
+
+  /**
+   * Despublicar comunicado
+   */
+  async unpublish(id: string): Promise<Announcement> {
+    const response = await api.patch<Announcement>(`/announcements/${id}/unpublish`);
     return response as unknown as Announcement;
   },
 
@@ -71,8 +108,10 @@ export const announcementsService = {
    * Ativar/desativar comunicado
    */
   async toggleActive(id: string): Promise<Announcement> {
-    const response = await api.patch<Announcement>(`/announcements/${id}/toggle-active`);
-    return response as unknown as Announcement;
+    const announcement = await announcementsService.findOne(id);
+    return announcement.isPublished
+      ? announcementsService.unpublish(id)
+      : announcementsService.publish(id);
   },
 
   /**

@@ -19,11 +19,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { SubjectsService } from './subjects.service';
-import {
-  CreateSubjectDto,
-  UpdateSubjectDto,
-  SubjectResponseDto,
-} from './dto';
+import { CreateSubjectDto, UpdateSubjectDto, SubjectResponseDto } from './dto';
 import { UserRole } from '@prisma/client';
 import { Roles } from '../common/decorators/roles.decorator';
 import { InstitutionAdminGuard } from '../auth/guards/institution-admin.guard';
@@ -152,7 +148,8 @@ export class SubjectsController {
   @SkipOwnership()
   @ApiOperation({
     summary: 'Buscar disciplina por ID',
-    description: 'Retorna detalhes completos da disciplina incluindo cursos e professores',
+    description:
+      'Retorna detalhes completos da disciplina incluindo cursos e professores',
   })
   @ApiResponse({
     status: 200,
@@ -184,10 +181,7 @@ export class SubjectsController {
     description: 'Já existe disciplina com este código na instituição',
   })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
-  update(
-    @Param('id') id: string,
-    @Body() updateSubjectDto: UpdateSubjectDto,
-  ) {
+  update(@Param('id') id: string, @Body() updateSubjectDto: UpdateSubjectDto) {
     return this.subjectsService.update(id, updateSubjectDto);
   }
 

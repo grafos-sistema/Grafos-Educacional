@@ -31,7 +31,9 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('teacher-subjects')
 export class TeacherSubjectsController {
-  constructor(private readonly teacherSubjectsService: TeacherSubjectsService) {}
+  constructor(
+    private readonly teacherSubjectsService: TeacherSubjectsService,
+  ) {}
 
   @Get('my-subjects')
   @Roles(UserRole.TEACHER)
@@ -69,7 +71,9 @@ export class TeacherSubjectsController {
     @CurrentUser() user: any,
     @Body() createDto: CreateTeacherSubjectDto,
   ) {
-    const teacher = await this.teacherSubjectsService['prisma'].teacher.findUnique({
+    const teacher = await this.teacherSubjectsService[
+      'prisma'
+    ].teacher.findUnique({
       where: { userId: user.userId },
     });
     if (!teacher) {
@@ -89,7 +93,9 @@ export class TeacherSubjectsController {
     @CurrentUser() user: any,
     @Body() bulkDto: BulkCreateTeacherSubjectDto,
   ) {
-    const teacher = await this.teacherSubjectsService['prisma'].teacher.findUnique({
+    const teacher = await this.teacherSubjectsService[
+      'prisma'
+    ].teacher.findUnique({
       where: { userId: user.userId },
     });
     if (!teacher) {
@@ -110,7 +116,9 @@ export class TeacherSubjectsController {
     @CurrentUser() user: any,
     @Body() body: { subjectIds: string[] },
   ) {
-    const teacher = await this.teacherSubjectsService['prisma'].teacher.findUnique({
+    const teacher = await this.teacherSubjectsService[
+      'prisma'
+    ].teacher.findUnique({
       where: { userId: user.userId },
     });
     if (!teacher) {
@@ -133,7 +141,9 @@ export class TeacherSubjectsController {
     @CurrentUser() user: any,
     @Param('subjectId') subjectId: string,
   ) {
-    const teacher = await this.teacherSubjectsService['prisma'].teacher.findUnique({
+    const teacher = await this.teacherSubjectsService[
+      'prisma'
+    ].teacher.findUnique({
       where: { userId: user.userId },
     });
     if (!teacher) {

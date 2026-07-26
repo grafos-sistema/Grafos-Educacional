@@ -90,7 +90,10 @@ export class ObservationsController {
     status: 404,
     description: 'Student not found',
   })
-  findByStudent(@Param('studentId') studentId: string, @CurrentUser() user: any) {
+  findByStudent(
+    @Param('studentId') studentId: string,
+    @CurrentUser() user: any,
+  ) {
     return this.observationsService.findByStudent(studentId, user);
   }
 
@@ -121,7 +124,12 @@ export class ObservationsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER)
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+    UserRole.TEACHER,
+  )
   @ApiOperation({ summary: 'Update an observation' })
   @ApiParam({
     name: 'id',
@@ -138,7 +146,8 @@ export class ObservationsController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden - you do not have permission to update this observation',
+    description:
+      'Forbidden - you do not have permission to update this observation',
   })
   update(
     @Param('id') id: string,
@@ -149,7 +158,12 @@ export class ObservationsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER)
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+    UserRole.TEACHER,
+  )
   @ApiOperation({ summary: 'Delete an observation' })
   @ApiParam({
     name: 'id',
@@ -166,7 +180,8 @@ export class ObservationsController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden - you do not have permission to delete this observation',
+    description:
+      'Forbidden - you do not have permission to delete this observation',
   })
   remove(@Param('id') id: string, @CurrentUser() user: any) {
     return this.observationsService.remove(id, user);

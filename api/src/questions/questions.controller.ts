@@ -55,9 +55,13 @@ export class QuestionsController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Invalid question data (e.g., missing options for multiple choice)',
+    description:
+      'Invalid question data (e.g., missing options for multiple choice)',
   })
-  create(@Body() createQuestionDto: CreateQuestionDto, @CurrentUser() user: any) {
+  create(
+    @Body() createQuestionDto: CreateQuestionDto,
+    @CurrentUser() user: any,
+  ) {
     return this.questionsService.create(createQuestionDto, user);
   }
 
@@ -78,11 +82,7 @@ export class QuestionsController {
   }
 
   @Get('statistics')
-  @Roles(
-    UserRole.SUPER_ADMIN,
-    UserRole.INSTITUTION_ADMIN,
-    UserRole.COORDINATOR,
-  )
+  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
   @ApiOperation({ summary: 'Get question bank statistics' })
   @ApiResponse({
     status: 200,
@@ -118,7 +118,12 @@ export class QuestionsController {
   }
 
   @Post(':id/duplicate')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER)
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+    UserRole.TEACHER,
+  )
   @ApiOperation({ summary: 'Duplicate a question' })
   @ApiParam({
     name: 'id',
@@ -157,7 +162,10 @@ export class QuestionsController {
     status: 400,
     description: 'Invalid question data',
   })
-  update(@Param('id') id: string, @Body() updateQuestionDto: UpdateQuestionDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateQuestionDto: UpdateQuestionDto,
+  ) {
     return this.questionsService.update(id, updateQuestionDto);
   }
 

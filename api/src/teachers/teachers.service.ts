@@ -43,7 +43,9 @@ export class TeachersService {
     });
 
     if (existingTeacher) {
-      throw new ConflictException('Já existe registro de professor para este usuário');
+      throw new ConflictException(
+        'Já existe registro de professor para este usuário',
+      );
     }
 
     // Verifica se instituição existe
@@ -345,7 +347,7 @@ export class TeachersService {
 
     // Extract unique subjects from classSubjects
     const uniqueSubjects = new Map();
-    teacher.classSubjects.forEach(cs => {
+    teacher.classSubjects.forEach((cs) => {
       if (!uniqueSubjects.has(cs.subject.id)) {
         uniqueSubjects.set(cs.subject.id, cs.subject);
       }

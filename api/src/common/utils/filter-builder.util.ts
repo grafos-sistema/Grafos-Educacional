@@ -33,7 +33,11 @@ export class FilterBuilder<T> {
   /**
    * Adiciona um filtro de busca em múltiplos campos (OR)
    */
-  searchMultipleFields(fields: (keyof T)[], searchTerm: string, caseInsensitive = true): this {
+  searchMultipleFields(
+    fields: (keyof T)[],
+    searchTerm: string,
+    caseInsensitive = true,
+  ): this {
     if (searchTerm && fields.length > 0) {
       const orConditions = fields.map((field) => ({
         [field]: {
@@ -198,13 +202,16 @@ export function createFilterBuilder<T>(): FilterBuilder<T> {
 /**
  * Helper para construir ordenação do Prisma
  */
-export function buildOrderBy(sortBy?: string, sortOrder: 'asc' | 'desc' = 'desc'): any {
+export function buildOrderBy(
+  sortBy?: string,
+  sortOrder: 'asc' | 'desc' = 'desc',
+): any {
   if (!sortBy) return undefined;
 
   // Suporta ordenação aninhada com ponto (ex: "user.name")
   if (sortBy.includes('.')) {
     const parts = sortBy.split('.');
-    let orderBy: any = {};
+    const orderBy: any = {};
     let current = orderBy;
 
     for (let i = 0; i < parts.length - 1; i++) {

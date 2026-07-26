@@ -633,11 +633,16 @@ export const usersService = {
     if (error) throw error;
     const user = await usersService.findOne(id);
 
-    const normalizedInstitutionIds = Array.from(
-      new Set([institutionId || user.institutionId, ...((institutionIds ?? []) as string[])].filter(Boolean))
-    );
+    const shouldSyncInstitutionLinks =
+      institutionId !== undefined || institutionIds !== undefined;
 
-    if (normalizedInstitutionIds.length > 0) {
+    const normalizedInstitutionIds = shouldSyncInstitutionLinks
+      ? Array.from(
+          new Set([institutionId || user.institutionId, ...((institutionIds ?? []) as string[])].filter(Boolean))
+        )
+      : [];
+
+    if (shouldSyncInstitutionLinks && normalizedInstitutionIds.length > 0) {
       const now = new Date().toISOString();
       const { error: deleteInstitutionLinksError } = await supabase
         .from('user_institutions')

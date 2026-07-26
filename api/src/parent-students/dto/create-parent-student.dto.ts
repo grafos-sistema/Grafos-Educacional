@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsBoolean, IsOptional, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsBoolean,
+  IsOptional,
+  IsUUID,
+} from 'class-validator';
 
 export class CreateParentStudentDto {
   @ApiProperty({
@@ -19,7 +25,8 @@ export class CreateParentStudentDto {
   studentId: string;
 
   @ApiProperty({
-    description: 'Tipo de relacionamento (Pai, Mãe, Tutor, Responsável Legal, etc.)',
+    description:
+      'Tipo de relacionamento (Pai, Mãe, Tutor, Responsável Legal, etc.)',
     example: 'Pai',
   })
   @IsString()

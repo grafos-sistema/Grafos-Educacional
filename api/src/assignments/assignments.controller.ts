@@ -202,10 +202,7 @@ export class AssignmentsController {
     description: 'Aluno já submeteu esta tarefa',
   })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
-  submit(
-    @Param('id') id: string,
-    @Body() submitDto: SubmitAssignmentDto,
-  ) {
+  submit(@Param('id') id: string, @Body() submitDto: SubmitAssignmentDto) {
     return this.assignmentsService.submit(id, submitDto);
   }
 

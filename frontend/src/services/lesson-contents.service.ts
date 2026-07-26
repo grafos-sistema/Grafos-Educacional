@@ -63,17 +63,19 @@ export const lessonContentsService = {
    * Buscar conteÃºdos de aula por professor
    */
   async findByTeacher(teacherId: string): Promise<LessonContent[]> {
-    const response = await api.get<LessonContent[]>(`/lesson-contents/teacher/${teacherId}`);
-    return response as unknown as LessonContent[];
+    const response = await lessonContentsService.findAll({ teacherId, page: 1, limit: 100 });
+    return response.data ?? [];
   },
 
   /**
    * Buscar conteÃºdos de aula por turma/disciplina
    */
   async findByClassSubject(classSubjectId: string): Promise<LessonContent[]> {
-    const response = await api.get<LessonContent[]>(
-      `/lesson-contents/class-subject/${classSubjectId}`
-    );
-    return response as unknown as LessonContent[];
+    const response = await lessonContentsService.findAll({
+      classSubjectId,
+      page: 1,
+      limit: 100,
+    });
+    return response.data ?? [];
   },
 };

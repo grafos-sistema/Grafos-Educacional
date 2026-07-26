@@ -148,10 +148,14 @@ export class ExamsController {
    */
   @Get('attempts/:attemptId/result')
   @Roles('STUDENT', 'TEACHER', 'INSTITUTION_ADMIN', 'SUPER_ADMIN')
-  async getAttemptResult(@Param('attemptId') attemptId: string, @Request() req) {
+  async getAttemptResult(
+    @Param('attemptId') attemptId: string,
+    @Request() req,
+  ) {
     // Para professores/admins, permitir ver qualquer resultado
     // Para alunos, apenas seus próprios
-    const studentId = req.user.role === 'STUDENT' ? req.user.studentId : undefined;
+    const studentId =
+      req.user.role === 'STUDENT' ? req.user.studentId : undefined;
 
     if (studentId) {
       return this.examsService.getAttemptResult(attemptId, studentId);

@@ -278,7 +278,9 @@ export class ClassSubjectRequestsService {
     const request = await this.findOne(id);
 
     if (request.status !== RequestStatus.PENDING) {
-      throw new BadRequestException('Apenas solicitações pendentes podem ser aprovadas');
+      throw new BadRequestException(
+        'Apenas solicitações pendentes podem ser aprovadas',
+      );
     }
 
     // Verificar se ainda não existe atribuição
@@ -356,7 +358,9 @@ export class ClassSubjectRequestsService {
     const request = await this.findOne(id);
 
     if (request.status !== RequestStatus.PENDING) {
-      throw new BadRequestException('Apenas solicitações pendentes podem ser rejeitadas');
+      throw new BadRequestException(
+        'Apenas solicitações pendentes podem ser rejeitadas',
+      );
     }
 
     return this.prisma.classSubjectRequest.update({
@@ -408,7 +412,9 @@ export class ClassSubjectRequestsService {
     }
 
     if (request.status !== RequestStatus.PENDING) {
-      throw new BadRequestException('Apenas solicitações pendentes podem ser canceladas');
+      throw new BadRequestException(
+        'Apenas solicitações pendentes podem ser canceladas',
+      );
     }
 
     await this.prisma.classSubjectRequest.delete({

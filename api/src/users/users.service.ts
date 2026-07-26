@@ -36,8 +36,12 @@ export class UsersService {
   }
 
   private getSupabaseAdminClient(): SupabaseClient {
-    const supabaseUrl = this.configService.get<string>('storage.supabaseUrl')?.trim();
-    const serviceRoleKey = this.configService.get<string>('storage.serviceRoleKey')?.trim();
+    const supabaseUrl = this.configService
+      .get<string>('storage.supabaseUrl')
+      ?.trim();
+    const serviceRoleKey = this.configService
+      .get<string>('storage.serviceRoleKey')
+      ?.trim();
 
     if (!supabaseUrl || !serviceRoleKey) {
       throw new InternalServerErrorException(
@@ -106,8 +110,16 @@ export class UsersService {
    * Cria um novo usuário
    */
   async create(createUserDto: CreateUserDto) {
-    const { email, cpf, password, birthDate, institutionId, firstName, lastName, ...data } =
-      createUserDto;
+    const {
+      email,
+      cpf,
+      password,
+      birthDate,
+      institutionId,
+      firstName,
+      lastName,
+      ...data
+    } = createUserDto;
     const resolvedPassword = password || this.buildInitialPassword(email);
 
     // Verifica se email já existe NESTA instituição
@@ -416,7 +428,8 @@ export class UsersService {
     // Verifica se usuário existe
     const existingUser = await this.findOne(id);
 
-    const { email, cpf, birthDate, firstName, lastName, ...data } = updateUserDto;
+    const { email, cpf, birthDate, firstName, lastName, ...data } =
+      updateUserDto;
 
     // Verifica email único se fornecido NESTA instituição
     if (email) {
@@ -599,10 +612,7 @@ export class UsersService {
   /**
    * Altera a senha do usuário
    */
-  async changePassword(
-    userId: string,
-    changePasswordDto: ChangePasswordDto,
-  ) {
+  async changePassword(userId: string, changePasswordDto: ChangePasswordDto) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -660,17 +670,25 @@ export class UsersService {
     const supabase = this.getSupabaseAdminClient();
     const bucket = this.getAvatarBucketName();
     const storagePath = this.buildAvatarStoragePath(user, file);
-    const previousStoragePath = this.extractStoragePathFromAvatarUrl(user.avatar);
+    const previousStoragePath = this.extractStoragePathFromAvatarUrl(
+      user.avatar,
+    );
 
-    const { error: uploadError } = await supabase.storage.from(bucket).upload(storagePath, file.buffer, {
-      contentType: file.mimetype,
-      cacheControl: '3600',
-      upsert: true,
-    });
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(storagePath, file.buffer, {
+        contentType: file.mimetype,
+        cacheControl: '3600',
+        upsert: true,
+      });
 
     if (uploadError) {
-      this.logger.error(`Falha ao enviar avatar para o Supabase Storage: ${uploadError.message}`);
-      throw new BadRequestException('Nao foi possivel enviar o avatar para o armazenamento.');
+      this.logger.error(
+        `Falha ao enviar avatar para o Supabase Storage: ${uploadError.message}`,
+      );
+      throw new BadRequestException(
+        'Nao foi possivel enviar o avatar para o armazenamento.',
+      );
     }
 
     const {
@@ -748,7 +766,14 @@ export class UsersService {
   /**
    * Adiciona perfil de professor a um usuário
    */
-  async addTeacherProfile(userId: string, data?: { specialization?: string; degree?: string; registrationNumber?: string }) {
+  async addTeacherProfile(
+    userId: string,
+    data?: {
+      specialization?: string;
+      degree?: string;
+      registrationNumber?: string;
+    },
+  ) {
     const user = await this.findOne(userId);
 
     if (user.teacherProfile) {
@@ -779,7 +804,14 @@ export class UsersService {
   /**
    * Adiciona perfil de aluno a um usuário
    */
-  async addStudentProfile(userId: string, data?: { registrationNumber?: string; enrollmentNumber?: string; enrollmentDate?: Date }) {
+  async addStudentProfile(
+    userId: string,
+    data?: {
+      registrationNumber?: string;
+      enrollmentNumber?: string;
+      enrollmentDate?: Date;
+    },
+  ) {
     const user = await this.findOne(userId);
 
     if (user.studentProfile) {
@@ -852,7 +884,9 @@ export class UsersService {
     });
 
     if (activeClasses > 0) {
-      throw new BadRequestException('Não é possível remover perfil de professor com turmas ativas');
+      throw new BadRequestException(
+        'Não é possível remover perfil de professor com turmas ativas',
+      );
     }
 
     return this.prisma.teacher.delete({
@@ -879,7 +913,9 @@ export class UsersService {
     });
 
     if (activeEnrollments > 0) {
-      throw new BadRequestException('Não é possível remover perfil de aluno com matrículas ativas');
+      throw new BadRequestException(
+        'Não é possível remover perfil de aluno com matrículas ativas',
+      );
     }
 
     return this.prisma.student.delete({
@@ -903,7 +939,9 @@ export class UsersService {
     });
 
     if (linkedStudents > 0) {
-      throw new BadRequestException('Não é possível remover perfil de responsável com alunos vinculados');
+      throw new BadRequestException(
+        'Não é possível remover perfil de responsável com alunos vinculados',
+      );
     }
 
     return this.prisma.parent.delete({
@@ -955,7 +993,9 @@ export class UsersService {
         break;
       case 'PARENT':
         if (user.parentProfile) {
-          throw new ConflictException('Usuário já possui perfil de responsável');
+          throw new ConflictException(
+            'Usuário já possui perfil de responsável',
+          );
         }
         profile = await this.addParentProfile(userId, profileData);
         break;

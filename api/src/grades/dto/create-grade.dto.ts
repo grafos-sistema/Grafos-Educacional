@@ -76,7 +76,9 @@ export class CreateGradeDto {
   })
   @IsNotEmpty({ message: 'Tipo de avaliação é obrigatório' })
   @IsString({ message: 'Tipo de avaliação deve ser um texto' })
-  @MaxLength(100, { message: 'Tipo de avaliação não pode ter mais de 100 caracteres' })
+  @MaxLength(100, {
+    message: 'Tipo de avaliação não pode ter mais de 100 caracteres',
+  })
   examType: string;
 
   @ApiProperty({

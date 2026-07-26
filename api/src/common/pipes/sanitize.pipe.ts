@@ -1,4 +1,9 @@
-import { PipeTransform, Injectable, ArgumentMetadata, BadRequestException } from '@nestjs/common';
+import {
+  PipeTransform,
+  Injectable,
+  ArgumentMetadata,
+  BadRequestException,
+} from '@nestjs/common';
 
 /**
  * Pipe para sanitizar inputs e prevenir ataques de injeção
@@ -41,10 +46,13 @@ export class SanitizePipe implements PipeTransform {
   private sanitizeString(str: string): string {
     // Remove caracteres perigosos de SQL injection
     // Nota: Prisma já previne SQL injection, mas é uma camada extra
-    const dangerous = /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|SCRIPT|JAVASCRIPT|ONERROR|ONLOAD)\b)/gi;
+    const dangerous =
+      /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|SCRIPT|JAVASCRIPT|ONERROR|ONLOAD)\b)/gi;
 
     if (dangerous.test(str)) {
-      throw new BadRequestException('Input contém conteúdo potencialmente perigoso');
+      throw new BadRequestException(
+        'Input contém conteúdo potencialmente perigoso',
+      );
     }
 
     // Remove tags HTML perigosas (XSS prevention)

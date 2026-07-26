@@ -129,7 +129,10 @@ export class SchedulesController {
     description: 'Conflito de horário detectado',
   })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
-  update(@Param('id') id: string, @Body() updateScheduleDto: UpdateScheduleDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateScheduleDto: UpdateScheduleDto,
+  ) {
     return this.schedulesService.update(id, updateScheduleDto);
   }
 
@@ -143,8 +146,7 @@ export class SchedulesController {
   })
   @ApiOperation({
     summary: 'Remover horário da grade',
-    description:
-      'SUPER_ADMIN e COORDINATOR podem remover horários.',
+    description: 'SUPER_ADMIN e COORDINATOR podem remover horários.',
   })
   @ApiResponse({
     status: 200,
