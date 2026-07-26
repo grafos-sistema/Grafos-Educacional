@@ -27,11 +27,11 @@ export class AnnouncementsService {
   }
 
   private isManagementRole(role: UserRole) {
-    return [
-      UserRole.SUPER_ADMIN,
-      UserRole.INSTITUTION_ADMIN,
-      UserRole.COORDINATOR,
-    ].includes(role);
+    return (
+      role === UserRole.SUPER_ADMIN ||
+      role === UserRole.INSTITUTION_ADMIN ||
+      role === UserRole.COORDINATOR
+    );
   }
 
   private async validateSpecificRecipients(
@@ -472,6 +472,12 @@ export class AnnouncementsService {
 
     const effectiveInstitutionId =
       updateAnnouncementDto.institutionId ?? announcement.institutionId;
+
+    if (!effectiveInstitutionId) {
+      throw new BadRequestException(
+        'Institution ID is required to update specific recipients',
+      );
+    }
 
     const specificRecipients = await this.validateSpecificRecipients(
       effectiveInstitutionId,
