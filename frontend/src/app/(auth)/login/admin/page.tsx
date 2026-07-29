@@ -44,6 +44,12 @@ const DIARY_ROWS = [
   { name: "Carla Dias", color: "#7fb8e8", light: "#c3e2ff", dark: "#4a86bd" },
 ];
 
+function buildInitialPassword(email?: string) {
+  if (!email) return "";
+  const [localPart] = email.trim().toLowerCase().split("@");
+  return localPart ? `${localPart}@Grafos` : "";
+}
+
 function Avatar3D({ color, light, dark, size = 34 }: { color: string; light: string; dark: string; size?: number }) {
   return (
     <div
@@ -77,18 +83,23 @@ export default function AdminLoginPage() {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
+
+  const typedEmail = watch("email");
+  const suggestedPassword = buildInitialPassword(typedEmail);
 
   const onSubmit = async (data: LoginFormData) => {
     try {
       setError(null);
       setIsLoading(true);
       await login({ email: data.email, password: data.password });
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao fazer login. Verifique suas credenciais.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao fazer login. Verifique suas credenciais.');
     } finally {
       setIsLoading(false);
     }
@@ -160,6 +171,31 @@ export default function AdminLoginPage() {
             </span>
             {errors.email && <span className="text-[12.5px] font-semibold text-red-600">{errors.email.message}</span>}
           </label>
+
+          {suggestedPassword ? (
+            <div className="rounded-lg border border-[#d7ddd9] bg-[#f5faf7] px-4 py-3">
+              <div className="flex flex-col gap-2.5">
+                <div>
+                  <p className="text-[13.5px] font-bold text-[#1f2a24]">Primeiro acesso?</p>
+                  <p className="text-[12.5px] text-[#5f6a64]">
+                    Use o preenchimento automatico da senha padrao com base no email informado.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setValue("password", suggestedPassword, { shouldValidate: true, shouldDirty: true })}
+                    className="inline-flex h-10 items-center justify-center rounded-lg bg-[#0e7a3e] px-4 text-[13.5px] font-bold text-white transition hover:brightness-110"
+                  >
+                    Preencher senha padrao
+                  </button>
+                  <span className="text-[12.5px] text-[#5f6a64]">
+                    Senha sugerida: <strong>{suggestedPassword}</strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           <label className="flex flex-col gap-2">
             <span className="text-sm font-bold">Senha</span>
