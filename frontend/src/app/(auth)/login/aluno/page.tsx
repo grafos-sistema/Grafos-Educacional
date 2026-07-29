@@ -3,7 +3,11 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { LoginHelpModal } from '@/components/auth/LoginHelpModal';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   Users, Mail, Lock, Eye, EyeOff, Headset, 
   ShieldCheck, Book, ClipboardList, CheckSquare, 
@@ -12,6 +16,13 @@ import {
   GraduationCap, Sparkles
 } from 'lucide-react';
 
+const loginSchema = z.object({
+  email: z.string().email('Email inválido'),
+  password: z.string().min(6, 'A senha deve ter no mínimo 6 caracteres'),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
+
 function buildInitialPassword(email?: string) {
   if (!email) return '';
   const [localPart] = email.trim().toLowerCase().split('@');
@@ -19,11 +30,33 @@ function buildInitialPassword(email?: string) {
 }
 
 export default function AlunoLogin() {
+  const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
-  const [typedEmail, setTypedEmail] = useState('');
-  const [typedPassword, setTypedPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
+  const typedEmail = watch('email');
   const suggestedPassword = buildInitialPassword(typedEmail);
+
+  const onSubmit = async (data: LoginFormData) => {
+    try {
+      setError(null);
+      setIsLoading(true);
+      await login(data);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao fazer login. Verifique suas credenciais.');
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="w-screen h-screen flex font-[system-ui] bg-white overflow-hidden">
@@ -48,7 +81,13 @@ export default function AlunoLogin() {
           </div>
         </div>
 
-        <form className="flex flex-col gap-4 mt-2" onSubmit={(e) => e.preventDefault()}>
+        <form className="flex flex-col gap-4 mt-2" onSubmit={handleSubmit(onSubmit)}>
+          {error && (
+            <div className="rounded-[10px] bg-[#fef2f2] border border-[#fecaca] p-3 mb-2">
+              <p className="text-[13px] text-[#991b1b] m-0">{error}</p>
+            </div>
+          )}
+
           <label className="flex flex-col gap-2">
             <span className="text-sm font-bold">Email Institucional</span>
             <span
@@ -59,13 +98,14 @@ export default function AlunoLogin() {
                 <path d="M2 7 L12 13 L22 7" />
               </svg>
               <input
+                {...register('email')}
                 type="email"
                 placeholder="aluno@escola.edu.br"
-                value={typedEmail}
-                onChange={(event) => setTypedEmail(event.target.value)}
+                disabled={isLoading}
                 className="border-none outline-none flex-1 text-[15px] bg-transparent font-sans"
               />
             </span>
+            {errors.email && <p className="mt-1 text-[12px] text-[#ef4444]">{errors.email.message}</p>}
           </label>
 
           {suggestedPassword ? (
@@ -80,7 +120,7 @@ export default function AlunoLogin() {
                 <div className="flex flex-wrap items-center gap-3">
                   <button
                     type="button"
-                    onClick={() => setTypedPassword(suggestedPassword)}
+                    onClick={() => setValue('password', suggestedPassword)}
                     className="inline-flex h-10 items-center justify-center rounded-lg bg-[#22a05f] px-4 text-[13.5px] font-bold text-white transition hover:brightness-110"
                   >
                     Preencher senha padrao
@@ -100,10 +140,10 @@ export default function AlunoLogin() {
                 <path d="M8 10 V7 a4 4 0 0 1 8 0 v3" />
               </svg>
               <input
+                {...register('password')}
                 type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••••"
-                value={typedPassword}
-                onChange={(event) => setTypedPassword(event.target.value)}
+                disabled={isLoading}
                 className="border-none outline-none flex-1 text-[15px] bg-transparent font-sans tracking-wide"
               />
               <button type="button" onClick={() => setShowPassword(!showPassword)} className="border-none bg-transparent cursor-pointer p-0.5 flex" title="Mostrar senha">
@@ -119,6 +159,7 @@ export default function AlunoLogin() {
                 )}
               </button>
             </span>
+            {errors.password && <p className="mt-1 text-[12px] text-[#ef4444]">{errors.password.message}</p>}
           </label>
 
           <div className="flex items-center justify-between -mt-0.5">
@@ -126,20 +167,25 @@ export default function AlunoLogin() {
               <input type="checkbox" className="w-4 h-4 accent-[#22a05f]" />
               Lembrar-me
             </label>
-            <Link href="#" className="text-[13.5px] font-bold text-[#22a05f] underline">
+            <Link href="/forgot-password" className="text-[13.5px] font-bold text-[#22a05f] underline">
               Esqueceu sua senha?
             </Link>
           </div>
 
           <button
             type="submit"
-            className="mt-2.5 flex items-center justify-center gap-2.5 h-[54px] rounded-lg text-white text-base font-bold font-sans transition hover:brightness-[1.12] active:brightness-95 bg-[#22a05f]"
+            disabled={isLoading}
+            className="mt-2.5 flex items-center justify-center gap-2.5 h-[54px] rounded-lg text-white text-base font-bold font-sans transition hover:brightness-[1.12] active:brightness-95 bg-[#22a05f] disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="4" y="10" width="16" height="11" rx="2" />
-              <path d="M8 10 V7 a4 4 0 0 1 8 0 v3" />
-            </svg>
-            Acessar Portal do Estudante
+            {isLoading ? (
+              <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            ) : (
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4" y="10" width="16" height="11" rx="2" />
+                <path d="M8 10 V7 a4 4 0 0 1 8 0 v3" />
+              </svg>
+            )}
+            {isLoading ? 'Entrando...' : 'Acessar Portal do Estudante'}
           </button>
         </form>
 
