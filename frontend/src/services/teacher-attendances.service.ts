@@ -21,6 +21,8 @@ export interface TeacherScheduleItem {
   startTime: string;
   endTime: string;
   room?: string;
+  effectiveRoom?: string;
+  baseRoom?: string;
 }
 
 export interface TeacherStats {

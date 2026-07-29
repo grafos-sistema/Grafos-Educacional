@@ -25,6 +25,9 @@ export class ClassResponseDto {
   @ApiProperty({ example: 'Matutino', nullable: true })
   shift: string | null;
 
+  @ApiProperty({ example: 'Sala 04', nullable: true })
+  baseRoom: string | null;
+
   @ApiProperty({ example: 30, nullable: true })
   maxStudents: number | null;
 

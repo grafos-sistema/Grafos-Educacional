@@ -23,6 +23,9 @@ export class ScheduleResponseDto {
   @ApiProperty({ example: 'Sala 101', nullable: true })
   room: string | null;
 
+  @ApiProperty({ example: 'Sala 04', nullable: true })
+  effectiveRoom: string | null;
+
   @ApiProperty({ example: '2024-01-20T10:30:00.000Z' })
   createdAt: Date;
 

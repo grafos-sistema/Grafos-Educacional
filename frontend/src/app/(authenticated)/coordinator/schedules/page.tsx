@@ -8,6 +8,7 @@ import {
   PlusIcon,
   PencilIcon,
   TrashIcon,
+  EllipsisHorizontalIcon,
   TableCellsIcon,
   ListBulletIcon,
   AcademicCapIcon,
@@ -20,6 +21,7 @@ import { schedulesService, CreateScheduleDto, Schedule } from '@/services/schedu
 import { UserRole } from '@/types/user.types';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
+import { Dropdown } from '@/components/ui/HeroDropdown';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
@@ -54,6 +56,7 @@ export default function SchedulesManagementPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showAlternateRoomField, setShowAlternateRoomField] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [deletingSchedule, setDeletingSchedule] = useState<Schedule | null>(null);
 
@@ -160,7 +163,13 @@ export default function SchedulesManagementPage() {
       endTime: '',
       room: '',
     });
+    setShowAlternateRoomField(false);
   };
+
+  const buildSchedulePayload = () => ({
+    ...formData,
+    room: showAlternateRoomField ? formData.room.trim() || undefined : undefined,
+  });
 
   const handleCreate = () => {
     if (!selectedClassId) {
@@ -183,7 +192,7 @@ export default function SchedulesManagementPage() {
 
     createMutation.mutate({
       classId: selectedClassId,
-      ...formData,
+      ...buildSchedulePayload(),
     });
   };
 
@@ -196,6 +205,7 @@ export default function SchedulesManagementPage() {
       endTime: schedule.endTime,
       room: schedule.room || '',
     });
+    setShowAlternateRoomField(Boolean(schedule.room));
     setShowEditModal(true);
   };
 
@@ -218,7 +228,7 @@ export default function SchedulesManagementPage() {
 
     updateMutation.mutate({
       id: editingSchedule.id,
-      data: formData,
+      data: buildSchedulePayload(),
     });
   };
 
@@ -262,6 +272,7 @@ export default function SchedulesManagementPage() {
   );
   const hasClassSubjects = classSubjects.length > 0;
   const selectedClass = classes.find((item) => item.id === selectedClassId);
+  const selectedClassBaseRoom = selectedClass?.baseRoom?.trim();
   const subjectAssignmentsWithoutSchedule = useMemo(
     () =>
       classSubjects.filter(
@@ -272,7 +283,7 @@ export default function SchedulesManagementPage() {
     [classSubjects, filteredSchedules, selectedSubjectId]
   );
   const schedulesWithoutRoom = useMemo(
-    () => filteredSchedules.filter((item) => !item.room),
+    () => filteredSchedules.filter((item) => !item.effectiveRoom),
     [filteredSchedules]
   );
   const scheduleConflicts = useMemo(
@@ -290,12 +301,18 @@ export default function SchedulesManagementPage() {
   const summaryCards = [
     { label: 'Disciplinas vinculadas', value: classSubjects.length },
     { label: 'Horários lançados', value: filteredSchedules.length },
-    { label: 'Horários sem sala', value: schedulesWithoutRoom.length },
+    { label: 'Horários sem local', value: schedulesWithoutRoom.length },
     {
       label: 'Pendências',
       value: subjectAssignmentsWithoutSchedule.length + schedulesWithoutRoom.length + scheduleConflicts.size,
     },
   ];
+
+  const formatRoomLabel = (schedule: Pick<Schedule, 'room' | 'effectiveRoom'>) => {
+    if (schedule.room) return `Local alternativo: ${schedule.room}`;
+    if (schedule.effectiveRoom) return `Sala base: ${schedule.effectiveRoom}`;
+    return 'Sala base pendente';
+  };
 
   return (
     <>
@@ -562,9 +579,9 @@ export default function SchedulesManagementPage() {
                                 <div className="text-xs opacity-90">
                                   {schedule.startTime} - {schedule.endTime}
                                 </div>
-                                {schedule.room && (
-                                  <div className="text-xs opacity-90">{schedule.room}</div>
-                                )}
+                                <div className="text-xs opacity-90">
+                                  {formatRoomLabel(schedule)}
+                                </div>
                                 {schedule.classSubject?.teacher && (
                                   <div className="text-xs opacity-90 mt-1">
                                     Prof. {schedule.classSubject.teacher.user.firstName}{' '}
@@ -648,7 +665,7 @@ export default function SchedulesManagementPage() {
                                   </div>
                                   <div className="text-sm text-gray-600 dark:text-gray-400">
                                     {schedule.classSubject?.subject.name}
-                                    {schedule.room ? ` • Sala: ${schedule.room}` : ' • Sala pendente'}
+                                    {` • ${formatRoomLabel(schedule)}`}
                                   </div>
                                   {schedule.classSubject?.teacher && (
                                     <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -747,7 +764,7 @@ export default function SchedulesManagementPage() {
 
                     <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
                       <div className="mb-2 font-medium text-gray-900 dark:text-white">
-                        Horários sem sala
+                        Horários sem local
                       </div>
                       {schedulesWithoutRoom.length > 0 ? (
                         <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
@@ -759,7 +776,7 @@ export default function SchedulesManagementPage() {
                         </div>
                       ) : (
                         <div className="text-sm text-gray-500 dark:text-gray-400">
-                          Todas as aulas possuem sala informada.
+                          Todas as aulas possuem local definido.
                         </div>
                       )}
                     </div>
@@ -825,7 +842,7 @@ export default function SchedulesManagementPage() {
               { value: '', label: 'Selecione...' },
               ...classSubjects.map((cs) => ({
                 value: cs.id,
-                label: cs.subject.name,
+                label: cs.subject?.name || 'Disciplina',
               })),
             ]}
           />
@@ -867,12 +884,65 @@ export default function SchedulesManagementPage() {
             />
           </div>
 
-          <Input
-            label="Sala (opcional)"
-            value={formData.room}
-            onChange={(e) => setFormData({ ...formData, room: e.target.value })}
-            placeholder="Ex: Sala 101"
-          />
+          <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-800/60">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-medium text-gray-900 dark:text-white">
+                  Local da aula
+                </div>
+                <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                  {selectedClassBaseRoom
+                    ? `Sala base da turma: ${selectedClassBaseRoom}`
+                    : 'Esta turma ainda não possui sala base cadastrada.'}
+                </div>
+                <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Use local alternativo apenas quando a aula acontecer fora da sala base.
+                </div>
+              </div>
+              <Dropdown
+                trigger={
+                  <button
+                    type="button"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+                    aria-label="Opções do local da aula"
+                  >
+                    <EllipsisHorizontalIcon className="h-5 w-5" />
+                  </button>
+                }
+                items={
+                  showAlternateRoomField
+                    ? [
+                        {
+                          key: 'hide-alternate-room',
+                          label: 'Usar sala base da turma',
+                          onClick: () => {
+                            setShowAlternateRoomField(false);
+                            setFormData((prev) => ({ ...prev, room: '' }));
+                          },
+                        },
+                      ]
+                    : [
+                        {
+                          key: 'show-alternate-room',
+                          label: 'Definir local alternativo',
+                          onClick: () => setShowAlternateRoomField(true),
+                        },
+                      ]
+                }
+              />
+            </div>
+
+            {showAlternateRoomField && (
+              <div className="mt-4">
+                <Input
+                  label="Local alternativo"
+                  value={formData.room}
+                  onChange={(e) => setFormData({ ...formData, room: e.target.value })}
+                  placeholder="Ex: Laboratório 2, Quadra, Auditório"
+                />
+              </div>
+            )}
+          </div>
 
           <div className="flex justify-end gap-3 mt-6">
             <Button
@@ -919,7 +989,6 @@ export default function SchedulesManagementPage() {
         message={`Tem certeza que deseja remover o horário de ${deletingSchedule?.classSubject?.subject.name} (${deletingSchedule?.startTime} - ${deletingSchedule?.endTime})?`}
         confirmText="Sim, remover"
         cancelText="Cancelar"
-        variant="danger"
       />
     </>
   );

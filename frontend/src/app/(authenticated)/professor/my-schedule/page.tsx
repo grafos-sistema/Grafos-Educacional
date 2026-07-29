@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -9,6 +9,7 @@ import {
   CalendarDaysIcon,
   CheckCircleIcon,
   ClockIcon,
+  EllipsisHorizontalIcon,
   ExclamationTriangleIcon,
   TableCellsIcon,
 } from '@heroicons/react/24/outline';
@@ -16,6 +17,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { teacherAttendancesService } from '@/services/teacher-attendances.service';
 import { classSchedulesService } from '@/services/class-schedules.service';
 import { Button } from '@/components/ui/Button';
+import { Dropdown } from '@/components/ui/HeroDropdown';
 import { Select } from '@/components/ui/Select';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useTeacherClassSubjects } from '@/hooks/useTeacherClassSubjects';
@@ -27,6 +29,7 @@ import {
   getCurrentScheduleItem,
   getDurationInHours,
   getNextScheduleItem,
+  getUniqueTimeSlots,
   sortByTime,
 } from '@/lib/schedule-ui';
 
@@ -39,6 +42,7 @@ type EnrichedScheduleItem = {
   startTime: string;
   endTime: string;
   room?: string;
+  effectiveRoom?: string;
   color?: string;
   assignmentLabel?: string;
 };
@@ -49,6 +53,15 @@ export default function ProfessorMySchedulePage() {
   const teacherId = user?.teacherProfile?.id;
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedClassSubjectId, setSelectedClassSubjectId] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'agenda'>(() => {
+    if (typeof window === 'undefined') return 'grid';
+    const stored = window.localStorage.getItem('teacher-my-schedule:viewMode');
+    if (stored === 'grid' || stored === 'agenda') return stored;
+    const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+    return isDesktop ? 'grid' : 'agenda';
+  });
+  const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
+  const [expandedCells, setExpandedCells] = useState<Record<string, boolean>>({});
 
   const { data: teacherAssignments = [], isLoading: loadingAssignments } = useTeacherClassSubjects();
   const teacherAssignmentIds = useMemo(
@@ -78,6 +91,7 @@ export default function ProfessorMySchedulePage() {
             startTime: schedule.startTime,
             endTime: schedule.endTime,
             room: schedule.room,
+            effectiveRoom: schedule.effectiveRoom,
           }));
         })
       );
@@ -195,7 +209,13 @@ export default function ProfessorMySchedulePage() {
     (assignment) =>
       !filteredSchedule.some((item) => item.classSubjectId === assignment.id)
   );
-  const scheduleWithoutRoom = filteredSchedule.filter((item) => !item.room);
+  const scheduleWithoutRoom = filteredSchedule.filter((item) => !item.effectiveRoom);
+
+  const formatRoomLabel = (item: Pick<EnrichedScheduleItem, 'room' | 'effectiveRoom'>) => {
+    if (item.room) return `Local alternativo: ${item.room}`;
+    if (item.effectiveRoom) return `Sala base: ${item.effectiveRoom}`;
+    return 'Sala base pendente';
+  };
 
   const groupedSchedule = useMemo(
     () =>
@@ -206,6 +226,77 @@ export default function ProfessorMySchedulePage() {
         return acc;
       }, {}),
     [filteredSchedule]
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem('teacher-my-schedule:viewMode', viewMode);
+  }, [viewMode]);
+
+  const visibleDays = useMemo(() => {
+    const baseDays = DAYS_OF_WEEK.slice(0, 5);
+    const weekendDays = DAYS_OF_WEEK.slice(5);
+    const hasWeekend = weekendDays.some((day) => (groupedSchedule[day.value] || []).length > 0);
+    return hasWeekend ? [...baseDays, ...weekendDays] : baseDays;
+  }, [groupedSchedule]);
+
+  const timeSlots = useMemo(() => getUniqueTimeSlots(filteredSchedule), [filteredSchedule]);
+
+  const scheduleCellIndex = useMemo(() => {
+    const index = new Map<string, EnrichedScheduleItem[]>();
+    visibleDays.forEach((day) => {
+      (groupedSchedule[day.value] || []).forEach((item) => {
+        const key = `${day.value}-${item.startTime}`;
+        const list = index.get(key) ?? [];
+        list.push(item);
+        index.set(key, list);
+      });
+    });
+    index.forEach((items, key) => {
+      index.set(
+        key,
+        items.sort((a, b) => (a.endTime + a.classSubjectId).localeCompare(b.endTime + b.classSubjectId))
+      );
+    });
+    return index;
+  }, [groupedSchedule, visibleDays]);
+
+  const dayAgendaLimit = 4;
+  const cellLimit = 2;
+  const rowHeightClassName = 'min-h-[56px]';
+  const cellPaddingClassName = 'p-2';
+  const cardPaddingClassName = 'py-2 px-4';
+  const cardGapClassName = 'space-y-3';
+
+  const renderActionsMenu = (classSubjectId: string, label: string) => (
+    <Dropdown
+      trigger={
+        <button
+          type="button"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-gray-500 transition-colors hover:bg-white/80 hover:text-gray-700 dark:hover:bg-gray-700"
+          aria-label={label}
+        >
+          <EllipsisHorizontalIcon className="h-5 w-5" />
+        </button>
+      }
+      items={[
+        {
+          key: 'attendance',
+          label: 'Frequência',
+          onClick: () => router.push(`/professor/attendance?classSubjectId=${classSubjectId}`),
+        },
+        {
+          key: 'contents',
+          label: 'Conteúdo',
+          onClick: () => router.push(`/professor/lesson-contents?classSubjectId=${classSubjectId}`),
+        },
+        {
+          key: 'plans',
+          label: 'Plano',
+          onClick: () => router.push(`/professor/lesson-plans?classSubjectId=${classSubjectId}`),
+        },
+      ]}
+    />
   );
 
   return (
@@ -382,105 +473,263 @@ export default function ProfessorMySchedulePage() {
           ) : (
             <div className="space-y-6">
               <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
-                <div className="mb-4 flex items-center gap-2">
-                  <TableCellsIcon className="h-5 w-5 text-primary-600" />
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                    Semana Letiva
-                  </h2>
+                <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex items-center gap-2">
+                    <TableCellsIcon className="h-5 w-5 text-primary-600" />
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                      Semana Letiva
+                    </h2>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant={viewMode === 'grid' ? 'primary' : 'secondary'}
+                      onClick={() => setViewMode('grid')}
+                      leftIcon={<TableCellsIcon className="h-4 w-4" />}
+                    >
+                      Grade
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={viewMode === 'agenda' ? 'primary' : 'secondary'}
+                      onClick={() => setViewMode('agenda')}
+                      leftIcon={<CalendarDaysIcon className="h-4 w-4" />}
+                    >
+                      Agenda
+                    </Button>
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-                  {DAYS_OF_WEEK.map((day) => {
-                    const dayItems = groupedSchedule[day.value] || [];
-                    return (
-                      <div
-                        key={day.value}
-                        className="rounded-lg border border-gray-200 p-4 dark:border-gray-700"
-                      >
-                        <div className="mb-3 flex items-center justify-between">
-                          <div>
-                            <div className="font-semibold text-gray-900 dark:text-white">
-                              {day.shortLabel}
+
+                {viewMode === 'grid' ? (
+                  <div className="overflow-x-auto">
+                    <div
+                      className="min-w-[720px] rounded-lg border border-gray-200 dark:border-gray-700"
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: `minmax(84px, 96px) repeat(${visibleDays.length}, minmax(160px, 1fr))`,
+                      }}
+                    >
+                      <div className="border-b border-gray-200 bg-gray-50 px-3 py-3 text-sm font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-200">
+                        Horário
+                      </div>
+                      {visibleDays.map((day) => (
+                        <div
+                          key={`header-${day.value}`}
+                          className="border-b border-gray-200 bg-gray-50 px-3 py-3 text-sm font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-200"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span>{day.shortLabel}</span>
+                          </div>
+                        </div>
+                      ))}
+
+                      {timeSlots.map((time) => (
+                        <div
+                          key={`time-${time}`}
+                          className={`border-b border-gray-200 px-3 py-3 text-sm font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-200 ${rowHeightClassName}`}
+                        >
+                          {time}
+                        </div>
+                      ))}
+
+                      {timeSlots.flatMap((time) =>
+                        visibleDays.map((day) => {
+                          const cellKey = `${day.value}-${time}`;
+                          const items = scheduleCellIndex.get(cellKey) ?? [];
+                          const isExpanded = Boolean(expandedCells[cellKey]);
+                          const visibleItems = isExpanded ? items : items.slice(0, cellLimit);
+                          const remainingCount = items.length - visibleItems.length;
+                          return (
+                            <div
+                              key={`cell-${cellKey}`}
+                              className={`border-b border-gray-200 dark:border-gray-700 ${rowHeightClassName} ${cellPaddingClassName}`}
+                            >
+                              {items.length === 0 ? (
+                                <div className="h-full rounded-md border border-dashed border-gray-200 dark:border-gray-700" />
+                              ) : (
+                                <div className="flex h-full flex-col gap-2">
+                                  {visibleItems.map((item) => {
+                                    const itemKey = `${item.classSubjectId}-${item.dayOfWeek}-${item.startTime}`;
+                                    const hasConflict = scheduleConflicts.has(itemKey);
+                                    const isCurrent =
+                                      currentLesson &&
+                                      currentLesson.classSubjectId === item.classSubjectId &&
+                                      currentLesson.dayOfWeek === item.dayOfWeek &&
+                                      currentLesson.startTime === item.startTime;
+                                    const isNext =
+                                      !isCurrent &&
+                                      nextLesson &&
+                                      nextLesson.classSubjectId === item.classSubjectId &&
+                                      nextLesson.dayOfWeek === item.dayOfWeek &&
+                                      nextLesson.startTime === item.startTime;
+                                    return (
+                                      <div
+                                        key={itemKey}
+                                        className={`rounded-lg border bg-white px-2 py-2 dark:bg-gray-900/40 ${
+                                          isCurrent
+                                            ? 'ring-1 ring-emerald-500'
+                                            : isNext
+                                              ? 'ring-1 ring-blue-500'
+                                              : ''
+                                        }`}
+                                        style={{ borderColor: item.color || '#2563EB' }}
+                                      >
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div className="min-w-0">
+                                            <div className="truncate text-sm font-semibold text-gray-900 dark:text-white">
+                                              {item.subjectName}
+                                            </div>
+                                            <div className="truncate text-xs text-gray-600 dark:text-gray-400">
+                                              {item.className}
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {hasConflict ? (
+                                              <ExclamationTriangleIcon className="h-4 w-4 text-amber-500" />
+                                            ) : null}
+                                            {renderActionsMenu(
+                                              item.classSubjectId,
+                                              `Ações da aula ${item.subjectName}`
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="mt-4 flex items-center justify-between gap-2 text-xs text-gray-600 dark:text-gray-400">
+                                          <span className="truncate">
+                                            {item.startTime} - {item.endTime}
+                                          </span>
+                                          <span className="truncate">
+                                            {formatRoomLabel(item)}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                  {remainingCount > 0 ? (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() =>
+                                        setExpandedCells((prev) => ({
+                                          ...prev,
+                                          [cellKey]: !prev[cellKey],
+                                        }))
+                                      }
+                                    >
+                                      {isExpanded ? 'Mostrar menos' : `+${remainingCount} aula(s)`}
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              )}
                             </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                              {dayItems.length} {dayItems.length === 1 ? 'aula' : 'aulas'}
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                    {visibleDays.map((day) => {
+                      const dayItems = groupedSchedule[day.value] || [];
+                      const isExpanded = Boolean(expandedDays[day.value]);
+                      const visibleItems = isExpanded ? dayItems : dayItems.slice(0, dayAgendaLimit);
+                      const remainingCount = dayItems.length - visibleItems.length;
+                      return (
+                        <div
+                          key={day.value}
+                          className="rounded-lg border border-gray-200 p-4 dark:border-gray-700"
+                        >
+                          <div className="mb-3 flex items-center justify-between">
+                            <div>
+                              <div className="font-semibold text-gray-900 dark:text-white">
+                                {day.shortLabel}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {dayItems.length} {dayItems.length === 1 ? 'aula' : 'aulas'}
+                              </div>
                             </div>
                           </div>
-                          <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-200">
-                            {day.abbr}
-                          </span>
-                        </div>
 
-                        {dayItems.length > 0 ? (
-                          <div className="space-y-3">
-                            {dayItems.map((item) => (
-                              <div
-                                key={`${item.classSubjectId}-${item.dayOfWeek}-${item.startTime}`}
-                                className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/30"
-                              >
-                                <div className="mb-2 flex items-center justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <div className="font-semibold text-gray-900 dark:text-white">
-                                      {item.subjectName}
+                          {dayItems.length > 0 ? (
+                            <div className={cardGapClassName}>
+                              {visibleItems.map((item) => {
+                                const itemKey = `${item.classSubjectId}-${item.dayOfWeek}-${item.startTime}`;
+                                const hasConflict = scheduleConflicts.has(itemKey);
+                                const isCurrent =
+                                  currentLesson &&
+                                  currentLesson.classSubjectId === item.classSubjectId &&
+                                  currentLesson.dayOfWeek === item.dayOfWeek &&
+                                  currentLesson.startTime === item.startTime;
+                                const isNext =
+                                  !isCurrent &&
+                                  nextLesson &&
+                                  nextLesson.classSubjectId === item.classSubjectId &&
+                                  nextLesson.dayOfWeek === item.dayOfWeek &&
+                                  nextLesson.startTime === item.startTime;
+                                return (
+                                  <div
+                                    key={itemKey}
+                                    className={`rounded-lg border bg-gray-50 ${cardPaddingClassName} dark:bg-gray-900/30 ${
+                                      isCurrent
+                                        ? 'ring-1 ring-emerald-500'
+                                        : isNext
+                                          ? 'ring-1 ring-blue-500'
+                                          : ''
+                                    }`}
+                                    style={{ borderColor: item.color || '#2563EB' }}
+                                  >
+                                    <div className="mb-2 flex items-start justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          {hasConflict ? (
+                                            <ExclamationTriangleIcon className="h-4 w-4 text-amber-500" />
+                                          ) : null}
+                                          <div className="font-semibold text-gray-900 dark:text-white">
+                                            {item.subjectName}
+                                          </div>
+                                        </div>
+                                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                                          {item.className}
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        {renderActionsMenu(
+                                          item.classSubjectId,
+                                          `Ações da aula ${item.subjectName}`
+                                        )}
+                                      </div>
                                     </div>
                                     <div className="text-sm text-gray-600 dark:text-gray-400">
-                                      {item.className}
+                                      {item.startTime} - {item.endTime}
+                                      {` • ${formatRoomLabel(item)}`}
                                     </div>
                                   </div>
-                                  <span
-                                    className="h-3 w-3 rounded-full"
-                                    style={{ backgroundColor: item.color || '#2563EB' }}
-                                  />
-                                </div>
-                                <div className="mb-3 text-sm text-gray-600 dark:text-gray-400">
-                                  {item.startTime} - {item.endTime}
-                                  {item.room ? ` • Sala ${item.room}` : ' • Sala pendente'}
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    onClick={() =>
-                                      router.push(
-                                        `/professor/attendance?classSubjectId=${item.classSubjectId}`
-                                      )
-                                    }
-                                  >
-                                    Frequência
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    onClick={() =>
-                                      router.push(
-                                        `/professor/lesson-contents?classSubjectId=${item.classSubjectId}`
-                                      )
-                                    }
-                                  >
-                                    Conteúdo
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    onClick={() =>
-                                      router.push(
-                                        `/professor/lesson-plans?classSubjectId=${item.classSubjectId}`
-                                      )
-                                    }
-                                  >
-                                    Plano
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="rounded-lg border border-dashed border-gray-200 p-5 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                            Sem aulas neste dia
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                                );
+                              })}
+                              {remainingCount > 0 ? (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() =>
+                                    setExpandedDays((prev) => ({
+                                      ...prev,
+                                      [day.value]: !prev[day.value],
+                                    }))
+                                  }
+                                >
+                                  {isExpanded ? 'Mostrar menos' : `+${remainingCount} aula(s)`}
+                                </Button>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <div className="rounded-lg border border-dashed border-gray-200 p-5 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                              Sem aulas neste dia
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">

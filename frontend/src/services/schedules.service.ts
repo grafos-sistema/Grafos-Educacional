@@ -8,11 +8,13 @@ export interface Schedule {
   startTime: string;
   endTime: string;
   room?: string;
+  effectiveRoom?: string;
   createdAt: string;
   updatedAt: string;
   class?: {
     id: string;
     name: string;
+    baseRoom?: string;
   };
   classSubject?: {
     id: string;

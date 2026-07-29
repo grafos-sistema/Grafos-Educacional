@@ -43,10 +43,6 @@ export default function ClassDetailPage() {
     );
   }
 
-  const mainTeacherName = classData.mainTeacher?.user
-    ? `${classData.mainTeacher.user.firstName} ${classData.mainTeacher.user.lastName}`
-    : 'Não definido';
-
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -63,8 +59,8 @@ export default function ClassDetailPage() {
             {classData.name}
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Gerencie a estrutura pedagógica da turma, suas disciplinas vinculadas e o professor
-            responsável.
+            Gerencie a estrutura pedagógica da turma, a sala base e os vínculos de disciplina com
+            seus respectivos professores.
           </p>
         </div>
         <Button
@@ -109,12 +105,16 @@ export default function ClassDetailPage() {
           <div className="flex items-center gap-3 mb-3">
             <UsersIcon className="h-5 w-5 text-violet-600 dark:text-violet-400" />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Professor Titular
+              Sala Base
             </span>
           </div>
-          <p className="text-lg font-semibold text-gray-900 dark:text-white">{mainTeacherName}</p>
+          <p className="text-lg font-semibold text-gray-900 dark:text-white">
+            {classData.baseRoom || 'Não definida'}
+          </p>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {classData.mainTeacher?.user?.email || 'Você pode definir abaixo ou na edição da turma'}
+            {classData.baseRoom
+              ? 'Usada como local padrão nos horários da turma.'
+              : 'Defina a sala base na edição para evitar repetir local em cada aula.'}
           </p>
         </div>
 

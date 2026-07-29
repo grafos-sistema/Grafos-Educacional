@@ -9,9 +9,7 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { classesService } from '@/services/classes.service';
 import { coursesService } from '@/services/courses.service';
 import { academicYearsService } from '@/services/academic-years.service';
-import { usersService } from '@/services/users.service';
 import { CreateClassDto } from '@/types/class.types';
-import { UserRole } from '@/types/user.types';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -46,7 +44,6 @@ export default function NewClassPage() {
   const watchedSection = watch('section') ?? '';
   const watchedShift = watch('shift') ?? '';
   const watchedName = watch('name') ?? '';
-  const watchedMainTeacherId = watch('mainTeacherId') ?? '';
 
   // Buscar cursos para o select
   const { data: coursesData, isLoading: loadingCourses } = useQuery({
@@ -70,18 +67,6 @@ export default function NewClassPage() {
       }),
   });
 
-  // Buscar professores para o select
-  const { data: teachersData, isLoading: loadingTeachers } = useQuery({
-    queryKey: ['teachers', { institutionId: user?.institutionId, hasTeacherProfile: true }],
-    queryFn: () =>
-      usersService.findAll({
-        institutionId: user?.institutionId,
-        isActive: true,
-        hasTeacherProfile: true,
-        limit: 1000,
-      }),
-  });
-
   const selectedCourse = useMemo(
     () => coursesData?.data.find((course) => course.id === watchedCourseId),
     [coursesData?.data, watchedCourseId]
@@ -92,19 +77,6 @@ export default function NewClassPage() {
     [selectedCourseLevel]
   );
   const supportsSeries = supportsClassSeriesOptions(selectedCourseLevel);
-  const teacherOptions = useMemo(
-    () => [
-      { value: '', label: 'Selecione um professor (opcional)' },
-      ...((teachersData?.data ?? [])
-        .filter((teacher) => Boolean(teacher.teacherProfile?.id))
-        .map((teacher) => ({
-          value: teacher.teacherProfile!.id,
-          label: `${teacher.firstName} ${teacher.lastName} (${teacher.email})`,
-        })) ?? []),
-    ],
-    [teachersData?.data]
-  );
-
   useEffect(() => {
     if (!supportsSeries && watchedGrade) {
       setValue('grade', '', { shouldValidate: true });
@@ -149,7 +121,7 @@ export default function NewClassPage() {
         ...data,
         institutionId: user.institutionId,
         maxStudents: data.maxStudents ? Number(data.maxStudents) : undefined,
-        mainTeacherId: data.mainTeacherId || undefined, // Converte string vazia para undefined
+        baseRoom: data.baseRoom?.trim() || undefined,
         isActive: data.isActive ?? true,
       };
 
@@ -186,7 +158,8 @@ export default function NewClassPage() {
           Nova Turma
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Preencha os dados para criar uma nova turma
+          Defina a estrutura da turma e sua sala base. Os professores entram depois pelos
+          vínculos de disciplina.
         </p>
       </div>
 
@@ -210,8 +183,6 @@ export default function NewClassPage() {
             <input type="hidden" {...register('section', { required: 'Turma é obrigatória' })} />
             <input type="hidden" {...register('shift')} />
             <input type="hidden" {...register('name', { required: 'Nome da turma é obrigatório' })} />
-            <input type="hidden" {...register('mainTeacherId')} />
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Select
                 label="Curso"
@@ -299,26 +270,12 @@ export default function NewClassPage() {
                 required
                 helperText="Preenchido automaticamente com base no curso, série/ano e turma."
               />
-            </div>
-          </div>
-
-          {/* Professor Titular */}
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Professor Responsável
-            </h2>
-            <div className="grid grid-cols-1 gap-4">
-              <Select
-                label="Professor Titular"
-                value={watchedMainTeacherId}
-                onChange={(event) => {
-                  setValue('mainTeacherId', event.target.value, { shouldValidate: true });
-                  clearErrors('mainTeacherId');
-                }}
-                options={teacherOptions}
-                error={errors.mainTeacherId?.message}
-                disabled={loadingTeachers}
-                helpText="Somente professores com perfil de professor vinculado aparecem aqui."
+              <Input
+                label="Sala Base"
+                {...register('baseRoom')}
+                error={errors.baseRoom?.message}
+                placeholder="Ex: Sala 04, Bloco B, Laboratório 2"
+                helpText="Usada como local padrão da turma. Se uma aula ocorrer em outro ambiente, o horário pode sobrescrever isso depois."
               />
             </div>
           </div>

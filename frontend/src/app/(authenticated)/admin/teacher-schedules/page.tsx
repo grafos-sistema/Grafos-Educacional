@@ -180,7 +180,7 @@ export default function TeacherSchedulesPage() {
       new Map(
         teacherClasses
           .filter((item) => item.subject?.id)
-          .map((item) => [item.classSubjectId, item.subject!.id])
+            .map((item) => [item.id, item.subject!.id])
       ),
     [teacherClasses]
   );
@@ -244,9 +244,15 @@ export default function TeacherSchedulesPage() {
   );
 
   const schedulesWithoutRoom = useMemo(
-    () => filteredSchedule.filter((item) => !item.room),
+    () => filteredSchedule.filter((item) => !item.effectiveRoom),
     [filteredSchedule]
   );
+
+  const formatRoomLabel = (item: { room?: string; effectiveRoom?: string }) => {
+    if (item.room) return `Local alternativo: ${item.room}`;
+    if (item.effectiveRoom) return `Sala base: ${item.effectiveRoom}`;
+    return 'Sala base pendente';
+  };
 
   const attendanceClassSubjectIds = useMemo(
     () => new Set(filteredAttendances.map((item) => item.classSubjectId)),
@@ -507,7 +513,7 @@ export default function TeacherSchedulesPage() {
                                     {item.className}
                                   </div>
                                   <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    {item.room ? `Sala ${item.room}` : 'Sala pendente'}
+                                    {formatRoomLabel(item)}
                                   </div>
                                 </div>
                               ))}
@@ -565,7 +571,7 @@ export default function TeacherSchedulesPage() {
                                       </div>
                                       <div className="text-xs text-gray-500 dark:text-gray-400">
                                         {item.startTime} - {item.endTime}
-                                        {item.room ? ` • Sala ${item.room}` : ' • Sala pendente'}
+                                        {` • ${formatRoomLabel(item)}`}
                                       </div>
                                     </div>
                                   ) : (

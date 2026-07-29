@@ -140,6 +140,7 @@ export class TeacherAttendancesService {
           select: {
             id: true,
             name: true,
+            baseRoom: true,
           },
         },
         subject: {
@@ -161,6 +162,8 @@ export class TeacherAttendancesService {
       startTime: string;
       endTime: string;
       room: string | null;
+      effectiveRoom: string | null;
+      baseRoom: string | null;
     }> = [];
 
     for (const cs of classSubjects) {
@@ -174,6 +177,8 @@ export class TeacherAttendancesService {
           startTime: sched.startTime,
           endTime: sched.endTime,
           room: sched.room,
+          effectiveRoom: sched.room || cs.class.baseRoom,
+          baseRoom: cs.class.baseRoom,
         });
       }
     }

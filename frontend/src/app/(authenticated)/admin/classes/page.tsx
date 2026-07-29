@@ -135,6 +135,11 @@ export default function ClassesPage() {
       render: (classItem) => classItem.shift || '-',
     },
     {
+      key: 'baseRoom',
+      label: 'Sala Base',
+      render: (classItem) => classItem.baseRoom || '-',
+    },
+    {
       key: 'students',
       label: 'Alunos',
       render: (classItem) => (

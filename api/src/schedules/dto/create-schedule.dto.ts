@@ -61,8 +61,8 @@ export class CreateScheduleDto {
   endTime: string;
 
   @ApiProperty({
-    description: 'Sala de aula',
-    example: 'Sala 101',
+    description: 'Local alternativo da aula, usado apenas quando difere da sala base da turma',
+    example: 'Laboratório 2',
     required: false,
     nullable: true,
     maxLength: 50,

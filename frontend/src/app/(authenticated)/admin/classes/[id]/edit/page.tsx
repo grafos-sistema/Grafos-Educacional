@@ -7,11 +7,7 @@ import { toast } from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { classesService } from '@/services/classes.service';
-import { coursesService } from '@/services/courses.service';
-import { academicYearsService } from '@/services/academic-years.service';
-import { usersService } from '@/services/users.service';
 import { UpdateClassDto } from '@/types/class.types';
-import { UserRole } from '@/types/user.types';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -43,56 +39,7 @@ export default function EditClassPage() {
     reset,
     setValue,
     clearErrors,
-    watch,
   } = useForm<UpdateClassDto>();
-  const watchedMainTeacherId = watch('mainTeacherId') ?? '';
-
-  // Buscar cursos para o select
-  const { data: coursesData, isLoading: loadingCourses } = useQuery({
-    queryKey: ['courses', { institutionId: user?.institutionId, limit: 100 }],
-    queryFn: () =>
-      coursesService.findAll({
-        institutionId: user?.institutionId,
-        limit: 100,
-        isActive: true,
-      }),
-  });
-
-  // Buscar anos letivos para o select
-  const { data: academicYearsData, isLoading: loadingYears } = useQuery({
-    queryKey: ['academic-years', { institutionId: user?.institutionId, limit: 100 }],
-    queryFn: () =>
-      academicYearsService.findAll({
-        institutionId: user?.institutionId,
-        limit: 100,
-        isActive: true,
-      }),
-  });
-
-  // Buscar professores para o select
-  const { data: teachersData, isLoading: loadingTeachers } = useQuery({
-    queryKey: ['teachers', { institutionId: user?.institutionId, hasTeacherProfile: true }],
-    queryFn: () =>
-      usersService.findAll({
-        institutionId: user?.institutionId,
-        isActive: true,
-        hasTeacherProfile: true,
-        limit: 1000,
-      }),
-  });
-
-  const teacherOptions = useMemo(
-    () => [
-      { value: '', label: 'Selecione um professor (opcional)' },
-      ...((teachersData?.data ?? [])
-        .filter((teacher) => Boolean(teacher.teacherProfile?.id))
-        .map((teacher) => ({
-          value: teacher.teacherProfile!.id,
-          label: `${teacher.firstName} ${teacher.lastName} (${teacher.email})`,
-        })) ?? []),
-    ],
-    [teachersData?.data]
-  );
 
   // Preencher formulário quando turma carregar
   useEffect(() => {
@@ -102,8 +49,8 @@ export default function EditClassPage() {
         grade: classData.grade,
         section: classData.section || '',
         shift: classData.shift || '',
+        baseRoom: classData.baseRoom || '',
         maxStudents: classData.maxStudents,
-        mainTeacherId: classData.mainTeacherId || '',
         isActive: classData.isActive,
       });
     }
@@ -120,7 +67,7 @@ export default function EditClassPage() {
       const updateData: UpdateClassDto = {
         ...updateFields,
         maxStudents: data.maxStudents ? Number(data.maxStudents) : undefined,
-        mainTeacherId: data.mainTeacherId || undefined, // Converte string vazia para undefined
+        baseRoom: data.baseRoom?.trim() || undefined,
       };
 
       await classesService.update(classId, updateData);
@@ -175,7 +122,8 @@ export default function EditClassPage() {
           Editar Turma
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Atualize as informações da turma
+          Atualize a estrutura da turma. Professores seguem sendo definidos nos vínculos de
+          disciplina.
         </p>
       </div>
 
@@ -195,7 +143,6 @@ export default function EditClassPage() {
               Informações da Turma
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input type="hidden" {...register('mainTeacherId')} />
               <Input
                 label="Nome da Turma"
                 {...register('name')}
@@ -219,6 +166,13 @@ export default function EditClassPage() {
                 {...register('shift')}
                 options={classShiftOptions}
                 error={errors.shift?.message}
+              />
+              <Input
+                label="Sala Base"
+                {...register('baseRoom')}
+                error={errors.baseRoom?.message}
+                placeholder="Ex: Sala 04, Bloco B, Laboratório 2"
+                helpText="É o local padrão da turma. O horário só precisa sobrescrever isso em casos pontuais."
               />
             </div>
           </div>
@@ -254,27 +208,6 @@ export default function EditClassPage() {
                   </span>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Professor Titular */}
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Professor Responsável
-            </h2>
-            <div className="grid grid-cols-1 gap-4">
-              <Select
-                label="Professor Titular"
-                value={watchedMainTeacherId}
-                onChange={(event) => {
-                  setValue('mainTeacherId', event.target.value, { shouldValidate: true });
-                  clearErrors('mainTeacherId');
-                }}
-                options={teacherOptions}
-                error={errors.mainTeacherId?.message}
-                disabled={loadingTeachers}
-                helpText="Somente professores com perfil de professor vinculado aparecem aqui."
-              />
             </div>
           </div>
 

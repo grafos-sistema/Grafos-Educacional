@@ -7,6 +7,7 @@ export interface Class {
   grade: string;
   section?: string;
   shift?: string;
+  baseRoom?: string;
   maxStudents?: number;
   isActive: boolean;
   institutionId: string;
@@ -77,6 +78,7 @@ export interface CreateClassDto {
   grade: string;
   section?: string;
   shift?: string;
+  baseRoom?: string;
   maxStudents?: number;
   institutionId: string;
   courseId: string;
@@ -90,6 +92,7 @@ export interface UpdateClassDto {
   grade?: string;
   section?: string;
   shift?: string;
+  baseRoom?: string;
   maxStudents?: number;
   courseId?: string;
   academicYearId?: string;

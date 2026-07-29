@@ -123,7 +123,7 @@ export const classesService = {
     let query = supabase
       .from('classes')
       .select(
-        'id, name, grade, section, shift, maxStudents, isActive, institutionId, courseId, academicYearId, mainTeacherId, createdAt, updatedAt, course:courses(id, name), academicYear:academic_years(id, name, year), mainTeacher:teachers(id, user:users(id, firstName, lastName, email))',
+        'id, name, grade, section, shift, baseRoom, maxStudents, isActive, institutionId, courseId, academicYearId, mainTeacherId, createdAt, updatedAt, course:courses(id, name), academicYear:academic_years(id, name, year), mainTeacher:teachers(id, user:users(id, firstName, lastName, email))',
         { count: 'exact' }
       )
       .eq('institutionId', institutionId)
@@ -213,7 +213,7 @@ export const classesService = {
     const { data, error } = await supabase
       .from('classes')
       .select(
-        'id, name, grade, section, shift, maxStudents, isActive, institutionId, courseId, academicYearId, mainTeacherId, createdAt, updatedAt, course:courses(id, name), academicYear:academic_years(id, name, year), mainTeacher:teachers(id, user:users(id, firstName, lastName, email))'
+        'id, name, grade, section, shift, baseRoom, maxStudents, isActive, institutionId, courseId, academicYearId, mainTeacherId, createdAt, updatedAt, course:courses(id, name), academicYear:academic_years(id, name, year), mainTeacher:teachers(id, user:users(id, firstName, lastName, email))'
       )
       .eq('id', id)
       .single();
@@ -261,6 +261,7 @@ export const classesService = {
       grade: data.grade,
       section: data.section,
       shift: data.shift,
+      baseRoom: data.baseRoom,
       maxStudents: data.maxStudents,
       isActive: data.isActive ?? true,
       institutionId,
@@ -275,7 +276,7 @@ export const classesService = {
       .from('classes')
       .insert(payload)
       .select(
-        'id, name, grade, section, shift, maxStudents, isActive, institutionId, courseId, academicYearId, mainTeacherId, createdAt, updatedAt, course:courses(id, name), academicYear:academic_years(id, name, year), mainTeacher:teachers(id, user:users(id, firstName, lastName, email))'
+        'id, name, grade, section, shift, baseRoom, maxStudents, isActive, institutionId, courseId, academicYearId, mainTeacherId, createdAt, updatedAt, course:courses(id, name), academicYear:academic_years(id, name, year), mainTeacher:teachers(id, user:users(id, firstName, lastName, email))'
       )
       .single();
 

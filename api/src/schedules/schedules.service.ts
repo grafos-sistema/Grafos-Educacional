@@ -11,6 +11,20 @@ import { CreateScheduleDto, UpdateScheduleDto } from './dto';
 export class SchedulesService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private normalizeOptionalRoom(room?: string | null) {
+    const normalized = room?.trim();
+    return normalized ? normalized : null;
+  }
+
+  private withEffectiveRoom<T extends { room: string | null; class?: { baseRoom: string | null } | null }>(
+    schedule: T,
+  ) {
+    return {
+      ...schedule,
+      effectiveRoom: schedule.room || schedule.class?.baseRoom || null,
+    };
+  }
+
   /**
    * Converte horário HH:mm em minutos desde meia-noite
    */
@@ -73,6 +87,7 @@ export class SchedulesService {
   async create(createScheduleDto: CreateScheduleDto) {
     const { classId, classSubjectId, dayOfWeek, startTime, endTime, room } =
       createScheduleDto;
+    const normalizedRoom = this.normalizeOptionalRoom(room);
 
     // Verifica se turma existe e está ativa
     const classEntity = await this.prisma.class.findUnique({
@@ -103,14 +118,14 @@ export class SchedulesService {
     // Valida conflitos de horário
     await this.validateTimeConflict(classId, dayOfWeek, startTime, endTime);
 
-    return this.prisma.classSchedule.create({
+    const createdSchedule = await this.prisma.classSchedule.create({
       data: {
         classId,
         classSubjectId,
         dayOfWeek,
         startTime,
         endTime,
-        room,
+        room: normalizedRoom,
       },
       include: {
         class: {
@@ -119,6 +134,7 @@ export class SchedulesService {
             name: true,
             grade: true,
             section: true,
+            baseRoom: true,
           },
         },
         classSubject: {
@@ -147,6 +163,8 @@ export class SchedulesService {
         },
       },
     });
+
+    return this.withEffectiveRoom(createdSchedule);
   }
 
   /**
@@ -171,6 +189,7 @@ export class SchedulesService {
             name: true,
             grade: true,
             section: true,
+            baseRoom: true,
           },
         },
         classSubject: {
@@ -211,11 +230,13 @@ export class SchedulesService {
       SUNDAY: 7,
     };
 
-    return schedules.sort((a, b) => {
+    const sortedSchedules = schedules.sort((a, b) => {
       const dayDiff = dayOrder[a.dayOfWeek] - dayOrder[b.dayOfWeek];
       if (dayDiff !== 0) return dayDiff;
       return a.startTime.localeCompare(b.startTime);
     });
+
+    return sortedSchedules.map((schedule) => this.withEffectiveRoom(schedule));
   }
 
   /**
@@ -231,6 +252,7 @@ export class SchedulesService {
             name: true,
             grade: true,
             section: true,
+            baseRoom: true,
           },
         },
         classSubject: {
@@ -264,7 +286,7 @@ export class SchedulesService {
       throw new NotFoundException('Horário não encontrado');
     }
 
-    return schedule;
+    return this.withEffectiveRoom(schedule);
   }
 
   /**
@@ -291,13 +313,14 @@ export class SchedulesService {
       );
     }
 
-    return this.prisma.classSchedule.update({
+    const updatedSchedule = await this.prisma.classSchedule.update({
       where: { id },
       data: {
         dayOfWeek,
         startTime,
         endTime,
-        room,
+        room:
+          room !== undefined ? this.normalizeOptionalRoom(room) : undefined,
       },
       include: {
         class: {
@@ -306,6 +329,7 @@ export class SchedulesService {
             name: true,
             grade: true,
             section: true,
+            baseRoom: true,
           },
         },
         classSubject: {
@@ -334,6 +358,8 @@ export class SchedulesService {
         },
       },
     });
+
+    return this.withEffectiveRoom(updatedSchedule);
   }
 
   /**

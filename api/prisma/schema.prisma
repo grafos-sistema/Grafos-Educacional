@@ -520,6 +520,7 @@ model Class {
   grade         String   // "1º Ano", "9º Ano"
   section       String?  // "A", "B", "C"
   shift         String?  // "Matutino", "Vespertino", "Noturno"
+  baseRoom      String?  // Sala base da turma
   maxStudents   Int?
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
@@ -671,7 +672,7 @@ model ClassSchedule {
   dayOfWeek     DayOfWeek
   startTime     String    // "08:00"
   endTime       String    // "09:00"
-  room          String?
+  room          String?   // Local alternativo da aula, usado apenas quando difere da sala base da turma
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

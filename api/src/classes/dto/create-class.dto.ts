@@ -79,6 +79,18 @@ export class CreateClassDto {
   shift?: string;
 
   @ApiProperty({
+    description: 'Sala base da turma',
+    example: 'Sala 04',
+    maxLength: 50,
+    required: false,
+    nullable: true,
+  })
+  @IsOptional()
+  @IsString({ message: 'Sala base deve ser um texto' })
+  @MaxLength(50, { message: 'Sala base não pode ter mais de 50 caracteres' })
+  baseRoom?: string;
+
+  @ApiProperty({
     description: 'Número máximo de alunos',
     example: 30,
     minimum: 1,

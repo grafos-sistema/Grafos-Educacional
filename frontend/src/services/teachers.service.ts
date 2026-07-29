@@ -6,7 +6,7 @@ export interface TeacherClass {
   subjectId: string;
   teacherId: string;
   weeklyHours?: number;
-  assignmentType?: 'subject' | 'main_teacher';
+  assignmentType?: 'subject';
   assignmentLabel?: string;
   class: {
     id: string;
@@ -63,51 +63,22 @@ type DbTeacherSubject = {
   } | null;
 };
 
-type DbMainTeacherClass = {
-  id: string;
-  name: string;
-  grade: string;
-  section: string | null;
-  shift: string | null;
-  academicYear?: { id: string; year: number; name: string } | null;
-  course?: { id: string; name: string } | null;
-};
-
 export const teachersService = {
   /**
    * Listar turmas que o professor leciona
    */
   async getTeacherClasses(teacherId: string): Promise<TeacherClass[]> {
-    const [
-      { data: classSubjectData, error: classSubjectError },
-      { data: mainTeacherData, error: mainTeacherError },
-    ] = await Promise.all([
-      supabase
-        .from('class_subjects')
-        .select(
-          'id, classId, subjectId, teacherId, weeklyHours, class:classes(id, name, grade, section, shift, academicYear:academic_years(id, year, name), course:courses(id, name)), subject:subjects(id, name, code, color)'
-        )
-        .eq('teacherId', teacherId),
-      supabase
-        .from('classes')
-        .select(
-          'id, name, grade, section, shift, academicYear:academic_years(id, year, name), course:courses(id, name)'
-        )
-        .eq('mainTeacherId', teacherId)
-        .eq('isActive', true),
-    ]);
+    const { data: classSubjectData, error: classSubjectError } = await supabase
+      .from('class_subjects')
+      .select(
+        'id, classId, subjectId, teacherId, weeklyHours, class:classes(id, name, grade, section, shift, academicYear:academic_years(id, year, name), course:courses(id, name)), subject:subjects(id, name, code, color)'
+      )
+      .eq('teacherId', teacherId);
 
     if (classSubjectError) throw classSubjectError;
-    if (mainTeacherError) throw mainTeacherError;
 
     const rows = (classSubjectData ?? []) as DbTeacherClass[];
-    const mainTeacherRows = (mainTeacherData ?? []) as DbMainTeacherClass[];
-    const classIds = Array.from(
-      new Set([
-        ...rows.map((row) => row.classId),
-        ...mainTeacherRows.map((row) => row.id),
-      ])
-    );
+    const classIds = Array.from(new Set(rows.map((row) => row.classId)));
     const enrollmentsCountByClassId = new Map<string, number>();
 
     if (classIds.length > 0) {
@@ -156,35 +127,7 @@ export const teachersService = {
       },
     }));
 
-    const classIdsWithSubjectAssignment = new Set(
-      classSubjectAssignments.map((item) => item.classId)
-    );
-
-    const mainTeacherAssignments = mainTeacherRows
-      .filter((row) => !classIdsWithSubjectAssignment.has(row.id))
-      .map((row) => ({
-        id: `main-teacher-${row.id}`,
-        classId: row.id,
-        subjectId: '',
-        teacherId,
-        assignmentType: 'main_teacher' as const,
-        assignmentLabel: 'Professor Titular',
-        class: {
-          id: row.id,
-          name: row.name,
-          grade: row.grade,
-          section: row.section ?? undefined,
-          shift: row.shift ?? undefined,
-          academicYear: row.academicYear ?? undefined,
-          course: row.course ?? undefined,
-          _count: {
-            enrollments: enrollmentsCountByClassId.get(row.id) ?? 0,
-          },
-        },
-        subject: undefined,
-      }));
-
-    return [...classSubjectAssignments, ...mainTeacherAssignments];
+    return classSubjectAssignments;
   },
 
   /**

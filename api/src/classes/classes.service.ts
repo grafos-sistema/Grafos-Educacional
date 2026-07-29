@@ -433,6 +433,11 @@ export class ClassesService {
     const schedules = await this.prisma.classSchedule.findMany({
       where: { classId },
       include: {
+        class: {
+          select: {
+            baseRoom: true,
+          },
+        },
         classSubject: {
           include: {
             subject: {
@@ -465,6 +470,8 @@ export class ClassesService {
       startTime: schedule.startTime,
       endTime: schedule.endTime,
       room: schedule.room,
+      effectiveRoom: schedule.room || schedule.class.baseRoom,
+      baseRoom: schedule.class.baseRoom,
       subject: schedule.classSubject.subject,
       teacher: schedule.classSubject.teacher,
     }));

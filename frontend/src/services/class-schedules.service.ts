@@ -6,11 +6,13 @@ export interface ClassSchedule {
   startTime: string;
   endTime: string;
   room?: string;
+  effectiveRoom?: string;
   classId: string;
   classSubjectId: string;
   class?: {
     id: string;
     name: string;
+    baseRoom?: string;
   };
   classSubject?: {
     id: string;
@@ -23,6 +25,8 @@ export interface ClassSchedule {
   };
 }
 
+type MaybeArray<T> = T | T[] | null;
+
 type DbClassSchedule = {
   id: string;
   dayOfWeek: string;
@@ -31,31 +35,46 @@ type DbClassSchedule = {
   room: string | null;
   classId: string;
   classSubjectId: string;
-  class?: { id: string; name: string } | null;
-  classSubject?: {
+  class?: MaybeArray<{ id: string; name: string; baseRoom: string | null }>;
+  classSubject?: MaybeArray<{
     id: string;
-    subject?: { id: string; name: string; code: string | null; color: string | null } | null;
-  } | null;
+    subject?: MaybeArray<{ id: string; name: string; code: string | null; color: string | null }>;
+  }>;
 };
 
+function firstRelation<T>(value?: MaybeArray<T>): T | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
+
 function mapSchedule(row: DbClassSchedule): ClassSchedule {
+  const classItem = firstRelation(row.class);
+  const classSubject = firstRelation(row.classSubject);
+  const subject = firstRelation(classSubject?.subject);
+
   return {
     id: row.id,
     dayOfWeek: row.dayOfWeek,
     startTime: row.startTime,
     endTime: row.endTime,
     room: row.room ?? undefined,
+    effectiveRoom: row.room ?? classItem?.baseRoom ?? undefined,
     classId: row.classId,
     classSubjectId: row.classSubjectId,
-    class: row.class ?? undefined,
-    classSubject: row.classSubject?.subject
+    class: classItem
       ? {
-          id: row.classSubject.id,
+          ...classItem,
+          baseRoom: classItem.baseRoom ?? undefined,
+        }
+      : undefined,
+    classSubject: subject && classSubject
+      ? {
+          id: classSubject.id,
           subject: {
-            id: row.classSubject.subject.id,
-            name: row.classSubject.subject.name,
-            code: row.classSubject.subject.code ?? undefined,
-            color: row.classSubject.subject.color ?? undefined,
+            id: subject.id,
+            name: subject.name,
+            code: subject.code ?? undefined,
+            color: subject.color ?? undefined,
           },
         }
       : undefined,
@@ -70,7 +89,7 @@ export const classSchedulesService = {
     const { data, error } = await supabase
       .from('class_schedules')
       .select(
-        'id, dayOfWeek, startTime, endTime, room, classId, classSubjectId, class:classes(id, name), classSubject:class_subjects(id, subject:subjects(id, name, code, color))'
+        'id, dayOfWeek, startTime, endTime, room, classId, classSubjectId, class:classes(id, name, baseRoom), classSubject:class_subjects(id, subject:subjects(id, name, code, color))'
       )
       .eq('classId', classId)
       .order('dayOfWeek', { ascending: true })
@@ -87,7 +106,7 @@ export const classSchedulesService = {
     const { data, error } = await supabase
       .from('class_schedules')
       .select(
-        'id, dayOfWeek, startTime, endTime, room, classId, classSubjectId, class:classes(id, name), classSubject:class_subjects(id, subject:subjects(id, name, code, color))'
+        'id, dayOfWeek, startTime, endTime, room, classId, classSubjectId, class:classes(id, name, baseRoom), classSubject:class_subjects(id, subject:subjects(id, name, code, color))'
       )
       .eq('classSubjectId', classSubjectId)
       .order('dayOfWeek', { ascending: true })
