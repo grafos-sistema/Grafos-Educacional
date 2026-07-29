@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { LoginHelpModal } from '@/components/auth/LoginHelpModal';
 
 /* ============================================================
    Portal do Professor — Grafos Gestão Escolar
@@ -39,6 +40,12 @@ const CARDS = [
   { title: 'Atividades', desc: 'Crie tarefas, trabalhos e avaliações.', color: '#14b8a6', icon: <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/><path d="M9 13l2 2 4-4"/></svg> },
 ];
 
+function buildInitialPassword(email?: string) {
+  if (!email) return '';
+  const [localPart] = email.trim().toLowerCase().split('@');
+  return localPart ? `${localPart}@Grafos` : '';
+}
+
 /* ---------- Componente Principal ---------- */
 export default function PortalProfessorLogin() {
   const { login } = useAuth();
@@ -46,6 +53,7 @@ export default function PortalProfessorLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
 
   const vpRef = useRef<HTMLDivElement>(null);
   const scRef = useRef<HTMLDivElement>(null);
@@ -80,17 +88,19 @@ export default function PortalProfessorLogin() {
     return () => window.removeEventListener('resize', fit);
   }, []);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
+  const typedEmail = watch('email');
+  const suggestedPassword = buildInitialPassword(typedEmail);
 
   const onSubmit = async (data: LoginFormData) => {
     try {
       setError(null);
       setIsLoading(true);
       await login(data);
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao fazer login. Verifique suas credenciais.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao fazer login. Verifique suas credenciais.');
       setIsLoading(false);
       // Auto-hide toast error
       setTimeout(() => setError(null), 5000);
@@ -128,16 +138,6 @@ export default function PortalProfessorLogin() {
                 </div>
               </div>
 
-              <div className="flex items-start gap-3.5 mt-2">
-                <div className="w-[34px] h-[34px] rounded-lg bg-[#1565d8] flex items-center justify-center flex-none">
-                  <GradCap size={20} />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <div className="text-xl font-bold m-0 text-slate-900">Grafos Professor</div>
-                  <div className="text-[13.5px] text-[#6a736e] m-0">Portal do Docente</div>
-                </div>
-              </div>
-
               <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 mt-2">
                 {error && (
                   <div className="rounded-lg bg-red-50 border border-red-200 p-3">
@@ -164,6 +164,28 @@ export default function PortalProfessorLogin() {
                   </span>
                   {errors.email && <span className="text-[12.5px] font-semibold text-red-600 m-0">{errors.email.message}</span>}
                 </label>
+
+                {suggestedPassword ? (
+                  <div className="rounded-lg border border-[#d2dfef] bg-[#eff4fb] px-4 py-3">
+                    <div className="flex flex-col gap-2.5">
+                      <div>
+                        <p className="text-[13.5px] font-bold text-slate-900 m-0">Primeiro acesso?</p>
+                        <p className="text-[12.5px] text-[#5f6a64] m-0">
+                          Use o preenchimento automatico da senha padrao com base no email informado.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setValue('password', suggestedPassword)}
+                          className="inline-flex h-10 items-center justify-center rounded-lg bg-[#1565d8] px-4 text-[13.5px] font-bold text-white transition hover:brightness-110"
+                        >
+                          Preencher senha padrao
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
                 <label className="flex flex-col gap-2 m-0">
                   <span className="text-sm font-bold text-slate-900">Senha</span>
@@ -235,16 +257,15 @@ export default function PortalProfessorLogin() {
                 <div className="flex flex-col gap-1">
                   <div className="text-[14.5px] font-bold m-0 text-slate-900">Precisa de ajuda para acessar?</div>
                   <div className="text-[13px] text-[#6a736e] m-0">Nossa equipe está pronta para ajudar você.</div>
-                  <Link href="/support" className="text-[13px] font-bold text-[#1565d8] underline mt-0.5" style={{ textDecoration: 'underline' }}>Entrar em contato com o suporte</Link>
+                  <button
+                    type="button"
+                    onClick={() => setIsHelpModalOpen(true)}
+                    className="mt-0.5 w-fit bg-transparent p-0 text-[13px] font-bold text-[#1565d8] underline"
+                    style={{ textDecoration: 'underline' }}
+                  >
+                    Entrar em contato com o suporte
+                  </button>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-2 text-[12.5px] text-[#6a736e] mt-1">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1565d8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="4" y="10" width="16" height="11" rx="2" />
-                  <path d="M8 10 V7 a4 4 0 0 1 8 0 v3" />
-                </svg>
-                Seus dados estão protegidos com criptografia avançada.
               </div>
             </aside>
 
@@ -377,6 +398,16 @@ export default function PortalProfessorLogin() {
           }
         `}</style>
       </div>
+
+      <LoginHelpModal
+        isOpen={isHelpModalOpen}
+        onClose={() => setIsHelpModalOpen(false)}
+        accentColor="#1565d8"
+        accentSoftColor="#eff4fb"
+        defaultEmail={typedEmail}
+        requesterRole="PROFESSOR"
+        source="login_professor"
+      />
     </>
   );
 }

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { LoginHelpModal } from '@/components/auth/LoginHelpModal';
 import { 
   Users, Mail, Lock, Eye, EyeOff, Headset, 
   ShieldCheck, Book, ClipboardList, CheckSquare, 
@@ -11,8 +12,18 @@ import {
   GraduationCap, Sparkles
 } from 'lucide-react';
 
+function buildInitialPassword(email?: string) {
+  if (!email) return '';
+  const [localPart] = email.trim().toLowerCase().split('@');
+  return localPart ? `${localPart}@Grafos` : '';
+}
+
 export default function AlunoLogin() {
   const [showPassword, setShowPassword] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [typedEmail, setTypedEmail] = useState('');
+  const [typedPassword, setTypedPassword] = useState('');
+  const suggestedPassword = buildInitialPassword(typedEmail);
 
   return (
     <div className="w-screen h-screen flex font-[system-ui] bg-white overflow-hidden">
@@ -37,16 +48,6 @@ export default function AlunoLogin() {
           </div>
         </div>
 
-        <div className="flex items-start gap-3.5 mt-2">
-          <div className="w-[34px] h-[34px] rounded-lg bg-[#22a05f] flex items-center justify-center flex-none">
-            <Users className="w-5 h-5 text-white" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <div className="text-xl font-bold">Grafos Aluno</div>
-            <div className="text-[13.5px] text-[#6a736e]">Portal do Estudante</div>
-          </div>
-        </div>
-
         <form className="flex flex-col gap-4 mt-2" onSubmit={(e) => e.preventDefault()}>
           <label className="flex flex-col gap-2">
             <span className="text-sm font-bold">Email Institucional</span>
@@ -60,10 +61,34 @@ export default function AlunoLogin() {
               <input
                 type="email"
                 placeholder="aluno@escola.edu.br"
+                value={typedEmail}
+                onChange={(event) => setTypedEmail(event.target.value)}
                 className="border-none outline-none flex-1 text-[15px] bg-transparent font-sans"
               />
             </span>
           </label>
+
+          {suggestedPassword ? (
+            <div className="rounded-lg border border-[#d2eedc] bg-[#eaf7ef] px-4 py-3">
+              <div className="flex flex-col gap-2.5">
+                <div>
+                  <p className="text-[13.5px] font-bold text-slate-900">Primeiro acesso?</p>
+                  <p className="text-[12.5px] text-[#5f6a64]">
+                    Use o preenchimento automatico da senha padrao com base no email informado.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setTypedPassword(suggestedPassword)}
+                    className="inline-flex h-10 items-center justify-center rounded-lg bg-[#22a05f] px-4 text-[13.5px] font-bold text-white transition hover:brightness-110"
+                  >
+                    Preencher senha padrao
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           <label className="flex flex-col gap-2">
             <span className="text-sm font-bold">Senha</span>
@@ -77,6 +102,8 @@ export default function AlunoLogin() {
               <input
                 type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••••"
+                value={typedPassword}
+                onChange={(event) => setTypedPassword(event.target.value)}
                 className="border-none outline-none flex-1 text-[15px] bg-transparent font-sans tracking-wide"
               />
               <button type="button" onClick={() => setShowPassword(!showPassword)} className="border-none bg-transparent cursor-pointer p-0.5 flex" title="Mostrar senha">
@@ -126,16 +153,14 @@ export default function AlunoLogin() {
           <div className="flex flex-col gap-1">
             <div className="text-[14.5px] font-bold">Precisa de ajuda para acessar?</div>
             <div className="text-[13px] text-[#6a736e]">Nossa equipe está pronta para ajudar você.</div>
-            <Link href="#" className="text-[13px] font-bold text-[#22a05f] underline mt-0.5">Entrar em contato com o suporte</Link>
+            <button
+              type="button"
+              onClick={() => setIsHelpModalOpen(true)}
+              className="mt-0.5 w-fit bg-transparent p-0 text-[13px] font-bold text-[#22a05f] underline"
+            >
+              Entrar em contato com o suporte
+            </button>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2 text-[12.5px] text-[#6a736e] mt-1">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22a05f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="4" y="10" width="16" height="11" rx="2" />
-            <path d="M8 10 V7 a4 4 0 0 1 8 0 v3" />
-          </svg>
-          Seus dados estão protegidos com criptografia avançada.
         </div>
       </div>
 
@@ -349,6 +374,16 @@ export default function AlunoLogin() {
           
         </div>
       </div>
+
+      <LoginHelpModal
+        isOpen={isHelpModalOpen}
+        onClose={() => setIsHelpModalOpen(false)}
+        accentColor="#22a05f"
+        accentSoftColor="#eaf7ef"
+        defaultEmail={typedEmail}
+        requesterRole="ALUNO"
+        source="login_aluno"
+      />
     </div>
   );
 }

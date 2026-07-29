@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import type { ElementType } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -32,7 +33,7 @@ import {
 interface NavItem {
   name: string;
   baseRoute: string; // Base route name for mapping
-  icon: any;
+  icon: ElementType;
   roles: UserRole[];
   pathMapping: Partial<Record<UserRole, string>>; // Role-specific paths
   displayNameMapping?: Partial<Record<UserRole, string>>;
@@ -79,6 +80,10 @@ const institutionAdminSectionConfig: Array<{
       'Banco de Questões',
       'Categorias de Questões',
     ],
+  },
+  {
+    title: 'Suporte',
+    itemNames: ['Chamados de Suporte'],
   },
   {
     title: 'Conta',
@@ -452,6 +457,15 @@ const navigation: NavItem[] = [
       [UserRole.TEACHER]: '/configuracoes',
       [UserRole.STUDENT]: '/configuracoes',
       [UserRole.PARENT]: '/configuracoes',
+    },
+  },
+  {
+    name: 'Chamados de Suporte',
+    baseRoute: '/support-tickets',
+    icon: ClipboardDocumentListIcon,
+    roles: [UserRole.SUPER_ADMIN],
+    pathMapping: {
+      [UserRole.SUPER_ADMIN]: '/super-admin/support-tickets',
     },
   },
 ];

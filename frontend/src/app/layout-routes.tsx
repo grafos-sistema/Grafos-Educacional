@@ -49,6 +49,7 @@ export const ParentDashboard = lazyWithRetry(() => import('./(authenticated)/res
 export const SuperAdminDashboard = lazyWithRetry(() => import('./(authenticated)/super-admin/dashboard/page'));
 export const SuperAdminQuestions = lazyWithRetry(() => import('./(authenticated)/super-admin/questions/page'));
 export const SuperAdminCategories = lazyWithRetry(() => import('./(authenticated)/super-admin/question-categories/page'));
+export const SuperAdminSupportTickets = lazyWithRetry(() => import('./(authenticated)/super-admin/support-tickets/page'));
 
 // Common routes
 export const Profile = lazyWithRetry(() => import('./(authenticated)/perfil/page'));

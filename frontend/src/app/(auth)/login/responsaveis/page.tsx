@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { LoginHelpModal } from '@/components/auth/LoginHelpModal';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -14,27 +15,38 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
+function buildInitialPassword(email?: string) {
+  if (!email) return '';
+  const [localPart] = email.trim().toLowerCase().split('@');
+  return localPart ? `${localPart}@Grafos` : '';
+}
+
 export default function PaisLoginPage() {
   const { login } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
 
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
+  const typedEmail = watch('email');
+  const suggestedPassword = buildInitialPassword(typedEmail);
 
   const onSubmit = async (data: LoginFormData) => {
     try {
       setError(null);
       setIsLoading(true);
       await login(data);
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao fazer login. Verifique suas credenciais.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao fazer login. Verifique suas credenciais.');
       setIsLoading(false);
     }
   };
@@ -59,16 +71,6 @@ export default function PaisLoginPage() {
           <div className="flex flex-col gap-0.5">
             <div className="text-[27px] font-extrabold text-[#ea580c] leading-none">Grafos</div>
             <div className="text-base text-[#5b6560]">Gestão Escolar</div>
-          </div>
-        </div>
-
-        <div className="flex items-start gap-3.5 mt-2">
-          <div className="w-[34px] h-[34px] rounded-lg bg-[#ea580c] flex items-center justify-center flex-none">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 21a6 6 0 00-12 0"></path><circle cx="12" cy="9" r="4"></circle><path d="M22 21a4 4 0 00-3-3.87M2 21a4 4 0 013-3.87M16 3.13a4 4 0 010 7.75M8 3.13a4 4 0 000 7.75"></path></svg>
-          </div>
-          <div className="flex flex-col gap-1">
-            <div className="text-xl font-bold">Grafos Família</div>
-            <div className="text-[13.5px] text-[#6a736e]">Portal dos Responsáveis</div>
           </div>
         </div>
 
@@ -97,6 +99,28 @@ export default function PaisLoginPage() {
             </span>
             {errors.email && <p className="mt-1 text-[12px] text-[#ef4444]">{errors.email.message}</p>}
           </label>
+
+          {suggestedPassword ? (
+            <div className="rounded-lg border border-[#f9dcc8] bg-[#fdf1e9] px-4 py-3">
+              <div className="flex flex-col gap-2.5">
+                <div>
+                  <p className="text-[13.5px] font-bold text-slate-900">Primeiro acesso?</p>
+                  <p className="text-[12.5px] text-[#5f6a64]">
+                    Use o preenchimento automatico da senha padrao com base no email informado.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setValue('password', suggestedPassword)}
+                    className="inline-flex h-10 items-center justify-center rounded-lg bg-[#ea580c] px-4 text-[13.5px] font-bold text-white transition hover:brightness-110"
+                  >
+                    Preencher senha padrao
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           <label className="flex flex-col gap-2">
             <span className="text-sm font-bold">Senha</span>
@@ -166,16 +190,14 @@ export default function PaisLoginPage() {
           <div className="flex flex-col gap-1">
             <div className="text-[14.5px] font-bold">Precisa de ajuda para acessar?</div>
             <div className="text-[13px] text-[#6a736e]">Nossa equipe está pronta para ajudar você.</div>
-            <Link href="#" className="text-[13px] font-bold text-[#ea580c] underline mt-0.5">Entrar em contato com o suporte</Link>
+            <button
+              type="button"
+              onClick={() => setIsHelpModalOpen(true)}
+              className="mt-0.5 w-fit bg-transparent p-0 text-[13px] font-bold text-[#ea580c] underline"
+            >
+              Entrar em contato com o suporte
+            </button>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2 text-[12.5px] text-[#6a736e] mt-1">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ea580c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="4" y="10" width="16" height="11" rx="2" />
-            <path d="M8 10 V7 a4 4 0 0 1 8 0 v3" />
-          </svg>
-          Seus dados estão protegidos com criptografia avançada.
         </div>
       </div>
 
@@ -297,6 +319,16 @@ export default function PaisLoginPage() {
             </div>
           </div>
         </main>
+
+      <LoginHelpModal
+        isOpen={isHelpModalOpen}
+        onClose={() => setIsHelpModalOpen(false)}
+        accentColor="#ea580c"
+        accentSoftColor="#fdf1e9"
+        defaultEmail={typedEmail}
+        requesterRole="RESPONSAVEL"
+        source="login_responsaveis"
+      />
     </div>
   );
 }

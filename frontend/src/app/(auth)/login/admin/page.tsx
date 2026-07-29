@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
+import { LoginHelpModal } from '@/components/auth/LoginHelpModal';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -79,6 +80,7 @@ export default function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [focused, setFocused] = useState<"email" | "pw" | "">("");
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
 
   const {
     register,
@@ -130,17 +132,6 @@ export default function AdminLoginPage() {
           </div>
         </div>
 
-        <div className="flex items-start gap-3.5 mt-2">
-          <svg width="34" height="38" viewBox="0 0 24 26" fill="none" stroke="#0e7a3e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 1 L22 5 V12 C22 19 17 23.5 12 25 C7 23.5 2 19 2 12 V5 Z" />
-            <path d="M8 12.5 L11 15.5 L16 9.5" />
-          </svg>
-          <div className="flex flex-col gap-1">
-            <div className="text-xl font-bold">Acesso Administrativo</div>
-            <div className="text-[13.5px] text-[#6a736e]">Área restrita para gestores e administradores.</div>
-          </div>
-        </div>
-
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           {error && (
             <div className="rounded-lg bg-red-50 border border-red-200 p-3">
@@ -189,9 +180,6 @@ export default function AdminLoginPage() {
                   >
                     Preencher senha padrao
                   </button>
-                  <span className="text-[12.5px] text-[#5f6a64]">
-                    Senha sugerida: <strong>{suggestedPassword}</strong>
-                  </span>
                 </div>
               </div>
             </div>
@@ -271,16 +259,14 @@ export default function AdminLoginPage() {
           <div className="flex flex-col gap-1">
             <div className="text-[14.5px] font-bold">Precisa de ajuda para acessar?</div>
             <div className="text-[13px] text-[#6a736e]">Nossa equipe está pronta para ajudar você.</div>
-            <Link href="/support" className="text-[13px] font-bold text-[#0e7a3e] underline mt-0.5">Entrar em contato com o suporte</Link>
+            <button
+              type="button"
+              onClick={() => setIsHelpModalOpen(true)}
+              className="mt-0.5 w-fit bg-transparent p-0 text-[13px] font-bold text-[#0e7a3e] underline"
+            >
+              Entrar em contato com o suporte
+            </button>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2 text-[12.5px] text-[#6a736e] mt-1">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0e7a3e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="4" y="10" width="16" height="11" rx="2" />
-            <path d="M8 10 V7 a4 4 0 0 1 8 0 v3" />
-          </svg>
-          Seus dados estão protegidos com criptografia avançada.
         </div>
       </div>
 
@@ -459,6 +445,16 @@ export default function AdminLoginPage() {
           </div>
         </div>
       </div>
+
+      <LoginHelpModal
+        isOpen={isHelpModalOpen}
+        onClose={() => setIsHelpModalOpen(false)}
+        accentColor="#0e7a3e"
+        accentSoftColor="#eef6f0"
+        defaultEmail={typedEmail}
+        requesterRole="ADMIN"
+        source="login_admin"
+      />
     </div>
   );
 }
