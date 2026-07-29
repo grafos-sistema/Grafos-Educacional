@@ -44,7 +44,6 @@ export default function NewClassPage() {
   const watchedSection = watch('section') ?? '';
   const watchedShift = watch('shift') ?? '';
   const watchedName = watch('name') ?? '';
-
   // Buscar cursos para o select
   const { data: coursesData, isLoading: loadingCourses } = useQuery({
     queryKey: ['courses', { institutionId: user?.institutionId, limit: 100 }],
@@ -121,7 +120,7 @@ export default function NewClassPage() {
         ...data,
         institutionId: user.institutionId,
         maxStudents: data.maxStudents ? Number(data.maxStudents) : undefined,
-        baseRoom: data.baseRoom?.trim() || undefined,
+        baseRoom: data.name?.trim() || undefined,
         isActive: data.isActive ?? true,
       };
 
@@ -182,6 +181,7 @@ export default function NewClassPage() {
             <input type="hidden" {...register('grade', { required: 'Série / Ano é obrigatório' })} />
             <input type="hidden" {...register('section', { required: 'Turma é obrigatória' })} />
             <input type="hidden" {...register('shift')} />
+            <input type="hidden" {...register('baseRoom')} />
             <input type="hidden" {...register('name', { required: 'Nome da turma é obrigatório' })} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Select
@@ -272,10 +272,10 @@ export default function NewClassPage() {
               />
               <Input
                 label="Sala Base"
-                {...register('baseRoom')}
-                error={errors.baseRoom?.message}
-                placeholder="Ex: Sala 04, Bloco B, Laboratório 2"
-                helpText="Usada como local padrão da turma. Se uma aula ocorrer em outro ambiente, o horário pode sobrescrever isso depois."
+                value={watchedName}
+                placeholder="A própria turma define a sala base"
+                readOnly
+                helperText="Neste sistema, turma e sala são a mesma referência operacional. O horário só sobrescreve isso quando a aula acontecer em outro ambiente."
               />
             </div>
           </div>

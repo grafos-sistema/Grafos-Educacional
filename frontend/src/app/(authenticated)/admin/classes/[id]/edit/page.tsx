@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
@@ -8,7 +8,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { classesService } from '@/services/classes.service';
 import { UpdateClassDto } from '@/types/class.types';
-import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -20,7 +19,6 @@ export default function EditClassPage() {
   const router = useRouter();
   const params = useParams();
   const classId = params?.id as string;
-  const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +35,6 @@ export default function EditClassPage() {
     handleSubmit,
     formState: { errors },
     reset,
-    setValue,
-    clearErrors,
   } = useForm<UpdateClassDto>();
 
   // Preencher formulário quando turma carregar
@@ -67,7 +63,7 @@ export default function EditClassPage() {
       const updateData: UpdateClassDto = {
         ...updateFields,
         maxStudents: data.maxStudents ? Number(data.maxStudents) : undefined,
-        baseRoom: data.baseRoom?.trim() || undefined,
+        baseRoom: data.name?.trim() || classData.name,
       };
 
       await classesService.update(classId, updateData);
@@ -142,6 +138,7 @@ export default function EditClassPage() {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Informações da Turma
             </h2>
+            <input type="hidden" {...register('baseRoom')} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
                 label="Nome da Turma"
@@ -169,10 +166,10 @@ export default function EditClassPage() {
               />
               <Input
                 label="Sala Base"
-                {...register('baseRoom')}
-                error={errors.baseRoom?.message}
-                placeholder="Ex: Sala 04, Bloco B, Laboratório 2"
-                helpText="É o local padrão da turma. O horário só precisa sobrescrever isso em casos pontuais."
+                value={classData.name}
+                placeholder="A própria turma define a sala base"
+                readOnly
+                helpText="Neste sistema, turma e sala são a mesma referência operacional. Se houver exceção, o local alternativo é definido no horário."
               />
             </div>
           </div>

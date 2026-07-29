@@ -22,10 +22,20 @@ export interface ClassesFilterParams {
   isActive?: boolean;
 }
 
+type MaybeArray<T> = T | T[] | null;
+
 type DbClass = Omit<Class, 'course' | 'academicYear' | 'mainTeacher' | '_count'> & {
-  course?: { id: string; name: string } | null;
-  academicYear?: { id: string; name: string; year: number } | null;
-  mainTeacher?: { id: string; user?: { id: string; firstName: string; lastName: string; email: string } | null } | null;
+  course?: MaybeArray<{ id: string; name: string }>;
+  academicYear?: MaybeArray<{ id: string; name: string; year: number }>;
+  mainTeacher?: MaybeArray<{
+    id: string;
+    user?: MaybeArray<{
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    }>;
+  }>;
 };
 
 type DbClassSubject = {
@@ -36,8 +46,8 @@ type DbClassSubject = {
   teacherId: string | null;
   createdAt: string;
   updatedAt: string;
-  subject?: any | null;
-  teacher?: { user?: any | null } | null;
+  subject?: MaybeArray<any>;
+  teacher?: MaybeArray<{ user?: MaybeArray<any> }>;
 };
 
 type DbEnrollment = {
@@ -48,39 +58,70 @@ type DbEnrollment = {
   studentId: string;
   createdAt?: string;
   updatedAt?: string;
-  student?: {
+  student?: MaybeArray<{
     id: string;
     userId: string;
     registrationNumber: string;
     enrollmentNumber?: string | null;
     isActive: boolean;
-    user?: {
+    user?: MaybeArray<{
       firstName: string;
       lastName: string;
       email: string;
       cpf?: string | null;
       avatar?: string | null;
-    } | null;
-  } | null;
+    }>;
+  }>;
 };
 
+function firstRelation<T>(value?: MaybeArray<T>): T | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
+
+function mapClassRow(
+  row: DbClass,
+  enrollmentsCountByClassId?: Map<string, number>
+): Class {
+  const course = firstRelation(row.course);
+  const academicYear = firstRelation(row.academicYear);
+  const mainTeacher = firstRelation(row.mainTeacher);
+  const mainTeacherUser = firstRelation(mainTeacher?.user);
+
+  return {
+    ...(row as any),
+    course: course ?? undefined,
+    academicYear: academicYear ?? undefined,
+    mainTeacher: mainTeacher
+      ? {
+          id: mainTeacher.id,
+          user: mainTeacherUser ?? undefined,
+        }
+      : undefined,
+    _count: {
+      enrollments: enrollmentsCountByClassId?.get(row.id) ?? 0,
+    },
+  };
+}
+
 function mapClassSubject(row: DbClassSubject): ClassSubject {
+  const teacher = firstRelation(row.teacher);
   return {
     id: row.id,
     weeklyHours: row.weeklyHours ?? undefined,
     classId: row.classId,
     subjectId: row.subjectId,
     teacherId: row.teacherId ?? undefined,
-    subject: (row.subject ?? undefined) as any,
-    teacher: (row.teacher?.user ?? undefined) as any,
+    subject: (firstRelation(row.subject) ?? undefined) as any,
+    teacher: (firstRelation(teacher?.user) ?? undefined) as any,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
 }
 
 function mapEnrollment(row: DbEnrollment): ClassEnrollment {
-  const student = row.student;
-  const user = student?.user;
+  const student = firstRelation(row.student);
+  const user = firstRelation(student?.user);
 
   return {
     id: row.id,
@@ -153,7 +194,7 @@ export const classesService = {
 
     if (error) throw error;
 
-    const classes = (data ?? []) as DbClass[];
+    const classes = ((data ?? []) as unknown) as DbClass[];
     const classIds = classes.map((c) => c.id);
 
     const enrollmentsCountByClassId = new Map<string, number>();
@@ -175,20 +216,9 @@ export const classesService = {
       }
     }
 
-    const mapped: Class[] = classes.map((row) => ({
-      ...(row as any),
-      course: row.course ?? undefined,
-      academicYear: row.academicYear ?? undefined,
-      mainTeacher: row.mainTeacher
-        ? {
-            id: row.mainTeacher.id,
-            user: row.mainTeacher.user ?? undefined,
-          }
-        : undefined,
-      _count: {
-        enrollments: enrollmentsCountByClassId.get(row.id) ?? 0,
-      },
-    }));
+    const mapped: Class[] = classes.map((row) =>
+      mapClassRow(row, enrollmentsCountByClassId)
+    );
 
     const total = count ?? 0;
     const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -220,7 +250,7 @@ export const classesService = {
 
     if (error) throw error;
 
-    const row = data as DbClass;
+    const row = (data as unknown) as DbClass;
 
     const { data: enrollments, error: enrollmentsError, count } = await supabase
       .from('class_enrollments')
@@ -232,15 +262,7 @@ export const classesService = {
     void enrollments;
 
     return {
-      ...(row as any),
-      course: row.course ?? undefined,
-      academicYear: row.academicYear ?? undefined,
-      mainTeacher: row.mainTeacher
-        ? {
-            id: row.mainTeacher.id,
-            user: row.mainTeacher.user ?? undefined,
-          }
-        : undefined,
+      ...mapClassRow(row),
       _count: {
         enrollments: count ?? 0,
       },
@@ -292,7 +314,11 @@ export const classesService = {
 
     const { error } = await supabase
       .from('classes')
-      .update({ ...data, updatedAt: now })
+      .update({
+        ...data,
+        baseRoom: data.baseRoom === undefined ? undefined : data.baseRoom || null,
+        updatedAt: now,
+      })
       .eq('id', id);
 
     if (error) throw error;
@@ -318,8 +344,9 @@ export const classesService = {
    * Excluir turma permanentemente
    */
   async removePermanently(id: string): Promise<{ message: string }> {
-    const response = await api.delete<{ message: string }>(`/classes/${id}/permanent`);
-    return response.data;
+    return (await api.delete<{ message: string }>(
+      `/classes/${id}/permanent`
+    )) as unknown as { message: string };
   },
 
   /**
@@ -342,11 +369,11 @@ export const classesService = {
    * Adicionar disciplina Ã  turma
    */
   async addSubject(data: CreateClassSubjectDto): Promise<ClassSubject> {
-    const created = await api.post<any>(`/classes/${data.classId}/subjects`, {
+    const created = (await api.post<any>(`/classes/${data.classId}/subjects`, {
       subjectId: data.subjectId,
       teacherId: data.teacherId || undefined,
       weeklyHours: data.weeklyHours,
-    });
+    })) as any;
 
     return {
       id: created.id,
@@ -381,7 +408,7 @@ export const classesService = {
       .order('enrollmentDate', { ascending: false });
 
     if (error) throw error;
-    return ((data ?? []) as DbEnrollment[]).map(mapEnrollment);
+    return (((data ?? []) as unknown) as DbEnrollment[]).map(mapEnrollment);
   },
 
   /**
@@ -408,7 +435,7 @@ export const classesService = {
       .single();
 
     if (error) throw error;
-    return mapEnrollment(created as DbEnrollment);
+    return mapEnrollment((created as unknown) as DbEnrollment);
   },
 
   /**

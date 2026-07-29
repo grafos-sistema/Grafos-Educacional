@@ -10,12 +10,22 @@ import { CreateClassDto, UpdateClassDto } from './dto';
 export class ClassesService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private normalizeOptionalText(value?: string | null) {
+    const normalized = value?.trim();
+    return normalized ? normalized : null;
+  }
+
   /**
    * Cria uma nova turma
    */
   async create(createClassDto: CreateClassDto) {
-    const { institutionId, courseId, academicYearId, mainTeacherId, ...data } =
-      createClassDto;
+    const {
+      institutionId,
+      courseId,
+      academicYearId,
+      mainTeacherId,
+      ...data
+    } = createClassDto;
 
     // Verifica se instituição existe e está ativa
     const institution = await this.prisma.institution.findUnique({
@@ -93,13 +103,18 @@ export class ClassesService {
       }
     }
 
+    const normalizedClassName = data.name.trim();
+
     return this.prisma.class.create({
       data: {
         ...data,
+        name: normalizedClassName,
         institutionId,
         courseId,
         academicYearId,
         mainTeacherId,
+        // Regra operacional: a própria turma já representa o local padrão.
+        baseRoom: normalizedClassName,
       },
       include: {
         institution: {
@@ -515,9 +530,17 @@ export class ClassesService {
       }
     }
 
+    const { baseRoom, ...data } = updateClassDto;
+    const normalizedClassName =
+      this.normalizeOptionalText(data.name) ?? existingClass.name;
+
     return this.prisma.class.update({
       where: { id },
-      data: updateClassDto,
+      data: {
+        ...data,
+        ...(data.name !== undefined ? { name: normalizedClassName } : {}),
+        baseRoom: normalizedClassName,
+      },
       include: {
         institution: {
           select: {
