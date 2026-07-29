@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { UseFormReturn, useWatch } from 'react-hook-form';
 import {
@@ -34,6 +34,7 @@ import {
   sanitizeRgValue,
 } from '@/lib/constants/document-options';
 import { Gender, UserRole } from '@/types/user.types';
+import { AvatarCropModal } from '@/components/ui/AvatarCropModal';
 
 export interface InstitutionOption {
   id: string;
@@ -128,6 +129,12 @@ const relationshipOptions = [
 const subjectCache = new Map<string, SubjectOption[]>();
 const studentCache = new Map<string, StudentOption[]>();
 
+function getInitialPasswordFromEmail(email?: string) {
+  if (!email) return '';
+  const [localPart] = email.trim().toLowerCase().split('@');
+  return localPart ? `${localPart}@Grafos` : '';
+}
+
 function buildSteps(role?: UserRole, mode: 'create' | 'edit' = 'create'): StepDefinition[] {
   if (role === UserRole.TEACHER) {
     const teacherSteps: StepDefinition[] = [
@@ -213,6 +220,9 @@ export function RoleBasedUserWizard({
   const [studentOptions, setStudentOptions] = useState<StudentOption[]>([]);
   const [isLoadingDynamicOptions, setIsLoadingDynamicOptions] = useState(false);
   const [institutionSearchTerm, setInstitutionSearchTerm] = useState('');
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const { register, setValue, control, formState: { errors } } = form;
 
   const role = useWatch({ control, name: 'role' }) as UserRole | undefined;
@@ -226,10 +236,9 @@ export function RoleBasedUserWizard({
   const photo = useWatch({ control, name: 'photo' }) as FileList | File[] | undefined;
   const selectedSubjects = (useWatch({ control, name: 'subjectIds' }) as string[] | undefined) ?? [];
   const linkedStudents = (useWatch({ control, name: 'linkedStudents' }) as StudentLink[] | undefined) ?? [];
+  const password = useWatch({ control, name: 'password' }) as string | undefined;
   const generatedInitialPassword = useMemo(() => {
-    if (!email) return '';
-    const [localPart] = email.trim().toLowerCase().split('@');
-    return localPart ? `${localPart}@Grafos` : '';
+    return getInitialPasswordFromEmail(email);
   }, [email]);
   const profileDisplayName =
     [firstName, lastName].filter(Boolean).join(' ').trim() ||
@@ -278,6 +287,19 @@ export function RoleBasedUserWizard({
     }
     return avatar ?? null;
   }, [avatar, selectedPhotoFile]);
+
+  const photoRegister = register('photo');
+  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const nextFile = event.target.files?.[0];
+    if (!nextFile) return;
+    if (!nextFile.type.startsWith('image/')) {
+      event.target.value = '';
+      return;
+    }
+    setPendingPhotoFile(nextFile);
+    setIsCropModalOpen(true);
+    event.target.value = '';
+  };
 
   useEffect(() => {
     setActiveStepId(steps[0]?.id ?? 'identity');
@@ -478,7 +500,17 @@ export function RoleBasedUserWizard({
                 </div>
               </div>
 
-              <input type="file" accept="image/png,image/jpeg" className="hidden" {...register('photo')} />
+              <input
+                type="file"
+                accept="image/png,image/jpeg"
+                className="hidden"
+                {...photoRegister}
+                ref={(element) => {
+                  photoRegister.ref(element);
+                  photoInputRef.current = element;
+                }}
+                onChange={handlePhotoChange}
+              />
             </label>
 
             <div className="mt-4 text-center">
@@ -1006,28 +1038,67 @@ export function RoleBasedUserWizard({
             {activeStep.id === 'access' && (
               <div>
                 <TabHeader step={activeStep} />
-                {passwordField ?? (
-                  <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-600 p-4 text-sm text-gray-600 dark:text-gray-400">
-                    A redefinição de senha fica disponível apenas para o Super Admin na edição do usuário.
-                  </div>
-                )}
 
                 {mode === 'create' ? (
-                  <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3 mt-4">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">Senha inicial automática</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {generatedInitialPassword || 'Informe o email para gerar a senha automaticamente'}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      No primeiro login, o usuário será direcionado para trocar a senha.
-                    </p>
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        Primeiro acesso
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {generatedInitialPassword
+                          ? 'Se for o primeiro login do usuário, você pode preencher a senha inicial automaticamente com o início do email.'
+                          : 'Preencha o email para liberar o preenchimento automático da senha inicial.'}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={!generatedInitialPassword}
+                          onClick={() => {
+                            if (!generatedInitialPassword) return;
+                            setValue('password', generatedInitialPassword, { shouldDirty: true, shouldValidate: true });
+                          }}
+                        >
+                          É o primeiro acesso? Preencher senha
+                        </Button>
+                        {generatedInitialPassword ? (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            Senha sugerida: <strong>{generatedInitialPassword}</strong>
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+                      <Input
+                        label="Senha inicial"
+                        type="text"
+                        value={password ?? ''}
+                        onChange={(event) =>
+                          setValue('password', event.target.value, { shouldDirty: true, shouldValidate: true })
+                        }
+                        placeholder="Clique no botão para preencher automaticamente"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        No primeiro login, o usuário poderá trocar essa senha depois de acessar a conta.
+                      </p>
+                    </div>
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 mt-4 space-y-2">
-                    <p className="text-sm font-semibold text-amber-900">Alteração sensível</p>
-                    <p className="text-sm text-amber-800">
-                      Ao redefinir a senha, o usuário passará a acessar o sistema com a nova credencial definida pelo Super Admin.
-                    </p>
+                  <div className="space-y-4">
+                    {passwordField ?? (
+                      <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-600 p-4 text-sm text-gray-600 dark:text-gray-400">
+                        A redefinição de senha fica disponível apenas para o Super Admin na edição do usuário.
+                      </div>
+                    )}
+
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 mt-4 space-y-2">
+                      <p className="text-sm font-semibold text-amber-900">Alteração sensível</p>
+                      <p className="text-sm text-amber-800">
+                        Ao redefinir a senha, o usuário passará a acessar o sistema com a nova credencial definida pelo Super Admin.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1060,6 +1131,21 @@ export function RoleBasedUserWizard({
           </div>
         </div>
       </div>
+
+      <AvatarCropModal
+        isOpen={isCropModalOpen}
+        file={pendingPhotoFile}
+        onCancel={() => {
+          setIsCropModalOpen(false);
+          setPendingPhotoFile(null);
+        }}
+        onConfirm={(nextFile) => {
+          setValue('photo', [nextFile] as any, { shouldDirty: true, shouldValidate: true });
+          setIsCropModalOpen(false);
+          setPendingPhotoFile(null);
+          if (photoInputRef.current) photoInputRef.current.value = '';
+        }}
+      />
     </div>
   );
 }

@@ -26,6 +26,7 @@ import { useToast } from '@/hooks/useToast';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Modal } from '@/components/ui/Modal';
 import { formatCPF, formatPhone, removeMask } from '@/components/ui/MaskedInput';
+import { AvatarCropModal } from '@/components/ui/AvatarCropModal';
 
 const genderLabels: Record<Gender, string> = {
   MALE: 'Masculino',
@@ -42,6 +43,8 @@ export default function PerfilPage() {
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
 
   const [formData, setFormData] = useState<UpdateUserData>({
@@ -128,7 +131,9 @@ export default function PerfilPage() {
       return;
     }
 
-    setPhotoFile(file);
+    setPendingPhotoFile(file);
+    setIsCropModalOpen(true);
+    event.target.value = '';
   };
 
   if (!user) {
@@ -416,6 +421,20 @@ export default function PerfilPage() {
           )}
         </div>
       </Modal>
+
+      <AvatarCropModal
+        isOpen={isCropModalOpen}
+        file={pendingPhotoFile}
+        onCancel={() => {
+          setIsCropModalOpen(false);
+          setPendingPhotoFile(null);
+        }}
+        onConfirm={(nextFile) => {
+          setPhotoFile(nextFile);
+          setIsCropModalOpen(false);
+          setPendingPhotoFile(null);
+        }}
+      />
     </div>
   );
 }

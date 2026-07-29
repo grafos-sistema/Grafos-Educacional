@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useRef, type ChangeEvent, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { UseFormReturn } from 'react-hook-form';
@@ -35,6 +35,7 @@ import {
   sanitizeRgValue,
 } from '@/lib/constants/document-options';
 import { Gender, UserRole } from '@/types/user.types';
+import { AvatarCropModal } from '@/components/ui/AvatarCropModal';
 
 const tabs = [
   { id: 'pessoais', label: 'Dados Pessoais', icon: UserIcon, subtitle: 'Informações básicas do aluno' },
@@ -107,6 +108,12 @@ const observationTypeOptions: Array<{ value: StudentObservationType; label: stri
   { value: 'DISCIPLINARY', label: 'Disciplinar' },
 ];
 
+function getInitialPasswordFromEmail(email?: string) {
+  if (!email) return '';
+  const [localPart] = email.trim().toLowerCase().split('@');
+  return localPart ? `${localPart}@Grafos` : '';
+}
+
 function TabHeader({ tab, rightContent }: { tab: (typeof tabs)[number]; rightContent?: ReactNode }) {
   return (
     <div className="border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
@@ -142,7 +149,9 @@ export function StudentFormTabs({
   const currentAvatar = watch('avatar');
   const firstName = watch('firstName');
   const lastName = watch('lastName');
+  const email = watch('email');
   const cpf = watch('cpf');
+  const password = watch('password');
   const bloodType = watch('tipoSanguineo');
   const [selectedObservationId, setSelectedObservationId] = useState<string | 'new' | null>(null);
   const [observationDraft, setObservationDraft] = useState<{
@@ -157,6 +166,9 @@ export function StudentFormTabs({
     isPrivate: false,
   });
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   
   const [responsaveis, setResponsaveis] = useState(() => {
     const initial = form.getValues('responsaveis');
@@ -212,6 +224,20 @@ export function StudentFormTabs({
       URL.revokeObjectURL(nextPreviewUrl);
     };
   }, [selectedPhoto]);
+
+  const photoRegister = register('photo');
+  const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextFile = event.target.files?.[0];
+    if (!nextFile) return;
+    if (!nextFile.type.startsWith('image/')) {
+      event.target.value = '';
+      toast.error('Selecione um arquivo de imagem válido.');
+      return;
+    }
+    setPendingPhotoFile(nextFile);
+    setIsCropModalOpen(true);
+    event.target.value = '';
+  };
 
   const canManageObservations = useMemo(
     () =>
@@ -311,6 +337,7 @@ export function StudentFormTabs({
   const resolvedAvatarSrc = photoPreviewUrl || currentAvatar || '';
   const studentSummary = cpf?.trim() ? formatCPF(cpf.trim()) : '';
   const bloodTypeBadge = bloodType && bloodType !== 'NAO_INFORMADO' ? bloodType : null;
+  const resolvedInitialPassword = generatedInitialPassword || getInitialPasswordFromEmail(email);
 
   const formatObservationDate = (value?: string) => {
     if (!value) return 'Sem data';
@@ -361,8 +388,9 @@ export function StudentFormTabs({
   };
 
   return (
-    <div className="flex flex-col gap-8 pt-4 pb-4 md:flex-row md:items-start">
-      <div className="w-full md:w-[248px] shrink-0 flex flex-col gap-5">
+    <>
+      <div className="flex flex-col gap-8 pt-4 pb-4 md:flex-row md:items-start">
+        <div className="w-full md:w-[248px] shrink-0 flex flex-col gap-5">
           <div className="relative flex flex-col items-center rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-6 shadow-sm">
             {bloodTypeBadge ? (
               <div className="absolute right-4 top-3">
@@ -394,7 +422,17 @@ export function StudentFormTabs({
               </div>
             </div>
 
-            <input type="file" accept="image/png,image/jpeg" className="hidden" {...register('photo')} />
+            <input
+              type="file"
+              accept="image/png,image/jpeg"
+              className="hidden"
+              {...photoRegister}
+              ref={(element) => {
+                photoRegister.ref(element);
+                photoInputRef.current = element;
+              }}
+              onChange={handlePhotoChange}
+            />
           </label>
 
           <div className="mt-4 text-center">
@@ -741,14 +779,48 @@ export function StudentFormTabs({
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <TabHeader tab={activeAccessTab} />
             {mode === 'create' ? (
-              <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">Senha inicial automática</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {generatedInitialPassword || 'Informe o email do aluno para gerar a senha automaticamente.'}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  No primeiro login, o aluno será direcionado para trocar a senha.
-                </p>
+              <div className="space-y-4">
+                <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">Primeiro acesso</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {resolvedInitialPassword
+                      ? 'Se for o primeiro login do aluno, você pode preencher a senha inicial automaticamente com o início do email.'
+                      : 'Informe o email do aluno para liberar o preenchimento automático da senha inicial.'}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={!resolvedInitialPassword}
+                      onClick={() => {
+                        if (!resolvedInitialPassword) return;
+                        setValue('password', resolvedInitialPassword, { shouldDirty: true, shouldValidate: true });
+                      }}
+                    >
+                      É o primeiro acesso? Preencher senha
+                    </Button>
+                    {resolvedInitialPassword ? (
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        Senha sugerida: <strong>{resolvedInitialPassword}</strong>
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+                  <Input
+                    label="Senha inicial"
+                    type="text"
+                    value={password ?? ''}
+                    onChange={(event) =>
+                      setValue('password', event.target.value, { shouldDirty: true, shouldValidate: true })
+                    }
+                    placeholder="Clique no botão para preencher automaticamente"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    No primeiro login, o aluno poderá trocar essa senha depois de acessar a conta.
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
@@ -956,7 +1028,23 @@ export function StudentFormTabs({
         </div>
           </div>
         </div>
+        </div>
       </div>
-    </div>
+
+    <AvatarCropModal
+      isOpen={isCropModalOpen}
+      file={pendingPhotoFile}
+      onCancel={() => {
+        setIsCropModalOpen(false);
+        setPendingPhotoFile(null);
+      }}
+      onConfirm={(nextFile) => {
+        setValue('photo', [nextFile] as any, { shouldDirty: true, shouldValidate: true });
+        setIsCropModalOpen(false);
+        setPendingPhotoFile(null);
+        if (photoInputRef.current) photoInputRef.current.value = '';
+      }}
+    />
+    </>
   );
 }

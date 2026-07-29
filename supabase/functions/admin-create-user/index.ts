@@ -102,6 +102,11 @@ function buildInitialPassword(email: string) {
   return `${localPart}@Grafos`
 }
 
+function normalizePassword(value?: string | null) {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : null
+}
+
 async function callerCanAccessInstitution(
   supabase: ReturnType<typeof createClient>,
   caller: { id: string; role: string; institutionId: string },
@@ -166,7 +171,7 @@ Deno.serve(async (req) => {
     : []
   const institutionIds = Array.from(new Set([institutionId, ...requestedInstitutionIds].filter(Boolean)))
   const isActive = body?.isActive ?? true
-  const generatedPassword = email ? buildInitialPassword(email) : null
+  const generatedPassword = normalizePassword(body?.password) ?? (email ? buildInitialPassword(email) : null)
 
   if (!email) return json({ error: "missing_email" }, 400)
   if (!generatedPassword || generatedPassword.length < 6) return json({ error: "invalid_password" }, 400)

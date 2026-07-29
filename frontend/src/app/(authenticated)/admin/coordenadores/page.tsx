@@ -84,7 +84,7 @@ export default function CoordenadoresPage() {
             <img
               src={user.avatar}
               alt={`${user.firstName} ${user.lastName}`}
-              className="h-8 w-8 rounded-full mr-3"
+              className="h-8 w-8 shrink-0 rounded-full object-cover mr-3 bg-gray-100 dark:bg-gray-700"
             />
           ) : (
             <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mr-3 text-orange-600 dark:text-orange-400 text-sm font-medium">

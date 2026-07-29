@@ -84,7 +84,7 @@ export default function ProfessoresPage() {
             <img
               src={user.avatar}
               alt={`${user.firstName} ${user.lastName}`}
-              className="h-8 w-8 rounded-full mr-3"
+              className="h-8 w-8 shrink-0 rounded-full object-cover mr-3 bg-gray-100 dark:bg-gray-700"
             />
           ) : (
             <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mr-3 text-blue-600 dark:text-blue-400 text-sm font-medium">
