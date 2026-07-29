@@ -16,12 +16,18 @@ export class SchedulesService {
     return normalized ? normalized : null;
   }
 
-  private withEffectiveRoom<T extends { room: string | null; class?: { baseRoom: string | null } | null }>(
+  private withEffectiveRoom<
+    T extends {
+      room: string | null;
+      class?: { baseRoom: string | null; name: string } | null;
+    },
+  >(
     schedule: T,
   ) {
     return {
       ...schedule,
-      effectiveRoom: schedule.room || schedule.class?.baseRoom || null,
+      effectiveRoom:
+        schedule.room || schedule.class?.baseRoom || schedule.class?.name || null,
     };
   }
 

@@ -58,7 +58,7 @@ function mapSchedule(row: DbClassSchedule): ClassSchedule {
     startTime: row.startTime,
     endTime: row.endTime,
     room: row.room ?? undefined,
-    effectiveRoom: row.room ?? classItem?.baseRoom ?? undefined,
+    effectiveRoom: row.room ?? classItem?.baseRoom ?? classItem?.name ?? undefined,
     classId: row.classId,
     classSubjectId: row.classSubjectId,
     class: classItem

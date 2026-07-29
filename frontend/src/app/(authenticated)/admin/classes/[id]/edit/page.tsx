@@ -165,9 +165,9 @@ export default function EditClassPage() {
                 error={errors.shift?.message}
               />
               <Input
-                label="Sala Base"
+                label="Sala"
                 value={classData.name}
-                placeholder="A própria turma define a sala base"
+                placeholder="A própria turma define a sala"
                 readOnly
                 helpText="Neste sistema, turma e sala são a mesma referência operacional. Se houver exceção, o local alternativo é definido no horário."
               />

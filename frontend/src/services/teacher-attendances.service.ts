@@ -97,6 +97,6 @@ export const teacherAttendancesService = {
     const data = await api.get<TeacherStats>(
       `/teacher-attendances/stats/${teacherId}?${params.toString()}`,
     );
-    return data ?? { total: 0, byMonth: {} };
+    return (data as unknown as TeacherStats) ?? { total: 0, byMonth: {} };
   },
 };

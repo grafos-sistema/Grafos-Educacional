@@ -57,6 +57,22 @@ export interface ClassEnrollment {
   isActive: boolean;
   classId: string;
   studentId: string;
+  class?: {
+    id: string;
+    name: string;
+    grade?: string;
+    section?: string;
+    shift?: string;
+    course?: {
+      id: string;
+      name: string;
+      code?: string;
+    };
+    academicYear?: {
+      id: string;
+      year: number;
+    };
+  };
   student?: {
     id: string;
     userId: string;

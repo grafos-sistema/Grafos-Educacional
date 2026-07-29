@@ -57,7 +57,7 @@ export const schedulesService = {
   async create(dto: CreateScheduleDto): Promise<Schedule> {
     // api interceptor já retorna response.data
     const data = await api.post<Schedule>(`/classes/${dto.classId}/schedules`, dto);
-    return data as Schedule;
+    return data as unknown as Schedule;
   },
 
   /**
@@ -66,7 +66,7 @@ export const schedulesService = {
   async findByClass(classId: string): Promise<Schedule[]> {
     // api interceptor já retorna response.data
     const data = await api.get<Schedule[]>(`/classes/${classId}/schedules`);
-    return (data as Schedule[]) || [];
+    return ((data as unknown) as Schedule[]) || [];
   },
 
   /**
@@ -75,7 +75,7 @@ export const schedulesService = {
   async findOne(id: string): Promise<Schedule> {
     // api interceptor já retorna response.data
     const data = await api.get<Schedule>(`/schedules/${id}`);
-    return data as Schedule;
+    return data as unknown as Schedule;
   },
 
   /**
@@ -84,7 +84,7 @@ export const schedulesService = {
   async update(id: string, dto: UpdateScheduleDto): Promise<Schedule> {
     // api interceptor já retorna response.data
     const data = await api.patch<Schedule>(`/schedules/${id}`, dto);
-    return data as Schedule;
+    return data as unknown as Schedule;
   },
 
   /**

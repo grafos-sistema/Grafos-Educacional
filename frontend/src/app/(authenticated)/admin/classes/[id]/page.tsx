@@ -59,7 +59,7 @@ export default function ClassDetailPage() {
             {classData.name}
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Gerencie a estrutura pedagógica da turma, a sala base e os vínculos de disciplina com
+            Gerencie a estrutura pedagógica da turma, a sala e os vínculos de disciplina com
             seus respectivos professores.
           </p>
         </div>
@@ -105,7 +105,7 @@ export default function ClassDetailPage() {
           <div className="flex items-center gap-3 mb-3">
             <UsersIcon className="h-5 w-5 text-violet-600 dark:text-violet-400" />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Sala Base
+              Sala
             </span>
           </div>
           <p className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -114,7 +114,7 @@ export default function ClassDetailPage() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {classData.baseRoom
               ? 'Usada como local padrão nos horários da turma.'
-              : 'Defina a sala base na edição para evitar repetir local em cada aula.'}
+              : 'Defina a sala na edição para evitar repetir local em cada aula.'}
           </p>
         </div>
 

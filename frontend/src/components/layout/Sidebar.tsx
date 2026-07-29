@@ -120,6 +120,32 @@ const teacherSectionConfig: Array<{
   },
 ];
 
+const coordinatorSectionConfig: Array<{
+  title: string;
+  itemNames: string[];
+}> = [
+  {
+    title: 'Visão Geral',
+    itemNames: ['Dashboard'],
+  },
+  {
+    title: 'Pessoas',
+    itemNames: ['Professores', 'Alunos'],
+  },
+  {
+    title: 'Operação Acadêmica',
+    itemNames: ['Acompanhamento', 'Grade de Horários', 'Planos de Ensino', 'Observações', 'Rankings'],
+  },
+  {
+    title: 'Comunicação',
+    itemNames: ['Comunicação'],
+  },
+  {
+    title: 'Conta',
+    itemNames: ['Configurações'],
+  },
+];
+
 const navigation: NavItem[] = [
   {
     name: 'Dashboard',
@@ -158,20 +184,22 @@ const navigation: NavItem[] = [
     name: 'Professores',
     baseRoute: '/teachers',
     icon: UsersIcon,
-    roles: [UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN],
+    roles: [UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR],
     pathMapping: {
       [UserRole.SUPER_ADMIN]: '/admin/professores',
       [UserRole.INSTITUTION_ADMIN]: '/admin/professores',
+      [UserRole.COORDINATOR]: '/coordinator/professores',
     },
   },
   {
     name: 'Alunos',
     baseRoute: '/students',
     icon: UserGroupIcon,
-    roles: [UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN],
+    roles: [UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR],
     pathMapping: {
       [UserRole.SUPER_ADMIN]: '/admin/alunos',
       [UserRole.INSTITUTION_ADMIN]: '/admin/alunos',
+      [UserRole.COORDINATOR]: '/coordinator/alunos',
     },
   },
   {
@@ -461,6 +489,39 @@ export function Sidebar({
       const usedItemNames = new Set<string>();
 
       const sections = teacherSectionConfig
+        .map((section) => {
+          const items = section.itemNames
+            .map((itemName) => itemMap.get(itemName))
+            .filter((item): item is NavItem => Boolean(item));
+
+          items.forEach((item) => usedItemNames.add(item.name));
+
+          return {
+            title: section.title,
+            items,
+          };
+        })
+        .filter((section) => section.items.length > 0);
+
+      const remainingItems = filteredNavigation.filter(
+        (item) => !usedItemNames.has(item.name)
+      );
+
+      if (remainingItems.length > 0) {
+        sections.push({
+          title: 'Outros',
+          items: remainingItems,
+        });
+      }
+
+      return sections;
+    }
+
+    if (currentRole === UserRole.COORDINATOR) {
+      const itemMap = new Map(filteredNavigation.map((item) => [item.name, item]));
+      const usedItemNames = new Set<string>();
+
+      const sections = coordinatorSectionConfig
         .map((section) => {
           const items = section.itemNames
             .map((itemName) => itemMap.get(itemName))

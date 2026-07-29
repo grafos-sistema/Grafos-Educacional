@@ -136,7 +136,7 @@ export default function ClassesPage() {
     },
     {
       key: 'baseRoom',
-      label: 'Sala Base',
+      label: 'Sala',
       render: (classItem) => classItem.baseRoom || '-',
     },
     {

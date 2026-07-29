@@ -177,8 +177,8 @@ export class TeacherAttendancesService {
           startTime: sched.startTime,
           endTime: sched.endTime,
           room: sched.room,
-          effectiveRoom: sched.room || cs.class.baseRoom,
-          baseRoom: cs.class.baseRoom,
+          effectiveRoom: sched.room || cs.class.baseRoom || cs.class.name,
+          baseRoom: cs.class.baseRoom || cs.class.name,
         });
       }
     }

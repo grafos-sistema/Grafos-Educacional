@@ -213,8 +213,8 @@ export default function ProfessorMySchedulePage() {
 
   const formatRoomLabel = (item: Pick<EnrichedScheduleItem, 'room' | 'effectiveRoom'>) => {
     if (item.room) return `Local alternativo: ${item.room}`;
-    if (item.effectiveRoom) return `Sala base: ${item.effectiveRoom}`;
-    return 'Sala base pendente';
+    if (item.effectiveRoom) return `Sala: ${item.effectiveRoom}`;
+    return 'Sala pendente';
   };
 
   const groupedSchedule = useMemo(

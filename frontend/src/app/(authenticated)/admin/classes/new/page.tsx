@@ -157,7 +157,7 @@ export default function NewClassPage() {
           Nova Turma
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Defina a estrutura da turma e sua sala base. Os professores entram depois pelos
+          Defina a estrutura da turma e sua sala. Os professores entram depois pelos
           vínculos de disciplina.
         </p>
       </div>
@@ -271,9 +271,9 @@ export default function NewClassPage() {
                 helperText="Preenchido automaticamente com base no curso, série/ano e turma."
               />
               <Input
-                label="Sala Base"
+                label="Sala"
                 value={watchedName}
-                placeholder="A própria turma define a sala base"
+                placeholder="A própria turma define a sala"
                 readOnly
                 helperText="Neste sistema, turma e sala são a mesma referência operacional. O horário só sobrescreve isso quando a aula acontecer em outro ambiente."
               />

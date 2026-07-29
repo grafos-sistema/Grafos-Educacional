@@ -250,8 +250,8 @@ export default function TeacherSchedulesPage() {
 
   const formatRoomLabel = (item: { room?: string; effectiveRoom?: string }) => {
     if (item.room) return `Local alternativo: ${item.room}`;
-    if (item.effectiveRoom) return `Sala base: ${item.effectiveRoom}`;
-    return 'Sala base pendente';
+    if (item.effectiveRoom) return `Sala: ${item.effectiveRoom}`;
+    return 'Sala pendente';
   };
 
   const attendanceClassSubjectIds = useMemo(

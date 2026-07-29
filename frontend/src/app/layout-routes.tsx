@@ -37,6 +37,8 @@ export const AlunoSubjects = lazyWithRetry(() => import('./(authenticated)/aluno
 
 // Coordinator routes
 export const CoordinatorDashboard = lazyWithRetry(() => import('./(authenticated)/coordinator/dashboard/page'));
+export const CoordinatorTeachers = lazyWithRetry(() => import('./(authenticated)/coordinator/professores/page'));
+export const CoordinatorStudents = lazyWithRetry(() => import('./(authenticated)/coordinator/alunos/page'));
 export const CoordinatorObservations = lazyWithRetry(() => import('./(authenticated)/coordinator/observations/page'));
 export const CoordinatorMonitoring = lazyWithRetry(() => import('./(authenticated)/coordinator/monitoring/page'));
 

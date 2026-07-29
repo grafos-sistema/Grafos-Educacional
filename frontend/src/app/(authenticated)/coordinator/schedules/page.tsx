@@ -8,7 +8,6 @@ import {
   PlusIcon,
   PencilIcon,
   TrashIcon,
-  EllipsisHorizontalIcon,
   TableCellsIcon,
   ListBulletIcon,
   AcademicCapIcon,
@@ -21,7 +20,6 @@ import { schedulesService, CreateScheduleDto, Schedule } from '@/services/schedu
 import { UserRole } from '@/types/user.types';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
-import { Dropdown } from '@/components/ui/HeroDropdown';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
@@ -56,7 +54,6 @@ export default function SchedulesManagementPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showAlternateRoomField, setShowAlternateRoomField] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [deletingSchedule, setDeletingSchedule] = useState<Schedule | null>(null);
 
@@ -96,6 +93,11 @@ export default function SchedulesManagementPage() {
     queryFn: () => schedulesService.findByClass(selectedClassId),
     enabled: !!selectedClassId,
   });
+  const selectedClass = classes.find((item) => item.id === selectedClassId);
+  const selectedClassEffectiveRoom = useMemo(
+    () => selectedClass?.baseRoom?.trim() || selectedClass?.name?.trim() || '',
+    [selectedClass]
+  );
 
   const subjectOptions = useMemo(
     () => [
@@ -163,13 +165,20 @@ export default function SchedulesManagementPage() {
       endTime: '',
       room: '',
     });
-    setShowAlternateRoomField(false);
   };
 
-  const buildSchedulePayload = () => ({
-    ...formData,
-    room: showAlternateRoomField ? formData.room.trim() || undefined : undefined,
-  });
+  const buildSchedulePayload = () => {
+    const normalizedRoom = formData.room.trim();
+    const normalizedBaseRoom = selectedClassEffectiveRoom.trim();
+
+    return {
+      ...formData,
+      room:
+        normalizedRoom && normalizedRoom !== normalizedBaseRoom
+          ? normalizedRoom
+          : undefined,
+    };
+  };
 
   const handleCreate = () => {
     if (!selectedClassId) {
@@ -203,10 +212,24 @@ export default function SchedulesManagementPage() {
       dayOfWeek: schedule.dayOfWeek,
       startTime: schedule.startTime,
       endTime: schedule.endTime,
-      room: schedule.room || '',
+      room:
+        schedule.room ||
+        schedule.effectiveRoom ||
+        selectedClassEffectiveRoom ||
+        schedule.class?.baseRoom ||
+        schedule.class?.name ||
+        '',
     });
-    setShowAlternateRoomField(Boolean(schedule.room));
     setShowEditModal(true);
+  };
+
+  const handleOpenCreateModal = () => {
+    resetForm();
+    setFormData((prev) => ({
+      ...prev,
+      room: selectedClassEffectiveRoom,
+    }));
+    setShowCreateModal(true);
   };
 
   const handleUpdate = () => {
@@ -271,8 +294,6 @@ export default function SchedulesManagementPage() {
     [filteredSchedules]
   );
   const hasClassSubjects = classSubjects.length > 0;
-  const selectedClass = classes.find((item) => item.id === selectedClassId);
-  const selectedClassBaseRoom = selectedClass?.baseRoom?.trim();
   const subjectAssignmentsWithoutSchedule = useMemo(
     () =>
       classSubjects.filter(
@@ -283,8 +304,11 @@ export default function SchedulesManagementPage() {
     [classSubjects, filteredSchedules, selectedSubjectId]
   );
   const schedulesWithoutRoom = useMemo(
-    () => filteredSchedules.filter((item) => !item.effectiveRoom),
-    [filteredSchedules]
+    () =>
+      filteredSchedules.filter(
+        (item) => !(item.effectiveRoom || selectedClassEffectiveRoom)
+      ),
+    [filteredSchedules, selectedClassEffectiveRoom]
   );
   const scheduleConflicts = useMemo(
     () =>
@@ -308,10 +332,15 @@ export default function SchedulesManagementPage() {
     },
   ];
 
-  const formatRoomLabel = (schedule: Pick<Schedule, 'room' | 'effectiveRoom'>) => {
+  const formatRoomLabel = (
+    schedule: Pick<Schedule, 'room' | 'effectiveRoom'> & { class?: { name?: string; baseRoom?: string } }
+  ) => {
     if (schedule.room) return `Local alternativo: ${schedule.room}`;
-    if (schedule.effectiveRoom) return `Sala base: ${schedule.effectiveRoom}`;
-    return 'Sala base pendente';
+    if (schedule.effectiveRoom) return `Sala: ${schedule.effectiveRoom}`;
+    if (selectedClassEffectiveRoom) return `Sala: ${selectedClassEffectiveRoom}`;
+    if (schedule.class?.baseRoom) return `Sala: ${schedule.class.baseRoom}`;
+    if (schedule.class?.name) return `Sala: ${schedule.class.name}`;
+    return 'Sala pendente';
   };
 
   return (
@@ -403,7 +432,7 @@ export default function SchedulesManagementPage() {
                     Gerenciar vínculos
                   </Button>
                   <Button
-                    onClick={() => setShowCreateModal(true)}
+                    onClick={handleOpenCreateModal}
                     leftIcon={<PlusIcon className="h-5 w-5" />}
                     disabled={!selectedClassId || !hasClassSubjects}
                   >
@@ -484,7 +513,7 @@ export default function SchedulesManagementPage() {
               Esta turma ainda não possui horários configurados
             </p>
             {canManageSchedules && (
-              <Button onClick={() => setShowCreateModal(true)} leftIcon={<PlusIcon className="h-5 w-5" />}>
+              <Button onClick={handleOpenCreateModal} leftIcon={<PlusIcon className="h-5 w-5" />}>
                 Cadastrar Primeiro Horário
               </Button>
             )}
@@ -885,63 +914,42 @@ export default function SchedulesManagementPage() {
           </div>
 
           <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-800/60">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-sm font-medium text-gray-900 dark:text-white">
-                  Local da aula
-                </div>
-                <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                  {selectedClassBaseRoom
-                    ? `Sala base da turma: ${selectedClassBaseRoom}`
-                    : 'Esta turma ainda não possui sala base cadastrada.'}
-                </div>
-                <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Use local alternativo apenas quando a aula acontecer fora da sala base.
-                </div>
-              </div>
-              <Dropdown
-                trigger={
-                  <button
-                    type="button"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-                    aria-label="Opções do local da aula"
-                  >
-                    <EllipsisHorizontalIcon className="h-5 w-5" />
-                  </button>
-                }
-                items={
-                  showAlternateRoomField
-                    ? [
-                        {
-                          key: 'hide-alternate-room',
-                          label: 'Usar sala base da turma',
-                          onClick: () => {
-                            setShowAlternateRoomField(false);
-                            setFormData((prev) => ({ ...prev, room: '' }));
-                          },
-                        },
-                      ]
-                    : [
-                        {
-                          key: 'show-alternate-room',
-                          label: 'Definir local alternativo',
-                          onClick: () => setShowAlternateRoomField(true),
-                        },
-                      ]
+            <div className="text-sm font-medium text-gray-900 dark:text-white">
+              Local da aula
+            </div>
+            <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              O campo já vem preenchido com a turma. Só altere quando esta aula acontecer em outro ambiente.
+            </div>
+            <div className="mt-4">
+              <Input
+                label="Local"
+                value={formData.room}
+                onChange={(e) => setFormData({ ...formData, room: e.target.value })}
+                placeholder={selectedClassEffectiveRoom || 'Ex: 7º Ano B - Matutino'}
+                helpText={
+                  selectedClassEffectiveRoom
+                    ? `Padrão automático da turma: ${selectedClassEffectiveRoom}`
+                    : 'Sem local padrão encontrado para esta turma.'
                 }
               />
             </div>
-
-            {showAlternateRoomField && (
-              <div className="mt-4">
-                <Input
-                  label="Local alternativo"
-                  value={formData.room}
-                  onChange={(e) => setFormData({ ...formData, room: e.target.value })}
-                  placeholder="Ex: Laboratório 2, Quadra, Auditório"
-                />
+            {selectedClassEffectiveRoom && formData.room.trim() !== selectedClassEffectiveRoom ? (
+              <div className="mt-3 flex justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      room: selectedClassEffectiveRoom,
+                    }))
+                  }
+                >
+                  Usar local da turma
+                </Button>
               </div>
-            )}
+            ) : null}
           </div>
 
           <div className="flex justify-end gap-3 mt-6">

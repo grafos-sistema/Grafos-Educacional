@@ -450,6 +450,7 @@ export class ClassesService {
       include: {
         class: {
           select: {
+            name: true,
             baseRoom: true,
           },
         },
@@ -485,8 +486,8 @@ export class ClassesService {
       startTime: schedule.startTime,
       endTime: schedule.endTime,
       room: schedule.room,
-      effectiveRoom: schedule.room || schedule.class.baseRoom,
-      baseRoom: schedule.class.baseRoom,
+      effectiveRoom: schedule.room || schedule.class.baseRoom || schedule.class.name,
+      baseRoom: schedule.class.baseRoom || schedule.class.name,
       subject: schedule.classSubject.subject,
       teacher: schedule.classSubject.teacher,
     }));
