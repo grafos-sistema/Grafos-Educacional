@@ -33,3 +33,10 @@
 
 > *Conteúdo a ser definido.*
 
+## TASKS
+
+- *Excesso de espaço laterais*
+- *Erro: duplicate key value violates unique constraint "teachers\_registrationNumber\_key" | entender e deixar um alertar mais claro e prático para o usuário final*
+- *Cadastrar anexos no cadastro de alunos*
+- *Corrigir todos os formulários e deixar salvando de forma correta no banco de dados*
+
