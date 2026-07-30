@@ -1,17 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Modal } from '@/components/ui/Modal';
-import { Button } from '@/components/ui/Button';
+import { XMarkIcon, MinusIcon, PlusIcon } from '@heroicons/react/24/outline';
 
 type Point = { x: number; y: number };
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
-}
-
-async function fileToBlobUrl(file: File) {
-  return URL.createObjectURL(file);
 }
 
 function getOutputType(inputType: string) {
@@ -22,6 +17,12 @@ function getOutputType(inputType: string) {
 function replaceFileExtension(fileName: string, extension: 'png' | 'jpg') {
   const base = fileName.replace(/\.[^/.]+$/, '');
   return `${base || 'avatar'}.${extension}`;
+}
+
+function getDistance(touches: React.TouchList) {
+  if (touches.length < 2) return null;
+  const [first, second] = [touches[0], touches[1]];
+  return Math.hypot(second.clientX - first.clientX, second.clientY - first.clientY);
 }
 
 export interface AvatarCropModalProps {
@@ -39,7 +40,7 @@ export function AvatarCropModal({
   onCancel,
   onConfirm,
   outputSize = 512,
-  title = 'Ajustar imagem',
+  title = 'Escolher foto do perfil',
 }: AvatarCropModalProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -58,10 +59,6 @@ export function AvatarCropModal({
   const [isDragging, setIsDragging] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  const setClampedZoom = (value: number) => {
-    setUserZoom(clamp(value, 1, 3));
-  };
-
   const baseScale = useMemo(() => {
     if (!naturalSize || !containerSize) return 1;
     return Math.max(containerSize.w / naturalSize.w, containerSize.h / naturalSize.h);
@@ -73,6 +70,7 @@ export function AvatarCropModal({
     if (!naturalSize || !containerSize) return { maxX: 0, maxY: 0 };
     const displayW = naturalSize.w * effectiveScale;
     const displayH = naturalSize.h * effectiveScale;
+
     return {
       maxX: Math.max(0, (displayW - containerSize.w) / 2),
       maxY: Math.max(0, (displayH - containerSize.h) / 2),
@@ -86,24 +84,17 @@ export function AvatarCropModal({
       setContainerSize(null);
       setUserZoom(1);
       setOffset({ x: 0, y: 0 });
+      setIsDragging(false);
       dragStartRef.current = null;
       touchStateRef.current = null;
-      setIsDragging(false);
       return;
     }
 
-    let isActive = true;
-    let nextUrl: string | null = null;
-
-    void (async () => {
-      nextUrl = await fileToBlobUrl(file);
-      if (!isActive) return;
-      setBlobUrl(nextUrl);
-    })();
+    const nextUrl = URL.createObjectURL(file);
+    setBlobUrl(nextUrl);
 
     return () => {
-      isActive = false;
-      if (nextUrl) URL.revokeObjectURL(nextUrl);
+      URL.revokeObjectURL(nextUrl);
     };
   }, [file, isOpen]);
 
@@ -129,17 +120,11 @@ export function AvatarCropModal({
   }, [offsetLimits.maxX, offsetLimits.maxY]);
 
   const handleImageLoad = () => {
-    const img = imgRef.current;
-    if (!img) return;
-    setNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
-    setOffset({ x: 0, y: 0 });
+    const image = imgRef.current;
+    if (!image) return;
+    setNaturalSize({ w: image.naturalWidth, h: image.naturalHeight });
     setUserZoom(1);
-  };
-
-  const getTouchDistance = (touches: React.TouchList) => {
-    if (touches.length < 2) return null;
-    const [first, second] = [touches[0], touches[1]];
-    return Math.hypot(second.clientX - first.clientX, second.clientY - first.clientY);
+    setOffset({ x: 0, y: 0 });
   };
 
   const onMouseDown = (event: React.MouseEvent) => {
@@ -182,7 +167,7 @@ export function AvatarCropModal({
 
   const onTouchStart = (event: React.TouchEvent) => {
     if (event.touches.length >= 2) {
-      const distance = getTouchDistance(event.touches);
+      const distance = getDistance(event.touches);
       if (!distance) return;
       touchStateRef.current = {
         mode: 'pinch',
@@ -208,7 +193,7 @@ export function AvatarCropModal({
     event.preventDefault();
 
     if (event.touches.length >= 2) {
-      const distance = getTouchDistance(event.touches);
+      const distance = getDistance(event.touches);
       const touchState = touchStateRef.current;
       if (!distance) return;
 
@@ -222,7 +207,7 @@ export function AvatarCropModal({
         return;
       }
 
-      setClampedZoom(touchState.zoom * (distance / touchState.distance));
+      setUserZoom(clamp(touchState.zoom * (distance / touchState.distance), 1, 3));
       return;
     }
 
@@ -240,7 +225,7 @@ export function AvatarCropModal({
 
   const onTouchEnd = (event: React.TouchEvent) => {
     if (event.touches.length >= 2) {
-      const distance = getTouchDistance(event.touches);
+      const distance = getDistance(event.touches);
       if (!distance) return;
       touchStateRef.current = {
         mode: 'pinch',
@@ -265,16 +250,26 @@ export function AvatarCropModal({
     setIsDragging(false);
   };
 
-  const onWheel = (event: React.WheelEvent) => {
-    event.preventDefault();
-    const delta = event.deltaY < 0 ? 0.08 : -0.08;
-    setUserZoom((current) => clamp(current + delta, 1, 3));
-  };
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!isOpen || !container) return;
+
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const nextZoomDelta = event.deltaY < 0 ? 0.08 : -0.08;
+      setUserZoom((current) => clamp(current + nextZoomDelta, 1, 3));
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+    };
+  }, [isOpen]);
 
   const exportCroppedFile = async () => {
-    const img = imgRef.current;
+    const image = imgRef.current;
     const currentFile = file;
-    if (!img || !naturalSize || !containerSize || !currentFile) return;
+    if (!image || !naturalSize || !containerSize || !currentFile) return;
 
     setIsExporting(true);
     try {
@@ -296,21 +291,15 @@ export function AvatarCropModal({
       const srcW = clamp(containerSize.w / effectiveScale, 0, naturalSize.w - srcX);
       const srcH = clamp(containerSize.h / effectiveScale, 0, naturalSize.h - srcY);
 
-      ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, outputSize, outputSize);
+      ctx.drawImage(image, srcX, srcY, srcW, srcH, 0, 0, outputSize, outputSize);
 
       const blob = await new Promise<Blob | null>((resolve) => {
-        const quality = outputType === 'image/jpeg' ? 0.92 : undefined;
-        canvas.toBlob(
-          (value) => resolve(value),
-          outputType,
-          quality
-        );
+        ctx.canvas.toBlob(resolve, outputType, outputType === 'image/jpeg' ? 0.92 : undefined);
       });
 
       if (!blob) return;
       const nextName = replaceFileExtension(currentFile.name, extension);
-      const nextFile = new File([blob], nextName, { type: outputType, lastModified: Date.now() });
-      onConfirm(nextFile);
+      onConfirm(new File([blob], nextName, { type: outputType, lastModified: Date.now() }));
     } finally {
       setIsExporting(false);
     }
@@ -318,22 +307,33 @@ export function AvatarCropModal({
 
   const canRenderEditor = Boolean(blobUrl);
 
+  if (!isOpen) return null;
+
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onCancel}
-      size="3xl"
-      title={title}
-      description="Arraste para enquadrar e ajuste o zoom para ficar na proporção certa."
-      panelClassName="p-6"
-      contentClassName="mt-0"
-    >
-      <div className="flex flex-col gap-5">
-        <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6">
-          <div className="w-full sm:w-auto">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 backdrop-blur-md">
+      <div
+        className="absolute inset-0"
+        onClick={onCancel}
+      />
+
+      <div className="relative z-[81] w-full max-w-[780px] overflow-hidden rounded-[22px] border border-[#d9e4f2] bg-[#f8fbff] text-[#0f172a] shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
+        <div className="relative border-b border-[#dbe6f3] px-8 py-6 text-center">
+          <h2 className="text-[30px] font-semibold tracking-[-0.02em]">{title}</h2>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="absolute right-5 top-5 flex h-12 w-12 items-center justify-center rounded-full bg-[#edf3fb] text-[#64748b] transition hover:bg-[#dfe9f7] hover:text-[#334155]"
+            aria-label="Fechar ajuste de imagem"
+          >
+            <XMarkIcon className="h-7 w-7" />
+          </button>
+        </div>
+
+        <div className="px-8 py-7">
+          <div className="flex flex-col items-center gap-8">
             <div
               ref={containerRef}
-              className={`relative mx-auto h-[320px] w-[320px] overflow-hidden rounded-2xl bg-gray-900/90 shadow-inner select-none touch-none ${
+              className={`relative h-[420px] w-[420px] max-w-full overflow-hidden rounded-[18px] border border-[#d8e4f3] bg-[#eef5ff] shadow-inner select-none touch-none ${
                 isDragging ? 'cursor-grabbing' : 'cursor-grab'
               }`}
               style={{ touchAction: 'none' }}
@@ -342,7 +342,6 @@ export function AvatarCropModal({
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
               onTouchCancel={onTouchEnd}
-              onWheel={onWheel}
             >
               {canRenderEditor ? (
                 <div
@@ -356,8 +355,8 @@ export function AvatarCropModal({
                     src={blobUrl as string}
                     alt="Imagem selecionada"
                     className="max-w-none pointer-events-none"
-                    onLoad={handleImageLoad}
                     draggable={false}
+                    onLoad={handleImageLoad}
                     style={{
                       transform: `scale(${effectiveScale})`,
                       transformOrigin: 'center',
@@ -365,60 +364,73 @@ export function AvatarCropModal({
                   />
                 </div>
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-sm text-gray-200">
+                <div className="flex h-full w-full items-center justify-center text-sm text-white/70">
                   Carregando imagem...
                 </div>
               )}
-              <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10" />
-              <div className="pointer-events-none absolute inset-0 border-[10px] border-white/12 rounded-2xl" />
-            </div>
-          </div>
 
-          <div className="flex w-full flex-col gap-4 sm:flex-1">
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-gray-900 dark:text-white">Prévia</span>
-              <div className="flex items-center gap-4">
-                <div className="relative h-20 w-20 overflow-hidden rounded-full bg-gray-900">
-                  {canRenderEditor ? (
-                    <div
-                      className="absolute left-1/2 top-1/2"
-                      style={{
-                        transform: `translate(-50%, -50%) translate(${offset.x * (80 / (containerSize?.w ?? 320))}px, ${
-                          offset.y * (80 / (containerSize?.h ?? 320))
-                        }px)`,
-                      }}
-                    >
-                      <img
-                        src={blobUrl as string}
-                        alt="Prévia"
-                        className="max-w-none pointer-events-none"
-                        draggable={false}
-                        style={{
-                          transform: `scale(${effectiveScale * (80 / (containerSize?.w ?? 320))})`,
-                          transformOrigin: 'center',
-                        }}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-                <div className="text-sm text-gray-600 dark:text-gray-300">
-                  <div>Proporção: 1:1</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Saída: {outputSize}×{outputSize}</div>
-                </div>
+              <div
+                className="pointer-events-none absolute inset-0"
+                style={{
+                  background:
+                    'radial-gradient(circle at center, transparent 0 42.5%, rgba(59,130,246,0.14) 43%, rgba(15,23,42,0.22) 100%)',
+                }}
+              />
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <div className="h-[320px] w-[320px] rounded-full border border-white/75 shadow-[0_0_0_1px_rgba(148,163,184,0.18)]" />
               </div>
             </div>
 
-            <div className="mt-1 flex justify-end gap-3">
-              <Button type="button" variant="secondary" onClick={onCancel} disabled={isExporting}>
-                Cancelar
-              </Button>
-              <Button type="button" onClick={exportCroppedFile} isLoading={isExporting} disabled={!canRenderEditor}>
-                Usar esta imagem
-              </Button>
+            <div className="flex w-full max-w-[420px] items-center gap-4">
+              <button
+                type="button"
+                onClick={() => setUserZoom((current) => clamp(current - 0.08, 1, 3))}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-[#64748b] transition hover:bg-[#e6eef9] hover:text-[#0f172a]"
+                aria-label="Diminuir zoom"
+              >
+                <MinusIcon className="h-5 w-5" />
+              </button>
+
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.01}
+                value={userZoom}
+                onChange={(event) => setUserZoom(Number(event.target.value))}
+                className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-[#cfdced] accent-[#2f7cf6]"
+              />
+
+              <button
+                type="button"
+                onClick={() => setUserZoom((current) => clamp(current + 0.08, 1, 3))}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-[#64748b] transition hover:bg-[#e6eef9] hover:text-[#0f172a]"
+                aria-label="Aumentar zoom"
+              >
+                <PlusIcon className="h-5 w-5" />
+              </button>
             </div>
           </div>
         </div>
+
+        <div className="flex items-center justify-end gap-4 border-t border-[#dbe6f3] px-8 py-5">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#2f7cf6] transition hover:bg-[#eef5ff]"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={exportCroppedFile}
+            disabled={!canRenderEditor || isExporting}
+            className="min-w-[108px] rounded-xl bg-[#1f6fff] px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {isExporting ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
       </div>
-    </Modal>
+    </div>
   );
 }

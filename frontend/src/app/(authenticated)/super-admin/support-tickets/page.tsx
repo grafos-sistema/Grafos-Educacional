@@ -3,12 +3,12 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import { MagnifyingGlassIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, CheckCircleIcon, XMarkIcon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { supportTicketsService } from '@/services/support-tickets.service';
 import { useAuthStore } from '@/stores/authStore';
-import type { SupportTicket } from '@/types/support-ticket.types';
+import type { SupportTicket, SupportTicketAttachment } from '@/types/support-ticket.types';
 
 function formatDateTime(value?: string | null) {
   if (!value) return '-';
@@ -39,6 +39,7 @@ export default function SuperAdminSupportTicketsPage() {
   const currentUser = useAuthStore((state) => state.user);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'OPEN' | 'RESOLVED'>('ALL');
+  const [selectedAttachment, setSelectedAttachment] = useState<SupportTicketAttachment | null>(null);
 
   const { data: tickets = [], isLoading } = useQuery({
     queryKey: ['support-tickets'],
@@ -75,7 +76,6 @@ export default function SuperAdminSupportTicketsPage() {
         ticket.cpf,
         ticket.description,
         ticket.requesterRole,
-        ticket.source,
       ]
         .filter(Boolean)
         .join(' ')
@@ -176,9 +176,6 @@ export default function SuperAdminSupportTicketsPage() {
                       <span className="font-medium text-gray-900 dark:text-white">Celular:</span> {ticket.phone || '-'}
                     </p>
                     <p>
-                      <span className="font-medium text-gray-900 dark:text-white">Origem:</span> {ticket.source || '-'}
-                    </p>
-                    <p>
                       <span className="font-medium text-gray-900 dark:text-white">Abertura:</span> {formatDateTime(ticket.createdAt)}
                     </p>
                     {ticket.resolvedAt ? (
@@ -197,25 +194,33 @@ export default function SuperAdminSupportTicketsPage() {
                       <p className="text-sm font-medium text-gray-900 dark:text-white">Imagens enviadas</p>
                       <div className="flex flex-wrap gap-3">
                         {ticket.attachments.map((attachment) => (
-                          <a
+                          <button
                             key={attachment.path}
-                            href={attachment.signedUrl ?? '#'}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="block"
+                            type="button"
+                            onClick={() => setSelectedAttachment(attachment)}
+                            className="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-700 dark:bg-gray-900"
                           >
                             {attachment.signedUrl ? (
-                              <img
-                                src={attachment.signedUrl}
-                                alt={attachment.fileName}
-                                className="h-24 w-24 rounded-xl border border-gray-200 object-cover dark:border-gray-700"
-                              />
+                              <div className="w-[132px]">
+                                <img
+                                  src={attachment.signedUrl}
+                                  alt={attachment.fileName}
+                                  className="h-24 w-full object-cover"
+                                />
+                                <div className="flex items-center justify-between border-t border-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 dark:border-gray-800 dark:text-gray-200">
+                                  <span className="truncate">{attachment.fileName}</span>
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-1 text-primary-700 dark:bg-primary-950/30 dark:text-primary-300">
+                                    <ArrowsPointingOutIcon className="h-3.5 w-3.5" />
+                                    Abrir
+                                  </span>
+                                </div>
+                              </div>
                             ) : (
-                              <div className="flex h-24 w-24 items-center justify-center rounded-xl border border-dashed border-gray-300 text-xs text-gray-500 dark:border-gray-700">
+                              <div className="flex h-24 w-[132px] items-center justify-center rounded-xl border border-dashed border-gray-300 text-xs text-gray-500 dark:border-gray-700">
                                 Imagem indisponivel
                               </div>
                             )}
-                          </a>
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -236,16 +241,37 @@ export default function SuperAdminSupportTicketsPage() {
                       Chamado finalizado.
                     </div>
                   )}
-
-                  <div className="rounded-2xl border border-gray-200 px-4 py-3 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
-                    Entre em contato com o usuario por email para orientar a troca de senha ou confirmar a solucao.
-                  </div>
                 </div>
               </div>
             </div>
           ))
         )}
       </div>
+
+      {selectedAttachment?.signedUrl ? (
+        <div
+          className="fixed inset-0 z-[70] bg-transparent backdrop-blur-md backdrop-brightness-75"
+          onClick={() => setSelectedAttachment(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setSelectedAttachment(null)}
+            className="absolute right-6 top-6 z-[71] flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-gray-800 shadow-lg backdrop-blur dark:bg-gray-900/70 dark:text-white"
+            aria-label="Fechar imagem"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+
+          <div className="flex h-full w-full items-center justify-center p-6">
+            <img
+              src={selectedAttachment.signedUrl}
+              alt={selectedAttachment.fileName}
+              className="max-h-[88vh] max-w-[92vw] rounded-3xl object-contain shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
