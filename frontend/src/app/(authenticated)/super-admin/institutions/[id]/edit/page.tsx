@@ -82,7 +82,7 @@ export default function EditInstitutionPage({ params }: EditInstitutionPageProps
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6 flex items-center gap-4">
         <button
           onClick={() => router.back()}

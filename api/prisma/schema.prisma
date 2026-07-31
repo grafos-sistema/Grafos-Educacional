@@ -350,6 +350,7 @@ model Student {
   modalidade        String?
   turno             String?
   observacoes       String?
+  documents         Json     @default("[]")
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

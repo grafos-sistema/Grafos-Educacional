@@ -2,6 +2,7 @@ import { useForm, UseFormProps, UseFormReturn, FieldValues } from 'react-hook-fo
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'react-hot-toast';
+import { presentFriendlyError } from '@/lib/friendly-error';
 
 interface UseFormWithToastProps<T extends FieldValues> extends Omit<UseFormProps<T>, 'resolver'> {
   schema: z.ZodType<T>;
@@ -47,19 +48,7 @@ export function useFormWithToast<T extends FieldValues>({
         }
       } catch (error: any) {
         console.error('Form submission error:', error);
-
-        // Extrair mensagem de erro do backend se disponível
-        const message =
-          error?.response?.data?.message ||
-          error?.message ||
-          errorMessage;
-
-        // Se for array de mensagens (erros de validação do backend)
-        if (Array.isArray(message)) {
-          message.forEach((msg: string) => toast.error(msg));
-        } else {
-          toast.error(message);
-        }
+        presentFriendlyError(error, errorMessage);
 
         onSubmitError?.(error);
       }

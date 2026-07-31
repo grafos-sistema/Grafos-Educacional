@@ -23,6 +23,7 @@ import { Select } from '@/components/ui/Select';
 import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
 import { UserRole } from '@/types/user.types';
+import { presentFriendlyError } from '@/lib/friendly-error';
 
 export default function AcademicYearsPage() {
   const router = useRouter();
@@ -63,7 +64,7 @@ export default function AcademicYearsPage() {
       toast.success('Ano letivo desativado com sucesso!');
     } catch (error: any) {
       console.error('Erro ao remover ano letivo:', error);
-      toast.error(error?.message || 'Erro ao remover ano letivo');
+      presentFriendlyError(error, 'Nao foi possivel remover o ano letivo agora.');
     } finally {
       setIsSoftDeleting(false);
     }
@@ -78,7 +79,7 @@ export default function AcademicYearsPage() {
       toast.success('Ano letivo excluído permanentemente com sucesso!');
     } catch (error: any) {
       console.error('Erro ao excluir ano letivo permanentemente:', error);
-      toast.error(error?.message || 'Erro ao excluir ano letivo permanentemente');
+      presentFriendlyError(error, 'Nao foi possivel excluir o ano letivo permanentemente agora.');
     } finally {
       setIsPermanentDeleting(false);
     }

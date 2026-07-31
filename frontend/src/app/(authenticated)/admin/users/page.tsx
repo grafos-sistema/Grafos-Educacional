@@ -28,6 +28,7 @@ import { BulkApproveModal } from '@/components/users/BulkApproveModal';
 import { OptimizedImage } from '@/components/performance/OptimizedImage';
 import { getUserEditRouteByRole } from '@/lib/user-route-utils';
 import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
+import { presentFriendlyError } from '@/lib/friendly-error';
 
 const roleLabels: Record<UserRole, string> = {
   SUPER_ADMIN: 'Super Admin',
@@ -127,7 +128,7 @@ export default function UsersPage() {
       toast.success('Usuário desativado com sucesso!');
     } catch (error: any) {
       console.error('Erro ao remover usuário:', error);
-      toast.error(error?.message || 'Erro ao remover usuário');
+      presentFriendlyError(error, 'Nao foi possivel remover o usuario agora.');
     }
   };
 
@@ -139,7 +140,7 @@ export default function UsersPage() {
       toast.success('Usuário excluído permanentemente com sucesso!');
     } catch (error: any) {
       console.error('Erro ao excluir usuário permanentemente:', error);
-      toast.error(error?.message || 'Erro ao excluir usuário permanentemente');
+      presentFriendlyError(error, 'Nao foi possivel excluir o usuario permanentemente agora.');
     }
   };
 

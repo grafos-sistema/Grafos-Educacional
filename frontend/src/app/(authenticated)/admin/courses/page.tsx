@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
+import { presentFriendlyError } from '@/lib/friendly-error';
 
 export default function CoursesPage() {
   const router = useRouter();
@@ -57,7 +58,7 @@ export default function CoursesPage() {
       toast.success('Curso removido com sucesso!');
     } catch (error: any) {
       console.error('Erro ao remover curso:', error);
-      toast.error(error?.message || 'Erro ao remover curso');
+      presentFriendlyError(error, 'Nao foi possivel remover o curso agora.');
     }
   };
 

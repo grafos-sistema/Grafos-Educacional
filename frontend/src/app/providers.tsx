@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ReactNode, useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { useKeyboardFocus } from '@/hooks/useKeyboardFocus';
+import { ErrorDialogProvider } from '@/components/ui/ErrorDialogProvider';
 
 export function Providers({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -36,6 +37,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <HeroUIProvider navigate={router.push}>
       <QueryClientProvider client={queryClient}>
+        <ErrorDialogProvider />
         {mounted && (
           <Toaster
             position="top-right"

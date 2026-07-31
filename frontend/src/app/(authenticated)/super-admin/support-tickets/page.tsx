@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { supportTicketsService } from '@/services/support-tickets.service';
 import { useAuthStore } from '@/stores/authStore';
 import type { SupportTicket, SupportTicketAttachment } from '@/types/support-ticket.types';
+import { presentFriendlyError } from '@/lib/friendly-error';
 
 function formatDateTime(value?: string | null) {
   if (!value) return '-';
@@ -58,7 +59,7 @@ export default function SuperAdminSupportTicketsPage() {
       toast.success('Chamado marcado como resolvido.');
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Nao foi possivel atualizar o chamado.');
+      presentFriendlyError(error, 'Nao foi possivel atualizar o chamado agora.');
     },
   });
 

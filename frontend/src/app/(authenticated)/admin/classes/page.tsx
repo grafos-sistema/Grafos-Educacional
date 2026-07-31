@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
+import { presentFriendlyError } from '@/lib/friendly-error';
 
 export default function ClassesPage() {
   const router = useRouter();
@@ -81,7 +82,7 @@ export default function ClassesPage() {
       setDeleteModal({ isOpen: false, class: null });
     } catch (error: any) {
       console.error('Erro ao remover turma:', error);
-      toast.error(error?.message || 'Erro ao remover turma');
+      presentFriendlyError(error, 'Nao foi possivel remover a turma agora.');
     }
   };
 
@@ -93,7 +94,7 @@ export default function ClassesPage() {
       toast.success('Turma excluida permanentemente com sucesso!');
     } catch (error: any) {
       console.error('Erro ao excluir turma permanentemente:', error);
-      toast.error(error?.message || 'Erro ao excluir turma permanentemente');
+      presentFriendlyError(error, 'Nao foi possivel excluir a turma permanentemente agora.');
     }
   };
 

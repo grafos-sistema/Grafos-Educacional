@@ -81,7 +81,7 @@ export default function CoordinatorStudentDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl p-6">
+    <div className="mx-auto max-w-7xl p-6">
       <div className="mb-6">
         <Button
           variant="ghost"

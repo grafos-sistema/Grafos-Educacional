@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
+import { presentFriendlyError } from '@/lib/friendly-error';
 
 export default function SubjectsPage() {
   const router = useRouter();
@@ -58,7 +59,7 @@ export default function SubjectsPage() {
       toast.success('Disciplina removida com sucesso!');
     } catch (error: any) {
       console.error('Erro ao remover disciplina:', error);
-      toast.error(error?.message || 'Erro ao remover disciplina');
+      presentFriendlyError(error, 'Nao foi possivel remover a disciplina agora.');
     }
   };
 
@@ -70,7 +71,7 @@ export default function SubjectsPage() {
       toast.success('Disciplina excluida permanentemente com sucesso!');
     } catch (error: any) {
       console.error('Erro ao excluir disciplina permanentemente:', error);
-      toast.error(error?.message || 'Erro ao excluir disciplina permanentemente');
+      presentFriendlyError(error, 'Nao foi possivel excluir a disciplina permanentemente agora.');
     }
   };
 

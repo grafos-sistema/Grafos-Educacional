@@ -13,6 +13,11 @@ import {
   UpdateParentStudentDto,
 } from '@/types/user.types';
 import { PaginatedResponse } from '@/types/common.types';
+import {
+  STUDENT_DOCUMENT_DEFINITIONS,
+  type PendingStudentDocumentUpload,
+  type StudentDocumentKey,
+} from '@/types/student-document.types';
 
 export interface UsersFilterParams {
   page?: number;
@@ -79,6 +84,16 @@ const USER_BASE_COLUMNS =
 const TEACHER_LIST_PROFILE_COLUMNS = 'id, userId, specialization, registrationNumber, isActive';
 const STUDENT_LIST_PROFILE_COLUMNS = 'id, userId, registrationNumber, isActive';
 const PARENT_LIST_PROFILE_COLUMNS = 'id, userId, occupation, isActive';
+const STUDENT_DOCUMENT_BUCKET = 'student-documents';
+
+function sanitizeFileName(fileName: string) {
+  return fileName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
 
 function normalizeOptionalString(value: unknown) {
   if (typeof value !== 'string') {
@@ -606,6 +621,7 @@ export const usersService = {
       
       // Responsaveis
       responsaveis,
+      documents,
 
       // The rest goes to users
       ...userData
@@ -746,9 +762,18 @@ export const usersService = {
 
     if (user.role === 'STUDENT' && user.studentProfile) {
       const studentId = user.studentProfile.id;
+      const studentDocuments =
+        Array.isArray(documents)
+          ? documents
+              .filter((document) => document.path)
+              .map(({ file, ...document }) => ({
+                ...document,
+                status: 'UPLOADED',
+              }))
+          : undefined;
 
       // Update student profile
-      await supabase
+      const { error: studentUpdateError } = await supabase
         .from('students')
         .update({
           situacao,
@@ -762,8 +787,11 @@ export const usersService = {
           turno,
           enrollmentDate: dataMatricula || user.studentProfile.enrollmentDate,
           observacoes,
+          documents: studentDocuments,
         })
         .eq('id', studentId);
+
+      if (studentUpdateError) throw studentUpdateError;
 
       // Update health record if healthInfo is provided
       if (healthInfo && Object.keys(healthInfo).length > 0) {
@@ -884,6 +912,90 @@ export const usersService = {
         : {}
     );
     return response as unknown as { message: string; avatar: string };
+  },
+
+  async uploadStudentDocument(
+    studentProfileId: string,
+    documentType: StudentDocumentKey,
+    file: File
+  ): Promise<PendingStudentDocumentUpload[]> {
+    const definition = STUDENT_DOCUMENT_DEFINITIONS.find((item) => item.key === documentType);
+    if (!definition) {
+      throw new Error('Tipo de documento inválido.');
+    }
+
+    const { data: studentRow, error: studentError } = await supabase
+      .from('students')
+      .select('id, documents')
+      .eq('id', studentProfileId)
+      .single();
+
+    if (studentError) throw studentError;
+
+    const existingDocuments = Array.isArray(studentRow.documents)
+      ? (studentRow.documents as PendingStudentDocumentUpload[])
+      : [];
+    const existingDocument = existingDocuments.find((item) => item.key === documentType);
+
+    const safeFileName = sanitizeFileName(file.name || `${documentType}.file`);
+    const storagePath = `${studentProfileId}/${documentType}-${Date.now()}-${safeFileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(STUDENT_DOCUMENT_BUCKET)
+      .upload(storagePath, file, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: file.type || undefined,
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    if (existingDocument?.path) {
+      await supabase.storage.from(STUDENT_DOCUMENT_BUCKET).remove([existingDocument.path]);
+    }
+
+    const nextDocument: PendingStudentDocumentUpload = {
+      key: documentType,
+      label: definition.label,
+      fileName: file.name,
+      path: storagePath,
+      mimeType: file.type || undefined,
+      size: file.size,
+      uploadedAt: new Date().toISOString(),
+      status: 'UPLOADED',
+    };
+
+    const nextDocuments = [
+      ...existingDocuments.filter((item) => item.key !== documentType),
+      nextDocument,
+    ];
+
+    const { error: updateError } = await supabase
+      .from('students')
+      .update({
+        documents: nextDocuments.map(({ file: _file, ...document }) => document),
+      })
+      .eq('id', studentProfileId);
+
+    if (updateError) throw updateError;
+
+    return nextDocuments;
+  },
+
+  async uploadStudentDocuments(
+    studentProfileId: string,
+    documents: PendingStudentDocumentUpload[]
+  ): Promise<PendingStudentDocumentUpload[]> {
+    let currentDocuments: PendingStudentDocumentUpload[] = [];
+
+    for (const document of documents) {
+      if (!document.file || !document.key) continue;
+      currentDocuments = await this.uploadStudentDocument(studentProfileId, document.key, document.file);
+    }
+
+    return currentDocuments;
   },
 
   /**

@@ -1,0 +1,2 @@
+ALTER TABLE "students"
+ADD COLUMN IF NOT EXISTS "documents" JSONB NOT NULL DEFAULT '[]'::jsonb;

@@ -22,6 +22,7 @@ import { Select } from '@/components/ui/Select';
 import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
 import { formatPhone } from '@/components/ui/MaskedInput';
+import { presentFriendlyError } from '@/lib/friendly-error';
 
 export default function ProfessoresPage() {
   const router = useRouter();
@@ -58,7 +59,7 @@ export default function ProfessoresPage() {
       toast.success('Professor desativado com sucesso!');
     } catch (error) {
       console.error('Erro ao remover professor:', error);
-      toast.error('Erro ao remover professor');
+      presentFriendlyError(error, 'Nao foi possivel remover o professor agora.');
     }
   };
 
@@ -70,7 +71,7 @@ export default function ProfessoresPage() {
       toast.success('Professor excluído permanentemente com sucesso!');
     } catch (error) {
       console.error('Erro ao excluir professor permanentemente:', error);
-      toast.error('Erro ao excluir professor permanentemente');
+      presentFriendlyError(error, 'Nao foi possivel excluir o professor permanentemente agora.');
     }
   };
 

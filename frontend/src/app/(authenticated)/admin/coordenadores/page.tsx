@@ -22,6 +22,7 @@ import { Select } from '@/components/ui/Select';
 import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
 import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
+import { presentFriendlyError } from '@/lib/friendly-error';
 
 export default function CoordenadoresPage() {
   const router = useRouter();
@@ -58,7 +59,7 @@ export default function CoordenadoresPage() {
       toast.success('Coordenador desativado com sucesso!');
     } catch (error) {
       console.error('Erro ao remover coordenador:', error);
-      toast.error('Erro ao remover coordenador');
+      presentFriendlyError(error, 'Nao foi possivel remover o coordenador agora.');
     }
   };
 
@@ -70,7 +71,7 @@ export default function CoordenadoresPage() {
       toast.success('Coordenador excluído permanentemente com sucesso!');
     } catch (error) {
       console.error('Erro ao excluir coordenador permanentemente:', error);
-      toast.error('Erro ao excluir coordenador permanentemente');
+      presentFriendlyError(error, 'Nao foi possivel excluir o coordenador permanentemente agora.');
     }
   };
 

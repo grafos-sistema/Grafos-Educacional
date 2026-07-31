@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef, type ChangeEvent, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useRef, type ChangeEvent, type DragEvent, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { UseFormReturn } from 'react-hook-form';
@@ -36,6 +36,13 @@ import {
 } from '@/lib/constants/document-options';
 import { Gender, UserRole } from '@/types/user.types';
 import { AvatarCropModal } from '@/components/ui/AvatarCropModal';
+import { Modal } from '@/components/ui/Modal';
+import { presentFriendlyError } from '@/lib/friendly-error';
+import {
+  STUDENT_DOCUMENT_DEFINITIONS,
+  type PendingStudentDocumentUpload,
+  type StudentDocumentKey,
+} from '@/types/student-document.types';
 
 const tabs = [
   { id: 'pessoais', label: 'Dados Pessoais', icon: UserIcon, subtitle: 'Informações básicas do aluno' },
@@ -114,6 +121,24 @@ function getInitialPasswordFromEmail(email?: string) {
   return localPart ? `${localPart}@Grafos` : '';
 }
 
+const STUDENT_DOCUMENT_ACCEPTED_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+];
+
+const MAX_STUDENT_DOCUMENT_SIZE = 5 * 1024 * 1024;
+
+function sortStudentDocuments(documents: PendingStudentDocumentUpload[]) {
+  const order = new Map(
+    STUDENT_DOCUMENT_DEFINITIONS.map((definition, index) => [definition.key, index])
+  );
+
+  return [...documents].sort(
+    (left, right) => (order.get(left.key) ?? 0) - (order.get(right.key) ?? 0)
+  );
+}
+
 function TabHeader({ tab, rightContent }: { tab: (typeof tabs)[number]; rightContent?: ReactNode }) {
   return (
     <div className="border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
@@ -153,6 +178,7 @@ export function StudentFormTabs({
   const cpf = watch('cpf');
   const password = watch('password');
   const bloodType = watch('tipoSanguineo');
+  const watchedDocuments = watch('documents') as PendingStudentDocumentUpload[] | undefined;
   const [selectedObservationId, setSelectedObservationId] = useState<string | 'new' | null>(null);
   const [observationDraft, setObservationDraft] = useState<{
     title: string;
@@ -169,6 +195,11 @@ export function StudentFormTabs({
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const documentInputRef = useRef<HTMLInputElement | null>(null);
+  const [selectedDocumentKey, setSelectedDocumentKey] = useState<StudentDocumentKey | null>(null);
+  const [queuedDocumentFile, setQueuedDocumentFile] = useState<File | null>(null);
+  const [isDocumentPickerOpen, setIsDocumentPickerOpen] = useState(false);
+  const [isDocumentDropActive, setIsDocumentDropActive] = useState(false);
   
   const [responsaveis, setResponsaveis] = useState(() => {
     const initial = form.getValues('responsaveis');
@@ -250,7 +281,10 @@ export function StudentFormTabs({
 
   const { data: observations = [], isLoading: isLoadingObservations } = useQuery({
     queryKey: ['student-observations-inline', studentProfileId],
-    queryFn: async () => (await observationsService.findByStudent(studentProfileId as string)) as StudentObservation[],
+    queryFn: async () =>
+      (await observationsService.findByStudent(
+        studentProfileId as string
+      )) as unknown as StudentObservation[],
     enabled: mode === 'edit' && Boolean(studentProfileId) && activeTab === 'observacoes',
     retry: false,
     refetchOnWindowFocus: false,
@@ -307,7 +341,10 @@ export function StudentFormTabs({
       toast.success('Anotação salva com sucesso.');
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || error?.message || 'Não foi possível salvar a anotação.');
+      presentFriendlyError(
+        error,
+        'Nao foi possivel salvar a anotacao agora. Tente novamente.'
+      );
     },
   });
 
@@ -326,7 +363,10 @@ export function StudentFormTabs({
       toast.success('Anotação atualizada com sucesso.');
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || error?.message || 'Não foi possível atualizar a anotação.');
+      presentFriendlyError(
+        error,
+        'Nao foi possivel atualizar a anotacao agora. Tente novamente.'
+      );
     },
   });
 
@@ -338,6 +378,42 @@ export function StudentFormTabs({
   const studentSummary = cpf?.trim() ? formatCPF(cpf.trim()) : '';
   const bloodTypeBadge = bloodType && bloodType !== 'NAO_INFORMADO' ? bloodType : null;
   const resolvedInitialPassword = generatedInitialPassword || getInitialPasswordFromEmail(email);
+  const documentDefinitionsByKey = useMemo(
+    () =>
+      new Map(
+        STUDENT_DOCUMENT_DEFINITIONS.map((definition) => [definition.key, definition.label])
+      ),
+    []
+  );
+  const resolvedDocuments = useMemo(() => {
+    const normalizedDocuments = Array.isArray(watchedDocuments)
+      ? watchedDocuments.filter(Boolean)
+      : [];
+    const documentMap = new Map(
+      normalizedDocuments.map((document) => [document.key, document])
+    );
+
+    return STUDENT_DOCUMENT_DEFINITIONS.map((definition) => {
+      const document = documentMap.get(definition.key);
+      return {
+        key: definition.key,
+        label: definition.label,
+        fileName: document?.fileName ?? '',
+        path: document?.path,
+        mimeType: document?.mimeType,
+        size: document?.size,
+        uploadedAt: document?.uploadedAt,
+        file: document?.file,
+        status: document?.status ?? 'PENDING',
+      } satisfies PendingStudentDocumentUpload;
+    });
+  }, [watchedDocuments]);
+  const pendingDocuments = useMemo(
+    () => resolvedDocuments.filter((document) => !document.path && !document.file),
+    [resolvedDocuments]
+  );
+  const documentOptionsForPicker = pendingDocuments.length > 0 ? pendingDocuments : resolvedDocuments;
+  const hasLocalDocuments = resolvedDocuments.some((document) => document.status === 'LOCAL');
 
   const formatObservationDate = (value?: string) => {
     if (!value) return 'Sem data';
@@ -354,6 +430,111 @@ export function StudentFormTabs({
 
   const getObservationAuthor = (observation?: StudentObservation | null) =>
     observation?.teacher?.user?.name || observation?.teacher?.user?.email || 'Autor não identificado';
+
+  const upsertStudentDocument = (document: PendingStudentDocumentUpload) => {
+    const currentDocuments = Array.isArray(getValues('documents'))
+      ? (getValues('documents') as PendingStudentDocumentUpload[])
+      : [];
+
+    const nextDocuments = sortStudentDocuments([
+      ...currentDocuments.filter((item) => item.key !== document.key),
+      document,
+    ]);
+
+    setValue('documents', nextDocuments, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
+
+  const validateStudentDocumentFile = (file: File) => {
+    if (!STUDENT_DOCUMENT_ACCEPTED_TYPES.includes(file.type)) {
+      toast.error('Envie um arquivo em PDF, JPG ou PNG.');
+      return false;
+    }
+
+    if (file.size > MAX_STUDENT_DOCUMENT_SIZE) {
+      toast.error('Cada documento pode ter no máximo 5MB.');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleDocumentFileSelection = (file: File, documentKey: StudentDocumentKey) => {
+    if (!validateStudentDocumentFile(file)) {
+      return;
+    }
+
+    const label = documentDefinitionsByKey.get(documentKey) ?? 'Documento';
+
+    upsertStudentDocument({
+      key: documentKey,
+      label,
+      fileName: file.name,
+      mimeType: file.type,
+      size: file.size,
+      uploadedAt: new Date().toISOString(),
+      status: 'LOCAL',
+      file,
+    });
+
+    setQueuedDocumentFile(null);
+    setSelectedDocumentKey(null);
+
+    toast.success(
+      mode === 'create'
+        ? 'Documento separado para envio. Ao salvar o aluno, o arquivo sera anexado.'
+        : 'Documento pronto para envio. Salve as alteracoes para concluir o anexo.'
+    );
+  };
+
+  const openDocumentBrowserFor = (documentKey: StudentDocumentKey) => {
+    setSelectedDocumentKey(documentKey);
+    setIsDocumentPickerOpen(false);
+
+    if (queuedDocumentFile) {
+      handleDocumentFileSelection(queuedDocumentFile, documentKey);
+      return;
+    }
+
+    documentInputRef.current?.click();
+  };
+
+  const openPendingDocumentsPicker = (file?: File) => {
+    if (file && !validateStudentDocumentFile(file)) {
+      return;
+    }
+
+    setQueuedDocumentFile(file ?? null);
+    setIsDocumentPickerOpen(true);
+  };
+
+  const handleDocumentInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextFile = event.target.files?.[0];
+    if (!nextFile || !selectedDocumentKey) {
+      event.target.value = '';
+      return;
+    }
+
+    handleDocumentFileSelection(nextFile, selectedDocumentKey);
+    event.target.value = '';
+  };
+
+  const handleDocumentDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDocumentDropActive(false);
+
+    const droppedFiles = Array.from(event.dataTransfer.files ?? []);
+    if (droppedFiles.length === 0) return;
+
+    if (droppedFiles.length > 1) {
+      toast.error('Envie um documento por vez para escolher o tipo correto.');
+      return;
+    }
+
+    openPendingDocumentsPicker(droppedFiles[0]);
+  };
 
   const handleStartNewObservation = () => {
     setSelectedObservationId('new');
@@ -634,7 +815,7 @@ export function StudentFormTabs({
               </p>
             </div>
 
-            {responsaveis.map((resp, index) => {
+            {responsaveis.map((resp: { id: number }, index: number) => {
               const responsavelAtual = watchResponsaveis?.[index];
               const emailObrigatorio = Boolean(responsavelAtual?.financeiro && responsavelAtual?.podeRetirar);
               const emailPlaceholder = emailObrigatorio
@@ -644,7 +825,7 @@ export function StudentFormTabs({
               return (
               <div key={resp.id} className="bg-gray-50/50 dark:bg-gray-900/30 p-5 rounded-xl border border-gray-200 dark:border-gray-700 mb-6 relative shadow-sm hover:shadow-md transition-shadow">
                 {responsaveis.length > 1 && (
-                  <button type="button" onClick={() => setResponsaveis(responsaveis.filter(r => r.id !== resp.id))} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                  <button type="button" onClick={() => setResponsaveis(responsaveis.filter((r: { id: number }) => r.id !== resp.id))} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                     <TrashIcon className="h-5 w-5" />
                   </button>
                 )}
@@ -680,7 +861,7 @@ export function StudentFormTabs({
                       },
                     })}
                     placeholder={emailPlaceholder}
-                    error={errors.responsaveis?.[index]?.email?.message as string}
+                    error={(errors.responsaveis as any)?.[index]?.email?.message as string}
                   />
                   <MaskedInput label="Celular *" mask={masks.phone} maskChar={null} {...register(`responsaveis.${index}.celular`, { required: true })} placeholder="(00) 0 0000-0000" />
                   <MaskedInput label="WhatsApp" mask={masks.phone} maskChar={null} {...register(`responsaveis.${index}.whatsapp`)} placeholder="(00) 0 0000-0000" />
@@ -756,7 +937,43 @@ export function StudentFormTabs({
         {activeTab === 'documentos' && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <TabHeader tab={tabs[7]} />
-            <div className="p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+            <input
+              ref={documentInputRef}
+              type="file"
+              accept=".pdf,image/png,image/jpeg"
+              className="hidden"
+              onChange={handleDocumentInputChange}
+            />
+
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => openPendingDocumentsPicker()}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  openPendingDocumentsPicker();
+                }
+              }}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setIsDocumentDropActive(true);
+              }}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setIsDocumentDropActive(true);
+              }}
+              onDragLeave={(event) => {
+                event.preventDefault();
+                setIsDocumentDropActive(false);
+              }}
+              onDrop={handleDocumentDrop}
+              className={`p-8 border-2 border-dashed rounded-xl text-center transition-colors cursor-pointer ${
+                isDocumentDropActive
+                  ? 'border-primary-400 bg-primary-50 dark:border-primary-500 dark:bg-primary-900/20'
+                  : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
+              }`}
+            >
               <div className="mx-auto flex justify-center mb-4 text-gray-400">
                 <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
               </div>
@@ -764,13 +981,52 @@ export function StudentFormTabs({
               <p className="text-xs text-gray-500">PDF, JPG, PNG (Max 5MB por arquivo)</p>
             </div>
 
+            <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50/70 p-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
+              {hasLocalDocuments ? (
+                mode === 'create'
+                  ? 'Os documentos selecionados serao enviados assim que o aluno for salvo.'
+                  : 'Os documentos marcados como selecionados serao enviados ao salvar as alteracoes.'
+              ) : (
+                'Clique em um documento pendente para anexar diretamente ou use a area acima para escolher entre os pendentes.'
+              )}
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-              {['Certidão de Nascimento', 'RG do Aluno', 'CPF do Aluno', 'Comprovante de Residência', 'Histórico Escolar', 'Cartão de Vacinação'].map(doc => (
-                <div key={doc} className="flex items-center justify-between p-3 border rounded-lg bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{doc}</span>
-                  <span className="text-xs text-orange-600 dark:text-orange-400 font-medium bg-orange-50 dark:bg-orange-900/30 px-2 py-1 rounded">Pendente</span>
-                </div>
-              ))}
+              {resolvedDocuments.map((document) => {
+                const isUploaded = document.status === 'UPLOADED' && Boolean(document.path);
+                const isLocal = document.status === 'LOCAL' && Boolean(document.file);
+
+                return (
+                  <button
+                    key={document.key}
+                    type="button"
+                    onClick={() => openDocumentBrowserFor(document.key)}
+                    className="flex items-center justify-between gap-3 p-3 border rounded-lg bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-left transition-colors hover:border-primary-300 hover:bg-primary-50/40 dark:hover:border-primary-700 dark:hover:bg-primary-900/10"
+                  >
+                    <div className="min-w-0">
+                      <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {document.label}
+                      </span>
+                      {document.fileName ? (
+                        <span className="mt-1 block truncate text-xs text-gray-500 dark:text-gray-400">
+                          {document.fileName}
+                        </span>
+                      ) : null}
+                    </div>
+                    <span
+                      className={`shrink-0 rounded px-2 py-1 text-xs font-medium ${
+                        isUploaded
+                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                          : isLocal
+                            ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                            : 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
+                      }`}
+                    >
+                      {isUploaded ? 'Enviado' : isLocal ? 'Selecionado' : 'Pendente'}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -940,7 +1196,7 @@ export function StudentFormTabs({
                         <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4">
                           <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                             <span>
-                              Autor: {selectedObservation ? getObservationAuthor(selectedObservation) : currentUser?.name || 'Você'}
+                              Autor: {selectedObservation ? getObservationAuthor(selectedObservation) : currentUser?.firstName || currentUser?.email || 'Você'}
                             </span>
                             <span>
                               Data: {formatObservationDate(selectedObservation?.date ?? selectedObservation?.createdAt ?? new Date().toISOString())}
@@ -1045,6 +1301,47 @@ export function StudentFormTabs({
         if (photoInputRef.current) photoInputRef.current.value = '';
       }}
     />
+
+    <Modal
+      isOpen={isDocumentPickerOpen}
+      onClose={() => {
+        setIsDocumentPickerOpen(false);
+        setQueuedDocumentFile(null);
+      }}
+      title="Selecionar documento"
+      description={
+        pendingDocuments.length > 0
+          ? 'Escolha qual documento pendente voce deseja anexar.'
+          : 'Todos os documentos obrigatorios ja foram anexados. Escolha um item para substituir o arquivo atual.'
+      }
+      size="lg"
+    >
+      <div className="space-y-4">
+        {queuedDocumentFile ? (
+          <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-4 text-sm text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
+            Arquivo pronto para vincular: <strong>{queuedDocumentFile.name}</strong>
+          </div>
+        ) : null}
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {documentOptionsForPicker.map((document) => (
+            <button
+              key={document.key}
+              type="button"
+              onClick={() => openDocumentBrowserFor(document.key)}
+              className="rounded-xl border border-gray-200 bg-white p-4 text-left transition-colors hover:border-primary-300 hover:bg-primary-50/50 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-primary-700 dark:hover:bg-primary-900/10"
+            >
+              <span className="block text-sm font-semibold text-gray-900 dark:text-white">
+                {document.label}
+              </span>
+              <span className="mt-2 inline-flex rounded-full bg-orange-50 px-2 py-1 text-xs font-medium text-orange-600 dark:bg-orange-900/30 dark:text-orange-300">
+                {!document.path && !document.file ? 'Pendente' : 'Substituir arquivo'}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </Modal>
     </>
   );
 }

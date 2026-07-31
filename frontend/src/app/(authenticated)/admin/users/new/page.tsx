@@ -24,6 +24,7 @@ import {
   formatRgIssuerValue,
   sanitizeRgValue,
 } from '@/lib/constants/document-options';
+import { presentFriendlyError } from '@/lib/friendly-error';
 
 const roleOptions = [
   { value: UserRole.INSTITUTION_ADMIN, label: 'Admin da Instituição' },
@@ -230,6 +231,9 @@ export function NewUserPageContent({
     try {
       // Combinar firstName e lastName para criar o name
       // Remove máscaras de CPF, telefone e CEP antes de enviar
+      const pendingStudentDocuments = Array.isArray((data as any).documents)
+        ? (data as any).documents
+        : [];
       let userData: any = {
         ...data,
         name: `${data.firstName} ${data.lastName}`,
@@ -292,6 +296,7 @@ export function NewUserPageContent({
       delete userData.avatar;
       delete userData.rgUf;
       delete userData.naturalidade;
+      delete userData.documents;
 
       const createdUser = await usersService.create(userData);
 
@@ -304,17 +309,38 @@ export function NewUserPageContent({
         await usersService.uploadAvatar(createdUser.id, photoFile);
       }
 
+      if (
+        data.role === UserRole.STUDENT &&
+        createdUser.studentProfile?.id &&
+        pendingStudentDocuments.some((document: any) => document?.file)
+      ) {
+        try {
+          await usersService.uploadStudentDocuments(
+            createdUser.studentProfile.id,
+            pendingStudentDocuments
+          );
+        } catch (documentError) {
+          const info = presentFriendlyError(
+            documentError,
+            'O aluno foi criado, mas nao foi possivel anexar os documentos agora.'
+          );
+          setError(
+            `O aluno foi criado, mas os documentos nao puderam ser enviados agora. ${info.description}`
+          );
+          router.push(`/admin/alunos/${createdUser.id}/edit`);
+          return;
+        }
+      }
+
       toast.success('Usuário criado com sucesso!');
       router.push(successRoute);
     } catch (err: any) {
       console.error('Erro ao criar usuário:', err);
-      // Tratar erro específico de responsável obrigatório vindo da Edge Function
-      const rawMsg: string = err?.message ?? '';
-      const errorMsg = rawMsg.includes('student_requires_at_least_one_guardian')
-        ? 'Todo aluno deve ter ao menos um responsável cadastrado.'
-        : rawMsg || 'Erro ao criar usuário. Tente novamente.';
-      setError(errorMsg);
-      toast.error(errorMsg);
+      const info = presentFriendlyError(
+        err,
+        'Nao foi possivel criar o usuario agora. Revise os dados e tente novamente.'
+      );
+      setError(info.description);
     } finally {
       setIsSubmitting(false);
     }
@@ -353,8 +379,8 @@ export function NewUserPageContent({
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Erro geral */}
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
-              <p className="text-red-800 dark:text-red-400 text-sm">{error}</p>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/50">
+              <p className="text-sm text-slate-700 dark:text-slate-200">{error}</p>
             </div>
           )}
 

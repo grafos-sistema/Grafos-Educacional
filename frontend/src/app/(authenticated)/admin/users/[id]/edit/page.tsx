@@ -30,6 +30,7 @@ import {
   parseRgIssuerValue,
   sanitizeRgValue,
 } from '@/lib/constants/document-options';
+import { presentFriendlyError } from '@/lib/friendly-error';
 
 const genderOptions = [
   { value: Gender.MALE, label: 'Masculino' },
@@ -200,6 +201,7 @@ export function EditUserPageContent({
           turno: user.studentProfile.turno || '',
           dataMatricula: user.studentProfile.enrollmentDate ? new Date(user.studentProfile.enrollmentDate).toISOString().split('T')[0] : '',
           observacoes: user.studentProfile.observacoes || '',
+          documents: user.studentProfile.documents || [],
           ...user.studentProfile.healthRecord,
           ...user.studentProfile.transportation,
           responsaveis: (user.studentProfile as any).parents?.length > 0 
@@ -277,9 +279,11 @@ export function EditUserPageContent({
       queryClient.invalidateQueries({ queryKey: ['coordinators'] });
       toast.success(nextIsActive ? 'Usuário ativado com sucesso!' : 'Usuário desativado com sucesso!');
     } catch (err: any) {
-      const errorMsg = err?.message || 'Não foi possível alterar o status do usuário.';
-      setError(errorMsg);
-      toast.error(errorMsg);
+      const info = presentFriendlyError(
+        err,
+        'Nao foi possivel alterar o status do usuario agora.'
+      );
+      setError(info.description);
     } finally {
       setIsTogglingStatus(false);
     }
@@ -290,6 +294,10 @@ export function EditUserPageContent({
     setError(null);
 
     try {
+      const pendingStudentDocuments =
+        user?.role === UserRole.STUDENT && Array.isArray((data as any).documents)
+          ? (data as any).documents
+          : [];
       // Remove máscaras antes de enviar
       const userData = {
         ...data,
@@ -367,6 +375,17 @@ export function EditUserPageContent({
 
       await usersService.update(userId, userData as UpdateUserData);
 
+      if (
+        user?.role === UserRole.STUDENT &&
+        user.studentProfile?.id &&
+        pendingStudentDocuments.some((document: any) => document?.file)
+      ) {
+        await usersService.uploadStudentDocuments(
+          user.studentProfile.id,
+          pendingStudentDocuments
+        );
+      }
+
       if (shouldResetPassword && data.password) {
         await usersService.adminResetPassword(userId, {
           newPassword: data.password,
@@ -399,9 +418,11 @@ export function EditUserPageContent({
       router.push(successRoute ?? getUserListRouteByRole(user?.role));
     } catch (err: any) {
       console.error('Erro ao atualizar usuário:', err);
-      const errorMsg = err?.message || 'Erro ao atualizar usuário. Tente novamente.';
-      setError(errorMsg);
-      toast.error(errorMsg);
+      const info = presentFriendlyError(
+        err,
+        'Nao foi possivel atualizar o usuario agora. Revise os dados e tente novamente.'
+      );
+      setError(info.description);
     } finally {
       setIsSubmitting(false);
     }
@@ -534,8 +555,8 @@ export function EditUserPageContent({
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Erro geral */}
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
-              <p className="text-red-800 dark:text-red-400 text-sm">{error}</p>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/50">
+              <p className="text-sm text-slate-700 dark:text-slate-200">{error}</p>
             </div>
           )}
 

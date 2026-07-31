@@ -145,7 +145,7 @@ export default function PerfilPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto">
 
       {/* Header */}
       <div className="mb-6">

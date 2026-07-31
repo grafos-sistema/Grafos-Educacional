@@ -5,6 +5,7 @@ import { getApiBaseUrl, getApiConfigurationMessage } from './api-url';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
+import { getFriendlyErrorInfo, presentFriendlyError } from '@/lib/friendly-error';
 
 const apiBaseUrl = getApiBaseUrl();
 const AUTH_ROUTES_THAT_REQUIRE_RELOGIN = ['/auth/profile', '/auth/refresh', '/auth/logout'];
@@ -119,79 +120,103 @@ api.interceptors.response.use(
               }
             }
           } else {
-            const unauthorizedMsg = data?.message || 'Não autorizado para acessar este recurso';
-            toast.error(unauthorizedMsg);
-            console.error('Unauthorized:', unauthorizedMsg);
+            const info = presentFriendlyError(
+              { message: data?.message || 'Não autorizado para acessar este recurso' },
+              'Voce precisa entrar novamente para continuar.'
+            );
+            console.error('Unauthorized:', info.rawMessage);
           }
           break;
 
         case 403:
           // Forbidden - user doesn't have permission
-          const forbiddenMsg = data?.message || 'Você não tem permissão para acessar este recurso';
-          toast.error(forbiddenMsg);
-          console.error('Access denied:', forbiddenMsg);
+          const forbiddenInfo = presentFriendlyError(
+            { message: data?.message || 'Você não tem permissão para acessar este recurso' },
+            'Voce nao tem permissao para acessar esse recurso.'
+          );
+          console.error('Access denied:', forbiddenInfo.rawMessage);
           break;
 
         case 404:
           // Not found
-          const notFoundMsg = data?.message || 'Recurso não encontrado';
-          toast.error(notFoundMsg);
-          console.error('Resource not found:', notFoundMsg);
+          const notFoundInfo = presentFriendlyError(
+            { message: data?.message || 'Recurso não encontrado' },
+            'Nao encontramos as informacoes solicitadas.'
+          );
+          console.error('Resource not found:', notFoundInfo.rawMessage);
           break;
 
         case 409:
           // Conflict (e.g., duplicate record)
-          const conflictMsg = data?.message || 'Registro duplicado';
-          if (Array.isArray(conflictMsg)) {
-            conflictMsg.forEach(msg => toast.error(msg));
-          } else {
-            toast.error(conflictMsg);
-          }
-          console.error('Conflict:', conflictMsg);
+          const conflictInfo = presentFriendlyError(
+            { message: data?.message || 'Registro duplicado' },
+            'Ja existe um cadastro com uma dessas informacoes.'
+          );
+          console.error('Conflict:', conflictInfo.rawMessage);
           break;
 
         case 422:
         case 400:
           // Validation error
-          const validationMsg = data?.message || 'Erro de validação';
-          // Se for array de mensagens, mostrar todas
-          if (Array.isArray(validationMsg)) {
-            validationMsg.forEach(msg => toast.error(msg));
-          } else {
-            toast.error(validationMsg);
-          }
-          console.error('Validation error:', validationMsg);
+          const validationInfo = presentFriendlyError(
+            { message: data?.message || 'Erro de validação' },
+            'Revise os dados informados e tente novamente.'
+          );
+          console.error('Validation error:', validationInfo.rawMessage);
           break;
 
         case 500:
           // Server error
-          const serverMsg = data?.message || 'Erro interno do servidor. Tente novamente mais tarde.';
-          toast.error(serverMsg);
-          console.error('Server error:', serverMsg);
+          const serverInfo = presentFriendlyError(
+            { message: data?.message || 'Erro interno do servidor. Tente novamente mais tarde.' },
+            'O sistema nao conseguiu concluir a acao agora. Tente novamente em instantes.'
+          );
+          console.error('Server error:', serverInfo.rawMessage);
           break;
 
         default:
-          const defaultMsg = data?.message || 'Erro ao processar requisição';
-          toast.error(defaultMsg);
-          console.error('API error:', defaultMsg);
+          const defaultInfo = presentFriendlyError(
+            { message: data?.message || 'Erro ao processar requisição' },
+            'Nao foi possivel concluir a acao solicitada.'
+          );
+          console.error('API error:', defaultInfo.rawMessage);
       }
 
-      return Promise.reject(error.response.data);
+      const friendlyInfo = getFriendlyErrorInfo(
+        { message: data?.message },
+        'Nao foi possivel concluir a acao solicitada.'
+      );
+
+      return Promise.reject({
+        ...(typeof error.response.data === 'object' && error.response.data !== null
+          ? error.response.data
+          : { message: data?.message }),
+        __friendlyHandled: true,
+        __friendlyErrorInfo: friendlyInfo,
+      });
     } else if (error.request) {
       // Request made but no response received
       const networkMsg =
         !api.defaults.baseURL && typeof window !== 'undefined'
           ? getApiConfigurationMessage()
           : 'Erro de conexão. Verifique sua internet e tente novamente.';
-      toast.error(networkMsg);
+      presentFriendlyError({ message: networkMsg }, networkMsg);
       console.error('Network error - no response received');
-      return Promise.reject({ message: networkMsg });
+      return Promise.reject({
+        message: networkMsg,
+        __friendlyHandled: true,
+        __friendlyErrorInfo: getFriendlyErrorInfo({ message: networkMsg }, networkMsg),
+      });
     } else {
       // Error setting up request
       const requestMsg = error.message || 'Erro ao processar requisição';
-      toast.error(requestMsg);
+      presentFriendlyError({ message: requestMsg }, 'Nao foi possivel concluir a acao solicitada.');
       console.error('Request error:', requestMsg);
-      return Promise.reject({ message: requestMsg });
+      return Promise.reject({
+        message: requestMsg,
+        __friendlyHandled: true,
+        __friendlyErrorInfo: getFriendlyErrorInfo({ message: requestMsg }),
+      });
     }
   }
 );

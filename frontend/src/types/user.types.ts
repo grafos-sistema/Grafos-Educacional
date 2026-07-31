@@ -1,3 +1,5 @@
+import type { PendingStudentDocumentUpload } from './student-document.types';
+
 export enum UserRole {
   SUPER_ADMIN = 'SUPER_ADMIN',
   INSTITUTION_ADMIN = 'INSTITUTION_ADMIN',
@@ -53,6 +55,7 @@ export interface StudentProfile {
   // Relacionamentos
   healthRecord?: Record<string, any>; // Tipo mais específico pode ser criado depois
   transportation?: Record<string, any>;
+  documents?: PendingStudentDocumentUpload[];
 }
 
 export interface ParentProfile {
@@ -217,6 +220,7 @@ export interface CreateUserDto {
   healthInfo?: Record<string, any>;
   transportInfo?: Record<string, any>;
   responsaveis?: any[];
+  documents?: PendingStudentDocumentUpload[];
   specialization?: string;
   degree?: string;
   registrationNumber?: string;
@@ -300,6 +304,7 @@ export interface UpdateUserData {
   healthInfo?: Record<string, any>;
   transportInfo?: Record<string, any>;
   responsaveis?: any[];
+  documents?: PendingStudentDocumentUpload[];
   institutionId?: string;
   institutionIds?: string[];
   password?: string;
