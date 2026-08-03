@@ -25,6 +25,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node prisma/seed.ts",
+    "bootstrap:global-admin": "ts-node scripts/bootstrap-global-admin.ts",
     "prisma:studio": "prisma studio",
     "push": "docker build --platform linux/amd64 -t luissantostsx/grafos-api:latest . && docker push luissantostsx/grafos-api:latest"
   },

@@ -25,7 +25,9 @@ export class InstitutionAdminGuard implements CanActivate {
     }
 
     const administrativeRoles = [
+      UserRole.SUPER_ADMIN_GLOBAL,
       UserRole.SUPER_ADMIN,
+      UserRole.DIRECTOR,
       UserRole.INSTITUTION_ADMIN,
       UserRole.COORDINATOR,
     ];
@@ -38,11 +40,16 @@ export class InstitutionAdminGuard implements CanActivate {
     const allowedRoles =
       routeRoles.length > 0
         ? administrativeRoles.filter((role) => routeRoles.includes(role))
-        : [UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN];
+        : [
+            UserRole.SUPER_ADMIN_GLOBAL,
+            UserRole.SUPER_ADMIN,
+            UserRole.DIRECTOR,
+            UserRole.INSTITUTION_ADMIN,
+          ];
 
     if (!allowedRoles.includes(user.role)) {
       throw new ForbiddenException(
-        'Acesso restrito a Administradores da Instituição',
+          'Acesso restrito a administradores da instituição',
       );
     }
 

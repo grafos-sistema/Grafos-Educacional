@@ -8,6 +8,7 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { BRAZILIAN_UF_OPTIONS } from '@/lib/constants/document-options';
 import { institutionsService } from '@/services/institutions.service';
 import { CreateInstitutionDto } from '@/types/institution.types';
 
@@ -56,7 +57,7 @@ export default function NewInstitutionPage() {
             Nova Instituição
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Preencha os dados abaixo para cadastrar uma nova escola
+            Cadastre a instituição base que será gerenciada pelo Super Admin Global
           </p>
         </div>
       </div>
@@ -67,9 +68,34 @@ export default function NewInstitutionPage() {
             <div className="col-span-1 md:col-span-2">
               <Input
                 label="Nome da Instituição *"
-                placeholder="Ex: Escola Estadual Machado de Assis"
+                placeholder="Ex: SESI"
                 {...register('name', { required: 'Nome é obrigatório' })}
                 error={errors.name?.message}
+              />
+            </div>
+
+            <div>
+              <Input
+                label="CNPJ"
+                placeholder="Ex: 12.345.678/0001-90"
+                {...register('cnpj')}
+              />
+            </div>
+
+            <div>
+              <Input
+                label="Email Institucional"
+                placeholder="Ex: contato@escola.com.br"
+                type="email"
+                {...register('email')}
+              />
+            </div>
+
+            <div>
+              <Input
+                label="Telefone"
+                placeholder="Ex: (11) 99999-9999"
+                {...register('phone')}
               />
             </div>
 
@@ -89,6 +115,14 @@ export default function NewInstitutionPage() {
               />
             </div>
 
+            <div className="col-span-1 md:col-span-2">
+              <Input
+                label="Endereço"
+                placeholder="Ex: Av. Principal, 1000"
+                {...register('address')}
+              />
+            </div>
+
             <div>
               <Input
                 label="Cidade"
@@ -98,11 +132,26 @@ export default function NewInstitutionPage() {
             </div>
 
             <div>
-              <Input
+              <Select
                 label="Estado (UF)"
-                placeholder="Ex: SP"
-                maxLength={2}
+                options={[{ value: '', label: 'Selecione a UF' }, ...BRAZILIAN_UF_OPTIONS]}
                 {...register('state')}
+              />
+            </div>
+
+            <div>
+              <Input
+                label="CEP"
+                placeholder="Ex: 01000-000"
+                {...register('zipCode')}
+              />
+            </div>
+
+            <div>
+              <Input
+                label="País"
+                placeholder="Brasil"
+                {...register('country')}
               />
             </div>
 

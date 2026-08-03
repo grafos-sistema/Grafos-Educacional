@@ -7,10 +7,17 @@
 .env.development.local
 .env.test.local
 .env.production.local
+**/.env
+**/.env.local
+**/.env.*.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
 
 # Manter apenas os exemplos
 !.env.example
 !.env.prod
+!**/.env.example
 
 # ==========================================
 # NODE MODULES

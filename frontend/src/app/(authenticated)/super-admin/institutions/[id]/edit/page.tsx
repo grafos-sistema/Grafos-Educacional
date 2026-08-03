@@ -9,6 +9,7 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { BRAZILIAN_UF_OPTIONS } from '@/lib/constants/document-options';
 import { institutionsService } from '@/services/institutions.service';
 import { UpdateInstitutionDto } from '@/types/institution.types';
 
@@ -38,8 +39,15 @@ export default function EditInstitutionPage({ params }: EditInstitutionPageProps
       reset({
         name: institution.name,
         slug: institution.slug,
+        cnpj: institution.cnpj || '',
+        email: institution.email || '',
+        phone: institution.phone || '',
+        address: institution.address || '',
         city: institution.city || '',
         state: institution.state || '',
+        zipCode: institution.zipCode || '',
+        country: institution.country || 'BR',
+        logo: institution.logo || '',
         isActive: institution.isActive.toString() as any,
       });
     }
@@ -95,7 +103,7 @@ export default function EditInstitutionPage({ params }: EditInstitutionPageProps
             Editar Instituição
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Atualize os dados da escola "{institution.name}"
+            Atualize os dados cadastrais da instituição "{institution.name}"
           </p>
         </div>
       </div>
@@ -106,9 +114,34 @@ export default function EditInstitutionPage({ params }: EditInstitutionPageProps
             <div className="col-span-1 md:col-span-2">
               <Input
                 label="Nome da Instituição *"
-                placeholder="Ex: Escola Estadual Machado de Assis"
+                placeholder="Ex: SESI"
                 {...register('name', { required: 'Nome é obrigatório' })}
                 error={errors.name?.message}
+              />
+            </div>
+
+            <div>
+              <Input
+                label="CNPJ"
+                placeholder="Ex: 12.345.678/0001-90"
+                {...register('cnpj')}
+              />
+            </div>
+
+            <div>
+              <Input
+                label="Email Institucional"
+                placeholder="Ex: contato@escola.com.br"
+                type="email"
+                {...register('email')}
+              />
+            </div>
+
+            <div>
+              <Input
+                label="Telefone"
+                placeholder="Ex: (11) 99999-9999"
+                {...register('phone')}
               />
             </div>
 
@@ -128,6 +161,14 @@ export default function EditInstitutionPage({ params }: EditInstitutionPageProps
               />
             </div>
 
+            <div className="col-span-1 md:col-span-2">
+              <Input
+                label="Endereço"
+                placeholder="Ex: Av. Principal, 1000"
+                {...register('address')}
+              />
+            </div>
+
             <div>
               <Input
                 label="Cidade"
@@ -137,11 +178,34 @@ export default function EditInstitutionPage({ params }: EditInstitutionPageProps
             </div>
 
             <div>
-              <Input
+              <Select
                 label="Estado (UF)"
-                placeholder="Ex: SP"
-                maxLength={2}
+                options={[{ value: '', label: 'Selecione a UF' }, ...BRAZILIAN_UF_OPTIONS]}
                 {...register('state')}
+              />
+            </div>
+
+            <div>
+              <Input
+                label="CEP"
+                placeholder="Ex: 01000-000"
+                {...register('zipCode')}
+              />
+            </div>
+
+            <div>
+              <Input
+                label="País"
+                placeholder="BR"
+                {...register('country')}
+              />
+            </div>
+
+            <div className="col-span-1 md:col-span-2">
+              <Input
+                label="Logo (URL)"
+                placeholder="Ex: https://..."
+                {...register('logo')}
               />
             </div>
 

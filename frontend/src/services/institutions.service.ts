@@ -17,7 +17,7 @@ export interface PublicInstitution {
   state?: string;
 }
 
-const INSTITUTION_COLUMNS = 'id, name, slug, city, state, isActive, createdAt, updatedAt';
+const INSTITUTION_COLUMNS = 'id, name, slug, cnpj, email, phone, address, city, state, country, zipCode, logo, isActive, createdAt, updatedAt';
 
 export const institutionsService = {
   /**

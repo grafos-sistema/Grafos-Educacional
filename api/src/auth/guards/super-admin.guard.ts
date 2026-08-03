@@ -7,7 +7,7 @@ import {
 import { UserRole } from '@prisma/client';
 
 /**
- * Guard que permite acesso apenas para SUPER_ADMIN
+ * Guard que permite acesso apenas para administradores globais
  */
 @Injectable()
 export class SuperAdminGuard implements CanActivate {
@@ -19,8 +19,10 @@ export class SuperAdminGuard implements CanActivate {
       throw new ForbiddenException('Usuário não autenticado');
     }
 
-    if (user.role !== UserRole.SUPER_ADMIN) {
-      throw new ForbiddenException('Acesso restrito a Super Administradores');
+    const allowedRoles = [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN];
+
+    if (!allowedRoles.includes(user.role)) {
+      throw new ForbiddenException('Acesso restrito a administradores globais');
     }
 
     return true;
