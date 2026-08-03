@@ -762,15 +762,6 @@ export const usersService = {
 
     if (user.role === 'STUDENT' && user.studentProfile) {
       const studentId = user.studentProfile.id;
-      const studentDocuments =
-        Array.isArray(documents)
-          ? documents
-              .filter((document) => document.path)
-              .map(({ file, ...document }) => ({
-                ...document,
-                status: 'UPLOADED',
-              }))
-          : undefined;
 
       // Update student profile
       const { error: studentUpdateError } = await supabase
@@ -787,7 +778,6 @@ export const usersService = {
           turno,
           enrollmentDate: dataMatricula || user.studentProfile.enrollmentDate,
           observacoes,
-          documents: studentDocuments,
         })
         .eq('id', studentId);
 
@@ -979,7 +969,20 @@ export const usersService = {
       })
       .eq('id', studentProfileId);
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      if (
+        typeof updateError === 'object' &&
+        updateError !== null &&
+        'code' in updateError &&
+        updateError.code === 'PGRST204'
+      ) {
+        throw new Error(
+          'A estrutura de documentos do aluno ainda nao foi aplicada no Supabase. Atualize as migrations do banco para liberar os anexos.'
+        );
+      }
+
+      throw updateError;
+    }
 
     return nextDocuments;
   },

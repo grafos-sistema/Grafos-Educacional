@@ -1,7 +1,9 @@
 import type { PendingStudentDocumentUpload } from './student-document.types';
 
 export enum UserRole {
+  SUPER_ADMIN_GLOBAL = 'SUPER_ADMIN_GLOBAL',
   SUPER_ADMIN = 'SUPER_ADMIN',
+  DIRECTOR = 'DIRECTOR',
   INSTITUTION_ADMIN = 'INSTITUTION_ADMIN',
   COORDINATOR = 'COORDINATOR',
   TEACHER = 'TEACHER',

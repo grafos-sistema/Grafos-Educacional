@@ -38,6 +38,7 @@ import { Gender, UserRole } from '@/types/user.types';
 import { AvatarCropModal } from '@/components/ui/AvatarCropModal';
 import { Modal } from '@/components/ui/Modal';
 import { presentFriendlyError } from '@/lib/friendly-error';
+import { supabase } from '@/lib/supabase';
 import {
   STUDENT_DOCUMENT_DEFINITIONS,
   type PendingStudentDocumentUpload,
@@ -200,6 +201,10 @@ export function StudentFormTabs({
   const [queuedDocumentFile, setQueuedDocumentFile] = useState<File | null>(null);
   const [isDocumentPickerOpen, setIsDocumentPickerOpen] = useState(false);
   const [isDocumentDropActive, setIsDocumentDropActive] = useState(false);
+  const [selectedUploadedDocument, setSelectedUploadedDocument] =
+    useState<PendingStudentDocumentUpload | null>(null);
+  const [documentActionLoading, setDocumentActionLoading] =
+    useState<'view' | 'download' | null>(null);
   
   const [responsaveis, setResponsaveis] = useState(() => {
     const initial = form.getValues('responsaveis');
@@ -534,6 +539,72 @@ export function StudentFormTabs({
     }
 
     openPendingDocumentsPicker(droppedFiles[0]);
+  };
+
+  const handleExistingDocumentAction = (document: PendingStudentDocumentUpload) => {
+    if (document.status === 'UPLOADED' && document.path) {
+      setSelectedUploadedDocument(document);
+      return;
+    }
+
+    openDocumentBrowserFor(document.key);
+  };
+
+  const loadUploadedDocumentBlob = async (document: PendingStudentDocumentUpload) => {
+    if (!document.path) {
+      throw new Error('O caminho do anexo nao foi encontrado.');
+    }
+
+    const { data, error } = await supabase.storage
+      .from('student-documents')
+      .download(document.path);
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  };
+
+  const handleViewUploadedDocument = async () => {
+    if (!selectedUploadedDocument) return;
+
+    setDocumentActionLoading('view');
+
+    try {
+      const blob = await loadUploadedDocumentBlob(selectedUploadedDocument);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      setSelectedUploadedDocument(null);
+    } catch (error) {
+      presentFriendlyError(error, 'Nao foi possivel abrir o anexo agora.');
+    } finally {
+      setDocumentActionLoading(null);
+    }
+  };
+
+  const handleDownloadUploadedDocument = async () => {
+    if (!selectedUploadedDocument) return;
+
+    setDocumentActionLoading('download');
+
+    try {
+      const blob = await loadUploadedDocumentBlob(selectedUploadedDocument);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = selectedUploadedDocument.fileName || `${selectedUploadedDocument.label}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      setSelectedUploadedDocument(null);
+    } catch (error) {
+      presentFriendlyError(error, 'Nao foi possivel baixar o anexo agora.');
+    } finally {
+      setDocumentActionLoading(null);
+    }
   };
 
   const handleStartNewObservation = () => {
@@ -1000,7 +1071,7 @@ export function StudentFormTabs({
                   <button
                     key={document.key}
                     type="button"
-                    onClick={() => openDocumentBrowserFor(document.key)}
+                    onClick={() => handleExistingDocumentAction(document)}
                     className="flex items-center justify-between gap-3 p-3 border rounded-lg bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-left transition-colors hover:border-primary-300 hover:bg-primary-50/40 dark:hover:border-primary-700 dark:hover:bg-primary-900/10"
                   >
                     <div className="min-w-0">
@@ -1340,6 +1411,41 @@ export function StudentFormTabs({
             </button>
           ))}
         </div>
+      </div>
+    </Modal>
+
+    <Modal
+      isOpen={Boolean(selectedUploadedDocument)}
+      onClose={() => {
+        if (documentActionLoading) return;
+        setSelectedUploadedDocument(null);
+      }}
+      title={selectedUploadedDocument?.label ?? 'Anexo enviado'}
+      description={
+        selectedUploadedDocument?.fileName
+          ? `Arquivo enviado: ${selectedUploadedDocument.fileName}`
+          : 'Escolha o que deseja fazer com este anexo.'
+      }
+      size="sm"
+    >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={handleViewUploadedDocument}
+          disabled={documentActionLoading !== null}
+          className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+        >
+          {documentActionLoading === 'view' ? 'Abrindo...' : 'Visualizar'}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleDownloadUploadedDocument}
+          disabled={documentActionLoading !== null}
+          className="inline-flex items-center justify-center rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-primary-900/50 dark:bg-primary-950/30 dark:text-primary-300 dark:hover:bg-primary-950/50"
+        >
+          {documentActionLoading === 'download' ? 'Baixando...' : 'Baixar'}
+        </button>
       </div>
     </Modal>
     </>

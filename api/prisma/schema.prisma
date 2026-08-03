@@ -16,7 +16,9 @@ datasource db {
 // ==========================================
 
 enum UserRole {
+  SUPER_ADMIN_GLOBAL // Administrador global do sistema
   SUPER_ADMIN      // Administrador do sistema
+  DIRECTOR         // Diretor da instituição
   INSTITUTION_ADMIN // Administrador da instituição
   COORDINATOR      // Coordenador pedagógico
   TEACHER          // Professor
@@ -160,8 +162,62 @@ model Institution {
   idebTargets     IDEBTarget[]
   idebIndicators  IDEBIndicator[]
   userInstitutions UserInstitution[]  // Usuários vinculados (múltiplas instituições)
+  units            InstitutionUnit[]
+  documents        InstitutionDocument[]
 
   @@map("institutions")
+}
+
+model InstitutionUnit {
+  id            String   @id @default(uuid())
+  name          String
+  code          String?
+  slug          String?
+  type          String?
+  address       String?
+  city          String?
+  state         String?
+  zipCode       String?
+  phone         String?
+  email         String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  userUnits     UserUnit[]
+  documents     InstitutionDocument[]
+
+  @@unique([institutionId, code])
+  @@unique([institutionId, slug])
+  @@index([institutionId])
+  @@map("institution_units")
+}
+
+model InstitutionDocument {
+  id            String   @id @default(uuid())
+  type          String
+  title         String
+  filePath      String
+  fileName      String?
+  mimeType      String?
+  sizeBytes     Int?
+  expiresAt     DateTime?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  unitId        String?
+  unit          InstitutionUnit? @relation(fields: [unitId], references: [id], onDelete: SetNull)
+
+  @@index([institutionId])
+  @@index([unitId])
+  @@index([type])
+  @@map("institution_documents")
 }
 
 model User {
@@ -223,6 +279,7 @@ model User {
 
   // Multiple institutions support
   userInstitutions      UserInstitution[]
+  userUnits             UserUnit[]
 
   @@unique([email, institutionId], name: "unique_email_per_institution")
   @@unique([cpf, institutionId], name: "unique_cpf_per_institution")
@@ -250,6 +307,24 @@ model UserInstitution {
   @@index([userId])
   @@index([institutionId])
   @@map("user_institutions")
+}
+
+model UserUnit {
+  id        String   @id @default(uuid())
+  isActive  Boolean  @default(true)
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId    String
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  unitId    String
+  unit      InstitutionUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, unitId])
+  @@index([userId])
+  @@index([unitId])
+  @@map("user_units")
 }
 
 model Teacher {
