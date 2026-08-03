@@ -1,10 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+import { UserRole } from '@/types/user.types';
 import Link from 'next/link';
 import { ShieldExclamationIcon, EnvelopeIcon, LockClosedIcon, ServerIcon, AcademicCapIcon, GlobeAltIcon , EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
@@ -17,6 +20,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function SuperAdminLoginPage() {
   const { login } = useAuth();
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -33,9 +37,30 @@ export default function SuperAdminLoginPage() {
     try {
       setError(null);
       setIsLoading(true);
+      const normalizedEmail = data.email.trim().toLowerCase();
+      const { data: securityUser, error: securityUserError } = await supabase
+        .from('users')
+        .select('role, isActive')
+        .eq('email', normalizedEmail)
+        .maybeSingle();
+
+      if (securityUserError) {
+        throw securityUserError;
+      }
+
+      if (!securityUser || !securityUser.isActive) {
+        throw new Error('Acesso restrito ao ambiente de seguranca.');
+      }
+
+      if (securityUser.role !== UserRole.SUPER_ADMIN_GLOBAL) {
+        throw new Error('Somente usuarios globais autorizados podem acessar /security.');
+      }
+
       await login(data);
+      router.replace('/super-admin/dashboard');
     } catch (err: any) {
       setError(err?.message || 'Erro ao fazer login. Verifique suas credenciais.');
+    } finally {
       setIsLoading(false);
     }
   };

@@ -78,7 +78,7 @@ export default function Home() {
       description: 'Administradores e Coordenadores',
       details: 'Controle total do IDEB e relatórios',
       icon: ShieldCheckIcon,
-      href: '/login/admin',
+      href: '/login/gestao',
       color: 'from-grafos-teal to-grafos-green',
       hoverColor: 'hover:from-grafos-teal-dark hover:to-grafos-green-dark',
     },
@@ -215,7 +215,7 @@ export default function Home() {
             {/* Login Shortcuts */}
             <div className="hidden md:flex items-center space-x-2">
               <Link
-                href="/login/admin"
+                href="/login/gestao"
                 className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-grafos-green transition-colors"
               >
                 Gestão

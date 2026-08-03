@@ -25,7 +25,7 @@ type AppUserRow = {
   isActive: boolean;
   emailVerified: boolean;
   requestedProfileType?: string | null;
-  institutionId: string;
+  institutionId?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -49,7 +49,7 @@ function mapAppUser(row: AppUserRow, extras?: Partial<User>): User {
     isActive: row.isActive,
     emailVerified: row.emailVerified,
     requestedProfileType: row.requestedProfileType ?? undefined,
-    institutionId: row.institutionId,
+    institutionId: row.institutionId ?? undefined,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     ...extras,
@@ -113,12 +113,12 @@ export async function fetchCurrentUserProfile(options?: {
     const { data: appUser, error: appUserError } = await supabase
       .from('users')
       .select('*')
-      .eq('auth_user_id', authUser.id)
-      .single();
+      .eq('id', authUser.id)
+      .maybeSingle();
 
     if (appUserError || !appUser) {
       clearCurrentUserProfileCache();
-      throw appUserError ?? new Error('Perfil do usuário não encontrado');
+      throw appUserError ?? new Error('Perfil do usuário não encontrado ou sem permissão de leitura.');
     }
 
     const [teacherResult, studentResult, parentResult] = await Promise.all([
@@ -180,7 +180,17 @@ export async function fetchUserInstitutions() {
     throw linksError;
   }
 
-  const institutionIds = Array.from(new Set([profile.institutionId, ...(links ?? []).map((link) => link.institutionId)]));
+  const institutionIds = Array.from(
+    new Set(
+      [profile.institutionId, ...(links ?? []).map((link) => link.institutionId)].filter(
+        (value): value is string => Boolean(value)
+      )
+    )
+  );
+
+  if (institutionIds.length === 0) {
+    return [];
+  }
 
   const { data: institutions, error: institutionsError } = await supabase
     .from('institutions')

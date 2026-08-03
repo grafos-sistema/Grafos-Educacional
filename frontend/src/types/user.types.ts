@@ -127,7 +127,7 @@ export interface User {
   isActive: boolean;
   emailVerified: boolean;
   requestedProfileType?: string; // Profile type requested during self-registration
-  institutionId: string;
+  institutionId?: string;
   createdAt: string;
   updatedAt: string;
 

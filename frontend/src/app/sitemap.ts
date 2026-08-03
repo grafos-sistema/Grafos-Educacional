@@ -59,7 +59,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/login/admin`,
+      url: `${baseUrl}/login/gestao`,
       lastModified: currentDate,
       changeFrequency: 'monthly',
       priority: 0.7,

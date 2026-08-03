@@ -161,6 +161,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     switch (role) {
       case 'SUPER_ADMIN':
         return '/admin/dashboard';
+      case 'SUPER_ADMIN_GLOBAL':
+        return '/super-admin/dashboard';
       case 'INSTITUTION_ADMIN':
         return '/admin/dashboard';
       case 'COORDINATOR':
