@@ -9,12 +9,13 @@ import {
   IdentificationIcon,
   MapPinIcon,
 } from '@heroicons/react/24/outline';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { BRAZILIAN_UF_OPTIONS } from '@/lib/constants/document-options';
+import { formatCep, lookupCep } from '@/lib/address-utils';
 import type { CreateInstitutionDto } from '@/types/institution.types';
 
 const tabs = [
@@ -66,6 +67,7 @@ export function InstitutionFormTabs({ form }: InstitutionFormTabsProps) {
   const {
     register,
     watch,
+    setValue,
     formState: { errors },
   } = form;
 
@@ -76,6 +78,7 @@ export function InstitutionFormTabs({ form }: InstitutionFormTabsProps) {
   const institutionCnpj = watch('cnpj') || 'CNPJ não informado';
   const institutionEmail = watch('email') || 'Email não informado';
   const institutionStatus = watch('isActive');
+  const zipCode = watch('zipCode');
   const initials = institutionName
     .split(' ')
     .filter(Boolean)
@@ -92,6 +95,42 @@ export function InstitutionFormTabs({ form }: InstitutionFormTabsProps) {
       setActiveTab(tabs[index].id);
     }
   };
+
+  useEffect(() => {
+    const fillAddressFromCep = async () => {
+      const normalizedCep = (zipCode ?? '').replace(/\D/g, '');
+
+      if (normalizedCep.length !== 8) {
+        return;
+      }
+
+      try {
+        const result = await lookupCep(normalizedCep);
+
+        if (!result) {
+          return;
+        }
+
+        setValue('zipCode', result.zipCode, { shouldDirty: true, shouldTouch: true });
+
+        if (!watch('address') && result.address) {
+          setValue('address', result.address, { shouldDirty: true, shouldTouch: true });
+        }
+
+        if (!watch('city') && result.city) {
+          setValue('city', result.city, { shouldDirty: true, shouldTouch: true });
+        }
+
+        if (!watch('state') && result.state) {
+          setValue('state', result.state, { shouldDirty: true, shouldTouch: true });
+        }
+      } catch {
+        // Mantém o preenchimento manual disponível mesmo sem retorno do CEP
+      }
+    };
+
+    fillAddressFromCep();
+  }, [setValue, watch, zipCode]);
 
   return (
     <div className="flex flex-col gap-8 pb-4 pt-4 md:flex-row md:items-start">
@@ -234,8 +273,24 @@ export function InstitutionFormTabs({ form }: InstitutionFormTabsProps) {
                   <div className="md:col-span-2">
                     <Input
                       label="Endereço"
-                      placeholder="Ex: Av. Principal, 1000"
+                      placeholder="Ex: Av. Principal"
                       {...register('address')}
+                    />
+                  </div>
+
+                  <div>
+                    <Input
+                      label="Número"
+                      placeholder="Ex: 1000"
+                      {...register('numero')}
+                    />
+                  </div>
+
+                  <div>
+                    <Input
+                      label="Complemento"
+                      placeholder="Ex: Sala 4"
+                      {...register('complemento')}
                     />
                   </div>
 
@@ -258,6 +313,7 @@ export function InstitutionFormTabs({ form }: InstitutionFormTabsProps) {
                   <div>
                     <Input
                       label="CEP"
+                      value={zipCode ? formatCep(zipCode) : ''}
                       placeholder="Ex: 01000-000"
                       {...register('zipCode')}
                     />

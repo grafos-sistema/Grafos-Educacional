@@ -38,10 +38,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     const helperId = helperMessage && !error ? `${inputId}-helper` : undefined;
     const describedBy = errorId || helperId;
     const inputType = props.type;
-    const isNativeDateInput = inputType === 'date';
+    const isCustomDateInput = inputType === 'date' || inputType === 'datetime-local';
     const isDateLikeInput =
       inputType === 'date' || inputType === 'month' || inputType === 'datetime-local';
-    const effectiveRightIcon = isDateLikeInput ? (
+    const effectiveRightIcon = !isCustomDateInput && isDateLikeInput ? (
       <button
         type="button"
         tabIndex={-1}
@@ -91,9 +91,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
         {/* Input container */}
         <div className="relative">
-          {isNativeDateInput ? (
+          {isCustomDateInput ? (
             <DatePickerInput
-              ref={ref}
+              ref={assignRef}
               id={inputId}
               required={required}
               disabled={disabled}

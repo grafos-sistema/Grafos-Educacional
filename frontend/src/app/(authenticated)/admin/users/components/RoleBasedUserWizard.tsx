@@ -35,6 +35,7 @@ import {
 } from '@/lib/constants/document-options';
 import { Gender, UserRole } from '@/types/user.types';
 import { AvatarCropModal } from '@/components/ui/AvatarCropModal';
+import { useCepAutofill } from '@/hooks/useCepAutofill';
 
 export interface InstitutionOption {
   id: string;
@@ -223,7 +224,13 @@ export function RoleBasedUserWizard({
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
-  const { register, setValue, control, formState: { errors } } = form;
+  const {
+    register,
+    setValue,
+    control,
+    trigger,
+    formState: { errors },
+  } = form;
 
   const role = useWatch({ control, name: 'role' }) as UserRole | undefined;
   const firstName = useWatch({ control, name: 'firstName' }) as string | undefined;
@@ -244,6 +251,17 @@ export function RoleBasedUserWizard({
     [firstName, lastName].filter(Boolean).join(' ').trim() ||
     (role === UserRole.COORDINATOR ? 'Novo coordenador' : 'Novo professor');
   const profileSummary = cpf?.trim() ? formatCPF(cpf.trim()) : '';
+  const { fillAddressFromCep } = useCepAutofill({
+    form,
+    fields: {
+      zipCode: 'zipCode',
+      address: 'address',
+      city: 'city',
+      state: 'state',
+      bairro: 'bairro',
+      complemento: 'complemento',
+    },
+  });
 
   const selectedInstitutionIds = useMemo(
     () => Array.from(new Set([selectedPrimaryInstitutionId, ...selectedAdditionalInstitutionIds].filter(Boolean))),
@@ -671,7 +689,18 @@ export function RoleBasedUserWizard({
 
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mt-4">
                   <div className="md:col-span-3 xl:col-span-2">
-                    <MaskedInput label="CEP" mask={masks.cep} maskChar={null} {...register('zipCode')} placeholder="00000-000" />
+                    <MaskedInput
+                      label="CEP"
+                      mask={masks.cep}
+                      maskChar={null}
+                      {...register('zipCode', {
+                        onBlur: async () => {
+                          await fillAddressFromCep();
+                          await trigger(['address', 'city', 'state', 'bairro', 'complemento']);
+                        },
+                      })}
+                      placeholder="00000-000"
+                    />
                   </div>
                   <div className="md:col-span-9 xl:col-span-7">
                     <Input label="Logradouro" {...register('address')} />
@@ -689,7 +718,11 @@ export function RoleBasedUserWizard({
                     <Input label="Cidade" {...register('city')} />
                   </div>
                   <div className="md:col-span-2 xl:col-span-2">
-                    <Input label="Estado" {...register('state')} maxLength={2} placeholder="UF" />
+                    <Select
+                      label="Estado"
+                      options={[{ value: '', label: 'Selecione a UF' }, ...BRAZILIAN_UF_OPTIONS]}
+                      {...register('state')}
+                    />
                   </div>
                 </div>
               </div>

@@ -260,6 +260,8 @@ export interface PublicRegisterData {
   birthDate?: string;
   gender?: Gender;
   address?: string;
+  numero?: string;
+  complemento?: string;
   city?: string;
   state?: string;
   zipCode?: string;

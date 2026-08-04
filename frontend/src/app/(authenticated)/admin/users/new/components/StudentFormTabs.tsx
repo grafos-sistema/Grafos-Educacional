@@ -39,6 +39,7 @@ import { AvatarCropModal } from '@/components/ui/AvatarCropModal';
 import { Modal } from '@/components/ui/Modal';
 import { presentFriendlyError } from '@/lib/friendly-error';
 import { supabase } from '@/lib/supabase';
+import { useCepAutofill } from '@/hooks/useCepAutofill';
 import {
   STUDENT_DOCUMENT_DEFINITIONS,
   type PendingStudentDocumentUpload,
@@ -180,6 +181,17 @@ export function StudentFormTabs({
   const password = watch('password');
   const bloodType = watch('tipoSanguineo');
   const watchedDocuments = watch('documents') as PendingStudentDocumentUpload[] | undefined;
+  const { fillAddressFromCep } = useCepAutofill({
+    form,
+    fields: {
+      zipCode: 'zipCode',
+      address: 'address',
+      city: 'city',
+      state: 'state',
+      bairro: 'bairro',
+      complemento: 'complemento',
+    },
+  });
   const [selectedObservationId, setSelectedObservationId] = useState<string | 'new' | null>(null);
   const [observationDraft, setObservationDraft] = useState<{
     title: string;
@@ -833,7 +845,18 @@ export function StudentFormTabs({
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <TabHeader tab={tabs[2]} />
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              <MaskedInput label="CEP" mask={masks.cep} maskChar={null} {...register('zipCode')} placeholder="00000-000" />
+              <MaskedInput
+                label="CEP"
+                mask={masks.cep}
+                maskChar={null}
+                {...register('zipCode', {
+                  onBlur: async () => {
+                    await fillAddressFromCep();
+                    await trigger(['address', 'city', 'state', 'bairro', 'complemento']);
+                  },
+                })}
+                placeholder="00000-000"
+              />
               <div className="md:col-span-2 lg:col-span-3">
                 <Input label="Logradouro" {...register('address')} />
               </div>
@@ -841,7 +864,11 @@ export function StudentFormTabs({
               <Input label="Complemento" {...register('complemento')} />
               <Input label="Bairro" {...register('bairro')} />
               <Input label="Cidade" {...register('city')} />
-              <Input label="Estado" {...register('state')} maxLength={2} placeholder="UF" />
+              <Select
+                label="Estado"
+                options={[{ value: '', label: 'Selecione a UF' }, ...BRAZILIAN_UF_OPTIONS]}
+                {...register('state')}
+              />
             </div>
           </div>
         )}

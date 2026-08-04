@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Menu, Transition } from '@headlessui/react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -27,6 +27,8 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Modal } from '@/components/ui/Modal';
 import { formatCPF, formatPhone, removeMask } from '@/components/ui/MaskedInput';
 import { AvatarCropModal } from '@/components/ui/AvatarCropModal';
+import { BRAZILIAN_UF_OPTIONS } from '@/lib/constants/document-options';
+import { formatCep } from '@/lib/address-utils';
 
 const genderLabels: Record<Gender, string> = {
   MALE: 'Masculino',
@@ -56,9 +58,11 @@ export default function PerfilPage() {
     birthDate: user?.birthDate || '',
     gender: user?.gender || Gender.NOT_INFORMED,
     address: user?.address || '',
+    numero: user?.numero || '',
+    complemento: user?.complemento || '',
     city: user?.city || '',
     state: user?.state || '',
-    zipCode: user?.zipCode || '',
+    zipCode: user?.zipCode ? formatCep(user.zipCode) : '',
   });
 
   const avatarPreview = useMemo(() => {
@@ -67,6 +71,43 @@ export default function PerfilPage() {
     }
     return user?.avatar || '';
   }, [photoFile, user?.avatar]);
+
+  useEffect(() => {
+    const lookupCep = async () => {
+      const normalizedCep = (formData.zipCode ?? '').replace(/\D/g, '');
+
+      if (normalizedCep.length !== 8) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${normalizedCep}/json/`);
+        if (!response.ok) return;
+
+        const result = (await response.json()) as {
+          erro?: boolean;
+          logradouro?: string;
+          bairro?: string;
+          localidade?: string;
+          uf?: string;
+        };
+
+        if (result.erro) return;
+
+        setFormData((prev) => ({
+          ...prev,
+          zipCode: formatCep(normalizedCep),
+          address: prev.address || result.logradouro || '',
+          city: prev.city || result.localidade || '',
+          state: prev.state || result.uf || '',
+        }));
+      } catch {
+        // Mantém edição livre mesmo se a consulta falhar
+      }
+    };
+
+    lookupCep();
+  }, [formData.zipCode]);
 
   const updateMutation = useMutation({
     mutationFn: async (data: UpdateUserData) => {
@@ -113,6 +154,8 @@ export default function PerfilPage() {
         ? formatPhone(String(value))
         : field === 'cpf'
           ? formatCPF(String(value))
+          : field === 'zipCode'
+            ? formatCep(String(value))
           : value;
 
     setFormData((prev) => ({
@@ -334,20 +377,29 @@ export default function PerfilPage() {
                 label="Endereço"
                 value={formData.address}
                 onChange={(e) => handleChange('address', e.target.value)}
-                placeholder="Rua, número, complemento"
+                placeholder="Rua / Avenida"
               />
             </div>
+            <Input
+              label="Número"
+              value={formData.numero || ''}
+              onChange={(e) => handleChange('numero', e.target.value)}
+            />
+            <Input
+              label="Complemento"
+              value={formData.complemento || ''}
+              onChange={(e) => handleChange('complemento', e.target.value)}
+            />
             <Input
               label="Cidade"
               value={formData.city}
               onChange={(e) => handleChange('city', e.target.value)}
             />
-            <Input
+            <Select
               label="Estado"
-              value={formData.state}
+              value={formData.state || ''}
               onChange={(e) => handleChange('state', e.target.value)}
-              placeholder="UF"
-              maxLength={2}
+              options={[{ value: '', label: 'Selecione a UF' }, ...BRAZILIAN_UF_OPTIONS]}
             />
             <Input
               label="CEP"

@@ -113,12 +113,30 @@ export class PublicRegisterDto {
 
   @ApiProperty({
     description: 'Endereço (opcional)',
-    example: 'Rua das Flores, 123',
+    example: 'Rua das Flores',
     required: false,
   })
   @IsOptional()
   @IsString()
   address?: string;
+
+  @ApiProperty({
+    description: 'Número do endereço (opcional)',
+    example: '123',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  numero?: string;
+
+  @ApiProperty({
+    description: 'Complemento do endereço (opcional)',
+    example: 'Apto 101',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  complemento?: string;
 
   @ApiProperty({
     description: 'Cidade (opcional)',

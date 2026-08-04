@@ -6,6 +6,8 @@ export interface Institution {
   email?: string;
   phone?: string;
   address?: string;
+  numero?: string;
+  complemento?: string;
   city?: string;
   state?: string;
   country?: string;
@@ -26,6 +28,8 @@ export interface InstitutionUnit {
   slug?: string;
   type?: string;
   address?: string;
+  numero?: string;
+  complemento?: string;
   city?: string;
   state?: string;
   zipCode?: string;
@@ -59,6 +63,8 @@ export interface CreateInstitutionDto {
   email?: string;
   phone?: string;
   address?: string;
+  numero?: string;
+  complemento?: string;
   city?: string;
   state?: string;
   country?: string;
@@ -74,6 +80,8 @@ export interface UpdateInstitutionDto {
   email?: string;
   phone?: string;
   address?: string;
+  numero?: string;
+  complemento?: string;
   city?: string;
   state?: string;
   country?: string;

@@ -51,3 +51,4 @@
 - *Erro de instituição não encontrada*
 - *Importar Usuários via Excel*
 - *Esticar tela para ficar pegando de um campo a outro e ajustar os inputs*
+- *Organização de Criação de Instituições*

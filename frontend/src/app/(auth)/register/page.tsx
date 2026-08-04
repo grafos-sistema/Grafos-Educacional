@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import Link from 'next/link';
@@ -16,6 +16,8 @@ import { MaskedInput, masks, removeMask, validateCPF } from '@/components/ui/Mas
 import { InstitutionSearch } from '@/components/ui/InstitutionSearch';
 import { UserIcon, AcademicCapIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { useAccessibleForm } from '@/hooks/useAccessibleForm';
+import { BRAZILIAN_UF_OPTIONS } from '@/lib/constants/document-options';
+import { formatCep, lookupCep } from '@/lib/address-utils';
 
 const profileTypeOptions = [
   {
@@ -101,6 +103,37 @@ export default function RegisterPage() {
   };
 
   const institutionId = watch('institutionId');
+  const zipCode = watch('zipCode');
+
+  useEffect(() => {
+    const fillAddressFromCep = async () => {
+      const normalizedCep = (zipCode ?? '').replace(/\D/g, '');
+
+      if (normalizedCep.length !== 8) {
+        return;
+      }
+
+      try {
+        const result = await lookupCep(normalizedCep);
+        if (!result) return;
+
+        setValue('zipCode', result.zipCode, { shouldDirty: true, shouldValidate: true });
+        if (!watch('address') && result.address) {
+          setValue('address', result.address, { shouldDirty: true, shouldValidate: true });
+        }
+        if (!watch('city') && result.city) {
+          setValue('city', result.city, { shouldDirty: true, shouldValidate: true });
+        }
+        if (!watch('state') && result.state) {
+          setValue('state', result.state, { shouldDirty: true, shouldValidate: true });
+        }
+      } catch {
+        // Permite edição manual mesmo se a busca falhar
+      }
+    };
+
+    fillAddressFromCep();
+  }, [setValue, watch, zipCode]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-secondary-50 dark:from-gray-900 dark:to-gray-800 py-12 px-4 sm:px-6 lg:px-8">
@@ -295,21 +328,31 @@ export default function RegisterPage() {
                   />
                 </div>
                 <Input
+                  label="Número"
+                  {...register('numero')}
+                  error={errors.numero?.message}
+                />
+                <Input
+                  label="Complemento"
+                  {...register('complemento')}
+                  error={errors.complemento?.message}
+                />
+                <Input
                   label="Cidade"
                   {...register('city')}
                   error={errors.city?.message}
                 />
-                <Input
+                <Select
                   label="Estado"
+                  options={[{ value: '', label: 'Selecione a UF' }, ...BRAZILIAN_UF_OPTIONS]}
                   {...register('state')}
                   error={errors.state?.message}
-                  maxLength={2}
-                  placeholder="UF"
                 />
                 <MaskedInput
                   label="CEP"
                   mask={masks.cep}
                   maskChar={null}
+                  value={zipCode ? formatCep(zipCode) : ''}
                   {...register('zipCode')}
                   error={errors.zipCode?.message}
                   placeholder="00000-000"

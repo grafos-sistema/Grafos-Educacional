@@ -432,19 +432,23 @@ export class UsersService {
     // Verifica se usuário existe
     const existingUser = await this.findOne(id);
 
-    const { email, cpf, birthDate, firstName, lastName, ...data } =
+    const { email, cpf, birthDate, rgEmissao, firstName, lastName, state, ...data } =
       updateUserDto;
 
     // Verifica email único se fornecido NESTA instituição
     if (email) {
-      const existingEmail = await this.prisma.user.findFirst({
-        where: {
-          email,
-          institutionId: existingUser.institutionId,
-        },
-      });
+      const existingEmail = await this.prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id
+        FROM public.users
+        WHERE email = ${email}
+          AND (
+            ("institutionId" = ${existingUser.institutionId})
+            OR (${existingUser.institutionId} IS NULL AND "institutionId" IS NULL)
+          )
+        LIMIT 1
+      `;
 
-      if (existingEmail && existingEmail.id !== id) {
+      if (existingEmail[0] && existingEmail[0].id !== id) {
         throw new ConflictException('Email já cadastrado nesta instituição');
       }
     }
@@ -456,20 +460,25 @@ export class UsersService {
         throw new BadRequestException('CPF inválido');
       }
 
-      const existingCPF = await this.prisma.user.findFirst({
-        where: {
-          cpf,
-          institutionId: existingUser.institutionId,
-        },
-      });
+      const existingCPF = await this.prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id
+        FROM public.users
+        WHERE cpf = ${cpf}
+          AND (
+            ("institutionId" = ${existingUser.institutionId})
+            OR (${existingUser.institutionId} IS NULL AND "institutionId" IS NULL)
+          )
+        LIMIT 1
+      `;
 
-      if (existingCPF && existingCPF.id !== id) {
+      if (existingCPF[0] && existingCPF[0].id !== id) {
         throw new ConflictException('CPF já cadastrado nesta instituição');
       }
     }
 
     // Converte birthDate string para Date se fornecido
     const parsedBirthDate = birthDate ? new Date(birthDate) : undefined;
+    const parsedRgEmissao = rgEmissao ? new Date(rgEmissao) : undefined;
 
     // Atualiza name se firstName ou lastName foram fornecidos
     let fullName: string | undefined;
@@ -486,8 +495,10 @@ export class UsersService {
         email,
         cpf,
         birthDate: parsedBirthDate,
+        rgEmissao: parsedRgEmissao,
         firstName,
         lastName,
+        state: state?.toUpperCase(),
         ...(fullName && { name: fullName }),
       },
       select: {

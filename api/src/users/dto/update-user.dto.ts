@@ -1,7 +1,15 @@
 import { PartialType, OmitType } from '@nestjs/swagger';
 import { CreateUserDto } from './create-user.dto';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsOptional } from 'class-validator';
+import { Gender } from '@prisma/client';
+import {
+  IsBoolean,
+  IsEnum,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+} from 'class-validator';
 
 // Remove password e institutionId do update (não podem ser atualizados por este endpoint)
 export class UpdateUserDto extends PartialType(
@@ -15,4 +23,92 @@ export class UpdateUserDto extends PartialType(
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiProperty({ required: false, example: '11987654321' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @ApiProperty({ required: false, example: '1133334444' })
+  @IsOptional()
+  @IsString()
+  telefoneFixo?: string;
+
+  @ApiProperty({ required: false, example: '123456789' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  rg?: string;
+
+  @ApiProperty({ required: false, example: 'SSP/MA' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  rgEmissor?: string;
+
+  @ApiProperty({ required: false, example: '2020-01-15' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'Data de emissão deve estar no formato YYYY-MM-DD',
+  })
+  rgEmissao?: string;
+
+  @ApiProperty({ required: false, example: 'Nome social' })
+  @IsOptional()
+  @IsString()
+  socialName?: string;
+
+  @ApiProperty({ required: false, example: 'Brasileira' })
+  @IsOptional()
+  @IsString()
+  nacionalidade?: string;
+
+  @ApiProperty({ required: false, example: 'São Luís' })
+  @IsOptional()
+  @IsString()
+  naturalidade?: string;
+
+  @ApiProperty({ required: false, enum: Gender })
+  @IsOptional()
+  @IsEnum(Gender)
+  gender?: Gender;
+
+  @ApiProperty({ required: false, example: 'Rua Exemplo' })
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiProperty({ required: false, example: '123' })
+  @IsOptional()
+  @IsString()
+  numero?: string;
+
+  @ApiProperty({ required: false, example: 'Apto 101' })
+  @IsOptional()
+  @IsString()
+  complemento?: string;
+
+  @ApiProperty({ required: false, example: 'Centro' })
+  @IsOptional()
+  @IsString()
+  bairro?: string;
+
+  @ApiProperty({ required: false, example: 'São Luís' })
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @ApiProperty({ required: false, example: 'MA' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^[A-Z]{2}$/, {
+    message: 'Estado deve estar no formato UF',
+  })
+  state?: string;
+
+  @ApiProperty({ required: false, example: '65042400' })
+  @IsOptional()
+  @IsString()
+  zipCode?: string;
 }

@@ -641,21 +641,35 @@ export const usersService = {
         (obj as any)[key] = val;
         return obj;
       }, {});
+    const backendSafeUserFields = {
+      ...filteredUserData,
+      birthDate: filteredUserData.birthDate || undefined,
+    };
 
-    const { data: updatedRow, error } = await supabase
-      .from('users')
-      .update({
-        ...filteredUserData,
-        ...(institutionId ? { institutionId } : {}),
-        updatedAt: new Date().toISOString(),
-      })
-      .select('id')
-      .eq('id', id);
+    try {
+      await api.patch(`/users/${id}`, backendSafeUserFields);
+    } catch (error) {
+      console.warn('Falha ao atualizar usuário pela API; tentando fallback via Supabase.', error);
 
-    if (error) throw error;
-    if (!updatedRow || updatedRow.length === 0) {
-      throw new Error('Não foi possível atualizar o usuário. Verifique suas permissões de acesso.');
+      const { data: updatedRow, error: updateError } = await supabase
+        .from('users')
+        .update({
+          ...filteredUserData,
+          ...(institutionId !== undefined ? { institutionId } : {}),
+          updatedAt: new Date().toISOString(),
+        })
+        .select('id')
+        .eq('id', id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      if (!updatedRow || updatedRow.length === 0) {
+        throw error;
+      }
     }
+
     const user = await usersService.findOne(id);
 
     const shouldSyncInstitutionLinks =
@@ -893,6 +907,42 @@ export const usersService = {
    * Upload de avatar
    */
   async uploadAvatar(id: string, file: File): Promise<{ message: string; avatar: string }> {
+    const profile = await fetchCurrentUserProfile();
+
+    if (profile.id === id) {
+      const safeFileName = sanitizeFileName(file.name || 'avatar.file');
+      const basePath = profile.institutionId ? `institutions/${profile.institutionId}` : 'global';
+      const storagePath = `${basePath}/users/${id}/avatar-${Date.now()}-${safeFileName}`;
+
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(storagePath, file, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: file.type || undefined,
+      });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const {
+        data: { publicUrl: avatarUrl },
+      } = supabase.storage.from('avatars').getPublicUrl(storagePath);
+
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          avatar: avatarUrl,
+          updatedAt: new Date().toISOString(),
+        })
+        .eq('id', id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      return { message: 'Avatar atualizado com sucesso', avatar: avatarUrl };
+    }
+
     const formData = new FormData();
     formData.append('avatar', file);
 
@@ -910,6 +960,7 @@ export const usersService = {
           }
         : {}
     );
+
     return response as unknown as { message: string; avatar: string };
   },
 

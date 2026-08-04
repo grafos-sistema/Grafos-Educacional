@@ -105,6 +105,76 @@ const formatDisplayDate = (value?: string | null, pickerType: PickerType = 'date
   });
 };
 
+const parseDisplayDateInput = (rawValue: string, pickerType: PickerType) => {
+  const sanitizedValue = rawValue.trim();
+  if (!sanitizedValue) {
+    return null;
+  }
+
+  if (pickerType === 'datetime-local') {
+    const normalizedValue = sanitizedValue
+      .replace(/\s+as\s+/i, ' ')
+      .replace(/\s+/g, ' ');
+    const match = normalizedValue.match(
+      /^(\d{2})\/(\d{2})\/(\d{4})(?:[ T](\d{2}):(\d{2}))?$/
+    );
+
+    if (!match) {
+      return null;
+    }
+
+    const [, day, month, year, hours = '00', minutes = '00'] = match;
+    const parsedDate = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hours),
+      Number(minutes),
+      0,
+      0
+    );
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return null;
+    }
+
+    if (
+      parsedDate.getFullYear() !== Number(year) ||
+      parsedDate.getMonth() !== Number(month) - 1 ||
+      parsedDate.getDate() !== Number(day) ||
+      parsedDate.getHours() !== Number(hours) ||
+      parsedDate.getMinutes() !== Number(minutes)
+    ) {
+      return null;
+    }
+
+    return parsedDate;
+  }
+
+  const match = sanitizedValue.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const [, day, month, year] = match;
+  const parsedDate = new Date(Number(year), Number(month) - 1, Number(day));
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null;
+  }
+
+  if (
+    parsedDate.getFullYear() !== Number(year) ||
+    parsedDate.getMonth() !== Number(month) - 1 ||
+    parsedDate.getDate() !== Number(day)
+  ) {
+    return null;
+  }
+
+  return parsedDate;
+};
+
 const isSameDay = (first: Date | null, second: Date | null) => {
   if (!first || !second) return false;
   return (
@@ -179,9 +249,10 @@ export const DatePickerInput = forwardRef<HTMLInputElement, DatePickerInputProps
       width: number;
     } | null>(null);
 
-    const triggerRef = useRef<HTMLButtonElement | null>(null);
+    const triggerRef = useRef<HTMLDivElement | null>(null);
     const panelRef = useRef<HTMLDivElement | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
+    const textInputRef = useRef<HTMLInputElement | null>(null);
     const monthListRef = useRef<HTMLDivElement | null>(null);
     const yearListRef = useRef<HTMLDivElement | null>(null);
     const selectedMonthRef = useRef<HTMLButtonElement | null>(null);
@@ -202,8 +273,15 @@ export const DatePickerInput = forwardRef<HTMLInputElement, DatePickerInputProps
     const [draftTimeMinutes, setDraftTimeMinutes] = useState<number>(
       selectedDate ? getMinutesSinceMidnight(selectedDate) : getMinutesSinceMidnight(getRoundedNow())
     );
+    const [inputText, setInputText] = useState<string>(() =>
+      formatDisplayDate(selectedValue, pickerType)
+    );
 
     useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
+
+    useEffect(() => {
+      setInputText(formatDisplayDate(selectedValue, pickerType));
+    }, [pickerType, selectedValue]);
 
     useEffect(() => {
       if (openSelector === 'month') {
@@ -377,6 +455,44 @@ export const DatePickerInput = forwardRef<HTMLInputElement, DatePickerInputProps
       } as React.FocusEvent<HTMLInputElement>);
     };
 
+    const commitTypedValue = () => {
+      const parsedDate = parseDisplayDateInput(inputText, pickerType);
+
+      if (!inputText.trim()) {
+        emitChange('');
+        setDraftDate(null);
+        setVisibleMonth(today);
+        return;
+      }
+
+      if (!parsedDate) {
+        setInputText(formatDisplayDate(selectedValue, pickerType));
+        return;
+      }
+
+      if (pickerType === 'datetime-local') {
+        if (isDateTimeDisabled(parsedDate)) {
+          setInputText(formatDisplayDate(selectedValue, pickerType));
+          return;
+        }
+
+        setDraftDate(parsedDate);
+        setDraftTimeMinutes(getMinutesSinceMidnight(parsedDate));
+        setVisibleMonth(parsedDate);
+        emitChange(formatDateTimeLocalValue(parsedDate));
+        return;
+      }
+
+      if (isDateDisabled(parsedDate)) {
+        setInputText(formatDisplayDate(selectedValue, pickerType));
+        return;
+      }
+
+      setDraftDate(parsedDate);
+      setVisibleMonth(parsedDate);
+      emitChange(formatIsoDate(parsedDate));
+    };
+
     const monthOptions = MONTH_LABELS.map((label, index) => ({
       label,
       value: index,
@@ -402,8 +518,6 @@ export const DatePickerInput = forwardRef<HTMLInputElement, DatePickerInputProps
       return date;
     });
 
-    const displayedValue = formatDisplayDate(selectedValue);
-    const displayedDateTimeValue = formatDisplayDate(selectedValue, pickerType);
     const fieldIcon = leftIcon ?? <CalendarDaysIcon className="h-5 w-5" />;
     const trailingIcon = rightIcon ?? <CalendarDaysIcon className="h-5 w-5" />;
     const calendarSelectedDate = isDateTimePicker ? draftDate : selectedDate;
@@ -448,27 +562,8 @@ export const DatePickerInput = forwardRef<HTMLInputElement, DatePickerInputProps
           tabIndex={-1}
         />
 
-        <button
-          type="button"
+        <div
           ref={triggerRef}
-          disabled={disabled}
-          aria-haspopup="dialog"
-          aria-expanded={isOpen}
-          aria-describedby={describedBy}
-          onClick={() => {
-            if (disabled) return;
-            if (isOpen) {
-              closePicker();
-              return;
-            }
-
-            const baseDate = selectedDate ?? getRoundedNow();
-            setVisibleMonth(baseDate);
-            setDraftDate(baseDate);
-            setDraftTimeMinutes(getMinutesSinceMidnight(baseDate));
-            setOpenSelector(null);
-            setIsOpen(true);
-          }}
           className={`
             relative flex h-12 w-full items-center rounded-lg border-2 bg-white px-4 text-left shadow-sm transition-all duration-200
             dark:bg-gray-800
@@ -476,28 +571,63 @@ export const DatePickerInput = forwardRef<HTMLInputElement, DatePickerInputProps
               ? 'border-red-500 focus:ring-4 focus:ring-red-100 dark:border-red-500 dark:focus:ring-red-900/30'
               : 'border-gray-300 hover:border-primary-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-100 dark:border-gray-600 dark:focus:ring-primary-900/30'
             }
-            ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}
+            ${disabled ? 'cursor-not-allowed opacity-60' : ''}
             ${className}
           `}
         >
           <span className="pointer-events-none absolute left-4 flex items-center text-gray-400">
             {fieldIcon}
           </span>
-          <span
-            className={`block flex-1 truncate pl-7 pr-8 text-sm ${
-              (isDateTimePicker ? displayedDateTimeValue : displayedValue)
-                ? 'font-medium text-gray-900 dark:text-white'
-                : 'text-gray-400 dark:text-gray-500'
-            }`}
+          <input
+            ref={textInputRef}
+            type="text"
+            value={inputText}
+            disabled={disabled}
+            placeholder={placeholder || (isDateTimePicker ? DEFAULT_DATE_TIME_PLACEHOLDER : DEFAULT_PLACEHOLDER)}
+            aria-describedby={describedBy}
+            onChange={(event) => setInputText(event.target.value)}
+            onBlur={() => {
+              commitTypedValue();
+              onBlur?.({
+                target: inputRef.current,
+                currentTarget: inputRef.current,
+              } as React.FocusEvent<HTMLInputElement>);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                commitTypedValue();
+              }
+            }}
+            className={`
+              h-full w-full bg-transparent pl-7 pr-10 text-sm outline-none
+              ${inputText ? 'font-medium text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}
+              ${disabled ? 'cursor-not-allowed' : ''}
+            `}
+          />
+          <button
+            type="button"
+            disabled={disabled}
+            aria-label="Abrir seletor de data"
+            onClick={() => {
+              if (disabled) return;
+              if (isOpen) {
+                closePicker();
+                return;
+              }
+
+              const baseDate = selectedDate ?? getRoundedNow();
+              setVisibleMonth(baseDate);
+              setDraftDate(baseDate);
+              setDraftTimeMinutes(getMinutesSinceMidnight(baseDate));
+              setOpenSelector(null);
+              setIsOpen(true);
+            }}
+            className="absolute right-2 flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-gray-700 dark:hover:text-primary-400"
           >
-            {isDateTimePicker
-              ? displayedDateTimeValue || placeholder || DEFAULT_DATE_TIME_PLACEHOLDER
-              : displayedValue || placeholder || DEFAULT_PLACEHOLDER}
-          </span>
-          <span className="pointer-events-none absolute right-4 text-gray-400">
             {trailingIcon}
-          </span>
-        </button>
+          </button>
+        </div>
 
         {isOpen &&
           portalPosition &&
