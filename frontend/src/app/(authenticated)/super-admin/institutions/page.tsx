@@ -1,7 +1,7 @@
 'use client';
 
 import { toast } from 'react-hot-toast';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -9,10 +9,11 @@ import {
   MagnifyingGlassIcon,
   PencilIcon,
   TrashIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { institutionsService } from '@/services/institutions.service';
 import { Institution, InstitutionFilterParams } from '@/types/institution.types';
-import { Table, Column } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
@@ -32,6 +33,7 @@ export default function InstitutionsPage() {
     isOpen: boolean;
     institution: Institution | null;
   }>({ isOpen: false, institution: null });
+  const [expandedInstitutionIds, setExpandedInstitutionIds] = useState<string[]>([]);
 
   // Buscar instituições
   const { data, isLoading, refetch } = useQuery({
@@ -56,64 +58,13 @@ export default function InstitutionsPage() {
     }
   };
 
-  const columns: Column<Institution>[] = [
-    {
-      key: 'name',
-      label: 'Nome',
-      render: (inst) => (
-        <div>
-          <div className="font-medium text-gray-900 dark:text-white">{inst.name}</div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">{inst.slug}</div>
-        </div>
-      ),
-    },
-    {
-      key: 'location',
-      label: 'Localização',
-      render: (inst) => (
-        <span className="text-gray-600 dark:text-gray-300">
-          {inst.city ? `${inst.city} - ${inst.state}` : '-'}
-        </span>
-      ),
-    },
-    {
-      key: 'isActive',
-      label: 'Status',
-      render: (inst) => (
-        <Badge variant={inst.isActive ? 'success' : 'error'} size="sm">
-          {inst.isActive ? 'Ativo' : 'Inativo'}
-        </Badge>
-      ),
-    },
-    {
-      key: 'actions',
-      label: 'Ações',
-      render: (inst) => (
-        <div className="flex gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              router.push(`/super-admin/institutions/${inst.id}/edit`);
-            }}
-            className="text-gray-600 hover:text-gray-700 dark:text-gray-400"
-            title="Editar"
-          >
-            <PencilIcon className="h-5 w-5" />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setDeleteModal({ isOpen: true, institution: inst });
-            }}
-            className="text-red-600 hover:text-red-700 dark:text-red-400"
-            title="Remover"
-          >
-            <TrashIcon className="h-5 w-5" />
-          </button>
-        </div>
-      ),
-    },
-  ];
+  const toggleInstitutionExpansion = (institutionId: string) => {
+    setExpandedInstitutionIds((current) =>
+      current.includes(institutionId)
+        ? current.filter((id) => id !== institutionId)
+        : [...current, institutionId]
+    );
+  };
 
   return (
     <div className="p-6">
@@ -186,13 +137,139 @@ export default function InstitutionsPage() {
 
       {/* Tabela */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-        <Table
-          data={data?.data || []}
-          columns={columns}
-          keyExtractor={(inst) => inst.id}
-          isLoading={isLoading}
-          emptyMessage="Nenhuma instituição encontrada"
-        />
+        {isLoading ? (
+          <div className="animate-pulse p-4">
+            <div className="h-12 rounded bg-gray-200 dark:bg-gray-700 mb-2" />
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-16 rounded bg-gray-100 dark:bg-gray-800 mb-2" />
+            ))}
+          </div>
+        ) : !data?.data?.length ? (
+          <div className="py-12 text-center text-gray-500 dark:text-gray-400">
+            Nenhuma instituição encontrada
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th className="w-14 px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                    Anexos
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                    Nome
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                    Localização
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                    Ações
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-900">
+                {data.data.map((inst) => {
+                  const isExpanded = expandedInstitutionIds.includes(inst.id);
+                  const annexes = inst.units ?? [];
+
+                  return (
+                    <Fragment key={inst.id}>
+                      <tr
+                        className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
+                      >
+                        <td className="px-4 py-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => toggleInstitutionExpansion(inst.id)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
+                            aria-label={isExpanded ? 'Ocultar anexos' : 'Mostrar anexos'}
+                          >
+                            {isExpanded ? (
+                              <ChevronDownIcon className="h-5 w-5" />
+                            ) : (
+                              <ChevronRightIcon className="h-5 w-5" />
+                            )}
+                          </button>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                          <div className="font-medium">{inst.name}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">{inst.slug}</div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                          {inst.city ? `${inst.city} - ${inst.state}` : '-'}
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge variant={inst.isActive ? 'success' : 'error'} size="sm">
+                            {inst.isActive ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/super-admin/institutions/${inst.id}/edit`);
+                              }}
+                              className="text-gray-600 hover:text-gray-700 dark:text-gray-400"
+                              title="Editar"
+                            >
+                              <PencilIcon className="h-5 w-5" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteModal({ isOpen: true, institution: inst });
+                              }}
+                              className="text-red-600 hover:text-red-700 dark:text-red-400"
+                              title="Remover"
+                            >
+                              <TrashIcon className="h-5 w-5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {isExpanded ? (
+                        <tr className="bg-gray-50/70 dark:bg-gray-800/40">
+                          <td colSpan={5} className="px-6 py-4">
+                            {annexes.length === 0 ? (
+                              <div className="rounded-xl border border-dashed border-gray-300 px-4 py-4 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                                Nenhum anexo cadastrado para esta instituição.
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                {annexes.map((unit) => (
+                                  <div
+                                    key={unit.id}
+                                    className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900 sm:flex-row sm:items-center sm:justify-between"
+                                  >
+                                    <div>
+                                      <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                        {unit.name}
+                                      </div>
+                                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                                        Diretor: {unit.managerName?.trim() || 'Não vinculado'}
+                                      </div>
+                                    </div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                                      {unit.city ? `${unit.city} - ${unit.state}` : 'Localização não informada'}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Paginação */}

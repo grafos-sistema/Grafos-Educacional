@@ -1,5 +1,6 @@
 import api from '@/lib/api';
 import { getValidInstitutionIds } from '@/lib/institution-filter';
+import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import {
   Event,
@@ -8,6 +9,88 @@ import {
   EventFilters,
 } from '@/types/communication.types';
 import { PaginatedResponse } from '@/types/common.types';
+import { UserRole } from '@/types/user.types';
+
+type AcademicYearRow = {
+  id: string;
+  name: string;
+  institutionId: string;
+};
+
+type EventRow = Omit<Event, 'academicYear'>;
+
+async function findUpcomingEventsForGlobalAdmins(days: number): Promise<Event[]> {
+  const { institutionFilterAll, institutionFilterIds, user } = useAuthStore.getState();
+  const currentRole = user?.activeProfile || user?.role;
+
+  if (currentRole !== UserRole.SUPER_ADMIN_GLOBAL) {
+    throw new Error('Fallback exclusivo para SUPER_ADMIN_GLOBAL.');
+  }
+
+  const effectiveIds = institutionFilterAll ? [] : getValidInstitutionIds(institutionFilterIds);
+  const now = new Date();
+  const futureDate = new Date();
+  futureDate.setDate(futureDate.getDate() + days);
+
+  let academicYearsQuery = supabase
+    .from('academic_years')
+    .select('id, name, institutionId');
+
+  if (effectiveIds.length > 0) {
+    academicYearsQuery = academicYearsQuery.in('institutionId', effectiveIds);
+  }
+
+  const { data: academicYears, error: academicYearsError } = await academicYearsQuery;
+
+  if (academicYearsError) throw academicYearsError;
+
+  const academicYearRows = (academicYears ?? []) as AcademicYearRow[];
+  const academicYearIds = academicYearRows.map((academicYear) => academicYear.id);
+
+  if (academicYearIds.length === 0) {
+    return [];
+  }
+
+  const { data: institutions, error: institutionsError } = await supabase
+    .from('institutions')
+    .select('id, name')
+    .in(
+      'id',
+      Array.from(new Set(academicYearRows.map((academicYear) => academicYear.institutionId)))
+    );
+
+  if (institutionsError) throw institutionsError;
+
+  const { data: events, error: eventsError } = await supabase
+    .from('events')
+    .select('id, title, description, type, startDate, endDate, location, isAllDay, color, academicYearId, createdAt, updatedAt')
+    .in('academicYearId', academicYearIds)
+    .gte('startDate', now.toISOString())
+    .lte('startDate', futureDate.toISOString())
+    .order('startDate', { ascending: true });
+
+  if (eventsError) throw eventsError;
+
+  const institutionsById = new Map(
+    (institutions ?? []).map((institution) => [institution.id as string, institution as { id: string; name: string }])
+  );
+  const academicYearsById = new Map(academicYearRows.map((academicYear) => [academicYear.id, academicYear]));
+
+  return ((events ?? []) as EventRow[]).map((event) => {
+    const academicYear = academicYearsById.get(event.academicYearId);
+
+    return {
+      ...event,
+      academicYear: academicYear
+        ? {
+            id: academicYear.id,
+            name: academicYear.name,
+            institution: institutionsById.get(academicYear.institutionId),
+          }
+        : undefined,
+    };
+  });
+}
 
 export const eventsService = {
   /**
@@ -71,6 +154,13 @@ export const eventsService = {
    * Buscar eventos próximos
    */
   async findUpcoming(days: number = 30): Promise<Event[]> {
+    const currentUser = useAuthStore.getState().user;
+    const currentRole = currentUser?.activeProfile || currentUser?.role;
+
+    if (currentRole === UserRole.SUPER_ADMIN_GLOBAL) {
+      return findUpcomingEventsForGlobalAdmins(days);
+    }
+
     const params = new URLSearchParams();
     params.append('days', String(days));
 

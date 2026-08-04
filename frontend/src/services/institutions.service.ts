@@ -82,6 +82,30 @@ async function fetchInstitutionUnits(institutionId: string) {
   return data ?? [];
 }
 
+async function fetchUnitsByInstitutionIds(institutionIds: string[]) {
+  if (institutionIds.length === 0) {
+    return new Map<string, Institution['units']>();
+  }
+
+  const { data, error } = await supabase
+    .from('institution_units')
+    .select(INSTITUTION_UNIT_COLUMNS)
+    .in('institutionId', institutionIds)
+    .order('createdAt', { ascending: true });
+
+  if (error) throw error;
+
+  const grouped = new Map<string, Institution['units']>();
+
+  for (const unit of (data ?? []) as NonNullable<Institution['units']>) {
+    const currentUnits = grouped.get(unit.institutionId) ?? [];
+    currentUnits.push(unit);
+    grouped.set(unit.institutionId, currentUnits);
+  }
+
+  return grouped;
+}
+
 async function fetchInstitutionWithUnits(id: string): Promise<Institution> {
   const { data, error } = await supabase
     .from('institutions')
@@ -146,11 +170,18 @@ export const institutionsService = {
 
     if (error) throw error;
 
+    const institutions = (data ?? []) as Institution[];
+    const unitsByInstitutionId = await fetchUnitsByInstitutionIds(
+      institutions.map((institution) => institution.id)
+    );
     const total = count ?? 0;
     const totalPages = Math.max(1, Math.ceil(total / limit));
 
     return {
-      data: (data ?? []) as Institution[],
+      data: institutions.map((institution) => ({
+        ...institution,
+        units: unitsByInstitutionId.get(institution.id) ?? [],
+      })),
       meta: {
         total,
         page,

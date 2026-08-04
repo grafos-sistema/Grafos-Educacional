@@ -20,8 +20,8 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { BRAZILIAN_UF_OPTIONS } from '@/lib/constants/document-options';
 import { formatCep, lookupCep } from '@/lib/address-utils';
+import { supabase } from '@/lib/supabase';
 import type { CreateInstitutionDto, CreateInstitutionUnitDto } from '@/types/institution.types';
-import { usersService } from '@/services/users.service';
 import { UserRole } from '@/types/user.types';
 
 const tabs = [
@@ -81,6 +81,15 @@ type DirectorOption = {
   cpf?: string;
   email?: string;
   phone?: string;
+};
+
+type InstitutionDirectorRow = {
+  id: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  cpf?: string | null;
+  email: string;
+  phone?: string | null;
 };
 
 function TabHeader({ tab }: { tab: (typeof tabs)[number] }) {
@@ -222,17 +231,28 @@ export function InstitutionFormTabs({ form, institutionId }: InstitutionFormTabs
   };
 
   const annexSummary = units.filter((unit) => unit?.name?.trim()).length;
+  const shouldLoadInstitutionDirectors =
+    Boolean(institutionId) &&
+    units.some((unit) => (unit?.directorMode ?? 'none') === 'link');
 
   const { data: directorsResponse } = useQuery({
     queryKey: ['institution-directors', institutionId],
-    queryFn: () =>
-      usersService.findAll({
-        role: UserRole.DIRECTOR,
-        institutionId,
-        page: 1,
-        limit: 200,
-      }),
-    enabled: Boolean(institutionId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, firstName, lastName, cpf, email, phone')
+        .eq('role', UserRole.DIRECTOR)
+        .eq('institutionId', institutionId as string)
+        .order('firstName', { ascending: true })
+        .limit(200);
+
+      if (error) {
+        return { data: [] as InstitutionDirectorRow[] };
+      }
+
+      return { data: (data ?? []) as InstitutionDirectorRow[] };
+    },
+    enabled: shouldLoadInstitutionDirectors,
   });
 
   const institutionDirectors: DirectorOption[] = (directorsResponse?.data ?? []).map((director) => ({

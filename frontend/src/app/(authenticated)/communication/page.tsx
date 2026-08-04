@@ -73,7 +73,6 @@ export default function CommunicationPage() {
   const user = useAuthStore((state) => state.user);
   const currentRole = user?.activeProfile || user?.role;
   const canManageAnnouncements = [
-    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
@@ -92,10 +91,10 @@ export default function CommunicationPage() {
   });
 
   // Sort by priority (urgent first)
-  const sortedAnnouncements = announcements?.sort((a, b) => {
+  const sortedAnnouncements = [...(announcements ?? [])].sort((a, b) => {
     const priorityOrder: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
     return (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3);
-  }) || [];
+  });
 
   useEffect(() => {
     if (!isComposerMenuOpen) return;

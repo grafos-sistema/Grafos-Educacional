@@ -1,5 +1,6 @@
 import api from '@/lib/api';
 import { getValidInstitutionIds, isUuid } from '@/lib/institution-filter';
+import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import {
   Announcement,
@@ -8,6 +9,71 @@ import {
   AnnouncementFilters,
 } from '@/types/communication.types';
 import { PaginatedResponse } from '@/types/common.types';
+import { UserRole } from '@/types/user.types';
+
+type AnnouncementRow = Omit<Announcement, 'institution'>;
+
+async function findActiveAnnouncementsForGlobalAdmins(): Promise<Announcement[]> {
+  const { institutionFilterAll, institutionFilterIds, user } = useAuthStore.getState();
+  const currentRole = user?.activeProfile || user?.role;
+
+  if (currentRole !== UserRole.SUPER_ADMIN_GLOBAL) {
+    throw new Error('Fallback exclusivo para SUPER_ADMIN_GLOBAL.');
+  }
+
+  const effectiveIds = institutionFilterAll ? [] : getValidInstitutionIds(institutionFilterIds);
+
+  const { data, error } = await supabase
+    .from('announcements')
+    .select('id, title, content, priority, targetRoles, targetStudentIds, targetParentIds, isPublished, publishedAt, expiresAt, attachments, institutionId, createdById, createdAt, updatedAt')
+    .eq('isPublished', true)
+    .order('publishedAt', { ascending: false });
+
+  if (error) throw error;
+
+  const activeAnnouncements = ((data ?? []) as AnnouncementRow[]).filter((announcement) => {
+    const isPublishedForNow =
+      !announcement.publishedAt || new Date(announcement.publishedAt).getTime() <= Date.now();
+    const isNotExpired =
+      !announcement.expiresAt || new Date(announcement.expiresAt).getTime() > Date.now();
+    const matchesInstitution =
+      effectiveIds.length === 0 ||
+      !announcement.institutionId ||
+      effectiveIds.includes(announcement.institutionId);
+
+    return isPublishedForNow && isNotExpired && matchesInstitution;
+  });
+
+  const institutionIds = Array.from(
+    new Set(
+      activeAnnouncements
+        .map((announcement) => announcement.institutionId)
+        .filter((value): value is string => Boolean(value))
+    )
+  );
+
+  let institutionsById = new Map<string, { id: string; name: string }>();
+
+  if (institutionIds.length > 0) {
+    const { data: institutions, error: institutionsError } = await supabase
+      .from('institutions')
+      .select('id, name')
+      .in('id', institutionIds);
+
+    if (institutionsError) throw institutionsError;
+
+    institutionsById = new Map(
+      (institutions ?? []).map((institution) => [institution.id as string, institution as { id: string; name: string }])
+    );
+  }
+
+  return activeAnnouncements.map((announcement) => ({
+    ...announcement,
+    institution: announcement.institutionId
+      ? institutionsById.get(announcement.institutionId)
+      : undefined,
+  }));
+}
 
 export const announcementsService = {
   /**
@@ -130,6 +196,13 @@ export const announcementsService = {
    * Buscar comunicados ativos para um usuário
    */
   async findActiveForUser(): Promise<Announcement[]> {
+    const currentUser = useAuthStore.getState().user;
+    const currentRole = currentUser?.activeProfile || currentUser?.role;
+
+    if (currentRole === UserRole.SUPER_ADMIN_GLOBAL) {
+      return findActiveAnnouncementsForGlobalAdmins();
+    }
+
     const params = new URLSearchParams();
     const { institutionFilterAll, institutionFilterIds } = useAuthStore.getState();
     const effectiveIds = institutionFilterAll ? [] : getValidInstitutionIds(institutionFilterIds);

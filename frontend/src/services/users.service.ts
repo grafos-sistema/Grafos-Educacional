@@ -310,6 +310,36 @@ async function mapUsers(
   );
 }
 
+async function fetchUserFromSupabaseById(id: string): Promise<User> {
+  const { data, error } = await supabase
+    .from('users')
+    .select(USER_BASE_COLUMNS)
+    .eq('id', id)
+    .single();
+
+  if (error) throw error;
+
+  const [mappedUser] = await mapUsers([data as AppUserRow], 'detailed');
+
+  let institution: { id: string; name: string; slug: string } | null = null;
+
+  if (mappedUser.institutionId) {
+    const { data: institutionData, error: institutionError } = await supabase
+      .from('institutions')
+      .select('id, name, slug')
+      .eq('id', mappedUser.institutionId)
+      .maybeSingle();
+
+    if (institutionError) throw institutionError;
+    institution = institutionData;
+  }
+
+  return {
+    ...mappedUser,
+    ...(institution ? { institution } : {}),
+  } as User;
+}
+
 async function loadParentStudentLinks(
   rows: StudentParentRow[],
   relation: 'parent' | 'student'
@@ -566,33 +596,11 @@ export const usersService = {
       const response = await api.get<User>(`/users/${id}`);
       return response as unknown as User;
     } catch (apiError) {
-      const { data, error } = await supabase
-        .from('users')
-        .select(USER_BASE_COLUMNS)
-        .eq('id', id)
-        .single();
-
-      if (error) throw apiError;
-
-      const [mappedUser] = await mapUsers([data as AppUserRow], 'detailed');
-
-      let institution: { id: string; name: string; slug: string } | null = null;
-
-      if (mappedUser.institutionId) {
-        const { data: institutionData, error: institutionError } = await supabase
-          .from('institutions')
-          .select('id, name, slug')
-          .eq('id', mappedUser.institutionId)
-          .maybeSingle();
-
-        if (institutionError) throw institutionError;
-        institution = institutionData;
+      try {
+        return await fetchUserFromSupabaseById(id);
+      } catch {
+        throw apiError;
       }
-
-      return {
-        ...mappedUser,
-        ...(institution ? { institution } : {}),
-      } as User;
     }
   },
 
@@ -625,7 +633,7 @@ export const usersService = {
         throw new Error('Resposta inválida ao criar usuário');
       }
 
-      return usersService.findOne(createdUser.id);
+      return fetchUserFromSupabaseById(createdUser.id);
     } catch (error) {
       if (isSupabaseFunctionHttpError(error) || error instanceof Error) {
         throw error;

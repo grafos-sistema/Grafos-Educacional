@@ -467,9 +467,8 @@ const navigation: NavItem[] = [
     name: 'Configurações',
     baseRoute: '/configuracoes',
     icon: CogIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT],
+    roles: [UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT],
     pathMapping: {
-      [UserRole.SUPER_ADMIN_GLOBAL]: '/configuracoes',
       [UserRole.INSTITUTION_ADMIN]: '/configuracoes',
       [UserRole.COORDINATOR]: '/configuracoes',
       [UserRole.TEACHER]: '/configuracoes',
