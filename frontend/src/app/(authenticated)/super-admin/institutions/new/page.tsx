@@ -35,7 +35,6 @@ export default function NewInstitutionPage() {
           directorPhone: '',
           email: '',
           phone: '',
-          website: '',
           zipCode: '',
           address: '',
           numero: '',

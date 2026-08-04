@@ -19,7 +19,7 @@ export interface PublicInstitution {
 const INSTITUTION_COLUMNS =
   'id, name, slug, cnpj, email, phone, website, address, numero, complemento, city, state, country, zipCode, logo, isActive, createdAt, updatedAt';
 const INSTITUTION_UNIT_COLUMNS =
-  'id, institutionId, name, code, slug, type, managerName, directorUserId, address, numero, complemento, city, state, zipCode, phone, email, website, isActive, createdAt, updatedAt';
+  'id, institutionId, name, code, slug, type, managerName, directorUserId, address, numero, complemento, city, state, zipCode, phone, email, isActive, createdAt, updatedAt';
 
 function normalizeDigits(value?: string) {
   return value?.replace(/\D/g, '') || undefined;
@@ -65,7 +65,6 @@ function normalizeInstitutionPayload(data: CreateInstitutionDto | UpdateInstitut
         zipCode: normalizeDigits(unit.zipCode),
         phone: normalizeDigits(unit.phone),
         email: normalizeText(unit.email),
-        website: normalizeText(unit.website),
         isActive: unit.isActive ?? true,
       }))
       .filter((unit): unit is Required<Pick<CreateInstitutionUnitDto, 'id'>> & Omit<CreateInstitutionUnitDto, 'id'> => Boolean(unit.name)),

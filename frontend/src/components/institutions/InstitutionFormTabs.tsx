@@ -156,7 +156,6 @@ function emptyUnit(): InstitutionUnitFormValues {
     directorPhone: '',
     email: '',
     phone: '',
-    website: '',
     zipCode: '',
     address: '',
     numero: '',
@@ -758,21 +757,6 @@ export function InstitutionFormTabs({ form, institutionId }: InstitutionFormTabs
                               }
                               error={unitPhoneError}
                               inputMode="numeric"
-                            />
-                          </div>
-
-                          <div className="md:col-span-2">
-                            <Input
-                              label="Site do anexo"
-                              type="url"
-                              placeholder="Ex: https://annaadelaide.sesi.com.br"
-                              value={watch(`units.${index}.website`) || ''}
-                              onChange={(event) =>
-                                setValue(`units.${index}.website`, event.target.value.trim(), {
-                                  shouldDirty: true,
-                                  shouldValidate: true,
-                                })
-                              }
                             />
                           </div>
 

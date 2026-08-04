@@ -38,7 +38,6 @@ export interface InstitutionUnit {
   zipCode?: string;
   phone?: string;
   email?: string;
-  website?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -60,7 +59,6 @@ export interface CreateInstitutionUnitDto {
   zipCode?: string;
   phone?: string;
   email?: string;
-  website?: string;
   isActive?: boolean;
 }
 
