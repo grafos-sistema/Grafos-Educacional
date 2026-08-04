@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   MegaphoneIcon,
@@ -17,6 +16,7 @@ import { UserRole } from '@/types/user.types';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { AnnouncementComposerModal } from '@/components/communication/AnnouncementComposerModal';
 
 const priorityLabels: Record<string, string> = {
   low: 'Baixa',
@@ -65,8 +65,8 @@ const typeColors: Record<string, 'default' | 'success' | 'error' | 'warning' | '
 };
 
 export default function CommunicationPage() {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'announcements' | 'events'>('announcements');
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
   const user = useAuthStore((state) => state.user);
   const currentRole = user?.activeProfile || user?.role;
   const canManageAnnouncements = [
@@ -100,15 +100,15 @@ export default function CommunicationPage() {
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <h1 className="mb-2 text-2xl font-bold text-gray-900 dark:text-white">
-            Comunicados e Eventos
+            Comunicados
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Visualize os comunicados enviados pela gestão e acompanhe os próximos eventos da instituição.
+            Acompanhe os comunicados enviados pela gestão e os próximos eventos da instituição.
           </p>
         </div>
         {canManageAnnouncements ? (
           <Button
-            onClick={() => router.push('/admin/announcements')}
+            onClick={() => setIsComposerOpen(true)}
             leftIcon={<PlusIcon className="h-5 w-5" />}
           >
             Criar comunicado
@@ -315,6 +315,11 @@ export default function CommunicationPage() {
           )}
         </div>
       )}
+
+      <AnnouncementComposerModal
+        isOpen={isComposerOpen}
+        onClose={() => setIsComposerOpen(false)}
+      />
     </div>
   );
 }

@@ -17,7 +17,7 @@ interface ModalProps {
   overlayClassName?: string;
   closeOnOverlayClick?: boolean;
   showCloseButton?: boolean;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 const sizeClasses: Record<ModalSize, string> = {
@@ -71,7 +71,7 @@ export function Modal({
   return (
     <div
       className={joinClasses(
-        'fixed inset-0 z-[80] flex items-center justify-center bg-black/10 p-4 backdrop-blur-sm',
+        'fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto bg-black/10 p-4 py-6 backdrop-blur-sm',
         overlayClassName
       )}
       onClick={() => {
@@ -84,14 +84,14 @@ export function Modal({
     >
       <div
         className={joinClasses(
-          'relative w-full rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950',
+          'relative flex max-h-[calc(100vh-3rem)] w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950',
           sizeClasses[size],
           className
         )}
         onClick={(event) => event.stopPropagation()}
       >
         {(title || description || showCloseButton) && (
-          <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+          <div className="shrink-0 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
                 {title ? (
@@ -120,10 +120,12 @@ export function Modal({
           </div>
         )}
 
-        <div className={joinClasses('px-5 py-5', contentClassName)}>{children}</div>
+        <div className={joinClasses('min-h-0 overflow-y-auto px-5 py-5', contentClassName)}>
+          {children}
+        </div>
 
         {footer ? (
-          <div className="border-t border-slate-100 px-5 py-4 dark:border-slate-800">
+          <div className="shrink-0 border-t border-slate-100 px-5 py-4 dark:border-slate-800">
             {footer}
           </div>
         ) : null}

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { getValidInstitutionIds } from '@/lib/institution-filter';
 import { User, UserRole } from '@/types/user.types';
 import { clientCookies } from '@/lib/cookies';
 
@@ -125,7 +126,9 @@ export const useAuthStore = create<AuthState>()(
           isLoading: false,
           activeProfile,
           institutionFilterAll: false,
-          institutionFilterIds: user.institutionId ? [user.institutionId] : [],
+          institutionFilterIds: getValidInstitutionIds(
+            user.institutionId ? [user.institutionId] : []
+          ),
         });
 
         // Store tokens in cookies for server-side access
@@ -180,7 +183,9 @@ export const useAuthStore = create<AuthState>()(
         const user = get().user;
         set({
           institutionFilterAll: false,
-          institutionFilterIds: user?.institutionId ? [user.institutionId] : [],
+          institutionFilterIds: getValidInstitutionIds(
+            user?.institutionId ? [user.institutionId] : []
+          ),
         });
       },
     }),

@@ -1,4 +1,5 @@
 import api from '@/lib/api';
+import { getValidInstitutionIds } from '@/lib/institution-filter';
 import { useAuthStore } from '@/stores/authStore';
 import {
   Event,
@@ -23,7 +24,7 @@ export const eventsService = {
     if (filters.limit) params.append('limit', filters.limit.toString());
 
     const { institutionFilterAll, institutionFilterIds } = useAuthStore.getState();
-    const effectiveIds = institutionFilterAll ? [] : institutionFilterIds.filter(Boolean);
+    const effectiveIds = institutionFilterAll ? [] : getValidInstitutionIds(institutionFilterIds);
 
     if (effectiveIds.length > 1) {
       params.append('institutionIds', effectiveIds.join(','));
@@ -74,7 +75,7 @@ export const eventsService = {
     params.append('days', String(days));
 
     const { institutionFilterAll, institutionFilterIds } = useAuthStore.getState();
-    const effectiveIds = institutionFilterAll ? [] : institutionFilterIds.filter(Boolean);
+    const effectiveIds = institutionFilterAll ? [] : getValidInstitutionIds(institutionFilterIds);
 
     if (effectiveIds.length > 1) {
       params.append('institutionIds', effectiveIds.join(','));
@@ -101,7 +102,7 @@ export const eventsService = {
     const params = new URLSearchParams();
 
     const { institutionFilterAll, institutionFilterIds } = useAuthStore.getState();
-    const effectiveIds = institutionFilterAll ? [] : institutionFilterIds.filter(Boolean);
+    const effectiveIds = institutionFilterAll ? [] : getValidInstitutionIds(institutionFilterIds);
 
     if (effectiveIds.length > 1) {
       params.append('institutionIds', effectiveIds.join(','));

@@ -439,23 +439,6 @@ const navigation: NavItem[] = [
     },
   },
   {
-    name: 'Comunicados',
-    baseRoute: '/announcements',
-    icon: BellIcon,
-    roles: [
-      UserRole.SUPER_ADMIN_GLOBAL,
-      UserRole.SUPER_ADMIN,
-      UserRole.INSTITUTION_ADMIN,
-      UserRole.COORDINATOR,
-    ],
-    pathMapping: {
-      [UserRole.SUPER_ADMIN_GLOBAL]: '/admin/announcements',
-      [UserRole.SUPER_ADMIN]: '/admin/announcements',
-      [UserRole.INSTITUTION_ADMIN]: '/admin/announcements',
-      [UserRole.COORDINATOR]: '/admin/announcements',
-    },
-  },
-  {
     name: 'Eventos',
     baseRoute: '/events',
     icon: CalendarIcon,
@@ -467,7 +450,7 @@ const navigation: NavItem[] = [
     },
   },
   {
-    name: 'Comunicação',
+    name: 'Comunicados',
     baseRoute: '/communication',
     icon: BellIcon,
     roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT],

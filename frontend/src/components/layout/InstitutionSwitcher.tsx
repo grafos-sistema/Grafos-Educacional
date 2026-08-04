@@ -5,6 +5,7 @@ import { Menu, Transition } from '@headlessui/react';
 import { ChevronDownIcon, BuildingOffice2Icon, CheckIcon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/auth.service';
+import { getValidInstitutionIds, isUuid } from '@/lib/institution-filter';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
@@ -57,14 +58,19 @@ export function InstitutionSwitcher() {
   useEffect(() => {
     if (!user) return;
     if (institutionFilterAll) return;
-    if (institutionFilterIds.length > 0) return;
-    if (!user.institutionId) return;
-    setInstitutionFilterIds([user.institutionId]);
-  }, [institutionFilterAll, institutionFilterIds.length, setInstitutionFilterIds, user]);
+    if (getValidInstitutionIds(institutionFilterIds).length > 0) return;
+
+    const fallbackId = isUuid(user.institutionId)
+      ? user.institutionId
+      : institutions.find((institution) => isUuid(institution.id))?.id;
+
+    if (!fallbackId) return;
+    setInstitutionFilterIds([fallbackId]);
+  }, [institutionFilterAll, institutionFilterIds, institutions, setInstitutionFilterIds, user]);
 
   const selectedIds = institutionFilterAll
     ? institutions.map((institution) => institution.id)
-    : institutionFilterIds;
+    : getValidInstitutionIds(institutionFilterIds);
 
   const selectedLabel = (() => {
     if (institutionFilterAll) return 'Todas';

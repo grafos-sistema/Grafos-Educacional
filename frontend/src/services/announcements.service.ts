@@ -1,4 +1,5 @@
 import api from '@/lib/api';
+import { getValidInstitutionIds, isUuid } from '@/lib/institution-filter';
 import { useAuthStore } from '@/stores/authStore';
 import {
   Announcement,
@@ -28,13 +29,13 @@ export const announcementsService = {
     if (filters.limit) params.append('limit', filters.limit.toString());
 
     const { institutionFilterAll, institutionFilterIds } = useAuthStore.getState();
-    const effectiveIds = institutionFilterAll ? [] : institutionFilterIds.filter(Boolean);
+    const effectiveIds = institutionFilterAll ? [] : getValidInstitutionIds(institutionFilterIds);
 
     if (effectiveIds.length > 1) {
       params.append('institutionIds', effectiveIds.join(','));
     } else if (effectiveIds.length === 1) {
       params.append('institutionId', effectiveIds[0]);
-    } else if (filters.institutionId) {
+    } else if (isUuid(filters.institutionId)) {
       params.append('institutionId', filters.institutionId);
     }
 
@@ -131,7 +132,7 @@ export const announcementsService = {
   async findActiveForUser(): Promise<Announcement[]> {
     const params = new URLSearchParams();
     const { institutionFilterAll, institutionFilterIds } = useAuthStore.getState();
-    const effectiveIds = institutionFilterAll ? [] : institutionFilterIds.filter(Boolean);
+    const effectiveIds = institutionFilterAll ? [] : getValidInstitutionIds(institutionFilterIds);
 
     if (effectiveIds.length > 1) {
       params.append('institutionIds', effectiveIds.join(','));

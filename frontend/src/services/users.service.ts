@@ -1,5 +1,6 @@
 import api from '@/lib/api';
 import { fetchCurrentUserProfile } from '@/lib/auth-profile';
+import { getValidInstitutionIds, isUuid } from '@/lib/institution-filter';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -429,13 +430,13 @@ export const usersService = {
     }
 
     const { institutionFilterAll, institutionFilterIds } = useAuthStore.getState();
-    const effectiveIds = institutionFilterAll ? [] : institutionFilterIds.filter(Boolean);
+    const effectiveIds = institutionFilterAll ? [] : getValidInstitutionIds(institutionFilterIds);
 
     if (effectiveIds.length > 1) {
       apiParams.append('institutionIds', effectiveIds.join(','));
     } else if (effectiveIds.length === 1) {
       apiParams.append('institutionId', effectiveIds[0]);
-    } else if (params.institutionId) {
+    } else if (isUuid(params.institutionId)) {
       apiParams.append('institutionId', params.institutionId);
     }
 
