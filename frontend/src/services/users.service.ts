@@ -60,7 +60,7 @@ type AppUserRow = {
   isActive: boolean;
   emailVerified: boolean;
   requestedProfileType?: string | null;
-  institutionId: string;
+  institutionId?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -188,7 +188,7 @@ function mapUser(row: AppUserRow, extras?: Partial<User>): User {
     isActive: row.isActive,
     emailVerified: row.emailVerified,
     requestedProfileType: row.requestedProfileType ?? undefined,
-    institutionId: row.institutionId,
+    institutionId: row.institutionId ?? undefined,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     ...extras,
@@ -533,13 +533,18 @@ export const usersService = {
 
     const [mappedUser] = await mapUsers([data as AppUserRow], 'detailed');
 
-    const { data: institution, error: institutionError } = await supabase
-      .from('institutions')
-      .select('id, name, slug')
-      .eq('id', mappedUser.institutionId)
-      .maybeSingle();
+    let institution: { id: string; name: string; slug: string } | null = null;
 
-    if (institutionError) throw institutionError;
+    if (mappedUser.institutionId) {
+      const { data: institutionData, error: institutionError } = await supabase
+        .from('institutions')
+        .select('id, name, slug')
+        .eq('id', mappedUser.institutionId)
+        .maybeSingle();
+
+      if (institutionError) throw institutionError;
+      institution = institutionData;
+    }
 
     return {
       ...mappedUser,
@@ -637,16 +642,20 @@ export const usersService = {
         return obj;
       }, {});
 
-    const { error } = await supabase
+    const { data: updatedRow, error } = await supabase
       .from('users')
       .update({
         ...filteredUserData,
         ...(institutionId ? { institutionId } : {}),
         updatedAt: new Date().toISOString(),
       })
+      .select('id')
       .eq('id', id);
 
     if (error) throw error;
+    if (!updatedRow || updatedRow.length === 0) {
+      throw new Error('Não foi possível atualizar o usuário. Verifique suas permissões de acesso.');
+    }
     const user = await usersService.findOne(id);
 
     const shouldSyncInstitutionLinks =

@@ -121,6 +121,17 @@ export async function fetchCurrentUserProfile(options?: {
       throw appUserError ?? new Error('Perfil do usuário não encontrado ou sem permissão de leitura.');
     }
 
+    if (appUser.role === UserRole.SUPER_ADMIN_GLOBAL) {
+      const profile = mapAppUser(appUser as AppUserRow, {
+        mustChangePassword: Boolean(authUser.user_metadata?.mustChangePassword),
+      });
+
+      cachedProfile = profile;
+      cachedProfileAt = Date.now();
+
+      return profile;
+    }
+
     const [teacherResult, studentResult, parentResult] = await Promise.all([
       supabase.from('teachers').select('*').eq('userId', appUser.id).maybeSingle(),
       supabase.from('students').select('*').eq('userId', appUser.id).maybeSingle(),

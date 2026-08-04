@@ -63,10 +63,10 @@ export function Header({ title }: HeaderProps) {
       {/* Right side */}
       <div className="flex flex-1 items-center justify-end gap-x-4 lg:gap-x-6">
         {/* Institution Switcher - Don't show for Super Admin */}
-        {user?.role !== UserRole.SUPER_ADMIN && <InstitutionSwitcher />}
+        {user?.role !== UserRole.SUPER_ADMIN && user?.role !== UserRole.SUPER_ADMIN_GLOBAL && <InstitutionSwitcher />}
 
         {/* Notifications */}
-        <NotificationsBell />
+        {user?.role !== UserRole.SUPER_ADMIN_GLOBAL && <NotificationsBell />}
 
         {/* Profile dropdown */}
         <Menu as="div" className="relative">

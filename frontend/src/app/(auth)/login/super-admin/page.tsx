@@ -6,8 +6,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
 import { UserRole } from '@/types/user.types';
+import { authService } from '@/services/auth.service';
+import { useAuthStore } from '@/stores/authStore';
 import Link from 'next/link';
 import { ShieldExclamationIcon, EnvelopeIcon, LockClosedIcon, ServerIcon, AcademicCapIcon, GlobeAltIcon , EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
@@ -19,7 +20,7 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function SuperAdminLoginPage() {
-  const { login } = useAuth();
+  const { logout } = useAuth();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,27 +38,21 @@ export default function SuperAdminLoginPage() {
     try {
       setError(null);
       setIsLoading(true);
-      const normalizedEmail = data.email.trim().toLowerCase();
-      const { data: securityUser, error: securityUserError } = await supabase
-        .from('users')
-        .select('role, isActive')
-        .eq('email', normalizedEmail)
-        .maybeSingle();
+      const response = await authService.login(data);
+      useAuthStore.getState().login(
+        response.user,
+        response.accessToken,
+        response.refreshToken
+      );
 
-      if (securityUserError) {
-        throw securityUserError;
-      }
+      const currentUser = response.user;
 
-      if (!securityUser || !securityUser.isActive) {
-        throw new Error('Acesso restrito ao ambiente de seguranca.');
-      }
-
-      if (securityUser.role !== UserRole.SUPER_ADMIN_GLOBAL) {
+      if (!currentUser || currentUser.role !== UserRole.SUPER_ADMIN_GLOBAL) {
+        await logout();
         throw new Error('Somente usuarios globais autorizados podem acessar /security.');
       }
 
-      await login(data);
-      router.replace('/super-admin/dashboard');
+      window.location.href = '/super-admin/dashboard';
     } catch (err: any) {
       setError(err?.message || 'Erro ao fazer login. Verifique suas credenciais.');
     } finally {

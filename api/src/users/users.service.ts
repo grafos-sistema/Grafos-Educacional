@@ -78,11 +78,15 @@ export class UsersService {
   }
 
   private buildAvatarStoragePath(
-    user: { id: string; institutionId: string },
+    user: { id: string; institutionId?: string | null },
     file: Express.Multer.File,
   ) {
     const extension = this.getAvatarExtension(file);
-    return `institutions/${user.institutionId}/users/${user.id}/avatar-${Date.now()}${extension}`;
+    const basePath = user.institutionId
+      ? `institutions/${user.institutionId}`
+      : 'global';
+
+    return `${basePath}/users/${user.id}/avatar-${Date.now()}${extension}`;
   }
 
   private extractStoragePathFromAvatarUrl(avatarUrl?: string | null) {
@@ -650,14 +654,14 @@ export class UsersService {
    * Atualiza avatar do usuário
    */
   async updateAvatar(userId: string, file: Express.Multer.File) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        institutionId: true,
-        avatar: true,
-      },
-    });
+    const [user] = await this.prisma.$queryRaw<
+      Array<{ id: string; institutionId: string | null; avatar: string | null }>
+    >`
+      SELECT id, "institutionId", avatar
+      FROM public.users
+      WHERE id = ${userId}
+      LIMIT 1
+    `;
 
     if (!user) {
       throw new NotFoundException('Usuário não encontrado');
@@ -696,13 +700,16 @@ export class UsersService {
     } = supabase.storage.from(bucket).getPublicUrl(storagePath);
 
     try {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { avatar: avatarUrl },
-        select: {
-          id: true,
-        },
-      });
+      const updatedRows = await this.prisma.$executeRaw`
+        UPDATE public.users
+        SET avatar = ${avatarUrl},
+            "updatedAt" = NOW()
+        WHERE id = ${userId}
+      `;
+
+      if (!updatedRows) {
+        throw new NotFoundException('Usuário não encontrado');
+      }
     } catch (error) {
       await supabase.storage.from(bucket).remove([storagePath]);
       throw error;

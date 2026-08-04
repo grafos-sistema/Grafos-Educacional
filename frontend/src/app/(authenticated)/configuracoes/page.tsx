@@ -21,12 +21,28 @@ import { useToast } from '@/hooks/useToast';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 const roleLabels: Record<string, string> = {
+  SUPER_ADMIN_GLOBAL: 'Super Admin Global',
   SUPER_ADMIN: 'Super Admin',
   INSTITUTION_ADMIN: 'Admin da Instituição',
   COORDINATOR: 'Coordenador',
   TEACHER: 'Professor',
   STUDENT: 'Aluno',
   PARENT: 'Responsável',
+};
+
+const getMutationErrorMessage = (error: unknown) => {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error
+  ) {
+    const response = (error as { response?: { data?: { message?: string } } }).response;
+    if (typeof response?.data?.message === 'string' && response.data.message.trim()) {
+      return response.data.message;
+    }
+  }
+
+  return 'Erro ao alterar senha';
 };
 
 export default function ConfiguracoesPage() {
@@ -53,9 +69,8 @@ export default function ConfiguracoesPage() {
         confirmPassword: '',
       });
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.message || 'Erro ao alterar senha';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getMutationErrorMessage(error));
     },
   });
 
