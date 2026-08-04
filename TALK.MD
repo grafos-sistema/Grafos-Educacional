@@ -39,16 +39,24 @@
 
 > *Conteúdo a ser definido.*
 
-## TASKS
+## Pending Tasks
 
-- *Excesso de espaço laterais*
-- *Erro: duplicate key value violates unique constraint "teachers\_registrationNumber\_key" | entender e deixar um alertar mais claro e prático para o usuário final*
-- *Cadastrar anexos no cadastro de alunos*
+- *Cache Sprite*
 - *Corrigir todos os formulários e deixar salvando de forma correta no banco de dados*
-
-- *Preenchimento automático do endereço após escrita do CEP*
-- *Padronizar a selação de UFS*
-- *Erro de instituição não encontrada*
-- *Importar Usuários via Excel*
-- *Esticar tela para ficar pegando de um campo a outro e ajustar os inputs*
 - *Organização de Criação de Instituições*
+- *Importar Usuários via Excel* 
+  - *Iremos (Super Admins Globais) ficar responsáveis por cadastrar esses usuários tratando os dados e importando para o sistema* 
+
+- *Ponto importante sobre o Ano letivo logado como Super Admin Global: Ele deve filtrar obrigatoriamente a Instituição e indicar que uma instituição ainda não tem ano letivo criado*
+
+## Completed tasks
+
+- *Excesso de espaço laterais* ✅
+
+- *Erro: duplicate key value violates unique constraint "teachers\_registrationNumber\_key" | entender e deixar um alertar mais claro e prático para o usuário final* ✅
+
+- *Cadastrar anexos no cadastro de alunos* ✅
+- *Preenchimento automático do endereço após escrita do CEP* ✅
+- *Padronizar a selação de UFS* ✅
+- *Erro de instituição não encontrada* ✅
+- *Esticar tela para ficar pegando de um campo a outro e ajustar os inputs* ✅

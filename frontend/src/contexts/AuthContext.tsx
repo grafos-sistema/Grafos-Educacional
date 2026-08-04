@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const profile = await authService.getProfile();
         storeLogin(profile, storedAccessToken, storedRefreshToken || '');
-      } catch (error) {
+      } catch {
         if (storedRefreshToken) {
           try {
             const refreshResponse = await authService.refreshToken(storedRefreshToken);
@@ -113,6 +113,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true);
       const response = await authService.login(credentials);
+      const currentPath = window.location.pathname;
+
+      if (
+        response.user.role === 'SUPER_ADMIN_GLOBAL' &&
+        currentPath !== '/security'
+      ) {
+        try {
+          await authService.logout();
+        } catch {
+          // Mesmo sem conseguir invalidar remotamente, bloqueia o acesso localmente
+        }
+
+        clearCurrentUserProfileCache();
+        storeLogout();
+        throw new Error('O Super Admin Global deve acessar exclusivamente pela rota /security.');
+      }
 
       // Store user and tokens
       storeLogin(response.user, response.accessToken, response.refreshToken);

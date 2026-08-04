@@ -5,7 +5,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import {
   BuildingOffice2Icon,
-  ClockIcon,
   MegaphoneIcon,
   PaperAirplaneIcon,
   UserGroupIcon,
@@ -14,13 +13,16 @@ import { announcementsService } from '@/services/announcements.service';
 import { authService, type UserInstitutionOption } from '@/services/auth.service';
 import { useAuthStore } from '@/stores/authStore';
 import { getValidInstitutionIds, isUuid } from '@/lib/institution-filter';
-import { AnnouncementPriority, type CreateAnnouncementDto } from '@/types/communication.types';
+import {
+  AnnouncementPriority,
+  type Announcement,
+  type CreateAnnouncementDto,
+} from '@/types/communication.types';
 import { UserRole } from '@/types/user.types';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
-import { Select } from '@/components/ui/Select';
 
 type AnnouncementFormState = {
   title: string;
@@ -35,14 +37,8 @@ type AnnouncementFormState = {
 type AnnouncementComposerModalProps = {
   isOpen: boolean;
   onClose: () => void;
+  mode: 'immediate' | 'scheduled';
 };
-
-const priorityOptions = [
-  { value: AnnouncementPriority.NORMAL, label: 'Normal' },
-  { value: AnnouncementPriority.LOW, label: 'Baixa' },
-  { value: AnnouncementPriority.HIGH, label: 'Alta' },
-  { value: AnnouncementPriority.URGENT, label: 'Urgente' },
-];
 
 const roleOptionMap: Record<
   UserRole,
@@ -115,24 +111,10 @@ function getInitialForm(institutionId = ''): AnnouncementFormState {
   };
 }
 
-function formatDate(value?: string) {
-  if (!value) return '-';
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-
-  return date.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
 export function AnnouncementComposerModal({
   isOpen,
   onClose,
+  mode,
 }: AnnouncementComposerModalProps) {
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
@@ -141,7 +123,6 @@ export function AnnouncementComposerModal({
   const currentRole = (user?.activeProfile || user?.role) as UserRole | undefined;
   const isGlobalAdmin =
     currentRole === UserRole.SUPER_ADMIN_GLOBAL || currentRole === UserRole.SUPER_ADMIN;
-  const isCoordinator = currentRole === UserRole.COORDINATOR;
 
   const { data: institutions = [] } = useQuery({
     queryKey: ['auth', 'institutions'],
@@ -150,7 +131,7 @@ export function AnnouncementComposerModal({
   });
 
   const allowedRoleOptions = useMemo(() => {
-    if (isCoordinator) {
+    if (currentRole === UserRole.COORDINATOR) {
       return [UserRole.COORDINATOR, UserRole.TEACHER, UserRole.STUDENT];
     }
 
@@ -172,7 +153,7 @@ export function AnnouncementComposerModal({
       UserRole.STUDENT,
       UserRole.PARENT,
     ];
-  }, [isCoordinator, isGlobalAdmin]);
+  }, [currentRole, isGlobalAdmin]);
 
   const defaultInstitutionId = useMemo(() => {
     const filteredIds = institutionFilterAll ? [] : getValidInstitutionIds(institutionFilterIds);
@@ -200,9 +181,12 @@ export function AnnouncementComposerModal({
 
   useEffect(() => {
     if (!isOpen) return;
-    setForm(getInitialForm(defaultInstitutionId));
+    setForm({
+      ...getInitialForm(defaultInstitutionId),
+      scheduledFor: mode === 'scheduled' ? getDefaultScheduledDateTime() : '',
+    });
     setErrors({});
-  }, [defaultInstitutionId, isOpen]);
+  }, [defaultInstitutionId, isOpen, mode]);
 
   const selectedInstitution = institutions.find(
     (institution: UserInstitutionOption) => institution.id === form.institutionId
@@ -242,16 +226,33 @@ export function AnnouncementComposerModal({
       }
     }
 
-    if (form.expiresAt && form.scheduledFor) {
-      const expiresDate = new Date(form.expiresAt);
-      const scheduledDate = new Date(form.scheduledFor);
-      if (!Number.isNaN(expiresDate.getTime()) && expiresDate.getTime() <= scheduledDate.getTime()) {
-        nextErrors.expiresAt = 'A validade precisa ser posterior ao disparo.';
+    setErrors(nextErrors);
+
+    if (Object.keys(nextErrors).length > 0) {
+      const firstError = Object.values(nextErrors).find(Boolean);
+      if (firstError) {
+        toast.error(firstError);
       }
     }
 
-    setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
+  };
+
+  const extractErrorMessage = (error: unknown) => {
+    if (error instanceof Error && error.message.trim()) {
+      return error.message;
+    }
+
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'message' in error &&
+      typeof (error as { message?: unknown }).message === 'string'
+    ) {
+      return (error as { message: string }).message;
+    }
+
+    return 'Não foi possível salvar o comunicado.';
   };
 
   const handleSubmit = async () => {
@@ -269,14 +270,27 @@ export function AnnouncementComposerModal({
         institutionId: form.institutionId,
         targetRoles: form.targetRoles,
         ...(form.scheduledFor ? { scheduledFor: new Date(form.scheduledFor).toISOString() } : {}),
-        ...(form.expiresAt ? { expiresAt: new Date(form.expiresAt).toISOString() } : {}),
       };
 
-      await announcementsService.create(payload);
+      const createdAnnouncement = await announcementsService.create(payload);
 
-      toast.success(
-        form.scheduledFor ? 'Comunicado agendado com sucesso.' : 'Comunicado criado com sucesso.'
-      );
+      if (form.scheduledFor) {
+        toast.success('Comunicado agendado com sucesso. Ele aparecerá na listagem no horário programado.');
+      } else {
+        queryClient.setQueryData<Announcement[] | undefined>(
+          ['announcements-active'],
+          (current) => {
+            if (!current) {
+              return [createdAnnouncement];
+            }
+
+            const alreadyExists = current.some((item) => item.id === createdAnnouncement.id);
+            return alreadyExists ? current : [createdAnnouncement, ...current];
+          }
+        );
+
+        toast.success('Comunicado enviado com sucesso.');
+      }
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['announcements'] }),
@@ -285,11 +299,7 @@ export function AnnouncementComposerModal({
 
       onClose();
     } catch (error) {
-      const message =
-        error instanceof Error && error.message.trim()
-          ? error.message
-          : 'Não foi possível salvar o comunicado.';
-      toast.error(message);
+      toast.error(extractErrorMessage(error));
     } finally {
       setIsSaving(false);
     }
@@ -302,12 +312,30 @@ export function AnnouncementComposerModal({
         if (!isSaving) onClose();
       }}
       title="Novo comunicado"
-      description="Crie um comunicado sem sair da tela. O envio respeita a instituição selecionada e o público escolhido."
-      size="xl"
+      size="2xl"
+      className="w-[90vw] max-w-[90vw]"
       contentClassName="space-y-5"
+      footer={
+        <div className="flex justify-end">
+          <Button
+            onClick={handleSubmit}
+            isLoading={isSaving}
+            leftIcon={<PaperAirplaneIcon className="h-5 w-5" />}
+            className="min-w-[240px] rounded-lg bg-primary-600 px-5 py-2.5 text-white hover:bg-primary-700"
+          >
+            {mode === 'scheduled' ? 'Programar comunicado' : 'Enviar comunicado'}
+          </Button>
+        </div>
+      }
     >
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-5">
+          <div>
+            <Badge variant={mode === 'scheduled' ? 'warning' : 'info'} size="sm">
+              {mode === 'scheduled' ? 'Comunicado programado' : 'Envio imediato'}
+            </Badge>
+          </div>
+
           <Input
             label="Título"
             value={form.title}
@@ -320,31 +348,36 @@ export function AnnouncementComposerModal({
           />
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Select
-              label="Prioridade"
-              options={priorityOptions}
-              value={form.priority}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  priority: event.target.value as AnnouncementPriority,
-                }))
-              }
-            />
-
             {isGlobalAdmin ? (
-              <Select
-                label="Instituição"
-                options={institutionOptions}
-                value={form.institutionId}
-                onChange={(event) => {
-                  setForm((current) => ({ ...current, institutionId: event.target.value }));
-                  setErrors((current) => ({ ...current, institutionId: undefined }));
-                }}
-                error={errors.institutionId}
-              />
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Instituição
+                </label>
+                <select
+                  value={form.institutionId}
+                  onChange={(event) => {
+                    setForm((current) => ({ ...current, institutionId: event.target.value }));
+                    setErrors((current) => ({ ...current, institutionId: undefined }));
+                  }}
+                  className={`block w-full rounded-lg border bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition-colors focus:outline-none dark:bg-gray-800 dark:text-white ${
+                    errors.institutionId
+                      ? 'border-red-500 focus:border-red-500'
+                      : 'border-gray-300 focus:border-primary-500 dark:border-gray-600'
+                  }`}
+                >
+                  <option value="">Selecione a instituição</option>
+                  {institutionOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {errors.institutionId ? (
+                  <p className="mt-2 text-xs text-red-600 dark:text-red-400">{errors.institutionId}</p>
+                ) : null}
+              </div>
             ) : (
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/50">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/50">
                 <div className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200">
                   <BuildingOffice2Icon className="h-4 w-4 text-gray-400" />
                   Instituição
@@ -354,43 +387,26 @@ export function AnnouncementComposerModal({
                 </p>
               </div>
             )}
+            {mode === 'scheduled' ? (
+              <Input
+                type="datetime-local"
+                label="Data e hora do envio"
+                value={form.scheduledFor}
+                onChange={(event) => {
+                  setForm((current) => ({ ...current, scheduledFor: event.target.value }));
+                  setErrors((current) => ({ ...current, scheduledFor: undefined }));
+                }}
+                error={errors.scheduledFor}
+              />
+            ) : (
+              <div />
+            )}
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <Input
-              type="datetime-local"
-              label="Programar envio"
-              value={form.scheduledFor}
-              onChange={(event) => {
-                setForm((current) => ({ ...current, scheduledFor: event.target.value }));
-                setErrors((current) => ({ ...current, scheduledFor: undefined }));
-              }}
-              error={errors.scheduledFor}
-              helperText="Opcional. Se vazio, o comunicado é enviado ao salvar."
-            />
-
-            <Input
-              type="date"
-              label="Validade"
-              value={form.expiresAt}
-              onChange={(event) => {
-                setForm((current) => ({ ...current, expiresAt: event.target.value }));
-                setErrors((current) => ({ ...current, expiresAt: undefined }));
-              }}
-              error={errors.expiresAt}
-              helperText="Opcional. Depois dessa data o comunicado deixa de ficar vigente."
-            />
-          </div>
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900/40">
+          <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900/40">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">Público-alvo</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {isCoordinator
-                    ? 'Como coordenador, você pode enviar para Coordenação, Professores e Alunos.'
-                    : 'Selecione um ou mais públicos para receber este comunicado.'}
-                </p>
               </div>
               <UserGroupIcon className="h-5 w-5 text-gray-400" />
             </div>
@@ -405,7 +421,7 @@ export function AnnouncementComposerModal({
                     key={role}
                     type="button"
                     onClick={() => handleRoleToggle(role)}
-                    className={`rounded-2xl border p-4 text-left transition-colors ${
+                    className={`rounded-lg border p-4 text-left transition-colors ${
                       selected
                         ? 'border-primary-500 bg-primary-50 dark:border-primary-400 dark:bg-primary-900/30'
                         : 'border-gray-200 bg-white hover:border-primary-300 dark:border-gray-700 dark:bg-gray-800'
@@ -453,7 +469,7 @@ export function AnnouncementComposerModal({
         </div>
 
         <aside className="space-y-4">
-          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-900/60">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-900/60">
             <div className="mb-3 flex items-center gap-2">
               <MegaphoneIcon className="h-5 w-5 text-primary-600 dark:text-primary-300" />
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Resumo</h3>
@@ -465,8 +481,8 @@ export function AnnouncementComposerModal({
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Badge variant="info" size="sm">
-                  {priorityOptions.find((option) => option.value === form.priority)?.label || 'Normal'}
+                <Badge variant={mode === 'scheduled' ? 'warning' : 'info'} size="sm">
+                  {mode === 'scheduled' ? 'Programado' : 'Envio imediato'}
                 </Badge>
                 <Badge variant="default" size="sm">
                   {form.targetRoles.length} público(s)
@@ -477,12 +493,8 @@ export function AnnouncementComposerModal({
                 <span>{selectedInstitution?.name || 'Sem instituição'}</span>
               </div>
               <div className="flex items-start gap-2">
-                <ClockIcon className="mt-0.5 h-4 w-4 text-gray-400" />
-                <span>
-                  {form.scheduledFor
-                    ? `Agendado para ${formatDate(form.scheduledFor)}`
-                    : 'Envio imediato ao salvar'}
-                </span>
+                <PaperAirplaneIcon className="mt-0.5 h-4 w-4 text-gray-400" />
+                <span>{mode === 'scheduled' ? 'Envio agendado' : 'Envio imediato'}</span>
               </div>
               <div className="flex items-start gap-2">
                 <UserGroupIcon className="mt-0.5 h-4 w-4 text-gray-400" />
@@ -493,34 +505,6 @@ export function AnnouncementComposerModal({
                 </span>
               </div>
             </div>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <Button variant="secondary" onClick={onClose} className="w-full" disabled={isSaving}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              isLoading={isSaving}
-              leftIcon={<PaperAirplaneIcon className="h-5 w-5" />}
-              className="w-full"
-            >
-              {form.scheduledFor ? 'Agendar comunicado' : 'Publicar comunicado'}
-            </Button>
-            {!form.scheduledFor ? (
-              <Button
-                variant="ghost"
-                onClick={() =>
-                  setForm((current) => ({
-                    ...current,
-                    scheduledFor: current.scheduledFor || getDefaultScheduledDateTime(),
-                  }))
-                }
-                className="w-full"
-              >
-                Programar envio
-              </Button>
-            ) : null}
           </div>
         </aside>
       </div>

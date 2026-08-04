@@ -137,7 +137,10 @@ model Institution {
   cnpj        String?  @unique
   email       String?
   phone       String?
+  website     String?
   address     String?
+  numero      String?
+  complemento String?
   city        String?
   state       String?
   country     String   @default("BR")
@@ -174,12 +177,17 @@ model InstitutionUnit {
   code          String?
   slug          String?
   type          String?
+  managerName   String?
+  directorUserId String?
   address       String?
+  numero        String?
+  complemento   String?
   city          String?
   state         String?
   zipCode       String?
   phone         String?
   email         String?
+  website       String?
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

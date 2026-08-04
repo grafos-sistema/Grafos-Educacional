@@ -10,6 +10,7 @@ import {
   InstitutionFormTabs,
   type InstitutionFormValues,
 } from '@/components/institutions/InstitutionFormTabs';
+import { resolveInstitutionUnitDirectors } from '@/lib/institution-unit-directors';
 import { institutionsService } from '@/services/institutions.service';
 
 const normalizeIsActive = (value?: InstitutionFormValues['isActive']) =>
@@ -22,16 +23,56 @@ export default function NewInstitutionPage() {
   const form = useForm<InstitutionFormValues>({
     defaultValues: {
       isActive: true,
+      units: [
+        {
+          name: '',
+          managerName: '',
+          directorUserId: '',
+          directorMode: 'none',
+          directorFirstName: '',
+          directorLastName: '',
+          directorCpf: '',
+          directorEmail: '',
+          directorPhone: '',
+          email: '',
+          phone: '',
+          website: '',
+          zipCode: '',
+          address: '',
+          numero: '',
+          complemento: '',
+          city: '',
+          state: '',
+          isActive: true,
+        },
+      ],
     },
   });
 
   const onSubmit = async (data: InstitutionFormValues) => {
     try {
       setIsSubmitting(true);
-      await institutionsService.create({
+      const createdInstitution = await institutionsService.create({
         ...data,
         isActive: normalizeIsActive(data.isActive),
       });
+
+      const unitsWithDirectors = await resolveInstitutionUnitDirectors(
+        createdInstitution.id,
+        createdInstitution.units ?? [],
+        data.units
+      );
+
+      const hasDirectorAssignments = unitsWithDirectors.some(
+        (unit) => unit.directorUserId || unit.managerName
+      );
+
+      if (hasDirectorAssignments) {
+        await institutionsService.update(createdInstitution.id, {
+          units: unitsWithDirectors,
+        });
+      }
+
       toast.success('Instituição cadastrada com sucesso!');
       router.push('/super-admin/institutions');
     } catch (error: unknown) {

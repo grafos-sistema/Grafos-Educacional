@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   MegaphoneIcon,
   CalendarDaysIcon,
   ClockIcon,
   MapPinIcon,
+  ChevronDownIcon,
   PlusIcon,
 } from '@heroicons/react/24/outline';
 import { announcementsService } from '@/services/announcements.service';
@@ -14,7 +15,6 @@ import { eventsService } from '@/services/events.service';
 import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/user.types';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { AnnouncementComposerModal } from '@/components/communication/AnnouncementComposerModal';
 
@@ -67,6 +67,9 @@ const typeColors: Record<string, 'default' | 'success' | 'error' | 'warning' | '
 export default function CommunicationPage() {
   const [activeTab, setActiveTab] = useState<'announcements' | 'events'>('announcements');
   const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const [composerMode, setComposerMode] = useState<'immediate' | 'scheduled'>('immediate');
+  const [isComposerMenuOpen, setIsComposerMenuOpen] = useState(false);
+  const composerMenuRef = useRef<HTMLDivElement | null>(null);
   const user = useAuthStore((state) => state.user);
   const currentRole = user?.activeProfile || user?.role;
   const canManageAnnouncements = [
@@ -94,6 +97,30 @@ export default function CommunicationPage() {
     return (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3);
   }) || [];
 
+  useEffect(() => {
+    if (!isComposerMenuOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!composerMenuRef.current?.contains(event.target as Node)) {
+        setIsComposerMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsComposerMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isComposerMenuOpen]);
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -107,12 +134,59 @@ export default function CommunicationPage() {
           </p>
         </div>
         {canManageAnnouncements ? (
-          <Button
-            onClick={() => setIsComposerOpen(true)}
-            leftIcon={<PlusIcon className="h-5 w-5" />}
-          >
-            Criar comunicado
-          </Button>
+          <div ref={composerMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setIsComposerMenuOpen((current) => !current)}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+            >
+              <PlusIcon className="h-5 w-5" />
+              <span>Criar comunicado</span>
+              <ChevronDownIcon className="h-4 w-4" />
+            </button>
+
+            {isComposerMenuOpen ? (
+              <div className="absolute right-0 z-20 mt-2 w-72 origin-top-right rounded-lg border border-gray-200 bg-white p-2 shadow-lg focus:outline-none dark:border-gray-700 dark:bg-gray-900">
+                <div className="px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
+                  Tipo de envio
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setComposerMode('immediate');
+                    setIsComposerMenuOpen(false);
+                    setIsComposerOpen(true);
+                  }}
+                  className="flex w-full flex-col rounded-lg px-3 py-3 text-left transition-colors hover:bg-primary-50 dark:hover:bg-primary-900/20"
+                >
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                    Enviar agora
+                  </span>
+                  <span className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Abre o modal já preparado para publicação imediata.
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setComposerMode('scheduled');
+                    setIsComposerMenuOpen(false);
+                    setIsComposerOpen(true);
+                  }}
+                  className="mt-1 flex w-full flex-col rounded-lg px-3 py-3 text-left transition-colors hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                >
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                    Programar comunicado
+                  </span>
+                  <span className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Abre o modal com data e hora futura já habilitadas.
+                  </span>
+                </button>
+              </div>
+            ) : null}
+          </div>
         ) : null}
       </div>
 
@@ -319,6 +393,7 @@ export default function CommunicationPage() {
       <AnnouncementComposerModal
         isOpen={isComposerOpen}
         onClose={() => setIsComposerOpen(false)}
+        mode={composerMode}
       />
     </div>
   );

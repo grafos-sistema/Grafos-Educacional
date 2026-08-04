@@ -5,6 +5,7 @@ export interface Institution {
   cnpj?: string;
   email?: string;
   phone?: string;
+  website?: string;
   address?: string;
   numero?: string;
   complemento?: string;
@@ -27,6 +28,8 @@ export interface InstitutionUnit {
   code?: string;
   slug?: string;
   type?: string;
+  managerName?: string;
+  directorUserId?: string;
   address?: string;
   numero?: string;
   complemento?: string;
@@ -35,9 +38,30 @@ export interface InstitutionUnit {
   zipCode?: string;
   phone?: string;
   email?: string;
+  website?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CreateInstitutionUnitDto {
+  id?: string;
+  name: string;
+  code?: string;
+  slug?: string;
+  type?: string;
+  managerName?: string;
+  directorUserId?: string;
+  address?: string;
+  numero?: string;
+  complemento?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  isActive?: boolean;
 }
 
 export interface InstitutionDocument {
@@ -62,6 +86,7 @@ export interface CreateInstitutionDto {
   cnpj?: string;
   email?: string;
   phone?: string;
+  website?: string;
   address?: string;
   numero?: string;
   complemento?: string;
@@ -71,6 +96,7 @@ export interface CreateInstitutionDto {
   zipCode?: string;
   logo?: string;
   isActive?: boolean;
+  units?: CreateInstitutionUnitDto[];
 }
 
 export interface UpdateInstitutionDto {
@@ -79,6 +105,7 @@ export interface UpdateInstitutionDto {
   cnpj?: string;
   email?: string;
   phone?: string;
+  website?: string;
   address?: string;
   numero?: string;
   complemento?: string;
@@ -88,6 +115,7 @@ export interface UpdateInstitutionDto {
   zipCode?: string;
   logo?: string;
   isActive?: boolean;
+  units?: CreateInstitutionUnitDto[];
 }
 
 export interface InstitutionFilterParams {

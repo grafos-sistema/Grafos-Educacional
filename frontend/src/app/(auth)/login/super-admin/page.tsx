@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -22,6 +22,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function SuperAdminLoginPage() {
   const { logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -34,10 +35,21 @@ export default function SuperAdminLoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
+  useEffect(() => {
+    if (pathname && pathname !== '/security') {
+      router.replace('/security');
+    }
+  }, [pathname, router]);
+
   const onSubmit = async (data: LoginFormData) => {
     try {
       setError(null);
       setIsLoading(true);
+
+      if (pathname !== '/security') {
+        throw new Error('O acesso global deve ser feito exclusivamente pela rota /security.');
+      }
+
       const response = await authService.login(data);
       useAuthStore.getState().login(
         response.user,
@@ -53,8 +65,12 @@ export default function SuperAdminLoginPage() {
       }
 
       window.location.href = '/super-admin/dashboard';
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao fazer login. Verifique suas credenciais.');
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Erro ao fazer login. Verifique suas credenciais.'
+      );
     } finally {
       setIsLoading(false);
     }

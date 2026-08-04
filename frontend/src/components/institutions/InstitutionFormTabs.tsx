@@ -4,19 +4,25 @@ import {
   ArrowLeftIcon,
   ArrowRightIcon,
   BuildingOffice2Icon,
-  CheckCircleIcon,
+  MagnifyingGlassIcon,
   GlobeAltIcon,
   IdentificationIcon,
   MapPinIcon,
+  PlusIcon,
+  TrashIcon,
+  UserCircleIcon,
 } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
-import type { UseFormReturn } from 'react-hook-form';
+import { useQuery } from '@tanstack/react-query';
+import { useFieldArray, type UseFormReturn } from 'react-hook-form';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { BRAZILIAN_UF_OPTIONS } from '@/lib/constants/document-options';
 import { formatCep, lookupCep } from '@/lib/address-utils';
-import type { CreateInstitutionDto } from '@/types/institution.types';
+import type { CreateInstitutionDto, CreateInstitutionUnitDto } from '@/types/institution.types';
+import { usersService } from '@/services/users.service';
+import { UserRole } from '@/types/user.types';
 
 const tabs = [
   {
@@ -28,13 +34,13 @@ const tabs = [
   {
     id: 'contato',
     label: 'Contato',
-    subtitle: 'Canais de contato institucionais',
+    subtitle: 'Canais oficiais da instituição',
     icon: GlobeAltIcon,
   },
   {
-    id: 'endereco',
-    label: 'Endereço',
-    subtitle: 'Localização e dados postais',
+    id: 'anexos',
+    label: 'Anexos',
+    subtitle: 'Unidades, endereço e responsáveis',
     icon: MapPinIcon,
   },
   {
@@ -45,6 +51,38 @@ const tabs = [
   },
 ] as const;
 
+type TabId = (typeof tabs)[number]['id'];
+
+export interface InstitutionUnitFormValues extends CreateInstitutionUnitDto {
+  id?: string;
+  directorMode?: 'none' | 'create' | 'link';
+  directorFirstName?: string;
+  directorLastName?: string;
+  directorCpf?: string;
+  directorEmail?: string;
+  directorPhone?: string;
+}
+
+interface InstitutionFormTabsProps {
+  form: UseFormReturn<InstitutionFormValues>;
+  institutionId?: string;
+}
+
+export type InstitutionFormValues = Omit<CreateInstitutionDto, 'isActive' | 'units'> & {
+  isActive?: boolean | 'true' | 'false';
+  units: InstitutionUnitFormValues[];
+};
+
+const nameRegex = /[^A-Za-zÀ-ÿ0-9 ]/g;
+
+type DirectorOption = {
+  id: string;
+  fullName: string;
+  cpf?: string;
+  email?: string;
+  phone?: string;
+};
+
 function TabHeader({ tab }: { tab: (typeof tabs)[number] }) {
   return (
     <div className="border-b border-gray-200 pb-4 dark:border-gray-700">
@@ -54,41 +92,130 @@ function TabHeader({ tab }: { tab: (typeof tabs)[number] }) {
   );
 }
 
-interface InstitutionFormTabsProps {
-  form: UseFormReturn<InstitutionFormValues>;
+function sanitizeInstitutionName(value: string) {
+  return value
+    .replace(nameRegex, '')
+    .replace(/\s+/g, ' ')
+    .trimStart()
+    .slice(0, 50);
 }
 
-export type InstitutionFormValues = Omit<CreateInstitutionDto, 'isActive'> & {
-  isActive?: boolean | 'true' | 'false';
-};
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 80);
+}
 
-export function InstitutionFormTabs({ form }: InstitutionFormTabsProps) {
-  const [activeTab, setActiveTab] = useState<(typeof tabs)[number]['id']>('identificacao');
+function formatCnpj(value?: string) {
+  const digits = (value ?? '').replace(/\D/g, '').slice(0, 14);
+
+  return digits
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1/$2')
+    .replace(/(\d{4})(\d)/, '$1-$2');
+}
+
+function formatPhone(value?: string) {
+  const digits = (value ?? '').replace(/\D/g, '').slice(0, 11);
+
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 3)} ${digits.slice(3, 7)}-${digits.slice(7)}`;
+}
+
+function formatCpf(value?: string) {
+  const digits = (value ?? '').replace(/\D/g, '').slice(0, 11);
+
+  return digits
+    .replace(/^(\d{3})(\d)/, '$1.$2')
+    .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1-$2');
+}
+
+function emptyUnit(): InstitutionUnitFormValues {
+  return {
+    name: '',
+    managerName: '',
+    directorUserId: '',
+    directorMode: 'none',
+    directorFirstName: '',
+    directorLastName: '',
+    directorCpf: '',
+    directorEmail: '',
+    directorPhone: '',
+    email: '',
+    phone: '',
+    website: '',
+    zipCode: '',
+    address: '',
+    numero: '',
+    complemento: '',
+    city: '',
+    state: '',
+    isActive: true,
+  };
+}
+
+function normalizeTabError<T extends string>(message?: T) {
+  return typeof message === 'string' ? message : undefined;
+}
+
+export function InstitutionFormTabs({ form, institutionId }: InstitutionFormTabsProps) {
+  const [activeTab, setActiveTab] = useState<TabId>('identificacao');
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const {
-    register,
+    control,
     watch,
     setValue,
+    getValues,
     formState: { errors },
   } = form;
 
-  const institutionName = watch('name') || 'Nova Instituição';
-  const institutionSlug = watch('slug') || 'slug-da-instituicao';
-  const institutionCity = watch('city') || 'Cidade';
-  const institutionState = watch('state') || 'UF';
-  const institutionCnpj = watch('cnpj') || 'CNPJ não informado';
-  const institutionEmail = watch('email') || 'Email não informado';
-  const institutionStatus = watch('isActive');
-  const zipCode = watch('zipCode');
-  const initials = institutionName
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part: string) => part[0]?.toUpperCase() ?? '')
-    .join('') || 'NI';
+  const { fields, append, remove, replace } = useFieldArray({
+    control,
+    name: 'units',
+  });
 
   const activeIndex = tabs.findIndex((tab) => tab.id === activeTab);
-  const nameError = typeof errors.name?.message === 'string' ? errors.name.message : undefined;
-  const slugError = typeof errors.slug?.message === 'string' ? errors.slug.message : undefined;
+  const institutionName = watch('name') || 'Nova Instituição';
+  const slugValue = watch('slug') || '';
+  const cnpjValue = watch('cnpj') || '';
+  const websiteValue = watch('website') || '';
+  const emailValue = watch('email') || '';
+  const phoneValue = watch('phone') || '';
+  const units = watch('units') || [];
+
+  const nameError = normalizeTabError(errors.name?.message as string | undefined);
+  const slugError = normalizeTabError(errors.slug?.message as string | undefined);
+  const cnpjError = normalizeTabError(errors.cnpj?.message as string | undefined);
+  const emailError = normalizeTabError(errors.email?.message as string | undefined);
+  const phoneError = normalizeTabError(errors.phone?.message as string | undefined);
+  const websiteError = normalizeTabError(errors.website?.message as string | undefined);
+  const logoError = normalizeTabError(errors.logo?.message as string | undefined);
+
+  useEffect(() => {
+    const currentUnits = getValues('units');
+    if (!currentUnits || currentUnits.length === 0) {
+      replace([emptyUnit()]);
+    }
+  }, [getValues, replace]);
+
+  useEffect(() => {
+    if (slugManuallyEdited) return;
+    const generatedSlug = slugify(institutionName);
+    setValue('slug', generatedSlug, { shouldDirty: true, shouldValidate: true });
+  }, [institutionName, setValue, slugManuallyEdited]);
 
   const goToTab = (index: number) => {
     if (index >= 0 && index < tabs.length) {
@@ -96,79 +223,73 @@ export function InstitutionFormTabs({ form }: InstitutionFormTabsProps) {
     }
   };
 
-  useEffect(() => {
-    const fillAddressFromCep = async () => {
-      const normalizedCep = (zipCode ?? '').replace(/\D/g, '');
+  const annexSummary = units.filter((unit) => unit?.name?.trim()).length;
 
-      if (normalizedCep.length !== 8) {
-        return;
+  const { data: directorsResponse } = useQuery({
+    queryKey: ['institution-directors', institutionId],
+    queryFn: () =>
+      usersService.findAll({
+        role: UserRole.DIRECTOR,
+        institutionId,
+        page: 1,
+        limit: 200,
+      }),
+    enabled: Boolean(institutionId),
+  });
+
+  const institutionDirectors: DirectorOption[] = (directorsResponse?.data ?? []).map((director) => ({
+    id: director.id,
+    fullName: `${director.firstName} ${director.lastName}`.trim(),
+    cpf: director.cpf,
+    email: director.email,
+    phone: director.phone,
+  }));
+
+  const handleUnitCepBlur = async (index: number) => {
+    const unit = getValues(`units.${index}`);
+    const normalizedCep = (unit?.zipCode ?? '').replace(/\D/g, '');
+
+    if (normalizedCep.length !== 8) {
+      return;
+    }
+
+    try {
+      const result = await lookupCep(normalizedCep);
+      if (!result) return;
+
+      setValue(`units.${index}.zipCode`, result.zipCode, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+
+      if (!getValues(`units.${index}.address`) && result.address) {
+        setValue(`units.${index}.address`, result.address, {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
       }
 
-      try {
-        const result = await lookupCep(normalizedCep);
-
-        if (!result) {
-          return;
-        }
-
-        setValue('zipCode', result.zipCode, { shouldDirty: true, shouldTouch: true });
-
-        if (!watch('address') && result.address) {
-          setValue('address', result.address, { shouldDirty: true, shouldTouch: true });
-        }
-
-        if (!watch('city') && result.city) {
-          setValue('city', result.city, { shouldDirty: true, shouldTouch: true });
-        }
-
-        if (!watch('state') && result.state) {
-          setValue('state', result.state, { shouldDirty: true, shouldTouch: true });
-        }
-      } catch {
-        // Mantém o preenchimento manual disponível mesmo sem retorno do CEP
+      if (!getValues(`units.${index}.city`) && result.city) {
+        setValue(`units.${index}.city`, result.city, {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
       }
-    };
 
-    fillAddressFromCep();
-  }, [setValue, watch, zipCode]);
+      if (!getValues(`units.${index}.state`) && result.state) {
+        setValue(`units.${index}.state`, result.state, {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+      }
+    } catch {
+      // Mantém edição manual liberada
+    }
+  };
 
   return (
     <div className="flex flex-col gap-8 pb-4 pt-4 md:flex-row md:items-start">
       <div className="flex w-full shrink-0 flex-col gap-5 md:w-[248px]">
-        <div className="relative flex flex-col items-center rounded-2xl border border-gray-200 bg-white px-5 py-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary-50 text-2xl font-bold text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
-            {initials}
-          </div>
-
-          <div className="mt-4 text-center">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">{institutionName}</p>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{institutionCnpj}</p>
-          </div>
-
-          <div className="mt-5 w-full space-y-3 rounded-2xl bg-gray-50 p-4 dark:bg-gray-900/40">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">Slug</p>
-              <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">{institutionSlug}</p>
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">Localização</p>
-              <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
-                {institutionCity}
-                {institutionState ? `, ${institutionState}` : ''}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">Contato</p>
-              <p className="mt-1 break-all text-sm text-gray-700 dark:text-gray-300">{institutionEmail}</p>
-            </div>
-          </div>
-
-          <div className="mt-4 flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
-            <CheckCircleIcon className="h-4 w-4" />
-            {institutionStatus === false || institutionStatus === 'false' ? 'Instituição inativa' : 'Instituição ativa'}
-          </div>
-        </div>
-
         <nav className="hide-scrollbar flex flex-row gap-2 overflow-x-auto pb-2 md:flex-col md:pb-0">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -194,7 +315,7 @@ export function InstitutionFormTabs({ form }: InstitutionFormTabsProps) {
                   <div>
                     <p>{tab.label}</p>
                     <p className="mt-0.5 text-xs font-normal text-gray-500 dark:text-gray-400">
-                      {tab.subtitle}
+                      {tab.id === 'anexos' ? `${annexSummary} anexo(s)` : tab.subtitle}
                     </p>
                   </div>
                 </div>
@@ -208,7 +329,7 @@ export function InstitutionFormTabs({ form }: InstitutionFormTabsProps) {
         <div className="relative p-6 md:p-8 xl:p-10">
           <div className="w-full space-y-6">
             {activeTab === 'identificacao' && (
-              <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
+              <div className="animate-in fade-in slide-in-from-bottom-2 space-y-6 duration-300">
                 <TabHeader tab={tabs[0]} />
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -216,24 +337,30 @@ export function InstitutionFormTabs({ form }: InstitutionFormTabsProps) {
                     <Input
                       label="Nome da Instituição *"
                       placeholder="Ex: SESI"
-                      {...register('name', { required: 'Nome é obrigatório' })}
+                      value={institutionName}
+                      onChange={(event) => {
+                        const sanitized = sanitizeInstitutionName(event.target.value);
+                        setValue('name', sanitized, { shouldDirty: true, shouldValidate: true });
+                      }}
                       error={nameError}
+                      maxLength={50}
+                      helperText="Máximo de 50 caracteres. Apenas letras, números e espaços."
                     />
                   </div>
 
                   <div>
                     <Input
-                      label="CNPJ"
+                      label="CNPJ *"
                       placeholder="Ex: 12.345.678/0001-90"
-                      {...register('cnpj')}
-                    />
-                  </div>
-
-                  <div>
-                    <Input
-                      label="País"
-                      placeholder="Brasil"
-                      {...register('country')}
+                      value={formatCnpj(cnpjValue)}
+                      onChange={(event) => {
+                        setValue('cnpj', formatCnpj(event.target.value), {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                      }}
+                      error={cnpjError}
+                      inputMode="numeric"
                     />
                   </div>
                 </div>
@@ -241,7 +368,7 @@ export function InstitutionFormTabs({ form }: InstitutionFormTabsProps) {
             )}
 
             {activeTab === 'contato' && (
-              <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
+              <div className="animate-in fade-in slide-in-from-bottom-2 space-y-6 duration-300">
                 <TabHeader tab={tabs[1]} />
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -250,96 +377,46 @@ export function InstitutionFormTabs({ form }: InstitutionFormTabsProps) {
                       label="Email Institucional"
                       placeholder="Ex: contato@escola.com.br"
                       type="email"
-                      {...register('email')}
+                      value={emailValue}
+                      onChange={(event) => {
+                        setValue('email', event.target.value.trim(), {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                      }}
+                      error={emailError}
                     />
                   </div>
 
                   <div>
                     <Input
                       label="Telefone"
-                      placeholder="Ex: (11) 99999-9999"
-                      {...register('phone')}
+                      placeholder="Ex: (99) 9 9999-9999"
+                      value={formatPhone(phoneValue)}
+                      onChange={(event) => {
+                        setValue('phone', formatPhone(event.target.value), {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                      }}
+                      error={phoneError}
+                      inputMode="numeric"
                     />
                   </div>
-                </div>
-              </div>
-            )}
 
-            {activeTab === 'endereco' && (
-              <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
-                <TabHeader tab={tabs[2]} />
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="md:col-span-2">
                     <Input
-                      label="Endereço"
-                      placeholder="Ex: Av. Principal"
-                      {...register('address')}
-                    />
-                  </div>
-
-                  <div>
-                    <Input
-                      label="Número"
-                      placeholder="Ex: 1000"
-                      {...register('numero')}
-                    />
-                  </div>
-
-                  <div>
-                    <Input
-                      label="Complemento"
-                      placeholder="Ex: Sala 4"
-                      {...register('complemento')}
-                    />
-                  </div>
-
-                  <div>
-                    <Input
-                      label="Cidade"
-                      placeholder="Ex: São Paulo"
-                      {...register('city')}
-                    />
-                  </div>
-
-                  <div>
-                    <Select
-                      label="Estado (UF)"
-                      options={[{ value: '', label: 'Selecione a UF' }, ...BRAZILIAN_UF_OPTIONS]}
-                      {...register('state')}
-                    />
-                  </div>
-
-                  <div>
-                    <Input
-                      label="CEP"
-                      value={zipCode ? formatCep(zipCode) : ''}
-                      placeholder="Ex: 01000-000"
-                      {...register('zipCode')}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'sistema' && (
-              <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
-                <TabHeader tab={tabs[3]} />
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="md:col-span-2">
-                    <Input
-                      label="Slug (Identificador na URL) *"
-                      placeholder="Ex: escola-machado-de-assis"
-                      {...register('slug', {
-                        required: 'Slug é obrigatório',
-                        pattern: {
-                          value: /^[a-z0-9-]+$/,
-                          message: 'Apenas letras minúsculas, números e hifens',
-                        },
-                      })}
-                      error={slugError}
-                      helpText="Usado para o link de acesso da escola. Apenas letras minúsculas sem acento, números e hifens."
+                      label="Site Institucional"
+                      placeholder="Ex: https://www.suaescola.com.br"
+                      type="url"
+                      value={websiteValue}
+                      onChange={(event) => {
+                        setValue('website', event.target.value.trim(), {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                      }}
+                      error={websiteError}
                     />
                   </div>
 
@@ -347,14 +424,497 @@ export function InstitutionFormTabs({ form }: InstitutionFormTabsProps) {
                     <Input
                       label="Logo (URL)"
                       placeholder="Ex: https://..."
-                      {...register('logo')}
+                      value={watch('logo') || ''}
+                      onChange={(event) =>
+                        setValue('logo', event.target.value.trim(), {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                      }
+                      error={logoError}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'anexos' && (
+              <div className="animate-in fade-in slide-in-from-bottom-2 space-y-6 duration-300">
+                <TabHeader tab={tabs[2]} />
+
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-900/40">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      Cadastre os anexos e unidades da instituição
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Cada anexo pode ter localização, contatos e responsável próprios.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => append(emptyUnit())}
+                    leftIcon={<PlusIcon className="h-4 w-4" />}
+                  >
+                    Adicionar anexo
+                  </Button>
+                </div>
+
+                <div className="space-y-5">
+                  {fields.map((field, index) => {
+                    const unitNameError = normalizeTabError(
+                      (errors.units?.[index]?.name?.message as string | undefined) ?? undefined
+                    );
+                    const unitPhoneError = normalizeTabError(
+                      (errors.units?.[index]?.phone?.message as string | undefined) ?? undefined
+                    );
+                    const unitEmailError = normalizeTabError(
+                      (errors.units?.[index]?.email?.message as string | undefined) ?? undefined
+                    );
+                    const unitZipCode = watch(`units.${index}.zipCode`) || '';
+                    const unitPhone = watch(`units.${index}.phone`) || '';
+                    const directorMode = (watch(`units.${index}.directorMode`) || 'none') as InstitutionUnitFormValues['directorMode'];
+                    const unitDirectorCpf = watch(`units.${index}.directorCpf`) || '';
+                    const unitDirectorPhone = watch(`units.${index}.directorPhone`) || '';
+                    const linkedDirectorId = watch(`units.${index}.directorUserId`) || '';
+                    const directorSearch = watch(`units.${index}.managerName`) || '';
+                    const filteredDirectors = institutionDirectors.filter((director) => {
+                      if (!directorSearch.trim()) return true;
+                      const normalizedSearch = directorSearch.toLowerCase();
+                      return (
+                        director.fullName.toLowerCase().includes(normalizedSearch) ||
+                        (director.cpf ?? '').replace(/\D/g, '').includes(directorSearch.replace(/\D/g, ''))
+                      );
+                    });
+                    const selectedDirector = institutionDirectors.find((director) => director.id === linkedDirectorId);
+
+                    return (
+                      <div
+                        key={field.id}
+                        className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900/40"
+                      >
+                        <div className="mb-5 flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-base font-semibold text-gray-900 dark:text-white">
+                              Anexo {index + 1}
+                            </p>
+                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                              Endereço, contato e responsável desta unidade.
+                            </p>
+                          </div>
+                          {fields.length > 1 ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => remove(index)}
+                              className="rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/20"
+                              leftIcon={<TrashIcon className="h-4 w-4" />}
+                            >
+                              Remover
+                            </Button>
+                          ) : null}
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <div>
+                            <Input
+                              label="Nome do anexo *"
+                              placeholder="Ex: SESI - Anna Adelaide Bello"
+                              value={watch(`units.${index}.name`) || ''}
+                              onChange={(event) =>
+                                setValue(`units.${index}.name`, sanitizeInstitutionName(event.target.value), {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                })
+                              }
+                              error={unitNameError}
+                              maxLength={50}
+                            />
+                          </div>
+
+                          <div className="md:col-span-2">
+                            <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-950/20">
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                    Diretor do anexo
+                                  </p>
+                                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Cadastre um novo diretor ou vincule um já existente nesta instituição.
+                                  </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  <Button
+                                    type="button"
+                                    variant={directorMode === 'create' ? 'primary' : 'outline'}
+                                    onClick={() => {
+                                      setValue(`units.${index}.directorMode`, 'create', {
+                                        shouldDirty: true,
+                                      });
+                                      setValue(`units.${index}.directorUserId`, '', {
+                                        shouldDirty: true,
+                                      });
+                                    }}
+                                    leftIcon={<PlusIcon className="h-4 w-4" />}
+                                  >
+                                    Cadastrar Diretor
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant={directorMode === 'link' ? 'primary' : 'outline'}
+                                    onClick={() => {
+                                      setValue(`units.${index}.directorMode`, 'link', {
+                                        shouldDirty: true,
+                                      });
+                                      setValue(`units.${index}.directorFirstName`, '', {
+                                        shouldDirty: true,
+                                      });
+                                      setValue(`units.${index}.directorLastName`, '', {
+                                        shouldDirty: true,
+                                      });
+                                      setValue(`units.${index}.directorCpf`, '', {
+                                        shouldDirty: true,
+                                      });
+                                      setValue(`units.${index}.directorEmail`, '', {
+                                        shouldDirty: true,
+                                      });
+                                      setValue(`units.${index}.directorPhone`, '', {
+                                        shouldDirty: true,
+                                      });
+                                    }}
+                                    disabled={!institutionId}
+                                    leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
+                                  >
+                                    Vincular Diretor
+                                  </Button>
+                                </div>
+                              </div>
+
+                              {!institutionId && directorMode === 'link' ? (
+                                <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
+                                  O vínculo fica disponível depois que a instituição já existir.
+                                </p>
+                              ) : null}
+
+                              {directorMode === 'create' ? (
+                                <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                                  <Input
+                                    label="Nome do diretor *"
+                                    placeholder="Ex: Maria"
+                                    value={watch(`units.${index}.directorFirstName`) || ''}
+                                    onChange={(event) =>
+                                      setValue(
+                                        `units.${index}.directorFirstName`,
+                                        sanitizeInstitutionName(event.target.value),
+                                        { shouldDirty: true, shouldValidate: true }
+                                      )
+                                    }
+                                    leftIcon={<UserCircleIcon className="h-5 w-5" />}
+                                    maxLength={50}
+                                  />
+
+                                  <Input
+                                    label="Sobrenome do diretor *"
+                                    placeholder="Ex: Oliveira"
+                                    value={watch(`units.${index}.directorLastName`) || ''}
+                                    onChange={(event) =>
+                                      setValue(
+                                        `units.${index}.directorLastName`,
+                                        sanitizeInstitutionName(event.target.value),
+                                        { shouldDirty: true, shouldValidate: true }
+                                      )
+                                    }
+                                    maxLength={50}
+                                  />
+
+                                  <Input
+                                    label="CPF do diretor"
+                                    placeholder="Ex: 123.456.789-00"
+                                    value={formatCpf(unitDirectorCpf)}
+                                    onChange={(event) =>
+                                      setValue(`units.${index}.directorCpf`, formatCpf(event.target.value), {
+                                        shouldDirty: true,
+                                        shouldValidate: true,
+                                      })
+                                    }
+                                    inputMode="numeric"
+                                  />
+
+                                  <Input
+                                    label="Telefone do diretor"
+                                    placeholder="Ex: (99) 9 9999-9999"
+                                    value={formatPhone(unitDirectorPhone)}
+                                    onChange={(event) =>
+                                      setValue(`units.${index}.directorPhone`, formatPhone(event.target.value), {
+                                        shouldDirty: true,
+                                        shouldValidate: true,
+                                      })
+                                    }
+                                    inputMode="numeric"
+                                  />
+
+                                  <div className="md:col-span-2">
+                                    <Input
+                                      label="Email do diretor *"
+                                      type="email"
+                                      placeholder="Ex: diretor@instituicao.com.br"
+                                      value={watch(`units.${index}.directorEmail`) || ''}
+                                      onChange={(event) =>
+                                        setValue(`units.${index}.directorEmail`, event.target.value.trim(), {
+                                          shouldDirty: true,
+                                          shouldValidate: true,
+                                        })
+                                      }
+                                    />
+                                  </div>
+                                </div>
+                              ) : null}
+
+                              {directorMode === 'link' ? (
+                                <div className="mt-4 space-y-3">
+                                  <Input
+                                    label="Buscar diretor por nome ou CPF"
+                                    placeholder="Digite nome ou CPF"
+                                    value={directorSearch}
+                                    onChange={(event) => {
+                                      setValue(`units.${index}.directorUserId`, '', {
+                                        shouldDirty: true,
+                                      });
+                                      setValue(`units.${index}.managerName`, event.target.value, {
+                                        shouldDirty: true,
+                                      });
+                                    }}
+                                    leftIcon={<MagnifyingGlassIcon className="h-5 w-5" />}
+                                  />
+
+                                  <div className="max-h-52 space-y-2 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-900">
+                                    {filteredDirectors.length === 0 ? (
+                                      <p className="px-2 py-3 text-sm text-gray-500 dark:text-gray-400">
+                                        Nenhum diretor encontrado para esta instituição.
+                                      </p>
+                                    ) : (
+                                      filteredDirectors.map((director) => {
+                                        const isSelected = linkedDirectorId === director.id;
+
+                                        return (
+                                          <button
+                                            key={director.id}
+                                            type="button"
+                                            onClick={() => {
+                                              setValue(`units.${index}.directorUserId`, director.id, {
+                                                shouldDirty: true,
+                                                shouldValidate: true,
+                                              });
+                                              setValue(`units.${index}.managerName`, director.fullName, {
+                                                shouldDirty: true,
+                                              });
+                                            }}
+                                            className={`flex w-full items-start justify-between rounded-xl border px-3 py-3 text-left transition-colors ${
+                                              isSelected
+                                                ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
+                                                : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800'
+                                            }`}
+                                          >
+                                            <div>
+                                              <p className="text-sm font-semibold">{director.fullName}</p>
+                                              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                                {director.cpf || 'CPF não informado'}{director.email ? ` • ${director.email}` : ''}
+                                              </p>
+                                            </div>
+                                            {isSelected ? (
+                                              <span className="rounded-full bg-primary-100 px-2 py-1 text-xs font-semibold text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
+                                                Vinculado
+                                              </span>
+                                            ) : null}
+                                          </button>
+                                        );
+                                      })
+                                    )}
+                                  </div>
+
+                                  {selectedDirector ? (
+                                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-300">
+                                      Diretor vinculado: <span className="font-semibold">{selectedDirector.fullName}</span>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div>
+                            <Input
+                              label="Email do anexo"
+                              type="email"
+                              placeholder="Ex: anna.adelaide@sesi.com.br"
+                              value={watch(`units.${index}.email`) || ''}
+                              onChange={(event) =>
+                                setValue(`units.${index}.email`, event.target.value.trim(), {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                })
+                              }
+                              error={unitEmailError}
+                            />
+                          </div>
+
+                          <div>
+                            <Input
+                              label="Telefone do anexo"
+                              placeholder="Ex: (99) 9 9999-9999"
+                              value={formatPhone(unitPhone)}
+                              onChange={(event) =>
+                                setValue(`units.${index}.phone`, formatPhone(event.target.value), {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                })
+                              }
+                              error={unitPhoneError}
+                              inputMode="numeric"
+                            />
+                          </div>
+
+                          <div className="md:col-span-2">
+                            <Input
+                              label="Site do anexo"
+                              type="url"
+                              placeholder="Ex: https://annaadelaide.sesi.com.br"
+                              value={watch(`units.${index}.website`) || ''}
+                              onChange={(event) =>
+                                setValue(`units.${index}.website`, event.target.value.trim(), {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                })
+                              }
+                            />
+                          </div>
+
+                          <div>
+                            <Input
+                              label="CEP"
+                              value={unitZipCode ? formatCep(unitZipCode) : ''}
+                              placeholder="Ex: 65000-000"
+                              inputMode="numeric"
+                              onChange={(event) =>
+                                setValue(`units.${index}.zipCode`, formatCep(event.target.value), {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                })
+                              }
+                              onBlur={() => void handleUnitCepBlur(index)}
+                            />
+                          </div>
+
+                          <div>
+                            <Select
+                              label="Estado (UF)"
+                              value={watch(`units.${index}.state`) || ''}
+                              onChange={(event) =>
+                                setValue(`units.${index}.state`, event.target.value, {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                })
+                              }
+                              options={[{ value: '', label: 'Selecione a UF' }, ...BRAZILIAN_UF_OPTIONS]}
+                            />
+                          </div>
+
+                          <div className="md:col-span-2">
+                            <Input
+                              label="Logradouro"
+                              placeholder="Ex: Av. Principal"
+                              value={watch(`units.${index}.address`) || ''}
+                              onChange={(event) =>
+                                setValue(`units.${index}.address`, event.target.value, {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                })
+                              }
+                            />
+                          </div>
+
+                          <div>
+                            <Input
+                              label="Número"
+                              placeholder="Ex: 1000"
+                              value={watch(`units.${index}.numero`) || ''}
+                              onChange={(event) =>
+                                setValue(`units.${index}.numero`, event.target.value.slice(0, 20), {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                })
+                              }
+                            />
+                          </div>
+
+                          <div>
+                            <Input
+                              label="Complemento"
+                              placeholder="Ex: Bloco B"
+                              value={watch(`units.${index}.complemento`) || ''}
+                              onChange={(event) =>
+                                setValue(`units.${index}.complemento`, event.target.value.slice(0, 80), {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                })
+                              }
+                            />
+                          </div>
+
+                          <div className="md:col-span-2">
+                            <Input
+                              label="Cidade"
+                              placeholder="Ex: São Luís"
+                              value={watch(`units.${index}.city`) || ''}
+                              onChange={(event) =>
+                                setValue(`units.${index}.city`, event.target.value.slice(0, 80), {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'sistema' && (
+              <div className="animate-in fade-in slide-in-from-bottom-2 space-y-6 duration-300">
+                <TabHeader tab={tabs[3]} />
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="md:col-span-2">
+                    <Input
+                      label="Slug (Identificador na URL) *"
+                      placeholder="Ex: sesi"
+                      value={slugValue}
+                      onChange={(event) => {
+                        setSlugManuallyEdited(true);
+                        setValue('slug', slugify(event.target.value), {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                      }}
+                      error={slugError}
+                      helperText="Apenas letras minúsculas, números e hífens."
                     />
                   </div>
 
                   <div>
                     <Select
                       label="Status *"
-                      {...register('isActive')}
+                      value={String(watch('isActive') ?? 'true')}
+                      onChange={(event) =>
+                        setValue('isActive', event.target.value as 'true' | 'false', {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                      }
                       options={[
                         { value: 'true', label: 'Ativo' },
                         { value: 'false', label: 'Inativo' },

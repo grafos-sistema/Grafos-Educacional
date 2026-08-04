@@ -11,6 +11,7 @@ import {
   InstitutionFormTabs,
   type InstitutionFormValues,
 } from '@/components/institutions/InstitutionFormTabs';
+import { resolveInstitutionUnitDirectors } from '@/lib/institution-unit-directors';
 import { institutionsService } from '@/services/institutions.service';
 
 interface EditInstitutionPageProps {
@@ -41,13 +42,54 @@ export default function EditInstitutionPage({ params }: EditInstitutionPageProps
         cnpj: institution.cnpj || '',
         email: institution.email || '',
         phone: institution.phone || '',
-        address: institution.address || '',
-        city: institution.city || '',
-        state: institution.state || '',
-        zipCode: institution.zipCode || '',
-        country: institution.country || 'BR',
+        website: institution.website || '',
         logo: institution.logo || '',
         isActive: institution.isActive ? 'true' : 'false',
+        units:
+          institution.units?.map((unit) => ({
+            id: unit.id,
+            name: unit.name || '',
+            managerName: unit.managerName || '',
+            directorUserId: unit.directorUserId || '',
+            directorMode: unit.directorUserId ? 'link' : 'none',
+            directorFirstName: '',
+            directorLastName: '',
+            directorCpf: '',
+            directorEmail: '',
+            directorPhone: '',
+            email: unit.email || '',
+            phone: unit.phone || '',
+            website: unit.website || '',
+            zipCode: unit.zipCode || '',
+            address: unit.address || '',
+            numero: unit.numero || '',
+            complemento: unit.complemento || '',
+            city: unit.city || '',
+            state: unit.state || '',
+            isActive: unit.isActive,
+          })) || [
+            {
+              name: '',
+              managerName: '',
+              directorUserId: '',
+              directorMode: 'none',
+              directorFirstName: '',
+              directorLastName: '',
+              directorCpf: '',
+              directorEmail: '',
+              directorPhone: '',
+              email: '',
+              phone: '',
+              website: '',
+              zipCode: '',
+              address: '',
+              numero: '',
+              complemento: '',
+              city: '',
+              state: '',
+              isActive: true,
+            },
+          ],
       });
     }
   }, [institution, reset]);
@@ -55,9 +97,16 @@ export default function EditInstitutionPage({ params }: EditInstitutionPageProps
   const onSubmit = async (data: InstitutionFormValues) => {
     try {
       setIsSubmitting(true);
+      const unitsWithDirectors = await resolveInstitutionUnitDirectors(
+        id,
+        institution.units ?? [],
+        data.units
+      );
+
       await institutionsService.update(id, {
         ...data,
         isActive: normalizeIsActive(data.isActive),
+        units: unitsWithDirectors,
       });
       toast.success('Instituição atualizada com sucesso!');
       router.push('/super-admin/institutions');
@@ -114,7 +163,7 @@ export default function EditInstitutionPage({ params }: EditInstitutionPageProps
       </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <InstitutionFormTabs form={form} />
+        <InstitutionFormTabs form={form} institutionId={id} />
 
         <div className="flex justify-end gap-3 border-t border-gray-200 pt-4 dark:border-gray-700">
           <Button

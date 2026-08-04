@@ -19,7 +19,10 @@ export class CreateInstitutionDto {
   @IsString()
   @IsNotEmpty({ message: 'Nome é obrigatório' })
   @MinLength(3, { message: 'Nome deve ter no mínimo 3 caracteres' })
-  @MaxLength(200, { message: 'Nome deve ter no máximo 200 caracteres' })
+  @MaxLength(50, { message: 'Nome deve ter no máximo 50 caracteres' })
+  @Matches(/^[A-Za-zÀ-ÿ0-9 ]+$/, {
+    message: 'Nome deve conter apenas letras, números e espaços',
+  })
   name: string;
 
   @ApiProperty({
@@ -67,6 +70,15 @@ export class CreateInstitutionDto {
   phone?: string;
 
   @ApiProperty({
+    description: 'Site institucional',
+    example: 'https://www.escola.com.br',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  website?: string;
+
+  @ApiProperty({
     description: 'Endereço completo',
     example: 'Rua das Flores, 123',
     required: false,
@@ -74,6 +86,24 @@ export class CreateInstitutionDto {
   @IsOptional()
   @IsString()
   address?: string;
+
+  @ApiProperty({
+    description: 'Número do endereço',
+    example: '1000',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  numero?: string;
+
+  @ApiProperty({
+    description: 'Complemento do endereço',
+    example: 'Bloco A',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  complemento?: string;
 
   @ApiProperty({
     description: 'Cidade',
