@@ -15,13 +15,23 @@ type AppUserRow = {
   lastName: string;
   cpf?: string | null;
   phone?: string | null;
+  telefoneFixo?: string | null;
   birthDate?: string | null;
   gender?: User['gender'] | null;
   avatar?: string | null;
   address?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
   city?: string | null;
   state?: string | null;
   zipCode?: string | null;
+  rg?: string | null;
+  rgEmissor?: string | null;
+  rgEmissao?: string | null;
+  socialName?: string | null;
+  nacionalidade?: string | null;
+  naturalidade?: string | null;
   isActive: boolean;
   emailVerified: boolean;
   requestedProfileType?: string | null;
@@ -39,13 +49,23 @@ function mapAppUser(row: AppUserRow, extras?: Partial<User>): User {
     lastName: row.lastName,
     cpf: row.cpf ?? undefined,
     phone: row.phone ?? undefined,
+    telefoneFixo: row.telefoneFixo ?? undefined,
     birthDate: row.birthDate ?? undefined,
     gender: row.gender ?? undefined,
     avatar: row.avatar ?? undefined,
     address: row.address ?? undefined,
+    numero: row.numero ?? undefined,
+    complemento: row.complemento ?? undefined,
+    bairro: row.bairro ?? undefined,
     city: row.city ?? undefined,
     state: row.state ?? undefined,
     zipCode: row.zipCode ?? undefined,
+    rg: row.rg ?? undefined,
+    rgEmissor: row.rgEmissor ?? undefined,
+    rgEmissao: row.rgEmissao ?? undefined,
+    socialName: row.socialName ?? undefined,
+    nacionalidade: row.nacionalidade ?? undefined,
+    naturalidade: row.naturalidade ?? undefined,
     isActive: row.isActive,
     emailVerified: row.emailVerified,
     requestedProfileType: row.requestedProfileType ?? undefined,

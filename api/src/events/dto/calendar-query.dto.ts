@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsUUID,
   IsEnum,
+  IsString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { EventType } from './create-event.dto';
@@ -45,6 +46,15 @@ export class CalendarQueryDto {
   @IsOptional()
   @IsUUID()
   institutionId?: string;
+
+  @ApiPropertyOptional({
+    description: 'List of institution IDs (CSV) to filter',
+    example:
+      '550e8400-e29b-41d4-a716-446655440000,660e8400-e29b-41d4-a716-446655440000',
+  })
+  @IsOptional()
+  @IsString()
+  institutionIds?: string;
 
   @ApiPropertyOptional({
     description: 'Filter by event type',

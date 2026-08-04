@@ -1,4 +1,5 @@
 import api from '@/lib/api';
+import { useAuthStore } from '@/stores/authStore';
 import {
   Event,
   CreateEventDto,
@@ -20,6 +21,15 @@ export const eventsService = {
     if (filters.endDate) params.append('endDate', filters.endDate);
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
+
+    const { institutionFilterAll, institutionFilterIds } = useAuthStore.getState();
+    const effectiveIds = institutionFilterAll ? [] : institutionFilterIds.filter(Boolean);
+
+    if (effectiveIds.length > 1) {
+      params.append('institutionIds', effectiveIds.join(','));
+    } else if (effectiveIds.length === 1) {
+      params.append('institutionId', effectiveIds[0]);
+    }
 
     const response = await api.get<PaginatedResponse<Event>>(`/events?${params.toString()}`);
     return response as unknown as PaginatedResponse<Event>;
@@ -60,7 +70,19 @@ export const eventsService = {
    * Buscar eventos próximos
    */
   async findUpcoming(days: number = 30): Promise<Event[]> {
-    const response = await api.get<Event[]>(`/events/upcoming?days=${days}`);
+    const params = new URLSearchParams();
+    params.append('days', String(days));
+
+    const { institutionFilterAll, institutionFilterIds } = useAuthStore.getState();
+    const effectiveIds = institutionFilterAll ? [] : institutionFilterIds.filter(Boolean);
+
+    if (effectiveIds.length > 1) {
+      params.append('institutionIds', effectiveIds.join(','));
+    } else if (effectiveIds.length === 1) {
+      params.append('institutionId', effectiveIds[0]);
+    }
+
+    const response = await api.get<Event[]>(`/events/upcoming?${params.toString()}`);
     return response as unknown as Event[];
   },
 
@@ -76,7 +98,21 @@ export const eventsService = {
    * Buscar eventos do calendário (por mês)
    */
   async findByMonth(year: number, month: number): Promise<Event[]> {
-    const response = await api.get<Event[]>(`/events/calendar/${year}/${month}`);
+    const params = new URLSearchParams();
+
+    const { institutionFilterAll, institutionFilterIds } = useAuthStore.getState();
+    const effectiveIds = institutionFilterAll ? [] : institutionFilterIds.filter(Boolean);
+
+    if (effectiveIds.length > 1) {
+      params.append('institutionIds', effectiveIds.join(','));
+    } else if (effectiveIds.length === 1) {
+      params.append('institutionId', effectiveIds[0]);
+    }
+
+    const queryString = params.toString();
+    const response = await api.get<Event[]>(
+      queryString ? `/events/calendar/${year}/${month}?${queryString}` : `/events/calendar/${year}/${month}`
+    );
     return response as unknown as Event[];
   },
 };

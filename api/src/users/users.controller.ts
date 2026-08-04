@@ -74,6 +74,13 @@ export class UsersController {
 
   @Get()
   @SkipOwnership()
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+  )
   @ApiOperation({
     summary: 'Listar todos os usuários',
     description: 'Lista usuários com paginação e filtros',
@@ -114,6 +121,13 @@ export class UsersController {
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
   @ApiQuery({
+    name: 'institutionIds',
+    required: false,
+    type: String,
+    description: 'Lista de instituições (CSV) para filtrar',
+    example: 'id1,id2,id3',
+  })
+  @ApiQuery({
     name: 'isActive',
     required: false,
     type: Boolean,
@@ -145,11 +159,13 @@ export class UsersController {
     },
   })
   findAll(
+    @CurrentUser() currentUser: CurrentUserPayload,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('search') search?: string,
     @Query('role') role?: UserRole,
     @Query('institutionId') institutionId?: string,
+    @Query('institutionIds') institutionIds?: string,
     @Query('isActive') isActive?: boolean,
     @Query('hasTeacherProfile') hasTeacherProfile?: string,
     @Query('hasStudentProfile') hasStudentProfile?: string,
@@ -157,11 +173,15 @@ export class UsersController {
     @Query('hasProfile') hasProfile?: string,
   ) {
     return this.usersService.findAll(
+      currentUser,
       page,
       limit,
       search,
       role,
       institutionId,
+      institutionIds
+        ? institutionIds.split(',').map((value) => value.trim()).filter(Boolean)
+        : undefined,
       isActive,
       hasTeacherProfile === 'true'
         ? true
@@ -198,7 +218,17 @@ export class UsersController {
   }
 
   @Get(':id')
-  @UseGuards(OwnershipGuard)
+  @SkipOwnership()
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+    UserRole.TEACHER,
+    UserRole.STUDENT,
+    UserRole.PARENT,
+  )
   @ApiOperation({
     summary: 'Buscar usuário por ID',
     description:
@@ -211,8 +241,8 @@ export class UsersController {
   })
   @ApiResponse({ status: 404, description: 'Usuário não encontrado' })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.usersService.findOne(id, user);
   }
 
   @Patch(':id')

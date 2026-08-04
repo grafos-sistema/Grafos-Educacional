@@ -21,6 +21,7 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { QueryEventDto } from './dto/query-event.dto';
 import { CalendarQueryDto } from './dto/calendar-query.dto';
+import { UpcomingEventsQueryDto } from './dto/upcoming-events-query.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -85,8 +86,13 @@ export class EventsController {
     status: 200,
     description: 'List of upcoming events',
   })
-  findUpcoming(@Query('days') days: string = '30', @CurrentUser() user: any) {
-    return this.eventsService.findUpcoming(parseInt(days, 10) || 30, user);
+  findUpcoming(@Query() query: UpcomingEventsQueryDto, @CurrentUser() user: any) {
+    return this.eventsService.findUpcoming(query.days || 30, user, {
+      institutionId: query.institutionId,
+      institutionIds: query.institutionIds
+        ? query.institutionIds.split(',').map((value) => value.trim()).filter(Boolean)
+        : undefined,
+    });
   }
 
   @Get('calendar/:year/:month')

@@ -77,6 +77,64 @@ export class UsersService {
     }
   }
 
+  private async getAllowedInstitutionIds(currentUser: {
+    userId: string;
+    role: UserRole;
+    institutionId?: string | null;
+  }) {
+    const links = await this.prisma.userInstitution.findMany({
+      where: { userId: currentUser.userId, isActive: true },
+      select: { institutionId: true },
+    });
+
+    return Array.from(
+      new Set(
+        [currentUser.institutionId, ...links.map((link) => link.institutionId)].filter(
+          (value): value is string => Boolean(value),
+        ),
+      ),
+    );
+  }
+
+  private async ensureCanAccessUser(
+    currentUser: {
+      userId: string;
+      role: UserRole;
+      institutionId?: string | null;
+    },
+    targetUser: { id: string; institutionId?: string | null },
+  ) {
+    if (currentUser.userId === targetUser.id) {
+      return;
+    }
+
+    if (
+      currentUser.role === UserRole.SUPER_ADMIN_GLOBAL ||
+      currentUser.role === UserRole.SUPER_ADMIN
+    ) {
+      return;
+    }
+
+    const institutionalViewerRoles: UserRole[] = [
+      UserRole.DIRECTOR,
+      UserRole.INSTITUTION_ADMIN,
+      UserRole.COORDINATOR,
+    ];
+
+    if (institutionalViewerRoles.includes(currentUser.role)) {
+      const allowedInstitutionIds = await this.getAllowedInstitutionIds(currentUser);
+
+      if (
+        targetUser.institutionId &&
+        allowedInstitutionIds.includes(targetUser.institutionId)
+      ) {
+        return;
+      }
+    }
+
+    throw new ForbiddenException('Acesso negado a este usuário');
+  }
+
   private buildAvatarStoragePath(
     user: { id: string; institutionId?: string | null },
     file: Express.Multer.File,
@@ -214,11 +272,13 @@ export class UsersService {
    * Lista todos os usuários com paginação e filtros
    */
   async findAll(
+    currentUser: { userId: string; role: UserRole; institutionId?: string | null },
     page = 1,
     limit = 20,
     search?: string,
     role?: UserRole,
     institutionId?: string,
+    institutionIds?: string[],
     isActive?: boolean,
     hasTeacherProfile?: boolean,
     hasStudentProfile?: boolean,
@@ -241,8 +301,67 @@ export class UsersService {
       where.role = role;
     }
 
-    if (institutionId) {
-      where.institutionId = institutionId;
+    const isGlobalAdmin =
+      currentUser.role === UserRole.SUPER_ADMIN_GLOBAL ||
+      currentUser.role === UserRole.SUPER_ADMIN;
+
+    if (!isGlobalAdmin) {
+      const links = await this.prisma.userInstitution.findMany({
+        where: { userId: currentUser.userId, isActive: true },
+        select: { institutionId: true },
+      });
+
+      const allowed = Array.from(
+        new Set(
+          [currentUser.institutionId, ...links.map((link) => link.institutionId)].filter(
+            (value): value is string => Boolean(value),
+          ),
+        ),
+      );
+
+      const requested = Array.from(
+        new Set(
+          [
+            ...(institutionIds ?? []),
+            ...(institutionId ? [institutionId] : []),
+          ].filter(Boolean),
+        ),
+      );
+
+      const effective = requested.length > 0
+        ? requested.filter((value) => allowed.includes(value))
+        : allowed.length > 0 && currentUser.institutionId
+          ? [currentUser.institutionId]
+          : allowed;
+
+      if (effective.length > 0) {
+        where.institutionId = { in: effective };
+      } else {
+        return {
+          data: [],
+          meta: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: page > 1,
+          },
+        };
+      }
+    } else {
+      const requested = Array.from(
+        new Set(
+          [
+            ...(institutionIds ?? []),
+            ...(institutionId ? [institutionId] : []),
+          ].filter(Boolean),
+        ),
+      );
+
+      if (requested.length > 0) {
+        where.institutionId = { in: requested };
+      }
     }
 
     if (isActive !== undefined) {
@@ -352,7 +471,14 @@ export class UsersService {
   /**
    * Busca um usuário por ID
    */
-  async findOne(id: string) {
+  async findOne(
+    id: string,
+    currentUser?: {
+      userId: string;
+      role: UserRole;
+      institutionId?: string | null;
+    },
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
@@ -361,12 +487,29 @@ export class UsersService {
         firstName: true,
         lastName: true,
         cpf: true,
+        rg: true,
+        rgEmissor: true,
+        rgEmissao: true,
+        socialName: true,
+        nacionalidade: true,
+        naturalidade: true,
         phone: true,
+        telefoneFixo: true,
         birthDate: true,
+        gender: true,
         avatar: true,
+        address: true,
+        numero: true,
+        complemento: true,
+        bairro: true,
+        city: true,
+        state: true,
+        zipCode: true,
         role: true,
         institutionId: true,
         isActive: true,
+        emailVerified: true,
+        requestedProfileType: true,
         createdAt: true,
         updatedAt: true,
         institution: {
@@ -383,6 +526,7 @@ export class UsersService {
             specialization: true,
             degree: true,
             registrationNumber: true,
+            hireDate: true,
             isActive: true,
           },
         },
@@ -392,6 +536,10 @@ export class UsersService {
             userId: true,
             registrationNumber: true,
             enrollmentNumber: true,
+            enrollmentDate: true,
+            anoLetivo: true,
+            curso: true,
+            turno: true,
             isActive: true,
           },
         },
@@ -408,6 +556,10 @@ export class UsersService {
 
     if (!user) {
       throw new NotFoundException('Usuário não encontrado');
+    }
+
+    if (currentUser) {
+      await this.ensureCanAccessUser(currentUser, user);
     }
 
     return user;

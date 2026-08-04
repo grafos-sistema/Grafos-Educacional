@@ -1,6 +1,7 @@
 import api from '@/lib/api';
 import { fetchCurrentUserProfile } from '@/lib/auth-profile';
 import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/stores/authStore';
 import {
   User,
   CreateUserDto,
@@ -408,6 +409,43 @@ export const usersService = {
    * Listar todos os usuÃ¡rios com paginaÃ§Ã£o e filtros
    */
   async findAll(params: UsersFilterParams = {}): Promise<PaginatedResponse<User>> {
+    const apiParams = new URLSearchParams();
+    if (params.page) apiParams.append('page', String(params.page));
+    if (params.limit) apiParams.append('limit', String(params.limit));
+    if (params.search) apiParams.append('search', params.search);
+    if (params.role) apiParams.append('role', params.role);
+    if (typeof params.isActive === 'boolean') apiParams.append('isActive', String(params.isActive));
+    if (typeof params.hasTeacherProfile === 'boolean') {
+      apiParams.append('hasTeacherProfile', String(params.hasTeacherProfile));
+    }
+    if (typeof params.hasStudentProfile === 'boolean') {
+      apiParams.append('hasStudentProfile', String(params.hasStudentProfile));
+    }
+    if (typeof params.hasParentProfile === 'boolean') {
+      apiParams.append('hasParentProfile', String(params.hasParentProfile));
+    }
+    if (typeof params.hasProfile === 'boolean') {
+      apiParams.append('hasProfile', String(params.hasProfile));
+    }
+
+    const { institutionFilterAll, institutionFilterIds } = useAuthStore.getState();
+    const effectiveIds = institutionFilterAll ? [] : institutionFilterIds.filter(Boolean);
+
+    if (effectiveIds.length > 1) {
+      apiParams.append('institutionIds', effectiveIds.join(','));
+    } else if (effectiveIds.length === 1) {
+      apiParams.append('institutionId', effectiveIds[0]);
+    } else if (params.institutionId) {
+      apiParams.append('institutionId', params.institutionId);
+    }
+
+    try {
+      const response = await api.get<PaginatedResponse<User>>(`/users?${apiParams.toString()}`);
+      return response as unknown as PaginatedResponse<User>;
+    } catch (error) {
+      console.warn('Falha ao listar usuários pela API; tentando fallback via Supabase.', error);
+    }
+
     const page = params.page ?? 1;
     const limit = params.limit ?? 20;
     const from = (page - 1) * limit;
@@ -523,33 +561,38 @@ export const usersService = {
    * Buscar usuÃ¡rio por ID
    */
   async findOne(id: string): Promise<User> {
-    const { data, error } = await supabase
-      .from('users')
-      .select(USER_BASE_COLUMNS)
-      .eq('id', id)
-      .single();
+    try {
+      const response = await api.get<User>(`/users/${id}`);
+      return response as unknown as User;
+    } catch (apiError) {
+      const { data, error } = await supabase
+        .from('users')
+        .select(USER_BASE_COLUMNS)
+        .eq('id', id)
+        .single();
 
-    if (error) throw error;
+      if (error) throw apiError;
 
-    const [mappedUser] = await mapUsers([data as AppUserRow], 'detailed');
+      const [mappedUser] = await mapUsers([data as AppUserRow], 'detailed');
 
-    let institution: { id: string; name: string; slug: string } | null = null;
+      let institution: { id: string; name: string; slug: string } | null = null;
 
-    if (mappedUser.institutionId) {
-      const { data: institutionData, error: institutionError } = await supabase
-        .from('institutions')
-        .select('id, name, slug')
-        .eq('id', mappedUser.institutionId)
-        .maybeSingle();
+      if (mappedUser.institutionId) {
+        const { data: institutionData, error: institutionError } = await supabase
+          .from('institutions')
+          .select('id, name, slug')
+          .eq('id', mappedUser.institutionId)
+          .maybeSingle();
 
-      if (institutionError) throw institutionError;
-      institution = institutionData;
+        if (institutionError) throw institutionError;
+        institution = institutionData;
+      }
+
+      return {
+        ...mappedUser,
+        ...(institution ? { institution } : {}),
+      } as User;
     }
-
-    return {
-      ...mappedUser,
-      ...(institution ? { institution } : {}),
-    } as User;
   },
 
   /**

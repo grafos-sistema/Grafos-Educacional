@@ -5,10 +5,9 @@ import { Menu, Transition } from '@headlessui/react';
 import { ChevronDownIcon, BuildingOffice2Icon, CheckIcon } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/auth.service';
-import { clientCookies } from '@/lib/cookies';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface Institution {
   id: string;
@@ -22,7 +21,14 @@ interface Institution {
 
 export function InstitutionSwitcher() {
   const router = useRouter();
-  const { user, setTokens } = useAuthStore();
+  const queryClient = useQueryClient();
+  const {
+    user,
+    institutionFilterAll,
+    institutionFilterIds,
+    setInstitutionFilterAll,
+    setInstitutionFilterIds,
+  } = useAuthStore();
   const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentInstitution, setCurrentInstitution] = useState<Institution | null>(null);
@@ -48,26 +54,46 @@ export function InstitutionSwitcher() {
     }
   }, [user]);
 
-  const handleSwitchInstitution = async (institution: Institution) => {
-    if (institution.id === user?.institutionId) return;
+  useEffect(() => {
+    if (!user) return;
+    if (institutionFilterAll) return;
+    if (institutionFilterIds.length > 0) return;
+    if (!user.institutionId) return;
+    setInstitutionFilterIds([user.institutionId]);
+  }, [institutionFilterAll, institutionFilterIds.length, setInstitutionFilterIds, user]);
 
+  const selectedIds = institutionFilterAll
+    ? institutions.map((institution) => institution.id)
+    : institutionFilterIds;
+
+  const selectedLabel = (() => {
+    if (institutionFilterAll) return 'Todas';
+    if (selectedIds.length === 0) return currentInstitution?.name || 'Selecionar';
+    if (selectedIds.length === 1) {
+      return institutions.find((institution) => institution.id === selectedIds[0])?.name || 'Selecionar';
+    }
+    return `${selectedIds.length} selecionadas`;
+  })();
+
+  const applyFilter = async (nextAll: boolean, nextIds: string[]) => {
     setIsLoading(true);
     try {
-      const tokens = await authService.switchInstitution(institution.id);
+      if (nextAll) {
+        setInstitutionFilterAll(true);
+      } else {
+        setInstitutionFilterIds(nextIds);
+      }
 
-      // Update tokens in store and cookies
-      setTokens(tokens.accessToken, tokens.refreshToken);
-      clientCookies.setAuthTokens(tokens.accessToken, tokens.refreshToken);
-
-      // Update current institution
-      setCurrentInstitution(institution);
-
-      toast.success(`Você está agora em ${institution.name}`);
+      await Promise.all([
+        queryClient.invalidateQueries(),
+        queryClient.invalidateQueries({ queryKey: ['users'] }),
+        queryClient.invalidateQueries({ queryKey: ['teachers'] }),
+        queryClient.invalidateQueries({ queryKey: ['students'] }),
+        queryClient.invalidateQueries({ queryKey: ['announcements'] }),
+        queryClient.invalidateQueries({ queryKey: ['events'] }),
+      ]);
 
       router.refresh();
-    } catch (error) {
-      console.error('Failed to switch institution:', error);
-      toast.error('Erro ao trocar de instituição');
     } finally {
       setIsLoading(false);
     }
@@ -77,84 +103,118 @@ export function InstitutionSwitcher() {
   if (institutions.length <= 1) {
     // Still show current institution name
     return (
-      <div className="flex items-center gap-2 px-3 py-2 text-sm">
-        <BuildingOffice2Icon className="h-5 w-5 text-secondary-400" />
-        <span className="font-medium text-secondary-700 max-w-[150px] truncate">
-          {currentInstitution?.name || user?.institution?.name || 'Instituição'}
-        </span>
+      <div>
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-secondary-400">
+          Instituição atual
+        </p>
+        <div className="flex items-center gap-2 text-sm">
+          <BuildingOffice2Icon className="h-5 w-5 text-secondary-400" />
+          <span className="max-w-[180px] truncate font-medium text-secondary-700">
+            {currentInstitution?.name || user?.institution?.name || 'Instituição'}
+          </span>
+        </div>
       </div>
     );
   }
 
   return (
-    <Menu as="div" className="relative">
-      <Menu.Button
-        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-secondary-700 hover:bg-secondary-50 transition-colors"
-        disabled={isLoading}
-      >
-        <BuildingOffice2Icon className="h-5 w-5 text-secondary-400" />
-        <span className="max-w-[150px] truncate">
-          {currentInstitution?.name || 'Selecionar'}
-        </span>
-        <ChevronDownIcon className="h-4 w-4 text-secondary-400" />
-      </Menu.Button>
+    <div>
+      <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-secondary-400">
+        Instituição atual
+      </p>
 
-      <Transition
-        as={Fragment}
-        enter="transition ease-out duration-100"
-        enterFrom="transform opacity-0 scale-95"
-        enterTo="transform opacity-100 scale-100"
-        leave="transition ease-in duration-75"
-        leaveFrom="transform opacity-100 scale-100"
-        leaveTo="transform opacity-0 scale-95"
-      >
-        <Menu.Items className="absolute left-0 z-10 mt-2 w-64 origin-top-left rounded-xl bg-white py-2 shadow-lg ring-1 ring-secondary-900/5 focus:outline-none">
-          <div className="px-4 py-2 border-b border-secondary-100">
-            <p className="text-xs font-semibold text-secondary-500 uppercase">
-              Trocar Instituição
-            </p>
-          </div>
+      <Menu as="div" className="relative">
+        <Menu.Button
+          className="flex w-full items-center gap-2 rounded-lg px-0 py-0 text-sm font-medium text-secondary-700 transition-colors hover:text-secondary-900"
+          disabled={isLoading}
+        >
+          <BuildingOffice2Icon className="h-5 w-5 text-secondary-400" />
+          <span className="flex-1 truncate text-left">
+            {selectedLabel}
+          </span>
+          <ChevronDownIcon className="h-4 w-4 text-secondary-400" />
+        </Menu.Button>
 
-          <div className="py-1 max-h-64 overflow-y-auto">
-            {institutions.map((institution) => (
-              <Menu.Item key={institution.id}>
+        <Transition
+          as={Fragment}
+          enter="transition ease-out duration-100"
+          enterFrom="transform opacity-0 scale-95"
+          enterTo="transform opacity-100 scale-100"
+          leave="transition ease-in duration-75"
+          leaveFrom="transform opacity-100 scale-100"
+          leaveTo="transform opacity-0 scale-95"
+        >
+          <Menu.Items className="absolute left-0 z-10 mt-2 w-64 origin-top-left rounded-xl bg-white py-2 shadow-lg ring-1 ring-secondary-900/5 focus:outline-none">
+            <div className="px-4 py-2 border-b border-secondary-100">
+              <p className="text-xs font-semibold text-secondary-500 uppercase">
+                Filtrar Instituições
+              </p>
+            </div>
+
+            <div className="py-1 max-h-64 overflow-y-auto">
+              <Menu.Item>
                 {({ active }) => (
                   <button
-                    onClick={() => handleSwitchInstitution(institution)}
-                    disabled={isLoading || institution.id === user?.institutionId}
+                    type="button"
+                    onClick={() => applyFilter(true, [])}
+                    disabled={isLoading}
                     className={cn(
                       'flex w-full items-center gap-3 px-4 py-2 text-sm',
                       active ? 'bg-secondary-50' : '',
-                      institution.id === user?.institutionId
-                        ? 'text-primary-600 font-medium'
-                        : 'text-secondary-700'
+                      institutionFilterAll ? 'text-primary-600 font-medium' : 'text-secondary-700'
                     )}
                   >
-                    {institution.logo ? (
-                      <img
-                        src={institution.logo}
-                        alt={institution.name}
-                        className="h-6 w-6 rounded object-cover"
-                      />
-                    ) : (
-                      <BuildingOffice2Icon className="h-5 w-5 text-secondary-400" />
-                    )}
-                    <span className="flex-1 text-left truncate">
-                      {institution.name}
+                    <span className="flex h-4 w-4 items-center justify-center rounded border border-secondary-300 bg-white">
+                      {institutionFilterAll ? <CheckIcon className="h-4 w-4 text-primary-600" /> : null}
                     </span>
-                    {institution.id === user?.institutionId && (
-                      <CheckIcon className="h-5 w-5 text-primary-500" />
-                    )}
-                    {institution.isPrimary && institution.id !== user?.institutionId && (
-                      <span className="text-xs text-secondary-400">Principal</span>
-                    )}
+                    <span className="flex-1 text-left truncate">Todas</span>
                   </button>
                 )}
               </Menu.Item>
-            ))}
-          </div>
-        </Menu.Items>
-      </Transition>
-    </Menu>
+
+              {institutions.map((institution) => (
+                <Menu.Item key={institution.id}>
+                  {({ active }) => (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const isSelected = selectedIds.includes(institution.id);
+                        const next = isSelected
+                          ? selectedIds.filter((id) => id !== institution.id)
+                          : [...selectedIds, institution.id];
+                        void applyFilter(false, next);
+                      }}
+                      disabled={isLoading}
+                      className={cn(
+                        'flex w-full items-center gap-3 px-4 py-2 text-sm',
+                        active ? 'bg-secondary-50' : '',
+                        selectedIds.includes(institution.id) ? 'text-primary-600 font-medium' : 'text-secondary-700'
+                      )}
+                    >
+                      {institution.logo ? (
+                        <img
+                          src={institution.logo}
+                          alt={institution.name}
+                          className="h-6 w-6 rounded object-cover"
+                        />
+                      ) : (
+                        <BuildingOffice2Icon className="h-5 w-5 text-secondary-400" />
+                      )}
+                      <span className="flex-1 text-left truncate">
+                        {institution.name}
+                      </span>
+                      {selectedIds.includes(institution.id) && <CheckIcon className="h-5 w-5 text-primary-500" />}
+                      {institution.isPrimary && institution.id !== user?.institutionId && (
+                        <span className="text-xs text-secondary-400">Principal</span>
+                      )}
+                    </button>
+                  )}
+                </Menu.Item>
+              ))}
+            </div>
+          </Menu.Items>
+        </Transition>
+      </Menu>
+    </div>
   );
 }

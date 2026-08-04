@@ -15,6 +15,63 @@ import { UserRole } from '@prisma/client';
 export class EventsService {
   constructor(private prisma: PrismaService) {}
 
+  private parseCsv(value?: string) {
+    return value
+      ? value
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean)
+      : undefined;
+  }
+
+  private async getAllowedInstitutionIds(currentUser: any) {
+    const links = await this.prisma.userInstitution.findMany({
+      where: { userId: currentUser.userId, isActive: true },
+      select: { institutionId: true },
+    });
+
+    return Array.from(
+      new Set(
+        [currentUser.institutionId, ...links.map((link) => link.institutionId)].filter(
+          (value): value is string => Boolean(value),
+        ),
+      ),
+    );
+  }
+
+  private async resolveEffectiveInstitutionIds(
+    currentUser: any,
+    options?: { institutionId?: string; institutionIds?: string[] },
+  ) {
+    const requested = Array.from(
+      new Set(
+        [
+          ...(options?.institutionIds ?? []),
+          ...(options?.institutionId ? [options.institutionId] : []),
+        ].filter(Boolean),
+      ),
+    );
+
+    if (currentUser.role === UserRole.SUPER_ADMIN) {
+      return requested.length > 0 ? requested : null;
+    }
+
+    const allowed = await this.getAllowedInstitutionIds(currentUser);
+
+    const effective =
+      requested.length > 0
+        ? requested.filter((value) => allowed.includes(value))
+        : currentUser.institutionId
+          ? [currentUser.institutionId]
+          : allowed;
+
+    if (effective.length === 0) {
+      throw new ForbiddenException('You do not have access to this institution');
+    }
+
+    return effective;
+  }
+
   async create(createEventDto: CreateEventDto, userId: string) {
     // Verify academic year exists
     const academicYear = await this.prisma.academicYear.findUnique({
@@ -62,6 +119,7 @@ export class EventsService {
       search,
       type,
       institutionId,
+      institutionIds,
       academicYearId,
       fromDate,
       toDate,
@@ -125,13 +183,17 @@ export class EventsService {
     }
 
     // Filter by institution through academicYear
-    if (currentUser.role !== UserRole.SUPER_ADMIN) {
+    const effectiveInstitutionIds = await this.resolveEffectiveInstitutionIds(
+      currentUser,
+      {
+        institutionId,
+        institutionIds: this.parseCsv(institutionIds),
+      },
+    );
+
+    if (effectiveInstitutionIds) {
       where.academicYear = {
-        institutionId: currentUser.institutionId,
-      };
-    } else if (institutionId) {
-      where.academicYear = {
-        institutionId: institutionId,
+        institutionId: { in: effectiveInstitutionIds },
       };
     }
 
@@ -180,13 +242,13 @@ export class EventsService {
     }
 
     // Check access permissions
-    this.checkAccessPermission(event, currentUser);
+    await this.ensureAccessPermission(event, currentUser);
 
     return event;
   }
 
   async getCalendar(query: CalendarQueryDto, currentUser: any) {
-    const { year, month, institutionId, type } = query;
+    const { year, month, institutionId, institutionIds, type } = query;
 
     // Calculate start and end of month
     const startDate = new Date(year, month - 1, 1);
@@ -224,13 +286,17 @@ export class EventsService {
     }
 
     // Filter by institution through academicYear
-    if (currentUser.role !== UserRole.SUPER_ADMIN) {
+    const effectiveInstitutionIds = await this.resolveEffectiveInstitutionIds(
+      currentUser,
+      {
+        institutionId,
+        institutionIds: this.parseCsv(institutionIds),
+      },
+    );
+
+    if (effectiveInstitutionIds) {
       where.academicYear = {
-        institutionId: currentUser.institutionId,
-      };
-    } else if (institutionId) {
-      where.academicYear = {
-        institutionId: institutionId,
+        institutionId: { in: effectiveInstitutionIds },
       };
     }
 
@@ -303,7 +369,7 @@ export class EventsService {
     }
 
     // Check permissions
-    this.checkEditPermission(event, currentUser);
+    await this.ensureEditPermission(event, currentUser);
 
     // Verify academic year if being updated
     if (updateEventDto.academicYearId) {
@@ -364,7 +430,7 @@ export class EventsService {
     }
 
     // Check permissions
-    this.checkEditPermission(event, currentUser);
+    await this.ensureEditPermission(event, currentUser);
 
     await this.prisma.event.delete({
       where: { id },
@@ -373,50 +439,44 @@ export class EventsService {
     return { message: 'Event deleted successfully' };
   }
 
-  private checkAccessPermission(event: any, currentUser: any) {
-    // SUPER_ADMIN can access everything
+  private async ensureAccessPermission(event: any, currentUser: any) {
     if (currentUser.role === UserRole.SUPER_ADMIN) {
       return;
     }
 
-    // Check if event is for user's institution through academicYear
-    if (
-      event.academicYear?.institutionId &&
-      event.academicYear.institutionId !== currentUser.institutionId
-    ) {
+    const institutionId = event.academicYear?.institutionId;
+    if (!institutionId) {
+      throw new ForbiddenException('You do not have access to this event');
+    }
+
+    const allowed = await this.getAllowedInstitutionIds(currentUser);
+    if (!allowed.includes(institutionId)) {
       throw new ForbiddenException('You do not have access to this event');
     }
   }
 
-  private checkEditPermission(event: any, currentUser: any) {
-    // SUPER_ADMIN can edit everything
+  private async ensureEditPermission(event: any, currentUser: any) {
     if (currentUser.role === UserRole.SUPER_ADMIN) {
       return;
     }
 
-    // INSTITUTION_ADMIN and COORDINATOR can edit events in their institution
     if (
       [UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR].includes(
         currentUser.role,
       )
     ) {
-      // Check if event is for user's institution through academicYear
-      if (
-        event.academicYear?.institutionId &&
-        event.academicYear.institutionId !== currentUser.institutionId
-      ) {
-        throw new ForbiddenException(
-          'You do not have access to edit this event',
-        );
-      }
+      await this.ensureAccessPermission(event, currentUser);
       return;
     }
 
-    // Other roles cannot edit events
     throw new ForbiddenException('You do not have permission to edit events');
   }
 
-  async findUpcoming(days: number, currentUser: any) {
+  async findUpcoming(
+    days: number,
+    currentUser: any,
+    options?: { institutionId?: string; institutionIds?: string[] },
+  ) {
     const now = new Date();
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + days);
@@ -430,9 +490,14 @@ export class EventsService {
     };
 
     // Filter by institution through academicYear
-    if (currentUser.role !== UserRole.SUPER_ADMIN) {
+    const effectiveInstitutionIds = await this.resolveEffectiveInstitutionIds(
+      currentUser,
+      options,
+    );
+
+    if (effectiveInstitutionIds) {
       where.academicYear = {
-        institutionId: currentUser.institutionId,
+        institutionId: { in: effectiveInstitutionIds },
       };
     }
 

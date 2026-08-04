@@ -15,6 +15,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { AnnouncementsService } from './announcements.service';
 import { CreateAnnouncementDto } from './dto/create-announcement.dto';
@@ -83,12 +84,33 @@ export class AnnouncementsController {
     UserRole.PARENT,
   )
   @ApiOperation({ summary: 'Get active announcements for current user' })
+  @ApiQuery({
+    name: 'institutionId',
+    required: false,
+    type: String,
+    description: 'Filtrar por uma instituição específica',
+  })
+  @ApiQuery({
+    name: 'institutionIds',
+    required: false,
+    type: String,
+    description: 'Lista de instituições (CSV) para filtrar',
+  })
   @ApiResponse({
     status: 200,
     description: 'List of active announcements',
   })
-  findActiveForUser(@CurrentUser() user: any) {
-    return this.announcementsService.findActiveForUser(user);
+  findActiveForUser(
+    @CurrentUser() user: any,
+    @Query('institutionId') institutionId?: string,
+    @Query('institutionIds') institutionIds?: string,
+  ) {
+    return this.announcementsService.findActiveForUser(user, {
+      institutionId,
+      institutionIds: institutionIds
+        ? institutionIds.split(',').map((value) => value.trim()).filter(Boolean)
+        : undefined,
+    });
   }
 
   @Get(':id')

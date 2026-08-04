@@ -12,7 +12,6 @@ import {
 } from '@heroicons/react/24/outline';
 import { ProfileSwitcher } from './ProfileSwitcher';
 import { NotificationsBell } from './NotificationsBell';
-import { InstitutionSwitcher } from './InstitutionSwitcher';
 import { UserRole } from '@/types/user.types';
 import { useMunicipalityConfig } from '@/config/municipality.config';
 import Image from 'next/image';
@@ -62,9 +61,6 @@ export function Header({ title }: HeaderProps) {
 
       {/* Right side */}
       <div className="flex flex-1 items-center justify-end gap-x-4 lg:gap-x-6">
-        {/* Institution Switcher - Don't show for Super Admin */}
-        {user?.role !== UserRole.SUPER_ADMIN && user?.role !== UserRole.SUPER_ADMIN_GLOBAL && <InstitutionSwitcher />}
-
         {/* Notifications */}
         {user?.role !== UserRole.SUPER_ADMIN_GLOBAL && <NotificationsBell />}
 

@@ -10,6 +10,7 @@ import { UserRole } from '@/types/user.types';
 import { cn } from '@/lib/utils';
 import { usePrefetch } from '@/hooks/usePrefetch';
 import { useAuthenticatedNavigation } from '@/components/layout/AuthenticatedNavigationProvider';
+import { InstitutionSwitcher } from './InstitutionSwitcher';
 import {
   HomeIcon,
   AcademicCapIcon,
@@ -441,11 +442,17 @@ const navigation: NavItem[] = [
     name: 'Comunicados',
     baseRoute: '/announcements',
     icon: BellIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN],
+    roles: [
+      UserRole.SUPER_ADMIN_GLOBAL,
+      UserRole.SUPER_ADMIN,
+      UserRole.INSTITUTION_ADMIN,
+      UserRole.COORDINATOR,
+    ],
     pathMapping: {
       [UserRole.SUPER_ADMIN_GLOBAL]: '/admin/announcements',
       [UserRole.SUPER_ADMIN]: '/admin/announcements',
       [UserRole.INSTITUTION_ADMIN]: '/admin/announcements',
+      [UserRole.COORDINATOR]: '/admin/announcements',
     },
   },
   {
@@ -789,28 +796,15 @@ export function Sidebar({
         ))}
       </nav>
 
-      {/* User info at bottom */}
-      {user && (
-        <div className="border-t border-secondary-200 p-4">
-          <div
-            className={cn(
-              'flex items-center gap-3',
-              isDesktopCollapsed && 'lg:justify-center'
-            )}
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-sm font-semibold text-white shadow-md">
-              {user.firstName?.[0]}{user.lastName?.[0]}
-            </div>
-            <div
-              className={cn(
-                'flex-1 overflow-hidden',
-                isDesktopCollapsed && 'lg:hidden'
-              )}
-            >
-              <p className="truncate text-sm font-medium text-secondary-900">{user.firstName} {user.lastName}</p>
-              <p className="truncate text-xs text-secondary-500">{user.email}</p>
-            </div>
-          </div>
+      {/* Institution context at bottom */}
+      {user?.role !== UserRole.SUPER_ADMIN && user?.role !== UserRole.SUPER_ADMIN_GLOBAL && (
+        <div
+          className={cn(
+            'border-t border-secondary-200 px-4 py-3',
+            isDesktopCollapsed && 'lg:hidden'
+          )}
+        >
+          <InstitutionSwitcher />
         </div>
       )}
     </div>

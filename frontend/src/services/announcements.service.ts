@@ -1,4 +1,5 @@
 import api from '@/lib/api';
+import { useAuthStore } from '@/stores/authStore';
 import {
   Announcement,
   CreateAnnouncementDto,
@@ -23,9 +24,19 @@ export const announcementsService = {
     if (filters.onlyActive !== undefined) {
       params.append('onlyActive', String(filters.onlyActive));
     }
-    if (filters.institutionId) params.append('institutionId', filters.institutionId);
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
+
+    const { institutionFilterAll, institutionFilterIds } = useAuthStore.getState();
+    const effectiveIds = institutionFilterAll ? [] : institutionFilterIds.filter(Boolean);
+
+    if (effectiveIds.length > 1) {
+      params.append('institutionIds', effectiveIds.join(','));
+    } else if (effectiveIds.length === 1) {
+      params.append('institutionId', effectiveIds[0]);
+    } else if (filters.institutionId) {
+      params.append('institutionId', filters.institutionId);
+    }
 
     const queryString = params.toString();
     const response = (await api.get<PaginatedResponse<Announcement>>(
@@ -118,7 +129,20 @@ export const announcementsService = {
    * Buscar comunicados ativos para um usuário
    */
   async findActiveForUser(): Promise<Announcement[]> {
-    const response = await api.get<Announcement[]>('/announcements/active');
+    const params = new URLSearchParams();
+    const { institutionFilterAll, institutionFilterIds } = useAuthStore.getState();
+    const effectiveIds = institutionFilterAll ? [] : institutionFilterIds.filter(Boolean);
+
+    if (effectiveIds.length > 1) {
+      params.append('institutionIds', effectiveIds.join(','));
+    } else if (effectiveIds.length === 1) {
+      params.append('institutionId', effectiveIds[0]);
+    }
+
+    const queryString = params.toString();
+    const response = await api.get<Announcement[]>(
+      queryString ? `/announcements/active?${queryString}` : '/announcements/active'
+    );
     return response as unknown as Announcement[];
   },
 };

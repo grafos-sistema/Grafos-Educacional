@@ -713,7 +713,10 @@ export class AnnouncementsService {
     );
   }
 
-  async findActiveForUser(currentUser: any) {
+  async findActiveForUser(
+    currentUser: any,
+    options?: { institutionId?: string; institutionIds?: string[] },
+  ) {
     // Build where clause for active, published announcements
     const where: any = {
       isPublished: true,
@@ -722,10 +725,40 @@ export class AnnouncementsService {
 
     // Filter by institution
     if (currentUser.role !== UserRole.SUPER_ADMIN) {
+      const links = await this.prisma.userInstitution.findMany({
+        where: { userId: currentUser.userId, isActive: true },
+        select: { institutionId: true },
+      });
+
+      const allowed = Array.from(
+        new Set(
+          [currentUser.institutionId, ...links.map((link) => link.institutionId)].filter(
+            (value): value is string => Boolean(value),
+          ),
+        ),
+      );
+
+      const requested = Array.from(
+        new Set(
+          [
+            ...(options?.institutionIds ?? []),
+            ...(options?.institutionId ? [options.institutionId] : []),
+          ].filter(Boolean),
+        ),
+      );
+
+      const effective = requested.length > 0
+        ? requested.filter((value) => allowed.includes(value))
+        : allowed.length > 0 && currentUser.institutionId
+          ? [currentUser.institutionId]
+          : allowed;
+
       where.AND = [
         {
           OR: [
-            { institutionId: currentUser.institutionId },
+            ...(effective.length > 0
+              ? [{ institutionId: { in: effective } }]
+              : [{ institutionId: currentUser.institutionId }]),
             { institutionId: null }, // Global announcements
           ],
         },

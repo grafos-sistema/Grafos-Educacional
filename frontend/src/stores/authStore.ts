@@ -10,6 +10,8 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   activeProfile: UserRole | null;
+  institutionFilterAll: boolean;
+  institutionFilterIds: string[];
 
   // Actions
   setUser: (user: User | null) => void;
@@ -19,6 +21,9 @@ interface AuthState {
   setLoading: (loading: boolean) => void;
   setActiveProfile: (profile: UserRole) => void;
   getAvailableProfiles: () => UserRole[];
+  setInstitutionFilterAll: (all: boolean) => void;
+  setInstitutionFilterIds: (ids: string[]) => void;
+  clearInstitutionFilter: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -30,6 +35,8 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: true,
       activeProfile: null,
+      institutionFilterAll: false,
+      institutionFilterIds: [],
 
       setUser: (user) => {
         set({ user, isAuthenticated: !!user });
@@ -117,6 +124,8 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: true,
           isLoading: false,
           activeProfile,
+          institutionFilterAll: false,
+          institutionFilterIds: user.institutionId ? [user.institutionId] : [],
         });
 
         // Store tokens in cookies for server-side access
@@ -138,6 +147,8 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: false,
           isLoading: false,
           activeProfile: null,
+          institutionFilterAll: false,
+          institutionFilterIds: [],
         });
         // Clear cookies and localStorage
         clientCookies.clearAuthTokens();
@@ -150,6 +161,28 @@ export const useAuthStore = create<AuthState>()(
       setLoading: (loading) => {
         set({ isLoading: loading });
       },
+
+      setInstitutionFilterAll: (all) => {
+        set((state) => ({
+          institutionFilterAll: all,
+          institutionFilterIds: all ? [] : state.institutionFilterIds,
+        }));
+      },
+
+      setInstitutionFilterIds: (ids) => {
+        set({
+          institutionFilterAll: false,
+          institutionFilterIds: Array.from(new Set(ids)).filter(Boolean),
+        });
+      },
+
+      clearInstitutionFilter: () => {
+        const user = get().user;
+        set({
+          institutionFilterAll: false,
+          institutionFilterIds: user?.institutionId ? [user.institutionId] : [],
+        });
+      },
     }),
     {
       name: 'auth-storage',
@@ -159,6 +192,8 @@ export const useAuthStore = create<AuthState>()(
         refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
         activeProfile: state.activeProfile,
+        institutionFilterAll: state.institutionFilterAll,
+        institutionFilterIds: state.institutionFilterIds,
       }),
     }
   )

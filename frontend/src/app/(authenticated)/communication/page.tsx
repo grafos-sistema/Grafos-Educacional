@@ -1,16 +1,21 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   MegaphoneIcon,
   CalendarDaysIcon,
   ClockIcon,
   MapPinIcon,
+  PlusIcon,
 } from '@heroicons/react/24/outline';
 import { announcementsService } from '@/services/announcements.service';
 import { eventsService } from '@/services/events.service';
+import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/user.types';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 const priorityLabels: Record<string, string> = {
@@ -60,7 +65,16 @@ const typeColors: Record<string, 'default' | 'success' | 'error' | 'warning' | '
 };
 
 export default function CommunicationPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'announcements' | 'events'>('announcements');
+  const user = useAuthStore((state) => state.user);
+  const currentRole = user?.activeProfile || user?.role;
+  const canManageAnnouncements = [
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+  ].includes((currentRole ?? user?.role) as UserRole);
 
   // Buscar comunicados ativos
   const { data: announcements, isLoading: loadingAnnouncements } = useQuery({
@@ -83,13 +97,23 @@ export default function CommunicationPage() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Comunicados e Eventos
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Fique por dentro das novidades e eventos da instituição
-        </p>
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h1 className="mb-2 text-2xl font-bold text-gray-900 dark:text-white">
+            Comunicados e Eventos
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Visualize os comunicados enviados pela gestão e acompanhe os próximos eventos da instituição.
+          </p>
+        </div>
+        {canManageAnnouncements ? (
+          <Button
+            onClick={() => router.push('/admin/announcements')}
+            leftIcon={<PlusIcon className="h-5 w-5" />}
+          >
+            Criar comunicado
+          </Button>
+        ) : null}
       </div>
 
       {/* Tabs */}
