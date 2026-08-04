@@ -54,7 +54,11 @@ export class UsersController {
 
   @Post()
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+  )
   @ApiOperation({
     summary: 'Criar novo usuário',
     description:
@@ -180,7 +184,10 @@ export class UsersController {
       role,
       institutionId,
       institutionIds
-        ? institutionIds.split(',').map((value) => value.trim()).filter(Boolean)
+        ? institutionIds
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean)
         : undefined,
       isActive,
       hasTeacherProfile === 'true'

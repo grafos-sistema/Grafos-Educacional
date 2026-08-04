@@ -10,7 +10,6 @@ import {
   InstitutionFormTabs,
   type InstitutionFormValues,
 } from '@/components/institutions/InstitutionFormTabs';
-import { resolveInstitutionUnitDirectors } from '@/lib/institution-unit-directors';
 import { institutionsService } from '@/services/institutions.service';
 
 const normalizeIsActive = (value?: InstitutionFormValues['isActive']) =>
@@ -52,26 +51,10 @@ export default function NewInstitutionPage() {
   const onSubmit = async (data: InstitutionFormValues) => {
     try {
       setIsSubmitting(true);
-      const createdInstitution = await institutionsService.create({
+      await institutionsService.create({
         ...data,
         isActive: normalizeIsActive(data.isActive),
       });
-
-      const unitsWithDirectors = await resolveInstitutionUnitDirectors(
-        createdInstitution.id,
-        createdInstitution.units ?? [],
-        data.units
-      );
-
-      const hasDirectorAssignments = unitsWithDirectors.some(
-        (unit) => unit.directorUserId || unit.managerName
-      );
-
-      if (hasDirectorAssignments) {
-        await institutionsService.update(createdInstitution.id, {
-          units: unitsWithDirectors,
-        });
-      }
 
       toast.success('Instituição cadastrada com sucesso!');
       router.push('/super-admin/institutions');

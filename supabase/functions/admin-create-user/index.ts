@@ -83,11 +83,12 @@ function getJwt(req: Request) {
 }
 
 function isAdminRole(role: string) {
-  return role === "SUPER_ADMIN" || role === "INSTITUTION_ADMIN"
+  return role === "SUPER_ADMIN_GLOBAL" || role === "SUPER_ADMIN" || role === "INSTITUTION_ADMIN"
 }
 
 function isAllowedRole(role: string) {
   return [
+    "DIRECTOR",
     "SUPER_ADMIN",
     "INSTITUTION_ADMIN",
     "COORDINATOR",
@@ -112,7 +113,11 @@ async function callerCanAccessInstitution(
   caller: { id: string; role: string; institutionId: string },
   institutionId: string,
 ) {
-  if (caller.role === "SUPER_ADMIN" || caller.institutionId === institutionId) {
+  if (
+    caller.role === "SUPER_ADMIN_GLOBAL" ||
+    caller.role === "SUPER_ADMIN" ||
+    caller.institutionId === institutionId
+  ) {
     return true
   }
 
@@ -181,7 +186,11 @@ Deno.serve(async (req) => {
   if (!institutionId) return json({ error: "missing_institutionId" }, 400)
   if (institutionIds.length === 0) return json({ error: "missing_institutionIds" }, 400)
 
-  if (role === "SUPER_ADMIN" && caller.role !== "SUPER_ADMIN") {
+  if (
+    role === "SUPER_ADMIN" &&
+    caller.role !== "SUPER_ADMIN_GLOBAL" &&
+    caller.role !== "SUPER_ADMIN"
+  ) {
     return json({ error: "not_authorized_for_role" }, 403)
   }
 

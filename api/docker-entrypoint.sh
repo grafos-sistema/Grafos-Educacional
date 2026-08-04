@@ -87,19 +87,6 @@ fi
 
 echo "$MIGRATE_OUTPUT"
 
-# Rodar seed apenas fora de produção, a menos que seja explicitamente habilitado
-if [ "${RUN_DB_SEED:-false}" = "true" ] || [ "${NODE_ENV:-development}" != "production" ]; then
-  echo "🌱 Running database seed..."
-  if npx prisma db seed 2>&1 | tee /tmp/seed.log; then
-    echo "✅ Seed completed successfully"
-  else
-    echo "⚠️  Seed failed or data already exists (this is normal on restart)"
-    cat /tmp/seed.log
-  fi
-else
-  echo "⏭️  Skipping database seed in production (set RUN_DB_SEED=true to enable)."
-fi
-
 echo "✨ Initialization complete!"
 echo "🚀 Starting application..."
 

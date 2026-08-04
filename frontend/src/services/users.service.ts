@@ -149,7 +149,7 @@ async function parseSupabaseFunctionError(error: { context: Response }) {
       case 'missing_newPassword':
         return 'Informe a nova senha para concluir a redefinição.';
       case 'not_authorized':
-        return 'Você não tem permissão para redefinir a senha deste usuário.';
+        return 'Você não tem permissão para executar esta ação.';
       case 'failed_to_update_auth_user':
         return details;
       default:

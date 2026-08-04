@@ -202,7 +202,6 @@ export function InstitutionFormTabs({ form, institutionId }: InstitutionFormTabs
   const emailError = normalizeTabError(errors.email?.message as string | undefined);
   const phoneError = normalizeTabError(errors.phone?.message as string | undefined);
   const websiteError = normalizeTabError(errors.website?.message as string | undefined);
-  const logoError = normalizeTabError(errors.logo?.message as string | undefined);
 
   useEffect(() => {
     const currentUnits = getValues('units');
@@ -420,20 +419,6 @@ export function InstitutionFormTabs({ form, institutionId }: InstitutionFormTabs
                     />
                   </div>
 
-                  <div className="md:col-span-2">
-                    <Input
-                      label="Logo (URL)"
-                      placeholder="Ex: https://..."
-                      value={watch('logo') || ''}
-                      onChange={(event) =>
-                        setValue('logo', event.target.value.trim(), {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        })
-                      }
-                      error={logoError}
-                    />
-                  </div>
                 </div>
               </div>
             )}
@@ -556,6 +541,7 @@ export function InstitutionFormTabs({ form, institutionId }: InstitutionFormTabs
                                         shouldDirty: true,
                                       });
                                     }}
+                                    disabled={!institutionId}
                                     leftIcon={<PlusIcon className="h-4 w-4" />}
                                   >
                                     Cadastrar Diretor
@@ -591,9 +577,9 @@ export function InstitutionFormTabs({ form, institutionId }: InstitutionFormTabs
                                 </div>
                               </div>
 
-                              {!institutionId && directorMode === 'link' ? (
+                              {!institutionId ? (
                                 <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
-                                  O vínculo fica disponível depois que a instituição já existir.
+                                  Salve a instituição primeiro para cadastrar ou vincular um diretor neste anexo.
                                 </p>
                               ) : null}
 

@@ -128,7 +128,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Database Init (Migrations and Seed)
+  # Database Init (Migrations)
   db-init:
     build:
       context: ./api
@@ -136,7 +136,6 @@ services:
     container_name: grafos-db-init
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
-      RUN_SEED: "true"
     depends_on:
       postgres:
         condition: service_healthy
@@ -150,10 +149,6 @@ services:
         npx prisma generate &&
         echo '🔄 Executando migrations...' &&
         npx prisma migrate deploy &&
-        if [ \"$$RUN_SEED\" = \"true\" ]; then
-          echo '🌱 Executando seed do banco de dados...' &&
-          npx prisma db seed || echo '⚠️  Seed falhou ou já foi executado';
-        fi &&
         echo '✅ Inicialização do banco concluída!'
       "
     restart: "no"
