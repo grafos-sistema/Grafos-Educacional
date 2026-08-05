@@ -1,8 +1,10 @@
 import { existsSync, mkdirSync, copyFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 
 const projectRoot = resolve(process.cwd());
 const nextDir = resolve(projectRoot, '.next');
+const parentRoot = resolve(projectRoot, '..');
+const parentNextDir = resolve(parentRoot, '.next');
 
 const ensureFile = (targetPath, sourcePath, fallbackContent) => {
   if (existsSync(targetPath)) return;
@@ -26,3 +28,22 @@ ensureFile(
 ensureFile(resolve(nextDir, 'package.json'), null, '{}\n');
 
 ensureFile(resolve(nextDir, 'server', 'pages-manifest.json'), null, '{}\n');
+
+if (process.env.VERCEL && basename(projectRoot) === 'frontend') {
+  ensureFile(
+    resolve(parentNextDir, 'routes-manifest-deterministic.json'),
+    resolve(nextDir, 'routes-manifest-deterministic.json'),
+    null,
+  );
+  ensureFile(
+    resolve(parentNextDir, 'routes-manifest.json'),
+    resolve(nextDir, 'routes-manifest.json'),
+    null,
+  );
+  ensureFile(resolve(parentNextDir, 'package.json'), null, '{}\n');
+  ensureFile(
+    resolve(parentNextDir, 'server', 'pages-manifest.json'),
+    resolve(nextDir, 'server', 'pages-manifest.json'),
+    '{}\n',
+  );
+}
