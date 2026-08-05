@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, copyFileSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  copyFileSync,
+  writeFileSync,
+  cpSync,
+} from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 
 const projectRoot = resolve(process.cwd());
@@ -30,6 +36,9 @@ ensureFile(resolve(nextDir, 'package.json'), null, '{}\n');
 ensureFile(resolve(nextDir, 'server', 'pages-manifest.json'), null, '{}\n');
 
 if (process.env.VERCEL && basename(projectRoot) === 'frontend') {
+  mkdirSync(parentNextDir, { recursive: true });
+  cpSync(nextDir, parentNextDir, { recursive: true, force: true });
+
   ensureFile(
     resolve(parentNextDir, 'routes-manifest-deterministic.json'),
     resolve(nextDir, 'routes-manifest-deterministic.json'),
