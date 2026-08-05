@@ -24,3 +24,5 @@ ensureFile(
 );
 
 ensureFile(resolve(nextDir, 'package.json'), null, '{}\n');
+
+ensureFile(resolve(nextDir, 'server', 'pages-manifest.json'), null, '{}\n');
