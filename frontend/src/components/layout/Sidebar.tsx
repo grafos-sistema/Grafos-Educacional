@@ -487,26 +487,50 @@ export function Sidebar({
   const { startNavigation } = useAuthenticatedNavigation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const currentRole = user?.activeProfile || user?.role;
+  const navigationRole =
+    currentRole === UserRole.SUPER_ADMIN_GLOBAL ? UserRole.SUPER_ADMIN : currentRole;
+
+  // #region debug-point menu-nav-bounce-sidebar
+  const dbgEnabled =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('dbg');
+  const dbgUrl =
+    process.env.NEXT_PUBLIC_DEBUG_SERVER_URL ||
+    (dbgEnabled ? 'http://127.0.0.1:7777/event' : '');
+  const dbgSession =
+    process.env.NEXT_PUBLIC_DEBUG_SESSION_ID || 'menu-nav-bounce';
+  const dbgEmit = (name: string, payload?: Record<string, unknown>) => {
+    if (!dbgUrl) return;
+    fetch(dbgUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ts: Date.now(),
+        sessionId: dbgSession,
+        source: 'frontend',
+        scope: 'Sidebar',
+        name,
+        payload: payload ?? {},
+      }),
+    }).catch(() => {});
+  };
+  // #endregion debug-point menu-nav-bounce-sidebar
 
   const filteredNavigation = useMemo(
     () =>
       navigation.filter((item) =>
-        currentRole ? item.roles.includes(currentRole) : false
+        navigationRole ? item.roles.includes(navigationRole) : false
       ),
-    [currentRole]
+    [navigationRole]
   );
 
   const navigationSections = useMemo<NavigationSection[]>(() => {
-    if (currentRole === UserRole.SUPER_ADMIN_GLOBAL) {
-      return [{ title: '', items: filteredNavigation }];
-    }
-
     const isAdministrativeRole =
-      currentRole === UserRole.INSTITUTION_ADMIN ||
-      currentRole === UserRole.SUPER_ADMIN ||
-      currentRole === UserRole.DIRECTOR;
+      navigationRole === UserRole.INSTITUTION_ADMIN ||
+      navigationRole === UserRole.SUPER_ADMIN ||
+      navigationRole === UserRole.DIRECTOR;
 
-    if (currentRole === UserRole.TEACHER) {
+    if (navigationRole === UserRole.TEACHER) {
       const itemMap = new Map(filteredNavigation.map((item) => [item.name, item]));
       const usedItemNames = new Set<string>();
 
@@ -539,7 +563,7 @@ export function Sidebar({
       return sections;
     }
 
-    if (currentRole === UserRole.COORDINATOR) {
+    if (navigationRole === UserRole.COORDINATOR) {
       const itemMap = new Map(filteredNavigation.map((item) => [item.name, item]));
       const usedItemNames = new Set<string>();
 
@@ -600,22 +624,22 @@ export function Sidebar({
 
     if (remainingItems.length > 0) {
       sections.push({
-        title: currentRole === UserRole.SUPER_ADMIN ? 'Administração' : 'Outros',
+        title: navigationRole === UserRole.SUPER_ADMIN ? 'Administração' : 'Outros',
         items: remainingItems,
       });
     }
 
     return sections;
-  }, [currentRole, filteredNavigation]);
+  }, [navigationRole, filteredNavigation]);
 
   const prefetchRoutes = useMemo(() => {
-    if (!currentRole) return [];
+    if (!navigationRole) return [];
 
     return filteredNavigation
-      .map((item) => getRouteForRole(item, currentRole))
+      .map((item) => getRouteForRole(item, navigationRole))
       .filter((route, index, routes) => routes.indexOf(route) === index)
       .slice(0, 8);
-  }, [currentRole, filteredNavigation]);
+  }, [navigationRole, filteredNavigation]);
 
   usePrefetch({
     routes: prefetchRoutes,
@@ -725,14 +749,34 @@ export function Sidebar({
               </p>
             ) : null}
             {section.items.map((item) => {
-              const href = currentRole ? getRouteForRole(item, currentRole) : item.baseRoute;
+              const href = navigationRole ? getRouteForRole(item, navigationRole) : item.baseRoute;
               const isActive = pathname === href || pathname?.startsWith(href + '/');
-              const itemLabel = currentRole ? getLabelForRole(item, currentRole) : item.name;
+              const itemLabel = navigationRole ? getLabelForRole(item, navigationRole) : item.name;
               return (
                 <Link
                   key={item.name}
                   href={href}
                   onClick={() => {
+                    dbgEmit('sidebar:click', {
+                      from: typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : null,
+                      to: href,
+                      role: navigationRole ?? null,
+                      item: item.name,
+                    });
+                    if (dbgEnabled) {
+                      window.setTimeout(() => {
+                        dbgEmit('sidebar:afterClick:1s', {
+                          location: `${window.location.pathname}${window.location.search}`,
+                          expected: href,
+                        });
+                      }, 1000);
+                      window.setTimeout(() => {
+                        dbgEmit('sidebar:afterClick:4s', {
+                          location: `${window.location.pathname}${window.location.search}`,
+                          expected: href,
+                        });
+                      }, 4000);
+                    }
                     startNavigation(href);
                     closeMobileMenu();
                   }}

@@ -95,6 +95,7 @@ api.interceptors.response.use(
     return response.data;
   },
   async (error) => {
+    const suppressFriendlyError = shouldSuppressFriendlyError(error?.config);
     if (error.response) {
       // Server responded with error status
       const { status, data, config } = error.response;
@@ -236,8 +237,12 @@ api.interceptors.response.use(
         !api.defaults.baseURL && typeof window !== 'undefined'
           ? getApiConfigurationMessage()
           : 'Erro de conexão. Verifique sua internet e tente novamente.';
-      presentFriendlyError({ message: networkMsg }, networkMsg);
-      console.error('Network error - no response received');
+      if (!suppressFriendlyError) {
+        presentFriendlyError({ message: networkMsg }, networkMsg);
+      }
+      if (!suppressFriendlyError) {
+        console.error('Network error - no response received');
+      }
       return Promise.reject({
         message: networkMsg,
         __friendlyHandled: true,

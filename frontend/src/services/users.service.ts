@@ -440,6 +440,10 @@ export const usersService = {
    * Listar todos os usuÃ¡rios com paginaÃ§Ã£o e filtros
    */
   async findAll(params: UsersFilterParams = {}): Promise<PaginatedResponse<User>> {
+    const viewer = useAuthStore.getState().user;
+    const viewerRole = (viewer?.activeProfile ?? viewer?.role) as UserRole | undefined;
+    const excludeGlobalAdmins = viewerRole === UserRole.SUPER_ADMIN_GLOBAL;
+
     const apiParams = new URLSearchParams();
     if (params.page) apiParams.append('page', String(params.page));
     if (params.limit) apiParams.append('limit', String(params.limit));
@@ -474,9 +478,21 @@ export const usersService = {
       const response = await api.get<PaginatedResponse<User>>(`/users?${apiParams.toString()}`, {
         headers: { 'x-skip-error-toast': '1' },
       });
-      return response as unknown as PaginatedResponse<User>;
+      const payload = response as unknown as PaginatedResponse<User>;
+      if (!excludeGlobalAdmins) {
+        return payload;
+      }
+
+      const filtered = payload.data.filter((item) => item.role !== UserRole.SUPER_ADMIN_GLOBAL);
+      return {
+        ...payload,
+        data: filtered,
+        meta: {
+          ...payload.meta,
+          total: Math.max(0, payload.meta.total - (payload.data.length - filtered.length)),
+        },
+      };
     } catch (error) {
-      console.warn('Falha ao listar usuários pela API; tentando fallback via Supabase.', error);
     }
 
     const page = params.page ?? 1;
@@ -554,6 +570,10 @@ export const usersService = {
       .select(USER_BASE_COLUMNS, { count: 'exact' })
       .order('createdAt', { ascending: false })
       .range(from, to);
+
+    if (excludeGlobalAdmins) {
+      query = query.neq('role', UserRole.SUPER_ADMIN_GLOBAL);
+    }
 
     if (params.search) {
       const sanitized = params.search.replace(/,/g, ' ').trim();
