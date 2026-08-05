@@ -33,6 +33,7 @@ const authRoutes = [
 
 // Role-based route access
 const roleRoutes: Record<string, string[]> = {
+  SUPER_ADMIN_GLOBAL: ['/communication'],
   SUPER_ADMIN: ['/super-admin', '/admin', '/coordinator', '/professor', '/aluno', '/responsaveis'],
   INSTITUTION_ADMIN: ['/admin', '/coordinator', '/professor', '/aluno', '/responsaveis'],
   COORDINATOR: ['/coordinator', '/professor', '/aluno'],
@@ -92,6 +93,8 @@ export function middleware(request: NextRequest) {
 
 function getRedirectPathByRole(role: string): string {
   switch (role) {
+    case 'SUPER_ADMIN_GLOBAL':
+      return '/communication';
     case 'SUPER_ADMIN':
       return '/admin/dashboard';
     case 'INSTITUTION_ADMIN':

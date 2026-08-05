@@ -185,7 +185,8 @@ A API possui 6 níveis de acesso:
     `,
   });
 
-  const port = configService.get<number>('app.port') || 3333;
+  const port =
+    Number(process.env.PORT) || configService.get<number>('app.port') || 3333;
   const appName = configService.get<string>('app.name') || 'API';
   const corsOrigins = configService.get<string[]>('cors.origins') || [];
 
@@ -198,7 +199,7 @@ A API possui 6 níveis de acesso:
 
   await app.listen(port, '0.0.0.0');
 
-  logger.log(`🚀 ${appName} running on: http://localhost:${port}/api/v1`);
+  logger.log(`🚀 ${appName} running on: http://localhost:${port}`);
   logger.log(`📚 Swagger Docs: http://localhost:${port}/api/docs`);
   logger.log(`📊 Environment: ${configService.get('app.env')}`);
 }
