@@ -340,6 +340,10 @@ async function fetchUserFromSupabaseById(id: string): Promise<User> {
   } as User;
 }
 
+function shouldUseSupabaseAsPrimarySource(role?: UserRole) {
+  return role === UserRole.SUPER_ADMIN_GLOBAL;
+}
+
 async function loadParentStudentLinks(
   rows: StudentParentRow[],
   relation: 'parent' | 'student'
@@ -443,6 +447,7 @@ export const usersService = {
     const viewer = useAuthStore.getState().user;
     const viewerRole = (viewer?.activeProfile ?? viewer?.role) as UserRole | undefined;
     const excludeGlobalAdmins = viewerRole === UserRole.SUPER_ADMIN_GLOBAL;
+    const useSupabaseAsPrimary = shouldUseSupabaseAsPrimarySource(viewerRole);
 
     const apiParams = new URLSearchParams();
     if (params.page) apiParams.append('page', String(params.page));
@@ -474,25 +479,27 @@ export const usersService = {
       apiParams.append('institutionId', params.institutionId);
     }
 
-    try {
-      const response = await api.get<PaginatedResponse<User>>(`/users?${apiParams.toString()}`, {
-        headers: { 'x-skip-error-toast': '1' },
-      });
-      const payload = response as unknown as PaginatedResponse<User>;
-      if (!excludeGlobalAdmins) {
-        return payload;
-      }
+    if (!useSupabaseAsPrimary) {
+      try {
+        const response = await api.get<PaginatedResponse<User>>(`/users?${apiParams.toString()}`, {
+          headers: { 'x-skip-error-toast': '1' },
+        });
+        const payload = response as unknown as PaginatedResponse<User>;
+        if (!excludeGlobalAdmins) {
+          return payload;
+        }
 
-      const filtered = payload.data.filter((item) => item.role !== UserRole.SUPER_ADMIN_GLOBAL);
-      return {
-        ...payload,
-        data: filtered,
-        meta: {
-          ...payload.meta,
-          total: Math.max(0, payload.meta.total - (payload.data.length - filtered.length)),
-        },
-      };
-    } catch (error) {
+        const filtered = payload.data.filter((item) => item.role !== UserRole.SUPER_ADMIN_GLOBAL);
+        return {
+          ...payload,
+          data: filtered,
+          meta: {
+            ...payload.meta,
+            total: Math.max(0, payload.meta.total - (payload.data.length - filtered.length)),
+          },
+        };
+      } catch (error) {
+      }
     }
 
     const page = params.page ?? 1;
@@ -614,18 +621,25 @@ export const usersService = {
    * Buscar usuÃ¡rio por ID
    */
   async findOne(id: string): Promise<User> {
-    try {
-      const response = await api.get<User>(`/users/${id}`, {
-        headers: { 'x-skip-error-toast': '1' },
-      });
-      return response as unknown as User;
-    } catch (apiError) {
+    const viewer = useAuthStore.getState().user;
+    const viewerRole = (viewer?.activeProfile ?? viewer?.role) as UserRole | undefined;
+
+    if (!shouldUseSupabaseAsPrimarySource(viewerRole)) {
       try {
-        return await fetchUserFromSupabaseById(id);
-      } catch {
-        throw apiError;
+        const response = await api.get<User>(`/users/${id}`, {
+          headers: { 'x-skip-error-toast': '1' },
+        });
+        return response as unknown as User;
+      } catch (apiError) {
+        try {
+          return await fetchUserFromSupabaseById(id);
+        } catch {
+          throw apiError;
+        }
       }
     }
+
+    return fetchUserFromSupabaseById(id);
   },
 
   /**
