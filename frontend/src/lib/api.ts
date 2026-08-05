@@ -135,8 +135,6 @@ api.interceptors.response.use(
                 'Voce precisa entrar novamente para continuar.'
               );
               console.error('Unauthorized:', info.rawMessage);
-            } else {
-              console.error('Unauthorized:', data?.message || 'Não autorizado para acessar este recurso');
             }
           }
           break;
@@ -149,8 +147,6 @@ api.interceptors.response.use(
               'Voce nao tem permissao para acessar esse recurso.'
             );
             console.error('Access denied:', forbiddenInfo.rawMessage);
-          } else {
-            console.error('Access denied:', data?.message || 'Você não tem permissão para acessar este recurso');
           }
           break;
 
@@ -162,8 +158,6 @@ api.interceptors.response.use(
               'Nao encontramos as informacoes solicitadas.'
             );
             console.error('Resource not found:', notFoundInfo.rawMessage);
-          } else {
-            console.error('Resource not found:', data?.message || 'Recurso não encontrado');
           }
           break;
 
@@ -175,8 +169,6 @@ api.interceptors.response.use(
               'Ja existe um cadastro com uma dessas informacoes.'
             );
             console.error('Conflict:', conflictInfo.rawMessage);
-          } else {
-            console.error('Conflict:', data?.message || 'Registro duplicado');
           }
           break;
 
@@ -189,8 +181,6 @@ api.interceptors.response.use(
               'Revise os dados informados e tente novamente.'
             );
             console.error('Validation error:', validationInfo.rawMessage);
-          } else {
-            console.error('Validation error:', data?.message || 'Erro de validação');
           }
           break;
 
@@ -202,8 +192,6 @@ api.interceptors.response.use(
               'O sistema nao conseguiu concluir a acao agora. Tente novamente em instantes.'
             );
             console.error('Server error:', serverInfo.rawMessage);
-          } else {
-            console.error('Server error:', data?.message || 'Erro interno do servidor.');
           }
           break;
 
@@ -214,8 +202,6 @@ api.interceptors.response.use(
               'Nao foi possivel concluir a acao solicitada.'
             );
             console.error('API error:', defaultInfo.rawMessage);
-          } else {
-            console.error('API error:', data?.message || 'Erro ao processar requisição');
           }
       }
 

@@ -217,8 +217,8 @@ model InstitutionDocument {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  institutionId String
-  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id], onDelete: Cascade)
   unitId        String?
   unit          InstitutionUnit? @relation(fields: [unitId], references: [id], onDelete: SetNull)
 

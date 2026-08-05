@@ -615,7 +615,9 @@ export const usersService = {
    */
   async findOne(id: string): Promise<User> {
     try {
-      const response = await api.get<User>(`/users/${id}`);
+      const response = await api.get<User>(`/users/${id}`, {
+        headers: { 'x-skip-error-toast': '1' },
+      });
       return response as unknown as User;
     } catch (apiError) {
       try {
