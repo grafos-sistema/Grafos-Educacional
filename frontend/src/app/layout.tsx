@@ -2,8 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import "@/styles/accessibility.css";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { Providers } from "./providers";
 import { SkipNav } from "@/components/a11y/SkipNav";
 import { getMunicipalityConfig, getMunicipalityCSSVariables } from "@/config/municipality.config";
 
@@ -217,9 +215,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <SkipNav />
-        <Providers>
-          <AuthProvider>{children}</AuthProvider>
-        </Providers>
+        {children}
       </body>
     </html>
   );

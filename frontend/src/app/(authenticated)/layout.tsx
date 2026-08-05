@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -12,6 +12,7 @@ import {
   AuthenticatedNavigationProvider,
   useAuthenticatedNavigation,
 } from '@/components/layout/AuthenticatedNavigationProvider';
+import { AppProviders } from '../providers';
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'desktop-sidebar-collapsed';
 
@@ -83,7 +84,7 @@ function AuthenticatedShellSkeletonContent() {
   );
 }
 
-export default function AuthenticatedLayout({
+function AuthenticatedLayoutShell({
   children,
 }: {
   children: React.ReactNode;
@@ -132,40 +133,49 @@ export default function AuthenticatedLayout({
       <SkipLink />
       <AuthenticatedNavigationProvider>
         <div className="flex h-screen overflow-hidden bg-secondary-50" suppressHydrationWarning>
-          {/* Sidebar */}
           <Sidebar
             isDesktopCollapsed={isDesktopSidebarCollapsed}
             onDesktopCollapsedChange={handleDesktopSidebarCollapsedChange}
           />
 
-          {/* Main content */}
           <div className="flex flex-1 flex-col overflow-hidden" suppressHydrationWarning>
-            {/* Header */}
             <Header />
 
-            {/* Page content */}
             <main id="main-content" className="flex-1 overflow-y-auto" tabIndex={-1}>
-            <div className="py-6 px-4 sm:px-6 lg:px-8 pt-16 lg:pt-6" suppressHydrationWarning>
-              <Breadcrumbs />
-              <AuthenticatedContent>{children}</AuthenticatedContent>
-            </div>
-          </main>
+              <div className="py-6 px-4 sm:px-6 lg:px-8 pt-16 lg:pt-6" suppressHydrationWarning>
+                <Breadcrumbs />
+                <AuthenticatedContent>{children}</AuthenticatedContent>
+              </div>
+            </main>
 
-          {/* Footer */}
-          <footer className="bg-white border-t border-secondary-200 py-3 px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-center">
-              <p className="text-xs sm:text-sm text-secondary-500">
-                © 2025 Grafos - Plataforma Educacional.
-              </p>
-              <span className="hidden sm:inline text-secondary-300">•</span>
-              <p className="text-xs sm:text-sm text-secondary-500">
-                Todos os direitos reservados.
-              </p>
-            </div>
-          </footer>
+            <footer className="bg-white border-t border-secondary-200 py-3 px-4 sm:px-6 lg:px-8">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-center">
+                <p className="text-xs sm:text-sm text-secondary-500">
+                  © 2025 Grafos - Plataforma Educacional.
+                </p>
+                <span className="hidden sm:inline text-secondary-300">•</span>
+                <p className="text-xs sm:text-sm text-secondary-500">
+                  Todos os direitos reservados.
+                </p>
+              </div>
+            </footer>
+          </div>
         </div>
-      </div>
       </AuthenticatedNavigationProvider>
     </>
+  );
+}
+
+export default function AuthenticatedLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <AppProviders>
+      <AuthProvider>
+        <AuthenticatedLayoutShell>{children}</AuthenticatedLayoutShell>
+      </AuthProvider>
+    </AppProviders>
   );
 }

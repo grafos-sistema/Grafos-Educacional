@@ -1,7 +1,7 @@
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AuthProviders } from '../providers';
 
-export default function AuthLayout({
+export default function SecurityLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -12,3 +12,4 @@ export default function AuthLayout({
     </AuthProviders>
   );
 }
+
