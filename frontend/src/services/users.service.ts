@@ -471,7 +471,9 @@ export const usersService = {
     }
 
     try {
-      const response = await api.get<PaginatedResponse<User>>(`/users?${apiParams.toString()}`);
+      const response = await api.get<PaginatedResponse<User>>(`/users?${apiParams.toString()}`, {
+        headers: { 'x-skip-error-toast': '1' },
+      });
       return response as unknown as PaginatedResponse<User>;
     } catch (error) {
       console.warn('Falha ao listar usuários pela API; tentando fallback via Supabase.', error);
@@ -688,9 +690,9 @@ export const usersService = {
     const validUsersColumns = USER_BASE_COLUMNS.split(',').map(c => c.trim());
     const filteredUserData = Object.keys(userData)
       .filter(key => (validUsersColumns.includes(key) && !readonlyColumns.includes(key)) || key === 'password')
-      .reduce((obj, key) => {
+      .reduce<Record<string, any>>((obj, key) => {
         const val = normalizeOptionalString((userData as any)[key]);
-        (obj as any)[key] = val;
+        obj[key] = val;
         return obj;
       }, {});
     const backendSafeUserFields = {
@@ -952,7 +954,7 @@ export const usersService = {
       throw error;
     }
 
-    return (result as { message?: string } | null) ?? { message: 'Senha redefinida com sucesso.' };
+    return { message: (result as { message?: string } | null)?.message ?? 'Senha redefinida com sucesso.' };
   },
 
   /**

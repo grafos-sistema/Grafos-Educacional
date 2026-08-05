@@ -100,9 +100,8 @@ export const eventsService = {
     const params = new URLSearchParams();
 
     if (filters.type) params.append('type', filters.type);
-    if (filters.classId) params.append('classId', filters.classId);
-    if (filters.startDate) params.append('startDate', filters.startDate);
-    if (filters.endDate) params.append('endDate', filters.endDate);
+    if (filters.fromDate) params.append('fromDate', filters.fromDate);
+    if (filters.toDate) params.append('toDate', filters.toDate);
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
 

@@ -16,6 +16,7 @@ const nextConfig: NextConfig = {
         pathname: '/storage/v1/object/public/**',
       },
     ],
+    qualities: [75, 85, 100],
   },
   typescript: {
     ignoreBuildErrors: true, // Temporário - para concluir deploy

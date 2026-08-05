@@ -32,6 +32,13 @@ const api = axios.create({
   timeout: 33330,
 });
 
+const shouldSuppressFriendlyError = (config?: any): boolean => {
+  if (!config) return false;
+
+  const headers = (config.headers ?? {}) as Record<string, unknown>;
+  return headers['x-skip-error-toast'] === '1' || (config as any).skipFriendlyError === true;
+};
+
 // Request interceptor - Add auth token to requests
 api.interceptors.request.use(
   async (config) => {
@@ -91,6 +98,7 @@ api.interceptors.response.use(
     if (error.response) {
       // Server responded with error status
       const { status, data, config } = error.response;
+      const suppressFriendlyError = shouldSuppressFriendlyError(config);
 
       switch (status) {
         case 401:
@@ -120,66 +128,94 @@ api.interceptors.response.use(
               }
             }
           } else {
-            const info = presentFriendlyError(
-              { message: data?.message || 'Não autorizado para acessar este recurso' },
-              'Voce precisa entrar novamente para continuar.'
-            );
-            console.error('Unauthorized:', info.rawMessage);
+            if (!suppressFriendlyError) {
+              const info = presentFriendlyError(
+                { message: data?.message || 'Não autorizado para acessar este recurso' },
+                'Voce precisa entrar novamente para continuar.'
+              );
+              console.error('Unauthorized:', info.rawMessage);
+            } else {
+              console.error('Unauthorized:', data?.message || 'Não autorizado para acessar este recurso');
+            }
           }
           break;
 
         case 403:
           // Forbidden - user doesn't have permission
-          const forbiddenInfo = presentFriendlyError(
-            { message: data?.message || 'Você não tem permissão para acessar este recurso' },
-            'Voce nao tem permissao para acessar esse recurso.'
-          );
-          console.error('Access denied:', forbiddenInfo.rawMessage);
+          if (!suppressFriendlyError) {
+            const forbiddenInfo = presentFriendlyError(
+              { message: data?.message || 'Você não tem permissão para acessar este recurso' },
+              'Voce nao tem permissao para acessar esse recurso.'
+            );
+            console.error('Access denied:', forbiddenInfo.rawMessage);
+          } else {
+            console.error('Access denied:', data?.message || 'Você não tem permissão para acessar este recurso');
+          }
           break;
 
         case 404:
           // Not found
-          const notFoundInfo = presentFriendlyError(
-            { message: data?.message || 'Recurso não encontrado' },
-            'Nao encontramos as informacoes solicitadas.'
-          );
-          console.error('Resource not found:', notFoundInfo.rawMessage);
+          if (!suppressFriendlyError) {
+            const notFoundInfo = presentFriendlyError(
+              { message: data?.message || 'Recurso não encontrado' },
+              'Nao encontramos as informacoes solicitadas.'
+            );
+            console.error('Resource not found:', notFoundInfo.rawMessage);
+          } else {
+            console.error('Resource not found:', data?.message || 'Recurso não encontrado');
+          }
           break;
 
         case 409:
           // Conflict (e.g., duplicate record)
-          const conflictInfo = presentFriendlyError(
-            { message: data?.message || 'Registro duplicado' },
-            'Ja existe um cadastro com uma dessas informacoes.'
-          );
-          console.error('Conflict:', conflictInfo.rawMessage);
+          if (!suppressFriendlyError) {
+            const conflictInfo = presentFriendlyError(
+              { message: data?.message || 'Registro duplicado' },
+              'Ja existe um cadastro com uma dessas informacoes.'
+            );
+            console.error('Conflict:', conflictInfo.rawMessage);
+          } else {
+            console.error('Conflict:', data?.message || 'Registro duplicado');
+          }
           break;
 
         case 422:
         case 400:
           // Validation error
-          const validationInfo = presentFriendlyError(
-            { message: data?.message || 'Erro de validação' },
-            'Revise os dados informados e tente novamente.'
-          );
-          console.error('Validation error:', validationInfo.rawMessage);
+          if (!suppressFriendlyError) {
+            const validationInfo = presentFriendlyError(
+              { message: data?.message || 'Erro de validação' },
+              'Revise os dados informados e tente novamente.'
+            );
+            console.error('Validation error:', validationInfo.rawMessage);
+          } else {
+            console.error('Validation error:', data?.message || 'Erro de validação');
+          }
           break;
 
         case 500:
           // Server error
-          const serverInfo = presentFriendlyError(
-            { message: data?.message || 'Erro interno do servidor. Tente novamente mais tarde.' },
-            'O sistema nao conseguiu concluir a acao agora. Tente novamente em instantes.'
-          );
-          console.error('Server error:', serverInfo.rawMessage);
+          if (!suppressFriendlyError) {
+            const serverInfo = presentFriendlyError(
+              { message: data?.message || 'Erro interno do servidor. Tente novamente mais tarde.' },
+              'O sistema nao conseguiu concluir a acao agora. Tente novamente em instantes.'
+            );
+            console.error('Server error:', serverInfo.rawMessage);
+          } else {
+            console.error('Server error:', data?.message || 'Erro interno do servidor.');
+          }
           break;
 
         default:
-          const defaultInfo = presentFriendlyError(
-            { message: data?.message || 'Erro ao processar requisição' },
-            'Nao foi possivel concluir a acao solicitada.'
-          );
-          console.error('API error:', defaultInfo.rawMessage);
+          if (!suppressFriendlyError) {
+            const defaultInfo = presentFriendlyError(
+              { message: data?.message || 'Erro ao processar requisição' },
+              'Nao foi possivel concluir a acao solicitada.'
+            );
+            console.error('API error:', defaultInfo.rawMessage);
+          } else {
+            console.error('API error:', data?.message || 'Erro ao processar requisição');
+          }
       }
 
       const friendlyInfo = getFriendlyErrorInfo(

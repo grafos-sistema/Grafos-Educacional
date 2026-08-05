@@ -1,7 +1,7 @@
 'use client';
 
 import { toast } from 'react-hot-toast';
-import { Fragment, useState } from 'react';
+import { Fragment, useState, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -98,7 +98,7 @@ export default function InstitutionsPage() {
                 { value: 'false', label: 'Inativos' },
               ]}
               value={filters.isActive === undefined ? '' : filters.isActive.toString()}
-              onChange={(e) =>
+              onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                 setFilters({
                   ...filters,
                   isActive: e.target.value ? e.target.value === 'true' : undefined,

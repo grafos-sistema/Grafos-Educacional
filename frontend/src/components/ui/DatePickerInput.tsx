@@ -17,9 +17,14 @@ import {
 } from '@heroicons/react/24/outline';
 
 interface DatePickerInputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'defaultValue'> {
+  extends Omit<
+    React.InputHTMLAttributes<HTMLInputElement>,
+    'value' | 'defaultValue' | 'min' | 'max'
+  > {
   value?: string;
   defaultValue?: string;
+  min?: string;
+  max?: string;
   error?: string;
   describedBy?: string;
   leftIcon?: React.ReactNode;

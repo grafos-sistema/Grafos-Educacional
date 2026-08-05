@@ -95,9 +95,10 @@ export default function EditInstitutionPage({ params }: EditInstitutionPageProps
   const onSubmit = async (data: InstitutionFormValues) => {
     try {
       setIsSubmitting(true);
+      const persistedUnits = institution?.units ?? [];
       const unitsWithDirectors = await resolveInstitutionUnitDirectors(
         id,
-        institution.units ?? [],
+        persistedUnits,
         data.units
       );
 

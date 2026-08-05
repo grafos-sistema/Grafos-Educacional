@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { Menu, Transition } from '@headlessui/react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -359,7 +359,9 @@ export default function PerfilPage() {
             <Select
               label="Gênero"
               value={formData.gender || ''}
-              onChange={(e) => handleChange('gender', e.target.value as Gender)}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                handleChange('gender', e.target.value as Gender)
+              }
               options={Object.entries(genderLabels).map(([value, label]) => ({ value, label }))}
             />
           </div>
@@ -398,7 +400,7 @@ export default function PerfilPage() {
             <Select
               label="Estado"
               value={formData.state || ''}
-              onChange={(e) => handleChange('state', e.target.value)}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => handleChange('state', e.target.value)}
               options={[{ value: '', label: 'Selecione a UF' }, ...BRAZILIAN_UF_OPTIONS]}
             />
             <Input
@@ -433,7 +435,7 @@ export default function PerfilPage() {
       <Modal
         isOpen={isImagePreviewOpen}
         onClose={() => setIsImagePreviewOpen(false)}
-        size="4xl"
+        size="xl"
         showCloseButton={false}
         panelClassName="bg-transparent p-0 shadow-none rounded-none overflow-visible"
         headerClassName="hidden"

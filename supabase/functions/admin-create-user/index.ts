@@ -136,7 +136,7 @@ async function callerCanAccessInstitution(
   return !!link
 }
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders })
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405)
 
@@ -212,7 +212,7 @@ Deno.serve(async (req) => {
   if (!institutions || institutions.length !== institutionIds.length) {
     return json({ error: "institution_not_found" }, 404)
   }
-  if (institutions.some((institution) => !institution.isActive)) {
+  if (institutions.some((institution: { isActive: boolean }) => !institution.isActive)) {
     return json({ error: "institution_inactive" }, 400)
   }
 

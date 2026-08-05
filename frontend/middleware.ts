@@ -11,11 +11,13 @@ const publicRoutes = [
   '/login/professor',
   '/login/aluno',
   '/login/responsaveis',
+  '/security',
   '/forgot-password',
   '/reset-password',
   '/select-profile', // Allow profile selection after login
   '/institutions', // Public institution selection page for municipality deployments
   '/register', // Public registration page
+  '/pending-approval',
 ];
 
 // Auth routes that should redirect to dashboard if already logged in
@@ -41,6 +43,15 @@ const roleRoutes: Record<string, string[]> = {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (
+    pathname === '/sw.js' ||
+    pathname.startsWith('/workbox-') ||
+    pathname === '/site.webmanifest' ||
+    pathname === '/manifest.json'
+  ) {
+    return NextResponse.next();
+  }
 
   // Get tokens from cookies
   const cookieHeader = request.headers.get('cookie') || '';
@@ -115,6 +126,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public files (images, etc.)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|sw\\.js|workbox-.*\\.js|site\\.webmanifest|manifest\\.json|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg|.*\\.webp).*)',
   ],
 };

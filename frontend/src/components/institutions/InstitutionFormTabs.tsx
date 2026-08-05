@@ -12,7 +12,7 @@ import {
   TrashIcon,
   UserCircleIcon,
 } from '@heroicons/react/24/outline';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useFieldArray, type UseFormReturn } from 'react-hook-form';
 import { Button } from '@/components/ui/Button';
@@ -258,9 +258,9 @@ export function InstitutionFormTabs({ form, institutionId }: InstitutionFormTabs
   const institutionDirectors: DirectorOption[] = (directorsResponse?.data ?? []).map((director) => ({
     id: director.id,
     fullName: `${director.firstName} ${director.lastName}`.trim(),
-    cpf: director.cpf,
+    cpf: director.cpf ?? undefined,
     email: director.email,
-    phone: director.phone,
+    phone: director.phone ?? undefined,
   }));
 
   const handleUnitCepBlur = async (index: number) => {
@@ -800,7 +800,7 @@ export function InstitutionFormTabs({ form, institutionId }: InstitutionFormTabs
                             <Select
                               label="Estado (UF)"
                               value={watch(`units.${index}.state`) || ''}
-                              onChange={(event) =>
+                              onChange={(event: ChangeEvent<HTMLSelectElement>) =>
                                 setValue(`units.${index}.state`, event.target.value, {
                                   shouldDirty: true,
                                   shouldValidate: true,
@@ -899,7 +899,7 @@ export function InstitutionFormTabs({ form, institutionId }: InstitutionFormTabs
                     <Select
                       label="Status *"
                       value={String(watch('isActive') ?? 'true')}
-                      onChange={(event) =>
+                      onChange={(event: ChangeEvent<HTMLSelectElement>) =>
                         setValue('isActive', event.target.value as 'true' | 'false', {
                           shouldDirty: true,
                           shouldValidate: true,

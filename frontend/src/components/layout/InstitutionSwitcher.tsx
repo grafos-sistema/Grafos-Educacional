@@ -14,7 +14,7 @@ interface Institution {
   id: string;
   name: string;
   slug: string;
-  logo?: string;
+  logo?: string | null;
   isActive: boolean;
   isPrimary?: boolean;
   isCurrent?: boolean;
@@ -38,10 +38,12 @@ export function InstitutionSwitcher() {
     const loadInstitutions = async () => {
       try {
         const data = await authService.getInstitutions();
-        setInstitutions(data);
+        setInstitutions(data as unknown as Institution[]);
 
         // Find current institution
-        const current = data.find((inst: Institution) => inst.id === user?.institutionId);
+        const current = (data as unknown as Institution[]).find(
+          (inst) => inst.id === user?.institutionId
+        );
         if (current) {
           setCurrentInstitution(current);
         }
@@ -116,7 +118,7 @@ export function InstitutionSwitcher() {
         <div className="flex items-center gap-2 text-sm">
           <BuildingOffice2Icon className="h-5 w-5 text-secondary-400" />
           <span className="max-w-[180px] truncate font-medium text-secondary-700">
-            {currentInstitution?.name || user?.institution?.name || 'Instituição'}
+            {currentInstitution?.name || 'Instituição'}
           </span>
         </div>
       </div>

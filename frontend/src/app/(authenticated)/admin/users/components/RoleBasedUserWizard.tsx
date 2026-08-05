@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import Image from 'next/image';
 import { UseFormReturn, useWatch } from 'react-hook-form';
 import {
@@ -81,6 +81,8 @@ interface TeacherClassSummary {
   id: string;
   classId: string;
   subjectId: string;
+  assignmentType?: string;
+  assignmentLabel?: string;
   weeklyHours?: number;
   class: {
     id: string;
@@ -89,7 +91,7 @@ interface TeacherClassSummary {
     section?: string;
     shift?: string;
   };
-  subject: {
+  subject?: {
     id: string;
     name: string;
     code?: string;
@@ -955,7 +957,9 @@ export function RoleBasedUserWizard({
                             label="Parentesco"
                             options={relationshipOptions}
                             value={student.relationship}
-                            onChange={(e) => updateLinkedStudent(student.studentId, 'relationship', e.target.value)}
+                            onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                              updateLinkedStudent(student.studentId, 'relationship', e.target.value)
+                            }
                           />
                           <label className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-3">
                             <input

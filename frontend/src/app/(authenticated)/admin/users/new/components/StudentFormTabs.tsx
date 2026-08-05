@@ -809,7 +809,7 @@ export function StudentFormTabs({
               <Select 
                 label="Escola *" 
                 value={selectedInstitutionId || ''}
-                onChange={(event) => {
+                onChange={(event: ChangeEvent<HTMLSelectElement>) => {
                   const nextInstitutionId = event.target.value;
                   const selectedInstitution = availableInstitutions.find((institution) => institution.id === nextInstitutionId);
                   setValue('institutionId', nextInstitutionId, { shouldDirty: true, shouldValidate: true });
@@ -1281,7 +1281,7 @@ export function StudentFormTabs({
                           <Select
                             label="Tipo"
                             value={observationDraft.type}
-                            onChange={(event) =>
+                            onChange={(event: ChangeEvent<HTMLSelectElement>) =>
                               setObservationDraft((current) => ({
                                 ...current,
                                 type: event.target.value as StudentObservationType,

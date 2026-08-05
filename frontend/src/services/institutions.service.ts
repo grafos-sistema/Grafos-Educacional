@@ -49,25 +49,34 @@ function normalizeInstitutionPayload(data: CreateInstitutionDto | UpdateInstitut
       email: normalizeText(institution.email),
     },
     units: units
-      .map((unit) => ({
-        id: unit.id || crypto.randomUUID(),
-        name: normalizeText(unit.name),
-        code: normalizeText(unit.code),
-        slug: normalizeText(unit.slug),
-        type: normalizeText(unit.type),
-        managerName: normalizeText(unit.managerName),
-        directorUserId: normalizeText(unit.directorUserId),
-        address: normalizeText(unit.address),
-        numero: normalizeText(unit.numero),
-        complemento: normalizeText(unit.complemento),
-        city: normalizeText(unit.city),
-        state: normalizeText(unit.state),
-        zipCode: normalizeDigits(unit.zipCode),
-        phone: normalizeDigits(unit.phone),
-        email: normalizeText(unit.email),
-        isActive: unit.isActive ?? true,
-      }))
-      .filter((unit): unit is Required<Pick<CreateInstitutionUnitDto, 'id'>> & Omit<CreateInstitutionUnitDto, 'id'> => Boolean(unit.name)),
+      .map(
+        (
+          unit
+        ): Partial<CreateInstitutionUnitDto> & { id: string; isActive: boolean } => ({
+          id: unit.id || crypto.randomUUID(),
+          name: normalizeText(unit.name),
+          code: normalizeText(unit.code),
+          slug: normalizeText(unit.slug),
+          type: normalizeText(unit.type),
+          managerName: normalizeText(unit.managerName),
+          directorUserId: normalizeText(unit.directorUserId),
+          address: normalizeText(unit.address),
+          numero: normalizeText(unit.numero),
+          complemento: normalizeText(unit.complemento),
+          city: normalizeText(unit.city),
+          state: normalizeText(unit.state),
+          zipCode: normalizeDigits(unit.zipCode),
+          phone: normalizeDigits(unit.phone),
+          email: normalizeText(unit.email),
+          isActive: unit.isActive ?? true,
+        })
+      )
+      .filter(
+        (
+          unit
+        ): unit is CreateInstitutionUnitDto & { id: string; isActive: boolean } =>
+          typeof unit.name === 'string' && unit.name.length > 0
+      ),
   };
 }
 

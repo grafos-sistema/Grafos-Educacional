@@ -41,6 +41,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     const isCustomDateInput = inputType === 'date' || inputType === 'datetime-local';
     const isDateLikeInput =
       inputType === 'date' || inputType === 'month' || inputType === 'datetime-local';
+    const { value, defaultValue, min, max, ...restProps } = props;
     const effectiveRightIcon = !isCustomDateInput && isDateLikeInput ? (
       <button
         type="button"
@@ -105,8 +106,24 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               leftIcon={leftIcon}
               rightIcon={rightIcon}
               className={className}
-              placeholder={props.placeholder}
-              {...props}
+              placeholder={restProps.placeholder}
+              value={
+                typeof value === 'string'
+                  ? value
+                  : value !== undefined && value !== null
+                    ? String(value)
+                    : undefined
+              }
+              defaultValue={
+                typeof defaultValue === 'string'
+                  ? defaultValue
+                  : defaultValue !== undefined && defaultValue !== null
+                    ? String(defaultValue)
+                    : undefined
+              }
+              min={typeof min === 'string' ? min : min !== undefined && min !== null ? String(min) : undefined}
+              max={typeof max === 'string' ? max : max !== undefined && max !== null ? String(max) : undefined}
+              {...restProps}
             />
           ) : (
             <>

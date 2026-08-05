@@ -184,6 +184,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
       error,
     };
 
+    if (exception instanceof PrismaClientKnownRequestError) {
+      (errorResponse as any).prismaCode = exception.code;
+    }
+
     // Não expor detalhes sensíveis em produção
     if (process.env.NODE_ENV === 'production') {
       if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
