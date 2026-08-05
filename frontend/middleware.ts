@@ -45,6 +45,32 @@ const roleRoutes: Record<string, string[]> = {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // #region debug-point infinite-loading-local-middleware
+  const dbgUrl =
+    process.env.NEXT_PUBLIC_DEBUG_SERVER_URL ||
+    process.env.DEBUG_SERVER_URL ||
+    (process.env.NODE_ENV === 'development' ? 'http://127.0.0.1:7777/event' : '');
+  const dbgSession =
+    process.env.NEXT_PUBLIC_DEBUG_SESSION_ID ||
+    process.env.DEBUG_SESSION_ID ||
+    'infinite-loading-local';
+  const dbgEmit = (name: string, payload?: Record<string, unknown>) => {
+    if (!dbgUrl) return;
+    fetch(dbgUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ts: Date.now(),
+        sessionId: dbgSession,
+        source: 'frontend',
+        scope: 'middleware',
+        name,
+        payload: payload ?? {},
+      }),
+    }).catch(() => {});
+  };
+  // #endregion debug-point infinite-loading-local-middleware
+
   if (
     pathname === '/sw.js' ||
     pathname.startsWith('/workbox-') ||
@@ -64,9 +90,19 @@ export function middleware(request: NextRequest) {
 
   const userRole = roleFromCookie;
 
+  dbgEmit('request', {
+    pathname,
+    hasAccessToken: Boolean(accessToken),
+    hasRole: Boolean(userRole),
+    role: userRole ?? null,
+    isPublicRoute,
+    isAuthRoute,
+  });
+
   // If user is authenticated and trying to access auth pages, redirect based on role
   if (accessToken && userRole && isAuthRoute) {
     const redirectPath = getRedirectPathByRole(userRole);
+    dbgEmit('redirect:authedOnAuthRoute', { pathname, redirectPath, role: userRole });
     return NextResponse.redirect(new URL(redirectPath, request.url));
   }
 
@@ -75,6 +111,7 @@ export function middleware(request: NextRequest) {
     // Store the attempted URL to redirect back after login
     const loginUrl = new URL('/', request.url);
     loginUrl.searchParams.set('from', pathname);
+    dbgEmit('redirect:unauthedToLogin', { pathname, to: '/' });
     return NextResponse.redirect(loginUrl);
   }
 
@@ -84,6 +121,7 @@ export function middleware(request: NextRequest) {
     if (!hasAccess) {
       // User doesn't have access to this route, redirect to their dashboard
       const redirectPath = getRedirectPathByRole(userRole);
+      dbgEmit('redirect:roleDenied', { pathname, redirectPath, role: userRole });
       return NextResponse.redirect(new URL(redirectPath, request.url));
     }
   }
