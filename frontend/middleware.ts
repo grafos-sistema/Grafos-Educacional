@@ -33,7 +33,7 @@ const authRoutes = [
 
 // Role-based route access
 const roleRoutes: Record<string, string[]> = {
-  SUPER_ADMIN_GLOBAL: ['/communication'],
+  SUPER_ADMIN_GLOBAL: ['/communication', '/admin/events'],
   SUPER_ADMIN: ['/super-admin', '/admin', '/coordinator', '/professor', '/aluno', '/responsaveis'],
   INSTITUTION_ADMIN: ['/admin', '/coordinator', '/professor', '/aluno', '/responsaveis'],
   COORDINATOR: ['/coordinator', '/professor', '/aluno'],

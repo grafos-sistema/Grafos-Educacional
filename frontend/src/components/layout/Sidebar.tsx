@@ -157,9 +157,8 @@ const navigation: NavItem[] = [
     name: 'Dashboard',
     baseRoute: '/dashboard',
     icon: HomeIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT],
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT],
     pathMapping: {
-      [UserRole.SUPER_ADMIN_GLOBAL]: '/super-admin/dashboard',
       [UserRole.SUPER_ADMIN]: '/admin/dashboard',
       [UserRole.DIRECTOR]: '/admin/dashboard',
       [UserRole.INSTITUTION_ADMIN]: '/admin/dashboard',
@@ -173,9 +172,8 @@ const navigation: NavItem[] = [
     name: 'Instituições',
     baseRoute: '/institutions',
     icon: BuildingOfficeIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN],
+    roles: [UserRole.SUPER_ADMIN],
     pathMapping: {
-      [UserRole.SUPER_ADMIN_GLOBAL]: '/super-admin/institutions',
       [UserRole.SUPER_ADMIN]: '/super-admin/institutions',
     },
   },
@@ -183,9 +181,8 @@ const navigation: NavItem[] = [
     name: 'Todos os Usuários',
     baseRoute: '/users',
     icon: UsersIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN],
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN],
     pathMapping: {
-      [UserRole.SUPER_ADMIN_GLOBAL]: '/admin/users',
       [UserRole.SUPER_ADMIN]: '/admin/users',
       [UserRole.DIRECTOR]: '/admin/users',
       [UserRole.INSTITUTION_ADMIN]: '/admin/users',
@@ -195,9 +192,8 @@ const navigation: NavItem[] = [
     name: 'Professores',
     baseRoute: '/teachers',
     icon: UsersIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR],
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR],
     pathMapping: {
-      [UserRole.SUPER_ADMIN_GLOBAL]: '/admin/professores',
       [UserRole.SUPER_ADMIN]: '/admin/professores',
       [UserRole.DIRECTOR]: '/admin/professores',
       [UserRole.INSTITUTION_ADMIN]: '/admin/professores',
@@ -208,9 +204,8 @@ const navigation: NavItem[] = [
     name: 'Alunos',
     baseRoute: '/students',
     icon: UserGroupIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR],
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR],
     pathMapping: {
-      [UserRole.SUPER_ADMIN_GLOBAL]: '/admin/alunos',
       [UserRole.SUPER_ADMIN]: '/admin/alunos',
       [UserRole.DIRECTOR]: '/admin/alunos',
       [UserRole.INSTITUTION_ADMIN]: '/admin/alunos',
@@ -221,9 +216,8 @@ const navigation: NavItem[] = [
     name: 'Coordenadores',
     baseRoute: '/coordinators',
     icon: UsersIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN],
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN],
     pathMapping: {
-      [UserRole.SUPER_ADMIN_GLOBAL]: '/admin/coordenadores',
       [UserRole.SUPER_ADMIN]: '/admin/coordenadores',
       [UserRole.DIRECTOR]: '/admin/coordenadores',
       [UserRole.INSTITUTION_ADMIN]: '/admin/coordenadores',
@@ -251,9 +245,8 @@ const navigation: NavItem[] = [
     name: 'Turmas',
     baseRoute: '/classes',
     icon: BookOpenIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.TEACHER],
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.TEACHER],
     pathMapping: {
-      [UserRole.SUPER_ADMIN_GLOBAL]: '/admin/classes',
       [UserRole.SUPER_ADMIN]: '/admin/classes',
       [UserRole.DIRECTOR]: '/admin/classes',
       [UserRole.INSTITUTION_ADMIN]: '/admin/classes',
@@ -267,9 +260,8 @@ const navigation: NavItem[] = [
     name: 'Disciplinas',
     baseRoute: '/subjects',
     icon: BookOpenIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.STUDENT],
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.STUDENT],
     pathMapping: {
-      [UserRole.SUPER_ADMIN_GLOBAL]: '/admin/subjects',
       [UserRole.SUPER_ADMIN]: '/admin/subjects',
       [UserRole.DIRECTOR]: '/admin/subjects',
       [UserRole.INSTITUTION_ADMIN]: '/admin/subjects',
@@ -300,9 +292,8 @@ const navigation: NavItem[] = [
     name: 'Rankings',
     baseRoute: '/rankings',
     icon: TrophyIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER, UserRole.STUDENT],
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER, UserRole.STUDENT],
     pathMapping: {
-      [UserRole.SUPER_ADMIN_GLOBAL]: '/admin/rankings',
       [UserRole.SUPER_ADMIN]: '/admin/rankings',
       [UserRole.DIRECTOR]: '/admin/rankings',
       [UserRole.INSTITUTION_ADMIN]: '/admin/rankings',
@@ -315,9 +306,8 @@ const navigation: NavItem[] = [
     name: 'Banco de Questões',
     baseRoute: '/questions',
     icon: ClipboardDocumentListIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.TEACHER],
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.TEACHER],
     pathMapping: {
-      [UserRole.SUPER_ADMIN_GLOBAL]: '/super-admin/questions',
       [UserRole.SUPER_ADMIN]: '/super-admin/questions',
       [UserRole.DIRECTOR]: '/super-admin/questions',
       [UserRole.TEACHER]: '/professor/question-bank',
@@ -327,9 +317,8 @@ const navigation: NavItem[] = [
     name: 'Categorias de Questões',
     baseRoute: '/question-categories',
     icon: BookOpenIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN],
+    roles: [UserRole.SUPER_ADMIN],
     pathMapping: {
-      [UserRole.SUPER_ADMIN_GLOBAL]: '/super-admin/question-categories',
       [UserRole.SUPER_ADMIN]: '/super-admin/question-categories',
     },
   },
@@ -368,9 +357,8 @@ const navigation: NavItem[] = [
     name: 'Grade de Horários',
     baseRoute: '/schedules',
     icon: TableCellsIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.COORDINATOR, UserRole.INSTITUTION_ADMIN],
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.COORDINATOR, UserRole.INSTITUTION_ADMIN],
     pathMapping: {
-      [UserRole.SUPER_ADMIN_GLOBAL]: '/admin/teacher-schedules',
       [UserRole.SUPER_ADMIN]: '/admin/teacher-schedules',
       [UserRole.DIRECTOR]: '/admin/teacher-schedules',
       [UserRole.COORDINATOR]: '/coordinator/schedules',
@@ -420,9 +408,8 @@ const navigation: NavItem[] = [
     name: 'Anos Letivos',
     baseRoute: '/academic-years',
     icon: CalendarIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN],
+    roles: [UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN],
     pathMapping: {
-      [UserRole.SUPER_ADMIN_GLOBAL]: '/admin/academic-years',
       [UserRole.SUPER_ADMIN]: '/admin/academic-years',
       [UserRole.INSTITUTION_ADMIN]: '/admin/academic-years',
     },
@@ -431,9 +418,8 @@ const navigation: NavItem[] = [
     name: 'Cursos',
     baseRoute: '/courses',
     icon: AcademicCapIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN],
+    roles: [UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN],
     pathMapping: {
-      [UserRole.SUPER_ADMIN_GLOBAL]: '/admin/courses',
       [UserRole.SUPER_ADMIN]: '/admin/courses',
       [UserRole.INSTITUTION_ADMIN]: '/admin/courses',
     },
@@ -480,9 +466,8 @@ const navigation: NavItem[] = [
     name: 'Chamados de Suporte',
     baseRoute: '/support-tickets',
     icon: ClipboardDocumentListIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN],
+    roles: [UserRole.SUPER_ADMIN],
     pathMapping: {
-      [UserRole.SUPER_ADMIN_GLOBAL]: '/super-admin/support-tickets',
       [UserRole.SUPER_ADMIN]: '/super-admin/support-tickets',
     },
   },
@@ -512,10 +497,13 @@ export function Sidebar({
   );
 
   const navigationSections = useMemo<NavigationSection[]>(() => {
+    if (currentRole === UserRole.SUPER_ADMIN_GLOBAL) {
+      return [{ title: '', items: filteredNavigation }];
+    }
+
     const isAdministrativeRole =
       currentRole === UserRole.INSTITUTION_ADMIN ||
       currentRole === UserRole.SUPER_ADMIN ||
-      currentRole === UserRole.SUPER_ADMIN_GLOBAL ||
       currentRole === UserRole.DIRECTOR;
 
     if (currentRole === UserRole.TEACHER) {
