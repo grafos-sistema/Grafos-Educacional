@@ -98,6 +98,10 @@ export class NotificationsController {
     },
   })
   async getPendingApprovalsCount(@CurrentUser() user: CurrentUserPayload) {
+    if (!user.institutionId) {
+      return { count: 0 };
+    }
+
     const count = await this.notificationsService.getPendingApprovalsCount(
       user.institutionId,
     );

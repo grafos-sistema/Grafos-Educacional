@@ -6,7 +6,7 @@ export interface CurrentUserPayload {
   authUserId?: string | null;
   email: string;
   role: UserRole;
-  institutionId: string;
+  institutionId?: string | null;
   firstName: string;
   lastName: string;
   teacherId?: string;

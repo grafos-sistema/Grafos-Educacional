@@ -34,8 +34,11 @@ export class InstitutionGuard implements CanActivate {
       throw new ForbiddenException('Usuário não autenticado');
     }
 
-    // SUPER_ADMIN pode acessar qualquer instituição
-    if (user.role === 'SUPER_ADMIN') {
+    // SUPER_ADMIN e SUPER_ADMIN_GLOBAL podem acessar qualquer instituição
+    if (
+      user.role === 'SUPER_ADMIN' ||
+      user.role === 'SUPER_ADMIN_GLOBAL'
+    ) {
       return true;
     }
 

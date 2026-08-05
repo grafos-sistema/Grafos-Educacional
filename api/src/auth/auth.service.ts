@@ -246,21 +246,27 @@ export class AuthService {
       throw new UnauthorizedException('Usuário inativo');
     }
 
-    const institution = await this.prisma.institution.findUnique({
-      where: { id: user.institutionId },
-      select: {
-        id: true,
-        isActive: true,
-      },
-    });
+    if (user.role !== UserRole.SUPER_ADMIN_GLOBAL) {
+      if (!user.institutionId) {
+        throw new UnauthorizedException('Instituição do usuário não configurada');
+      }
 
-    if (!institution) {
-      throw new UnauthorizedException('Instituição não encontrada');
-    }
+      const institution = await this.prisma.institution.findUnique({
+        where: { id: user.institutionId },
+        select: {
+          id: true,
+          isActive: true,
+        },
+      });
 
-    // Verifica se instituição está ativa
-    if (!institution.isActive) {
-      throw new UnauthorizedException('Instituição inativa');
+      if (!institution) {
+        throw new UnauthorizedException('Instituição não encontrada');
+      }
+
+      // Verifica se instituição está ativa
+      if (!institution.isActive) {
+        throw new UnauthorizedException('Instituição inativa');
+      }
     }
 
     // Valida senha
@@ -339,13 +345,13 @@ export class AuthService {
     userId: string,
     email: string,
     role: UserRole,
-    institutionId: string,
+    institutionId?: string | null,
   ) {
     const payload = {
       sub: userId,
       email,
       role,
-      institutionId,
+      ...(institutionId ? { institutionId } : {}),
     };
 
     const [accessToken, refreshToken] = await Promise.all([
@@ -534,11 +540,15 @@ export class AuthService {
 
     // Combina a instituição principal com as adicionais
     const institutions = [
-      {
-        ...user.institution,
-        isPrimary: true,
-        isCurrent: true,
-      },
+      ...(user.institution
+        ? [
+            {
+              ...user.institution,
+              isPrimary: true,
+              isCurrent: true,
+            },
+          ]
+        : []),
       ...additionalInstitutions
         .filter((ui) => ui.institutionId !== user.institutionId)
         .map((ui) => ({
