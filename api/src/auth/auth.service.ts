@@ -225,14 +225,15 @@ export class AuthService {
     // Busca usuário pelo email (pode haver múltiplos com mesmo email em instituições diferentes)
     const user = await this.prisma.user.findFirst({
       where: { email },
-      include: {
-        institution: {
-          select: {
-            id: true,
-            name: true,
-            isActive: true,
-          },
-        },
+      orderBy: [{ isActive: 'desc' }, { createdAt: 'desc' }],
+      select: {
+        id: true,
+        email: true,
+        password: true,
+        role: true,
+        institutionId: true,
+        isActive: true,
+        name: true,
       },
     });
 
@@ -245,8 +246,20 @@ export class AuthService {
       throw new UnauthorizedException('Usuário inativo');
     }
 
+    const institution = await this.prisma.institution.findUnique({
+      where: { id: user.institutionId },
+      select: {
+        id: true,
+        isActive: true,
+      },
+    });
+
+    if (!institution) {
+      throw new UnauthorizedException('Instituição não encontrada');
+    }
+
     // Verifica se instituição está ativa
-    if (!user.institution.isActive) {
+    if (!institution.isActive) {
       throw new UnauthorizedException('Instituição inativa');
     }
 
@@ -268,13 +281,16 @@ export class AuthService {
       user.institutionId,
     );
 
+    const [firstName, ...rest] = (user.name || '').trim().split(/\s+/);
+    const lastName = rest.join(' ');
+
     return {
       ...tokens,
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        firstName: firstName || '',
+        lastName,
         role: user.role,
         institutionId: user.institutionId,
       },

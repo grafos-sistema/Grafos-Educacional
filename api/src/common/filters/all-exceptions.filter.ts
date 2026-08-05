@@ -60,7 +60,23 @@ export class AllExceptionsFilter implements ExceptionFilter {
       P2025: 'Registro não encontrado',
       P2026: 'Provedor de banco de dados não suporta a operação',
       P2027: 'Múltiplos erros ocorreram no banco de dados',
+      P2032: 'Dados inconsistentes no banco de dados',
     };
+
+    if (code === 'P2032') {
+      const field =
+        meta?.field_name || meta?.field || meta?.column_name || meta?.column;
+      const expected = meta?.expected_type || meta?.expectedType;
+      const found = meta?.found || meta?.found_type || meta?.foundType;
+      const details = [
+        field ? `campo: ${field}` : null,
+        expected ? `esperado: ${expected}` : null,
+        found ? `recebido: ${found}` : null,
+      ]
+        .filter(Boolean)
+        .join(' | ');
+      return details ? `Dados inconsistentes no banco de dados (${details})` : errorMessages[code];
+    }
 
     return (
       errorMessages[code] || 'Erro ao processar operação no banco de dados'
@@ -186,6 +202,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     if (exception instanceof PrismaClientKnownRequestError) {
       (errorResponse as any).prismaCode = exception.code;
+      const exposeMeta =
+        process.env.EXPOSE_PRISMA_META === 'true' ||
+        process.env.NODE_ENV !== 'production';
+      if (exposeMeta) {
+        (errorResponse as any).prismaMeta = exception.meta;
+      }
     }
 
     // Não expor detalhes sensíveis em produção
