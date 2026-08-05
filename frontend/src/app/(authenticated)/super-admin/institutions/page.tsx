@@ -153,9 +153,6 @@ export default function InstitutionsPage() {
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
-                  <th className="w-14 px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                    Anexos
-                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
                     Nome
                   </th>
@@ -167,6 +164,9 @@ export default function InstitutionsPage() {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
                     Ações
+                  </th>
+                  <th className="w-14 px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                    Anexos
                   </th>
                 </tr>
               </thead>
@@ -180,20 +180,6 @@ export default function InstitutionsPage() {
                       <tr
                         className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
                       >
-                        <td className="px-4 py-4 text-right">
-                          <button
-                            type="button"
-                            onClick={() => toggleInstitutionExpansion(inst.id)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
-                            aria-label={isExpanded ? 'Ocultar anexos' : 'Mostrar anexos'}
-                          >
-                            {isExpanded ? (
-                              <ChevronDownIcon className="h-5 w-5" />
-                            ) : (
-                              <ChevronRightIcon className="h-5 w-5" />
-                            )}
-                          </button>
-                        </td>
                         <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                           <div className="font-medium">{inst.name}</div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">{inst.slug}</div>
@@ -230,6 +216,20 @@ export default function InstitutionsPage() {
                             </button>
                           </div>
                         </td>
+                        <td className="px-4 py-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => toggleInstitutionExpansion(inst.id)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
+                            aria-label={isExpanded ? 'Ocultar anexos' : 'Mostrar anexos'}
+                          >
+                            {isExpanded ? (
+                              <ChevronDownIcon className="h-5 w-5" />
+                            ) : (
+                              <ChevronRightIcon className="h-5 w-5" />
+                            )}
+                          </button>
+                        </td>
                       </tr>
                       {isExpanded ? (
                         <tr className="bg-gray-50/70 dark:bg-gray-800/40">
@@ -252,9 +252,6 @@ export default function InstitutionsPage() {
                                       <div className="text-sm text-gray-500 dark:text-gray-400">
                                         Diretor: {unit.managerName?.trim() || 'Não vinculado'}
                                       </div>
-                                    </div>
-                                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                                      {unit.city ? `${unit.city} - ${unit.state}` : 'Localização não informada'}
                                     </div>
                                   </div>
                                 ))}

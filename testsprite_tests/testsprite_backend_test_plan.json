@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "postauthloginwithvalidcredentials",
+    "description": "Test POST /auth/login with valid email and password to verify successful authentication returns 200 status with JWT access token, refresh token, and user payload."
+  },
+  {
+    "id": "TC002",
+    "title": "getauthmewithvalidtoken",
+    "description": "Test GET /auth/me with a valid Bearer token to verify it returns 200 status with the current authenticated user profile."
+  },
+  {
+    "id": "TC003",
+    "title": "postauthswitchinstitutionwithvalidinstitutionid",
+    "description": "Test POST /auth/switch-institution with a valid Bearer token and institutionId linked to the user to verify it returns 200 status with updated user context and active institution."
+  },
+  {
+    "id": "TC004",
+    "title": "getinstitutionswithvalidfilters",
+    "description": "Test GET /institutions with valid Bearer token and filters to verify it returns 200 status with a paginated list of institutions."
+  },
+  {
+    "id": "TC005",
+    "title": "postinstitutionswithvaliddata",
+    "description": "Test POST /institutions with valid Bearer token and required fields (name, CNPJ, email, phone) to verify it creates a new institution and returns 201 status with the institution record."
+  },
+  {
+    "id": "TC006",
+    "title": "patchinstitutionswithvalididanddata",
+    "description": "Test PATCH /institutions/:id with valid Bearer token and updated fields to verify it updates the institution and returns 200 status with the updated institution record."
+  },
+  {
+    "id": "TC007",
+    "title": "getuserswithvalidfilters",
+    "description": "Test GET /users with valid Bearer token and optional role or institution filters to verify it returns 200 status with a paginated list of users."
+  },
+  {
+    "id": "TC008",
+    "title": "postuserswithvaliddata",
+    "description": "Test POST /users with valid Bearer token and required fields (firstName, lastName, email, role, institutionId) to verify it creates a new user profile and returns 201 status."
+  },
+  {
+    "id": "TC009",
+    "title": "getannouncementsactivewithauthorization",
+    "description": "Test GET /announcements/active with valid Bearer token to verify it returns 200 status with active announcements visible to the current user."
+  },
+  {
+    "id": "TC010",
+    "title": "posteventswithvaliddata",
+    "description": "Test POST /events with valid Bearer token and required fields (title, type, startDate, academicYearId) to verify it creates a new institutional event and returns 201 status."
+  }
+]

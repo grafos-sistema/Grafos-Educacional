@@ -281,3 +281,5 @@ secrets.json
 credentials.json
 serviceAccount.json
 firebase-adminsdk-*.json
+
+testsprite_tests\tmp\config.json
