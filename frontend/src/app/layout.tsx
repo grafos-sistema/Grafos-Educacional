@@ -136,56 +136,67 @@ export default function RootLayout({
 }>) {
   // Aplica CSS variables das cores do município
   const cssVariables = getMunicipalityCSSVariables();
+  const shouldPatchBrowserExtensions = process.env.NODE_ENV === 'development';
 
   return (
     <html lang="pt-BR" className="light" suppressHydrationWarning>
       <head>
-        {/* Remove browser extension attributes before React hydration */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                // Remove attributes added by browser extensions that cause hydration mismatch
-                const observer = new MutationObserver(function(mutations) {
-                  mutations.forEach(function(mutation) {
-                    if (mutation.type === 'attributes') {
+        {shouldPatchBrowserExtensions ? (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                (function() {
+                  const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                      if (mutation.type !== 'attributes') return;
+
                       const target = mutation.target;
-                      if (target.hasAttribute && (
+                      if (!target.hasAttribute) return;
+
+                      if (
                         target.hasAttribute('bis_skin_checked') ||
                         target.hasAttribute('data-lastpass-icon-root') ||
                         target.hasAttribute('data-dashlane-rid') ||
                         target.hasAttribute('data-bitwarden-watching')
-                      )) {
+                      ) {
                         target.removeAttribute('bis_skin_checked');
                         target.removeAttribute('data-lastpass-icon-root');
                         target.removeAttribute('data-dashlane-rid');
                         target.removeAttribute('data-bitwarden-watching');
                       }
-                    }
-                  });
-                });
-
-                if (typeof window !== 'undefined') {
-                  observer.observe(document.documentElement, {
-                    attributes: true,
-                    subtree: true,
-                    attributeFilter: ['bis_skin_checked', 'data-lastpass-icon-root', 'data-dashlane-rid', 'data-bitwarden-watching']
-                  });
-
-                  // Clean up on page load
-                  window.addEventListener('DOMContentLoaded', function() {
-                    document.querySelectorAll('[bis_skin_checked], [data-lastpass-icon-root], [data-dashlane-rid], [data-bitwarden-watching]').forEach(function(el) {
-                      el.removeAttribute('bis_skin_checked');
-                      el.removeAttribute('data-lastpass-icon-root');
-                      el.removeAttribute('data-dashlane-rid');
-                      el.removeAttribute('data-bitwarden-watching');
                     });
                   });
-                }
-              })();
-            `,
-          }}
-        />
+
+                  if (typeof window !== 'undefined') {
+                    observer.observe(document.documentElement, {
+                      attributes: true,
+                      subtree: true,
+                      attributeFilter: [
+                        'bis_skin_checked',
+                        'data-lastpass-icon-root',
+                        'data-dashlane-rid',
+                        'data-bitwarden-watching',
+                      ],
+                    });
+
+                    window.addEventListener('DOMContentLoaded', function() {
+                      document
+                        .querySelectorAll(
+                          '[bis_skin_checked], [data-lastpass-icon-root], [data-dashlane-rid], [data-bitwarden-watching]'
+                        )
+                        .forEach(function(el) {
+                          el.removeAttribute('bis_skin_checked');
+                          el.removeAttribute('data-lastpass-icon-root');
+                          el.removeAttribute('data-dashlane-rid');
+                          el.removeAttribute('data-bitwarden-watching');
+                        });
+                    });
+                  }
+                })();
+              `,
+            }}
+          />
+        ) : null}
         {/* PWA Icons */}
         <link rel="apple-touch-icon" sizes="72x72" href="/icons/icon-72x72.png" />
         <link rel="apple-touch-icon" sizes="96x96" href="/icons/icon-96x96.png" />

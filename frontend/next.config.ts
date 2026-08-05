@@ -1,8 +1,11 @@
 import type { NextConfig } from "next";
 import withPWA from "next-pwa";
+import { resolve } from "path";
 
 const nextConfig: NextConfig = {
   distDir: process.env.VERCEL ? '.next' : '.next2',
+  outputFileTracingRoot: resolve(__dirname),
+  turbopack: {},
   /* config options here */
   reactStrictMode: true,
   images: {

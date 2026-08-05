@@ -21,6 +21,12 @@ const AuthenticatedNavigationContext = createContext<
   AuthenticatedNavigationContextValue | undefined
 >(undefined);
 
+const defaultAuthenticatedNavigationValue: AuthenticatedNavigationContextValue = {
+  isNavigating: false,
+  startNavigation: () => undefined,
+  stopNavigation: () => undefined,
+};
+
 export function AuthenticatedNavigationProvider({
   children,
 }: {
@@ -139,13 +145,8 @@ export function AuthenticatedNavigationProvider({
 }
 
 export function useAuthenticatedNavigation() {
-  const context = useContext(AuthenticatedNavigationContext);
-
-  if (!context) {
-    throw new Error(
-      'useAuthenticatedNavigation must be used within AuthenticatedNavigationProvider'
-    );
-  }
-
-  return context;
+  return (
+    useContext(AuthenticatedNavigationContext) ??
+    defaultAuthenticatedNavigationValue
+  );
 }
