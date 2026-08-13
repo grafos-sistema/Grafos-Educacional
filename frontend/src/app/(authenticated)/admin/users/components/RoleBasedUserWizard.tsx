@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import Image from 'next/image';
 import { UseFormReturn, useWatch } from 'react-hook-form';
+import { toast } from 'react-hot-toast';
 import {
   AcademicCapIcon,
   ArrowLeftIcon,
@@ -112,6 +113,10 @@ interface RoleBasedUserWizardProps {
   isRoleLocked?: boolean;
   teacherClasses?: TeacherClassSummary[];
   isLoadingTeacherClasses?: boolean;
+  directorInstitutionName?: string | null;
+  directorUnitName?: string | null;
+  defaultUnitId?: string;
+  onPromoteExistingDirector?: (directorId: string) => void | Promise<void>;
 }
 
 const genderOptions = [
@@ -180,6 +185,14 @@ function buildSteps(role?: UserRole, mode: 'create' | 'edit' = 'create'): StepDe
     ];
   }
 
+  if (role === UserRole.DIRECTOR) {
+    return [
+      { id: 'identity', label: 'Dados Pessoais', subtitle: 'Identificação do diretor', icon: IdentificationIcon },
+      { id: 'contact', label: 'Contato', subtitle: 'Endereço e contatos', icon: MapPinIcon },
+      { id: 'institution', label: 'Instituição', subtitle: 'Instituição e anexo vinculados', icon: BuildingOffice2Icon },
+    ];
+  }
+
   return [
     { id: 'identity', label: 'Dados Pessoais', subtitle: 'Informações básicas do perfil', icon: IdentificationIcon },
     { id: 'contact', label: 'Contato', subtitle: 'Contato e endereço', icon: MapPinIcon },
@@ -217,6 +230,10 @@ export function RoleBasedUserWizard({
   isRoleLocked = false,
   teacherClasses = [],
   isLoadingTeacherClasses = false,
+  directorInstitutionName = null,
+  directorUnitName = null,
+  defaultUnitId,
+  onPromoteExistingDirector,
 }: RoleBasedUserWizardProps) {
   const [activeStepId, setActiveStepId] = useState('identity');
   const [subjectOptions, setSubjectOptions] = useState<SubjectOption[]>([]);
@@ -226,11 +243,20 @@ export function RoleBasedUserWizard({
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+
+  const [isAlsoDirector, setIsAlsoDirector] = useState(false);
+  const [isPromotingDirector, setIsPromotingDirector] = useState(false);
+  const [availableDirectors, setAvailableDirectors] = useState<Array<{ id: string; name: string; email?: string; unitId?: string | null; unitName?: string | null }>>([]);
+  const [selectedDirectorId, setSelectedDirectorId] = useState<string>('');
+  const [availableUnits, setAvailableUnits] = useState<Array<{ id: string; name: string }>>([]);
   const {
     register,
     setValue,
     control,
     trigger,
+    getValues,
+    watch,
+    reset,
     formState: { errors },
   } = form;
 
@@ -251,7 +277,11 @@ export function RoleBasedUserWizard({
   }, [email]);
   const profileDisplayName =
     [firstName, lastName].filter(Boolean).join(' ').trim() ||
-    (role === UserRole.COORDINATOR ? 'Novo coordenador' : 'Novo professor');
+    (role === UserRole.COORDINATOR
+      ? 'Novo coordenador'
+      : role === UserRole.DIRECTOR
+        ? 'Novo diretor'
+        : 'Novo professor');
   const profileSummary = cpf?.trim() ? formatCPF(cpf.trim()) : '';
   const { fillAddressFromCep } = useCepAutofill({
     form,
@@ -402,6 +432,137 @@ export function RoleBasedUserWizard({
     loadOptions();
   }, [role, selectedInstitutionIds]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDirectorsAndUnits() {
+      if (role !== UserRole.INSTITUTION_ADMIN) {
+        if (!cancelled) {
+          setAvailableDirectors([]);
+          setAvailableUnits([]);
+        }
+        return;
+      }
+
+      const scopeInstitutionIds =
+        selectedInstitutionIds.length > 0 ? selectedInstitutionIds : [selectedPrimaryInstitutionId].filter(Boolean);
+
+      if (scopeInstitutionIds.length === 0) return;
+
+      try {
+        const { data: unitRows, error: unitError } = await supabase
+          .from('institution_units')
+          .select('id, name, institutionId, directorUserId')
+          .in('institutionId', scopeInstitutionIds)
+          .eq('isActive', true)
+          .order('name', { ascending: true });
+
+        if (!cancelled) {
+          if (!unitError) {
+            setAvailableUnits(
+              (unitRows ?? []).map((row: any) => ({ id: row.id, name: row.name }))
+            );
+          } else {
+            setAvailableUnits([]);
+          }
+        }
+
+        const directorUserIds = Array.from(
+          new Set((unitRows ?? []).map((row: any) => row.directorUserId).filter(Boolean) as string[])
+        );
+
+        if (directorUserIds.length > 0) {
+          const { data: userRows, error: userError } = await supabase
+            .from('users')
+            .select('id, firstName, lastName, email')
+            .in('id', directorUserIds)
+            .eq('isActive', true);
+
+          if (!cancelled && !userError) {
+            const byId = new Map((userRows ?? []).map((u: any) => [u.id, u]));
+            const directorsList: Array<{ id: string; name: string; email?: string; unitId?: string | null; unitName?: string | null }> = [];
+            const seen = new Set<string>();
+
+            for (const row of (unitRows ?? []) as any[]) {
+              if (!row.directorUserId) continue;
+              if (seen.has(row.directorUserId)) continue;
+              const u = byId.get(row.directorUserId);
+              if (!u) continue;
+              seen.add(row.directorUserId);
+              directorsList.push({
+                id: row.directorUserId,
+                name: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email,
+                email: u.email,
+                unitId: row.id ?? null,
+                unitName: row.name ?? null,
+              });
+            }
+
+            setAvailableDirectors(directorsList);
+          } else if (!cancelled) {
+            setAvailableDirectors([]);
+          }
+        } else if (!cancelled) {
+          setAvailableDirectors([]);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar diretores/unidades para secretaria:', err);
+        if (!cancelled) {
+          setAvailableDirectors([]);
+          setAvailableUnits([]);
+        }
+      }
+    }
+
+    loadDirectorsAndUnits();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [role, selectedInstitutionIds, selectedPrimaryInstitutionId]);
+
+  const promoteDirectorToSecretary = async () => {
+    if (!selectedDirectorId) return;
+    if (!onPromoteExistingDirector) {
+      const director = availableDirectors.find((d) => d.id === selectedDirectorId);
+      if (!director) return;
+      const current = getValues();
+      const nameParts = director.name.trim().split(/\s+/);
+      const firstName = nameParts[0] ?? '';
+      const lastName = nameParts.slice(1).join(' ') ?? '';
+      reset({
+        ...current,
+        role: UserRole.INSTITUTION_ADMIN,
+        firstName,
+        lastName,
+        email: director.email ?? current.email,
+        alsoDirectorUserId: director.id,
+        unitId: director.unitId ?? current.unitId,
+      });
+      setIsAlsoDirector(true);
+      toast.message('Dados do diretor carregados. Confira e salve para finalizar a promoção.');
+      return;
+    }
+    try {
+      setIsPromotingDirector(true);
+      await onPromoteExistingDirector(selectedDirectorId);
+    } finally {
+      setIsPromotingDirector(false);
+    }
+  };
+
+  useEffect(() => {
+    const applyDefaultUnit = () => {
+      if (role !== UserRole.INSTITUTION_ADMIN && role !== UserRole.DIRECTOR) return;
+      if (!defaultUnitId) return;
+      const currentUnitId = (getValues as any)?.('unitId');
+      if (!currentUnitId) {
+        setValue('unitId', defaultUnitId, { shouldDirty: false, shouldValidate: false });
+      }
+    };
+    applyDefaultUnit();
+  }, [defaultUnitId, getValues, role, setValue]);
+
   const pendencias = useMemo(() => {
     const items: string[] = [];
     if (!firstName || !lastName) items.push('Preencher nome e sobrenome.');
@@ -492,7 +653,9 @@ export function RoleBasedUserWizard({
   return (
     <div className="flex flex-col gap-8 pt-2 pb-4 md:flex-row md:items-start">
       <div className="w-full md:w-[248px] shrink-0 flex flex-col gap-5">
-        {(role === UserRole.TEACHER || role === UserRole.COORDINATOR) && (
+        {(role === UserRole.TEACHER ||
+          role === UserRole.COORDINATOR ||
+          role === UserRole.DIRECTOR) && (
           <div className="relative flex flex-col items-center rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-6 shadow-sm">
             <label className="group relative flex h-36 w-36 cursor-pointer items-center justify-center overflow-hidden rounded-full border-4 border-dashed border-primary-200 bg-gray-50 transition-colors hover:border-primary-300 hover:bg-gray-100 dark:border-primary-900/40 dark:bg-gray-900/40 dark:hover:bg-gray-700">
               {photoPreviewUrl ? (
@@ -568,6 +731,101 @@ export function RoleBasedUserWizard({
       <div className="flex-1 min-w-0 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col">
         <div className="flex-1 p-6 md:p-8 xl:p-10">
           <div className="w-full">
+            {role === UserRole.INSTITUTION_ADMIN && (
+              <div className="mb-8 rounded-xl border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-900/10 p-5 space-y-5">
+                <div>
+                  <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                    <BuildingOffice2Icon className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                    Opções de Secretário(a)
+                  </h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    Se esse secretário(a) também for diretor(a) de um anexo, ou se você quiser promover um diretor(a) já cadastrado, use as opções abaixo.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                        Promover Diretor(a) existente para Secretário(a)
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Copia os dados do diretor selecionado para este cadastro (opcional).
+                      </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                      <Select
+                        placeholder="Selecione um diretor(a)"
+                        options={[
+                          { value: '', label: 'Selecione...' },
+                          ...availableDirectors.map((d) => ({
+                            value: d.id,
+                            label: d.name + (d.unitName ? ` — ${d.unitName}` : ''),
+                          })),
+                        ]}
+                        value={selectedDirectorId}
+                        onChange={(e) => setSelectedDirectorId(e.target.value)}
+                        wrapperClassName="sm:w-72"
+                      />
+                      <Button
+                        variant="secondary"
+                        onClick={promoteDirectorToSecretary}
+                        isLoading={isPromotingDirector}
+                        disabled={!selectedDirectorId}
+                      >
+                        Carregar dados
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-4">
+                  <label className="inline-flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isAlsoDirector}
+                      onChange={(e) => setIsAlsoDirector(e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <div>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                        Também é Diretor(a) de um anexo
+                      </span>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Marque se esse(a) secretário(a) atua também como diretor(a) de um anexo específico.
+                      </p>
+                    </div>
+                  </label>
+
+                  {isAlsoDirector && (
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 pl-7">
+                      <div>
+                        <Select
+                          label="Anexo (Unidade) *"
+                          options={[
+                            { value: '', label: 'Selecione...' },
+                            ...availableUnits.map((u) => ({ value: u.id, label: u.name })),
+                          ]}
+                          {...register('unitId', {
+                            required: isAlsoDirector ? 'Selecione o anexo do diretor(a)' : false,
+                          })}
+                          error={errors.unitId?.message as string}
+                          required={isAlsoDirector}
+                        />
+                        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                          Ao salvar, o usuário será vinculado como diretor(a) desse anexo automaticamente.
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-gray-50 dark:bg-gray-900/40 p-3 text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                        <p>🔒 Dica: essa opção é ideal para escolas pequenas onde o(a) mesmo(a) profissional acumula os cargos de Diretor(a) e Secretário(a).</p>
+                        <p>📌 Você pode ajustar esse vínculo depois na tela de edição do anexo (Unidade).</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {activeStep.id === 'identity' && (
               <div>
                 <TabHeader step={activeStep} />
@@ -617,48 +875,54 @@ export function RoleBasedUserWizard({
                       placeholder="000.000.000-00"
                     />
                   </div>
-                  <div className="md:col-span-5">
-                    <Input
-                      label="RG"
-                      maxLength={RG_MAX_LENGTH}
-                      placeholder="Somente letras e números"
-                      {...register('rg', {
-                        setValueAs: (value) => sanitizeRgValue(value),
-                        validate: (value) =>
-                          !value || /^[A-Z0-9]+$/.test(String(value)) || 'Informe apenas letras e números',
-                      })}
-                      onInput={(event) => {
-                        const input = event.currentTarget;
-                        input.value = sanitizeRgValue(input.value);
-                      }}
-                      error={errors.rg?.message as string}
-                    />
-                  </div>
-                  <div className="md:col-span-5">
-                    <Select
-                      label="Órgão Emissor"
-                      options={RG_ISSUER_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
-                      {...register('rgEmissor')}
-                      error={errors.rgEmissor?.message as string}
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Select
-                      label="UF"
-                      options={[{ value: '', label: 'UF' }, ...BRAZILIAN_UF_OPTIONS]}
-                      {...register('rgUf')}
-                    />
-                  </div>
-                  <div className="md:col-span-4">
-                    <Input label="Data de Emissão" type="date" {...register('rgEmissao')} />
-                  </div>
-                  <div className="md:col-span-4">
-                    <Select
-                      label="Nacionalidade"
-                      options={NATIONALITY_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
-                      {...register('nacionalidade')}
-                    />
-                  </div>
+                  {role !== UserRole.DIRECTOR && (
+                    <>
+                      <div className="md:col-span-5">
+                        <Input
+                          label="RG"
+                          maxLength={RG_MAX_LENGTH}
+                          placeholder="Somente letras e números"
+                          {...register('rg', {
+                            setValueAs: (value) => sanitizeRgValue(value),
+                            validate: (value) =>
+                              !value ||
+                              /^[A-Z0-9]+$/.test(String(value)) ||
+                              'Informe apenas letras e números',
+                          })}
+                          onInput={(event) => {
+                            const input = event.currentTarget;
+                            input.value = sanitizeRgValue(input.value);
+                          }}
+                          error={errors.rg?.message as string}
+                        />
+                      </div>
+                      <div className="md:col-span-5">
+                        <Select
+                          label="Órgão Emissor"
+                          options={RG_ISSUER_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+                          {...register('rgEmissor')}
+                          error={errors.rgEmissor?.message as string}
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <Select
+                          label="UF"
+                          options={[{ value: '', label: 'UF' }, ...BRAZILIAN_UF_OPTIONS]}
+                          {...register('rgUf')}
+                        />
+                      </div>
+                      <div className="md:col-span-4">
+                        <Input label="Data de Emissão" type="date" {...register('rgEmissao')} />
+                      </div>
+                      <div className="md:col-span-4">
+                        <Select
+                          label="Nacionalidade"
+                          options={NATIONALITY_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+                          {...register('nacionalidade')}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -754,7 +1018,26 @@ export function RoleBasedUserWizard({
               <div>
                 <TabHeader step={activeStep} />
 
-                {isLoadingInstitutions ? (
+                {role === UserRole.DIRECTOR ? (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        Instituição
+                      </div>
+                      <div className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+                        {directorInstitutionName || 'Não informado'}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        Anexo
+                      </div>
+                      <div className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+                        {directorUnitName || 'Não informado'}
+                      </div>
+                    </div>
+                  </div>
+                ) : isLoadingInstitutions ? (
                   <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-sm text-gray-500 dark:text-gray-400">
                     Carregando instituições...
                   </div>

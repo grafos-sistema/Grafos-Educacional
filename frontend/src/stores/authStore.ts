@@ -13,6 +13,7 @@ interface AuthState {
   activeProfile: UserRole | null;
   institutionFilterAll: boolean;
   institutionFilterIds: string[];
+  institutionUnitFilterId: string | null;
 
   // Actions
   setUser: (user: User | null) => void;
@@ -24,6 +25,7 @@ interface AuthState {
   getAvailableProfiles: () => UserRole[];
   setInstitutionFilterAll: (all: boolean) => void;
   setInstitutionFilterIds: (ids: string[]) => void;
+  setInstitutionUnitFilterId: (unitId: string | null) => void;
   clearInstitutionFilter: () => void;
 }
 
@@ -38,6 +40,7 @@ export const useAuthStore = create<AuthState>()(
       activeProfile: null,
       institutionFilterAll: false,
       institutionFilterIds: [],
+      institutionUnitFilterId: null,
 
       setUser: (user) => {
         set({ user, isAuthenticated: !!user });
@@ -129,6 +132,7 @@ export const useAuthStore = create<AuthState>()(
           institutionFilterIds: getValidInstitutionIds(
             user.institutionId ? [user.institutionId] : []
           ),
+          institutionUnitFilterId: null,
         });
 
         // Store tokens in cookies for server-side access
@@ -152,6 +156,7 @@ export const useAuthStore = create<AuthState>()(
           activeProfile: null,
           institutionFilterAll: false,
           institutionFilterIds: [],
+          institutionUnitFilterId: null,
         });
         // Clear cookies and localStorage
         clientCookies.clearAuthTokens();
@@ -169,6 +174,7 @@ export const useAuthStore = create<AuthState>()(
         set((state) => ({
           institutionFilterAll: all,
           institutionFilterIds: all ? [] : state.institutionFilterIds,
+          institutionUnitFilterId: all ? null : state.institutionUnitFilterId,
         }));
       },
 
@@ -176,7 +182,12 @@ export const useAuthStore = create<AuthState>()(
         set({
           institutionFilterAll: false,
           institutionFilterIds: Array.from(new Set(ids)).filter(Boolean),
+          institutionUnitFilterId: null,
         });
+      },
+
+      setInstitutionUnitFilterId: (unitId) => {
+        set({ institutionUnitFilterId: unitId });
       },
 
       clearInstitutionFilter: () => {
@@ -186,6 +197,7 @@ export const useAuthStore = create<AuthState>()(
           institutionFilterIds: getValidInstitutionIds(
             user?.institutionId ? [user.institutionId] : []
           ),
+          institutionUnitFilterId: null,
         });
       },
     }),
@@ -199,6 +211,7 @@ export const useAuthStore = create<AuthState>()(
         activeProfile: state.activeProfile,
         institutionFilterAll: state.institutionFilterAll,
         institutionFilterIds: state.institutionFilterIds,
+        institutionUnitFilterId: state.institutionUnitFilterId,
       }),
     }
   )

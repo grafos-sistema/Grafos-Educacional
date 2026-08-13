@@ -47,9 +47,7 @@ export function AuthenticatedNavigationProvider({
   const dbgEnabled =
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).has('dbg');
-  const dbgUrl =
-    process.env.NEXT_PUBLIC_DEBUG_SERVER_URL ||
-    (dbgEnabled ? 'http://127.0.0.1:7777/event' : '');
+  const dbgUrl = process.env.NEXT_PUBLIC_DEBUG_SERVER_URL || '';
   const dbgSession =
     process.env.NEXT_PUBLIC_DEBUG_SESSION_ID || 'menu-nav-bounce';
   const dbgEmit = (name: string, payload?: Record<string, unknown>) => {

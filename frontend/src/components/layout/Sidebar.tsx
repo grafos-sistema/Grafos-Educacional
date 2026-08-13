@@ -38,6 +38,7 @@ interface NavItem {
   roles: UserRole[];
   pathMapping: Partial<Record<UserRole, string>>; // Role-specific paths
   displayNameMapping?: Partial<Record<UserRole, string>>;
+  requiresOriginalRole?: UserRole[];
 }
 
 interface NavigationSection {
@@ -64,7 +65,7 @@ const institutionAdminSectionConfig: Array<{
   },
   {
     title: 'Pessoas',
-    itemNames: ['Todos os Usuários', 'Coordenadores', 'Professores', 'Alunos'],
+    itemNames: ['Todos os Usuários', 'Diretores', 'Secretários', 'Coordenadores', 'Professores', 'Alunos'],
   },
   {
     title: 'Estrutura Acadêmica',
@@ -186,6 +187,26 @@ const navigation: NavItem[] = [
       [UserRole.SUPER_ADMIN]: '/admin/users',
       [UserRole.DIRECTOR]: '/admin/users',
       [UserRole.INSTITUTION_ADMIN]: '/admin/users',
+    },
+  },
+  {
+    name: 'Diretores',
+    baseRoute: '/directors',
+    icon: UsersIcon,
+    roles: [UserRole.SUPER_ADMIN],
+    requiresOriginalRole: [UserRole.SUPER_ADMIN_GLOBAL],
+    pathMapping: {
+      [UserRole.SUPER_ADMIN]: '/admin/diretores',
+    },
+  },
+  {
+    name: 'Secretários',
+    baseRoute: '/secretaries',
+    icon: UsersIcon,
+    roles: [UserRole.SUPER_ADMIN],
+    requiresOriginalRole: [UserRole.SUPER_ADMIN_GLOBAL],
+    pathMapping: {
+      [UserRole.SUPER_ADMIN]: '/admin/secretarios',
     },
   },
   {
@@ -494,9 +515,7 @@ export function Sidebar({
   const dbgEnabled =
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).has('dbg');
-  const dbgUrl =
-    process.env.NEXT_PUBLIC_DEBUG_SERVER_URL ||
-    (dbgEnabled ? 'http://127.0.0.1:7777/event' : '');
+  const dbgUrl = process.env.NEXT_PUBLIC_DEBUG_SERVER_URL || '';
   const dbgSession =
     process.env.NEXT_PUBLIC_DEBUG_SESSION_ID || 'menu-nav-bounce';
   const dbgEmit = (name: string, payload?: Record<string, unknown>) => {
@@ -518,10 +537,15 @@ export function Sidebar({
 
   const filteredNavigation = useMemo(
     () =>
-      navigation.filter((item) =>
-        navigationRole ? item.roles.includes(navigationRole) : false
-      ),
-    [navigationRole]
+      navigation.filter((item) => {
+        if (!navigationRole) return false;
+        if (!item.roles.includes(navigationRole)) return false;
+        if (item.requiresOriginalRole && !item.requiresOriginalRole.includes(currentRole as UserRole)) {
+          return false;
+        }
+        return true;
+      }),
+    [currentRole, navigationRole]
   );
 
   const navigationSections = useMemo<NavigationSection[]>(() => {

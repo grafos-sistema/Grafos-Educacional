@@ -35,7 +35,7 @@ const priorityColors: Record<string, 'default' | 'success' | 'error' | 'warning'
 const roleLabels: Record<string, string> = {
   SUPER_ADMIN_GLOBAL: 'Super Admin Global',
   SUPER_ADMIN: 'Super Admin',
-  INSTITUTION_ADMIN: 'Administrador',
+  INSTITUTION_ADMIN: 'Secretário(a)',
   COORDINATOR: 'Coordenador',
   TEACHER: 'Professor',
   STUDENT: 'Aluno',

@@ -25,6 +25,7 @@ import { Modal } from '@/components/ui/Modal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { QuickApproveModal } from '@/components/users/QuickApproveModal';
 import { BulkApproveModal } from '@/components/users/BulkApproveModal';
+import { GlobalAdminInstitutionUnitFilter } from '@/components/users/GlobalAdminInstitutionUnitFilter';
 import { OptimizedImage } from '@/components/performance/OptimizedImage';
 import { getUserEditRouteByRole } from '@/lib/user-route-utils';
 import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
@@ -32,7 +33,7 @@ import { presentFriendlyError } from '@/lib/friendly-error';
 
 const roleLabels: Record<UserRole, string> = {
   SUPER_ADMIN: 'Super Admin',
-  INSTITUTION_ADMIN: 'Admin da Instituição',
+  INSTITUTION_ADMIN: 'Secretário(a)',
   COORDINATOR: 'Coordenador',
   TEACHER: 'Professor',
   STUDENT: 'Aluno',
@@ -109,16 +110,19 @@ export default function UsersPage() {
     }
   }, [filters.role, filters.isActive, filters.search]);
 
+  useEffect(() => {
+    setFilters((prev) => ({
+      ...prev,
+      search: debouncedSearch,
+      page: 1,
+    }));
+  }, [debouncedSearch]);
+
   // Buscar usuários
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['users', filters],
     queryFn: () => usersService.findAll(filters),
   });
-
-  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setFilters({ ...filters, page: 1 });
-  };
 
   const handleDelete = async (userId: string) => {
     try {
@@ -239,7 +243,7 @@ export default function UsersPage() {
     },
     {
       key: 'role',
-      label: 'Perfil',
+      label: '',
       render: (user) => {
         const hasAnyProfile = user.teacherProfile || user.studentProfile || user.parentProfile;
         const isPending = !hasAnyProfile && user.requestedProfileType;
@@ -347,14 +351,14 @@ export default function UsersPage() {
 
       {/* Filtros */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6">
-        <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col gap-3">
+          <GlobalAdminInstitutionUnitFilter />
+          <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1">
             <Input
               placeholder="Buscar por nome, email ou CPF..."
-              value={filters.search}
-              onChange={(e) =>
-                setFilters({ ...filters, search: e.target.value })
-              }
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
             />
           </div>
@@ -405,14 +409,8 @@ export default function UsersPage() {
               }
             />
           </div>
-          <Button
-            type="submit"
-            className="w-full sm:w-auto"
-            leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
-          >
-            Buscar
-          </Button>
-        </form>
+          </div>
+        </div>
       </div>
 
       {/* Header com botão de criar */}

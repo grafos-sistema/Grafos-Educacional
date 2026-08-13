@@ -40,7 +40,8 @@ const genderOptions = [
 ];
 
 const roleOptions = [
-  { value: UserRole.INSTITUTION_ADMIN, label: 'Admin da Instituição' },
+  { value: UserRole.DIRECTOR, label: 'Diretor(a)' },
+  { value: UserRole.INSTITUTION_ADMIN, label: 'Secretário(a)' },
   { value: UserRole.COORDINATOR, label: 'Coordenador' },
   { value: UserRole.TEACHER, label: 'Professor' },
   { value: UserRole.STUDENT, label: 'Aluno' },
@@ -66,7 +67,9 @@ export function EditUserPageContent({
   const queryClient = useQueryClient();
   const params = useParams();
   const currentUser = useAuthStore((state) => state.user);
-  const canManagePassword = currentUser?.role === UserRole.SUPER_ADMIN;
+  const canManagePassword =
+    currentUser?.role === UserRole.SUPER_ADMIN ||
+    currentUser?.role === UserRole.SUPER_ADMIN_GLOBAL;
   const userId = userIdProp ?? (params?.id as string);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -79,6 +82,9 @@ export function EditUserPageContent({
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [passwordTermsAccepted, setPasswordTermsAccepted] = useState(false);
   const [pendingPasswordData, setPendingPasswordData] = useState<EditUserFormData | null>(null);
+  const [directorInstitutionName, setDirectorInstitutionName] = useState<string | null>(null);
+  const [directorUnitName, setDirectorUnitName] = useState<string | null>(null);
+  const [loadedPrimaryUnitId, setLoadedPrimaryUnitId] = useState<string | null>(null);
 
   // Buscar usuário
   const { data: user, isLoading, error: queryError } = useQuery({
@@ -119,7 +125,7 @@ export function EditUserPageContent({
       try {
         const parsedRgIssuer = parseRgIssuerValue(user.rgEmissor);
         const [institutions, userInstitutionLinks, teacherSubjects, parentChildren] = await Promise.all([
-          currentUser?.role === UserRole.SUPER_ADMIN
+          currentUser?.role === UserRole.SUPER_ADMIN || currentUser?.role === UserRole.SUPER_ADMIN_GLOBAL
             ? institutionsService.getPublicInstitutions()
             : authService.getInstitutions().catch(() => institutionsService.getPublicInstitutions()),
           supabase.from('user_institutions').select('institutionId, isPrimary').eq('userId', user.id),
@@ -144,6 +150,55 @@ export function EditUserPageContent({
           .map((item) => item.institutionId);
 
         setSelectedAdditionalInstitutionIds(additionalInstitutionIds);
+
+        if (user.role === UserRole.DIRECTOR) {
+          const { data: unitRows, error: unitError } = await supabase
+            .from('institution_units')
+            .select('id, name, institutionId')
+            .eq('directorUserId', user.id)
+            .eq('isActive', true)
+            .limit(1);
+
+          if (unitError) throw unitError;
+
+          const unitRow = (unitRows ?? [])[0] as {
+            id?: string;
+            name?: string | null;
+            institutionId?: string | null;
+          } | undefined;
+
+          if (unitRow?.id && unitRow.institutionId) {
+            setLoadedPrimaryUnitId(unitRow.id);
+            setDirectorUnitName(unitRow.name ?? null);
+            const { data: institutionRow, error: institutionError } = await supabase
+              .from('institutions')
+              .select('name')
+              .eq('id', unitRow.institutionId)
+              .maybeSingle();
+
+            if (institutionError) throw institutionError;
+            setDirectorInstitutionName((institutionRow as any)?.name ?? null);
+          } else if (user.institutionId) {
+            setLoadedPrimaryUnitId(null);
+            const { data: institutionRow, error: institutionError } = await supabase
+              .from('institutions')
+              .select('name')
+              .eq('id', user.institutionId)
+              .maybeSingle();
+
+            if (institutionError) throw institutionError;
+            setDirectorInstitutionName((institutionRow as any)?.name ?? null);
+            setDirectorUnitName(null);
+          } else {
+            setLoadedPrimaryUnitId(null);
+            setDirectorInstitutionName(null);
+            setDirectorUnitName(null);
+          }
+        } else {
+          setLoadedPrimaryUnitId(null);
+          setDirectorInstitutionName(null);
+          setDirectorUnitName(null);
+        }
 
         reset({
         role: user.role,
@@ -336,7 +391,8 @@ export function EditUserPageContent({
       const photoFile =
         user?.role === UserRole.TEACHER ||
         user?.role === UserRole.STUDENT ||
-        user?.role === UserRole.COORDINATOR
+        user?.role === UserRole.COORDINATOR ||
+        user?.role === UserRole.DIRECTOR
           ? getSelectedPhotoFile((data as any).photo)
           : null;
 
@@ -373,6 +429,13 @@ export function EditUserPageContent({
       // Also clean up registrationNumber
       delete (userData as any).registrationNumber;
 
+      if (user?.role === UserRole.DIRECTOR) {
+        delete (userData as any).rg;
+        delete (userData as any).rgEmissor;
+        delete (userData as any).rgEmissao;
+        delete (userData as any).nacionalidade;
+      }
+
       await usersService.update(userId, userData as UpdateUserData);
 
       if (
@@ -395,11 +458,58 @@ export function EditUserPageContent({
       if (
         (user?.role === UserRole.TEACHER ||
           user?.role === UserRole.STUDENT ||
-          user?.role === UserRole.COORDINATOR) &&
+          user?.role === UserRole.COORDINATOR ||
+          user?.role === UserRole.DIRECTOR ||
+          user?.role === UserRole.INSTITUTION_ADMIN) &&
         photoFile
       ) {
         const uploadResult = await usersService.uploadAvatar(userId, photoFile);
         setValue('avatar', uploadResult.avatar, { shouldDirty: true });
+      }
+
+      // Link / unlink director unit when unitId is provided in the form
+      const roleWithUnit =
+        user?.role === UserRole.DIRECTOR || user?.role === UserRole.INSTITUTION_ADMIN
+          ? user.role
+          : undefined;
+      if (roleWithUnit) {
+        const submittedUnitId = ((data as any).unitId as string | undefined)?.trim() || undefined;
+        const previousUnitId = loadedPrimaryUnitId ?? null;
+
+        try {
+          // If unitId changed, update the new unit and clear the old one
+          if (submittedUnitId && submittedUnitId !== previousUnitId) {
+            const { error: newUnitErr } = await supabase
+              .from('institution_units')
+              .update({ directorUserId: userId })
+              .eq('id', submittedUnitId);
+
+            if (newUnitErr) {
+              console.error('Erro ao vincular diretor(a) ao anexo:', newUnitErr);
+              toast.error(
+                'Não foi possível vincular como diretor(a) ao novo anexo. Verifique a tela do anexo.'
+              );
+            }
+
+            if (previousUnitId && previousUnitId !== submittedUnitId) {
+              // Clear previous unit director only if it's still pointing to the same user
+              const { error: oldUnitErr } = await supabase
+                .from('institution_units')
+                .update({ directorUserId: null })
+                .eq('id', previousUnitId)
+                .eq('directorUserId', userId);
+              if (oldUnitErr) {
+                console.warn('Aviso: não foi possível limpar vínculo antigo do diretor(a):', oldUnitErr);
+              }
+            }
+          } else if (!submittedUnitId && previousUnitId && user?.role !== UserRole.DIRECTOR) {
+            // If user changed to INSTITUTION_ADMIN and unit was cleared, we leave the existing link
+            // unless the institution admin is not supposed to be a director anymore
+            // (The user can clear the checkbox to indicate they are no longer director)
+          }
+        } catch (err) {
+          console.error('Erro ao atualizar vínculo diretor/anexo:', err);
+        }
       }
 
       queryClient.invalidateQueries({ queryKey: ['user', userId] });
@@ -624,6 +734,9 @@ export function EditUserPageContent({
               isRoleLocked
               teacherClasses={teacherClasses}
               isLoadingTeacherClasses={isLoadingTeacherClasses}
+              directorInstitutionName={directorInstitutionName}
+              directorUnitName={directorUnitName}
+              defaultUnitId={loadedPrimaryUnitId ?? undefined}
               passwordField={(
                 canManagePassword ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

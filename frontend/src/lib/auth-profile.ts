@@ -8,9 +8,7 @@ let cachedProfileAt = 0;
 let inflightProfilePromise: Promise<User> | null = null;
 
 // #region debug-point infinite-loading-local-auth-profile
-const dbgUrl =
-  process.env.NEXT_PUBLIC_DEBUG_SERVER_URL ||
-  (process.env.NODE_ENV === 'development' ? 'http://127.0.0.1:7777/event' : '');
+const dbgUrl = process.env.NEXT_PUBLIC_DEBUG_SERVER_URL || '';
 const dbgSession = process.env.NEXT_PUBLIC_DEBUG_SESSION_ID || 'infinite-loading-local';
 const dbgEmit = (name: string, payload?: Record<string, unknown>) => {
   if (!dbgUrl) return;

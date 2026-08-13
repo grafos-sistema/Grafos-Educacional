@@ -53,6 +53,7 @@ export default function NewAcademicYearPage() {
     formState: { errors },
     watch,
     setValue,
+    clearErrors,
   } = useForm<NewAcademicYearFormValues>({
     defaultValues: {
       year: String(currentYear),

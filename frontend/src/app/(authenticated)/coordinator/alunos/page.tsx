@@ -116,11 +116,6 @@ export default function CoordinatorStudentsPage() {
     setIsSavingEnrollment(false);
   };
 
-  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setFilters((current) => ({ ...current, page: 1 }));
-  };
-
   const handleSaveEnrollment = async () => {
     if (!managingStudent?.studentProfile?.id) {
       toast.error('Este usuário não possui perfil de aluno vinculado.');
@@ -319,7 +314,7 @@ export default function CoordinatorStudentsPage() {
       </div>
 
       <div className="mb-6 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-800">
-        <form onSubmit={handleSearch} className="flex flex-col gap-3 lg:flex-row">
+        <div className="flex flex-col gap-3 lg:flex-row">
           <div className="flex-1">
             <Input
               placeholder="Buscar por nome, email, CPF ou matrícula..."
@@ -328,6 +323,7 @@ export default function CoordinatorStudentsPage() {
                 setFilters((current) => ({
                   ...current,
                   search: e.target.value,
+                  page: 1,
                 }))
               }
               leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
@@ -350,10 +346,7 @@ export default function CoordinatorStudentsPage() {
               }
             />
           </div>
-          <Button type="submit" leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}>
-            Buscar
-          </Button>
-        </form>
+        </div>
       </div>
 
       <div className="rounded-lg bg-white shadow-sm dark:bg-gray-800">

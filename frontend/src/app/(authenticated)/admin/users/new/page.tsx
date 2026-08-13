@@ -25,9 +25,11 @@ import {
   sanitizeRgValue,
 } from '@/lib/constants/document-options';
 import { presentFriendlyError } from '@/lib/friendly-error';
+import { supabase } from '@/lib/supabase';
 
 const roleOptions = [
-  { value: UserRole.INSTITUTION_ADMIN, label: 'Admin da Instituição' },
+  { value: UserRole.INSTITUTION_ADMIN, label: 'Secretário(a)' },
+  { value: UserRole.DIRECTOR, label: 'Diretor(a)' },
   { value: UserRole.COORDINATOR, label: 'Coordenador' },
   { value: UserRole.TEACHER, label: 'Professor' },
   { value: UserRole.STUDENT, label: 'Aluno' },
@@ -50,6 +52,14 @@ const roleHeader: Partial<Record<UserRole, { title: string; subtitle: string }>>
   [UserRole.PARENT]: {
     title: 'Novo Responsável',
     subtitle: 'Preencha os dados para cadastrar um novo responsável no sistema',
+  },
+  [UserRole.DIRECTOR]: {
+    title: 'Novo Diretor(a)',
+    subtitle: 'Preencha os dados para cadastrar um novo diretor(a) no sistema',
+  },
+  [UserRole.INSTITUTION_ADMIN]: {
+    title: 'Novo Secretário(a)',
+    subtitle: 'Preencha os dados para cadastrar um novo secretário(a) no sistema',
   },
 };
 
@@ -297,16 +307,39 @@ export function NewUserPageContent({
       delete userData.rgUf;
       delete userData.naturalidade;
       delete userData.documents;
+      delete (userData as any).unitId;
+      delete (userData as any).alsoDirectorUserId;
 
       const createdUser = await usersService.create(userData);
 
       if (
         (currentRole === UserRole.TEACHER ||
           currentRole === UserRole.STUDENT ||
-          currentRole === UserRole.COORDINATOR) &&
+          currentRole === UserRole.COORDINATOR ||
+          currentRole === UserRole.DIRECTOR ||
+          currentRole === UserRole.INSTITUTION_ADMIN) &&
         photoFile
       ) {
         await usersService.uploadAvatar(createdUser.id, photoFile);
+      }
+
+      const targetUnitId =
+        data.role === UserRole.DIRECTOR || data.role === UserRole.INSTITUTION_ADMIN
+          ? ((data as any).unitId as string | undefined)?.trim() || undefined
+          : undefined;
+
+      if (targetUnitId && (data.role === UserRole.DIRECTOR || (data.role === UserRole.INSTITUTION_ADMIN && !!(data as any).unitId))) {
+        const { error: linkUnitError } = await supabase
+          .from('institution_units')
+          .update({ directorUserId: createdUser.id })
+          .eq('id', targetUnitId);
+
+        if (linkUnitError) {
+          console.error('Erro ao vincular diretor(a) ao anexo:', linkUnitError);
+          toast.error(
+            'Usuário criado, mas não foi possível vincular como diretor(a) do anexo. Tente novamente pela tela do anexo.'
+          );
+        }
       }
 
       if (

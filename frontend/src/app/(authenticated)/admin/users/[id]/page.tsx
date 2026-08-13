@@ -37,7 +37,7 @@ import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
 
 const roleLabels: Record<UserRole, string> = {
   SUPER_ADMIN: 'Super Admin',
-  INSTITUTION_ADMIN: 'Admin da Instituição',
+  INSTITUTION_ADMIN: 'Secretário(a)',
   COORDINATOR: 'Coordenador',
   TEACHER: 'Professor',
   STUDENT: 'Aluno',

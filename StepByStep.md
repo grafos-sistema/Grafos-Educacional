@@ -4,9 +4,12 @@
 
 Obs: *É necessário que a equipe de Desenvolvimento (Eric Victor, Jonhy Moreno e Wesley Martins) crie a instituição e o seu(s) anexos.*
 
-- Criar Diretor da Instituição.
--
--
+- Criar a Instituitção:
+    - Criar o Anexo da Institução.
+    - Criar Diretor da Instituição. 
+
+
+- 
 
 
 ## Exemplo de Sequencia Real Recomendada

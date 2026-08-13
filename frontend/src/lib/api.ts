@@ -35,8 +35,21 @@ const api = axios.create({
 const shouldSuppressFriendlyError = (config?: any): boolean => {
   if (!config) return false;
 
-  const headers = (config.headers ?? {}) as Record<string, unknown>;
-  return headers['x-skip-error-toast'] === '1' || (config as any).skipFriendlyError === true;
+  const headers = config.headers ?? {};
+  let value: unknown;
+
+  if (headers && typeof headers === 'object') {
+    const maybeHeaders = headers as any;
+    if (typeof maybeHeaders.get === 'function') {
+      value = maybeHeaders.get('x-skip-error-toast') ?? maybeHeaders.get('X-Skip-Error-Toast');
+    } else {
+      const record = maybeHeaders as Record<string, unknown>;
+      const key = Object.keys(record).find((item) => item.toLowerCase() === 'x-skip-error-toast');
+      value = key ? record[key] : undefined;
+    }
+  }
+
+  return value === '1' || value === 1 || (config as any).skipFriendlyError === true;
 };
 
 // Request interceptor - Add auth token to requests

@@ -180,6 +180,36 @@ const parseDisplayDateInput = (rawValue: string, pickerType: PickerType) => {
   return parsedDate;
 };
 
+const maskDisplayDateInput = (rawValue: string, pickerType: PickerType) => {
+  const digits = rawValue.replace(/\D/g, '');
+
+  if (pickerType === 'datetime-local') {
+    const sliced = digits.slice(0, 12);
+    const day = sliced.slice(0, 2);
+    const month = sliced.slice(2, 4);
+    const year = sliced.slice(4, 8);
+    const hours = sliced.slice(8, 10);
+    const minutes = sliced.slice(10, 12);
+
+    let output = day;
+    if (month) output += `/${month}`;
+    if (year) output += `/${year}`;
+    if (hours) output += ` ${hours}`;
+    if (minutes) output += `:${minutes}`;
+    return output;
+  }
+
+  const sliced = digits.slice(0, 8);
+  const day = sliced.slice(0, 2);
+  const month = sliced.slice(2, 4);
+  const year = sliced.slice(4, 8);
+
+  let output = day;
+  if (month) output += `/${month}`;
+  if (year) output += `/${year}`;
+  return output;
+};
+
 const isSameDay = (first: Date | null, second: Date | null) => {
   if (!first || !second) return false;
   return (
@@ -590,7 +620,7 @@ export const DatePickerInput = forwardRef<HTMLInputElement, DatePickerInputProps
             disabled={disabled}
             placeholder={placeholder || (isDateTimePicker ? DEFAULT_DATE_TIME_PLACEHOLDER : DEFAULT_PLACEHOLDER)}
             aria-describedby={describedBy}
-            onChange={(event) => setInputText(event.target.value)}
+            onChange={(event) => setInputText(maskDisplayDateInput(event.target.value, pickerType))}
             onBlur={() => {
               commitTypedValue();
               onBlur?.({

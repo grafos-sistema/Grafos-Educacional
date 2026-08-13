@@ -12,7 +12,6 @@ import { User, UserRole } from '@/types/user.types';
 import { useAuthStore } from '@/stores/authStore';
 import { Table, Column } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Pagination } from '@/components/ui/Pagination';
 import { Select } from '@/components/ui/Select';
@@ -38,11 +37,6 @@ export default function CoordinatorTeachersPage() {
       }),
     enabled: Boolean(user?.institutionId),
   });
-
-  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setFilters((current) => ({ ...current, page: 1 }));
-  };
 
   const columns: Column<User>[] = [
     {
@@ -143,7 +137,7 @@ export default function CoordinatorTeachersPage() {
       </div>
 
       <div className="mb-6 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-800">
-        <form onSubmit={handleSearch} className="flex flex-col gap-3 lg:flex-row">
+        <div className="flex flex-col gap-3 lg:flex-row">
           <div className="flex-1">
             <Input
               placeholder="Buscar por nome, email ou matrícula..."
@@ -152,6 +146,7 @@ export default function CoordinatorTeachersPage() {
                 setFilters((current) => ({
                   ...current,
                   search: e.target.value,
+                  page: 1,
                 }))
               }
               leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
@@ -174,10 +169,7 @@ export default function CoordinatorTeachersPage() {
               }
             />
           </div>
-          <Button type="submit" leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}>
-            Buscar
-          </Button>
-        </form>
+        </div>
       </div>
 
       <div className="rounded-lg bg-white shadow-sm dark:bg-gray-800">

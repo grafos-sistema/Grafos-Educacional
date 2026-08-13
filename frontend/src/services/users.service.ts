@@ -468,7 +468,8 @@ export const usersService = {
       apiParams.append('hasProfile', String(params.hasProfile));
     }
 
-    const { institutionFilterAll, institutionFilterIds } = useAuthStore.getState();
+    const { institutionFilterAll, institutionFilterIds, institutionUnitFilterId } =
+      useAuthStore.getState();
     const effectiveIds = institutionFilterAll ? [] : getValidInstitutionIds(institutionFilterIds);
 
     if (effectiveIds.length > 1) {
@@ -532,6 +533,9 @@ export const usersService = {
     let includeIds: Set<string> | null = null;
     const excludeIds = new Set<string>();
 
+    const effectiveInstitutionIds = effectiveIds;
+    const effectiveUnitId = institutionUnitFilterId;
+
     if (params.hasProfile === true) {
       includeIds = unionSets(teacherSet, studentSet, parentSet);
     } else if (params.hasProfile === false) {
@@ -572,6 +576,69 @@ export const usersService = {
       };
     }
 
+    if (effectiveUnitId) {
+      const primaryUserIds: string[] = [];
+      const { data: unitDirectorRows, error: unitDirectorError } = await supabase
+        .from('institution_units')
+        .select('directorUserId')
+        .eq('id', effectiveUnitId)
+        .eq('isActive', true);
+
+      if (unitDirectorError) throw unitDirectorError;
+
+      for (const row of unitDirectorRows ?? []) {
+        const directorUserId = (row as any).directorUserId as string | undefined | null;
+        if (directorUserId) primaryUserIds.push(directorUserId);
+      }
+
+      let unitUserIds = new Set<string>(primaryUserIds);
+
+      try {
+        const { data: unitRows } = await supabase
+          .from('user_units')
+          .select('userId')
+          .eq('unitId', effectiveUnitId)
+          .eq('isActive', true);
+
+        for (const row of unitRows ?? []) {
+          const uid = (row as any).userId as string | undefined;
+          if (uid) unitUserIds.add(uid);
+        }
+      } catch (_error) {
+        // Ignore missing relation table
+      }
+
+      if (unitUserIds.size === 0) {
+        return {
+          data: [],
+          meta: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: page > 1,
+          },
+        };
+      }
+
+      includeIds = includeIds ? intersectSets(includeIds, unitUserIds) : unitUserIds;
+
+      if (includeIds.size === 0) {
+        return {
+          data: [],
+          meta: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: page > 1,
+          },
+        };
+      }
+    }
+
     let query = supabase
       .from('users')
       .select(USER_BASE_COLUMNS, { count: 'exact' })
@@ -590,7 +657,13 @@ export const usersService = {
     }
 
     if (params.role) query = query.eq('role', params.role);
-    if (params.institutionId) query = query.eq('institutionId', params.institutionId);
+    if (params.institutionId) {
+      query = query.eq('institutionId', params.institutionId);
+    } else if (effectiveInstitutionIds.length === 1) {
+      query = query.eq('institutionId', effectiveInstitutionIds[0]);
+    } else if (effectiveInstitutionIds.length > 1) {
+      query = query.in('institutionId', effectiveInstitutionIds);
+    }
     if (typeof params.isActive === 'boolean') query = query.eq('isActive', params.isActive);
     if (includeIds) query = query.in('id', Array.from(includeIds));
     if (excludeIds.size > 0) {
@@ -733,13 +806,37 @@ export const usersService = {
       }, {});
     const backendSafeUserFields = {
       ...filteredUserData,
-      birthDate: filteredUserData.birthDate || undefined,
+      birthDate:
+        typeof filteredUserData.birthDate === 'string' &&
+        filteredUserData.birthDate.includes('/')
+          ? (() => {
+              const match = filteredUserData.birthDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+              if (!match) return filteredUserData.birthDate;
+              const [, day, month, year] = match;
+              return `${year}-${month}-${day}`;
+            })()
+          : filteredUserData.birthDate || undefined,
     };
 
     try {
-      await api.patch(`/users/${id}`, backendSafeUserFields);
+      await api.patch(`/users/${id}`, backendSafeUserFields, {
+        headers: { 'x-skip-error-toast': '1' },
+      });
     } catch (error) {
-      console.warn('Falha ao atualizar usuário pela API; tentando fallback via Supabase.', error);
+      const statusCode =
+        (error as any)?.statusCode ??
+        (error as any)?.response?.status ??
+        (error as any)?.response?.statusCode;
+      const prismaCode =
+        (error as any)?.prismaCode ??
+        (error as any)?.response?.data?.prismaCode ??
+        (error as any)?.response?.prismaCode;
+      const canFallback =
+        statusCode === undefined || statusCode === null || statusCode >= 500 || Boolean(prismaCode);
+
+      if (!canFallback) {
+        throw error;
+      }
 
       const { data: updatedRow, error: updateError } = await supabase
         .from('users')
@@ -1039,19 +1136,81 @@ export const usersService = {
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData.session?.access_token;
 
-    const response = await api.post<{ message: string; avatar: string }>(
-      `/users/${id}/avatar`,
-      formData,
-      accessToken
-        ? {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
-        : {}
-    );
+    try {
+      const response = await api.post<{ message: string; avatar: string }>(
+        `/users/${id}/avatar`,
+        formData,
+        accessToken
+          ? {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'x-skip-error-toast': '1',
+              },
+            }
+          : { headers: { 'x-skip-error-toast': '1' } }
+      );
 
-    return response as unknown as { message: string; avatar: string };
+      return response as unknown as { message: string; avatar: string };
+    } catch (error) {
+      const statusCode =
+        (error as any)?.statusCode ??
+        (error as any)?.response?.status ??
+        (error as any)?.response?.statusCode;
+      const prismaCode =
+        (error as any)?.prismaCode ??
+        (error as any)?.response?.data?.prismaCode ??
+        (error as any)?.response?.prismaCode;
+      const canFallback =
+        statusCode === undefined || statusCode === null || statusCode >= 500 || Boolean(prismaCode);
+
+      if (!canFallback) {
+        throw error;
+      }
+
+      const { data: targetUser, error: targetUserError } = await supabase
+        .from('users')
+        .select('institutionId')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (targetUserError) {
+        throw targetUserError;
+      }
+
+      const safeFileName = sanitizeFileName(file.name || 'avatar.file');
+      const basePath = targetUser?.institutionId
+        ? `institutions/${targetUser.institutionId}`
+        : 'global';
+      const storagePath = `${basePath}/users/${id}/avatar-${Date.now()}-${safeFileName}`;
+
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(storagePath, file, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: file.type || undefined,
+      });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const {
+        data: { publicUrl: avatarUrl },
+      } = supabase.storage.from('avatars').getPublicUrl(storagePath);
+
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          avatar: avatarUrl,
+          updatedAt: new Date().toISOString(),
+        })
+        .eq('id', id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      return { message: 'Avatar atualizado com sucesso', avatar: avatarUrl };
+    }
   },
 
   async uploadStudentDocument(
