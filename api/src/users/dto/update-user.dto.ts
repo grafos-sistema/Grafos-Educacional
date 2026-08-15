@@ -11,9 +11,9 @@ import {
   MaxLength,
 } from 'class-validator';
 
-// Remove password e institutionId do update (não podem ser atualizados por este endpoint)
+// Remove password do update (não pode ser atualizado por este endpoint)
 export class UpdateUserDto extends PartialType(
-  OmitType(CreateUserDto, ['password', 'institutionId'] as const),
+  OmitType(CreateUserDto, ['password'] as const),
 ) {
   @ApiProperty({
     description: 'Status do usuário (ativo/inativo)',
@@ -23,6 +23,25 @@ export class UpdateUserDto extends PartialType(
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiProperty({
+    description: 'ID da instituição',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  institutionId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  emailVerified?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  requestedProfileType?: string;
 
   @ApiProperty({ required: false, example: '11987654321' })
   @IsOptional()

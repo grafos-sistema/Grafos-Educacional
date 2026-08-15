@@ -795,49 +795,107 @@ export const usersService = {
       ...userData
     } = data;
 
+    const backendAllowedKeys = new Set([
+      'email',
+      'firstName',
+      'lastName',
+      'cpf',
+      'phone',
+      'birthDate',
+      'avatar',
+      'role',
+      'isActive',
+      'telefoneFixo',
+      'rg',
+      'rgEmissor',
+      'rgEmissao',
+      'socialName',
+      'nacionalidade',
+      'naturalidade',
+      'gender',
+      'address',
+      'numero',
+      'complemento',
+      'bairro',
+      'city',
+      'state',
+      'zipCode',
+      'institutionId',
+    ]);
+
+    const backendSafeUserFields: Record<string, any> = {};
+
+    for (const [key, rawValue] of Object.entries(userData)) {
+      if (!backendAllowedKeys.has(key)) continue;
+
+      if (typeof rawValue === 'string') {
+        const trimmed = rawValue.trim();
+        if (!trimmed) continue;
+
+        if (key === 'cpf') {
+          const unmasked = trimmed.replace(/\D/g, '');
+          if (unmasked.length === 11) {
+            backendSafeUserFields[key] = unmasked;
+          }
+        } else if (key === 'phone' || key === 'telefoneFixo') {
+          const unmasked = trimmed.replace(/\D/g, '');
+          if (unmasked.length >= 10 && unmasked.length <= 11) {
+            backendSafeUserFields[key] = unmasked;
+          }
+        } else if (key === 'zipCode') {
+          const unmasked = trimmed.replace(/\D/g, '');
+          backendSafeUserFields[key] = unmasked;
+        } else if (key === 'state') {
+          const uf = trimmed.toUpperCase().slice(0, 2);
+          if (/^[A-Z]{2}$/.test(uf)) {
+            backendSafeUserFields[key] = uf;
+          }
+        } else if (key === 'birthDate' || key === 'rgEmissao') {
+          if (trimmed.includes('/')) {
+            const match = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+            if (match) {
+              backendSafeUserFields[key] = `${match[3]}-${match[2]}-${match[1]}`;
+            }
+          } else if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+            backendSafeUserFields[key] = trimmed.split('T')[0];
+          }
+        } else if (key === 'gender') {
+          if (['MALE', 'FEMALE', 'OTHER', 'NOT_INFORMED'].includes(trimmed)) {
+            backendSafeUserFields[key] = trimmed;
+          }
+        } else {
+          backendSafeUserFields[key] = trimmed;
+        }
+      } else if (typeof rawValue === 'boolean') {
+        backendSafeUserFields[key] = rawValue;
+      } else if (rawValue !== null && rawValue !== undefined) {
+        backendSafeUserFields[key] = rawValue;
+      }
+    }
+
     const readonlyColumns = ['id', 'createdAt', 'updatedAt'];
-    const validUsersColumns = USER_BASE_COLUMNS.split(',').map(c => c.trim());
+    const validUsersColumns = USER_BASE_COLUMNS.split(',').map((c) => c.trim());
     const filteredUserData = Object.keys(userData)
-      .filter(key => (validUsersColumns.includes(key) && !readonlyColumns.includes(key)) || key === 'password')
+      .filter(
+        (key) =>
+          validUsersColumns.includes(key) &&
+          !readonlyColumns.includes(key) &&
+          key !== 'password'
+      )
       .reduce<Record<string, any>>((obj, key) => {
         const val = normalizeOptionalString((userData as any)[key]);
         obj[key] = val;
         return obj;
       }, {});
-    const backendSafeUserFields = {
-      ...filteredUserData,
-      birthDate:
-        typeof filteredUserData.birthDate === 'string' &&
-        filteredUserData.birthDate.includes('/')
-          ? (() => {
-              const match = filteredUserData.birthDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-              if (!match) return filteredUserData.birthDate;
-              const [, day, month, year] = match;
-              return `${year}-${month}-${day}`;
-            })()
-          : filteredUserData.birthDate || undefined,
-    };
 
     try {
-      await api.patch(`/users/${id}`, backendSafeUserFields, {
-        headers: { 'x-skip-error-toast': '1' },
-      });
-    } catch (error) {
-      const statusCode =
-        (error as any)?.statusCode ??
-        (error as any)?.response?.status ??
-        (error as any)?.response?.statusCode;
-      const prismaCode =
-        (error as any)?.prismaCode ??
-        (error as any)?.response?.data?.prismaCode ??
-        (error as any)?.response?.prismaCode;
-      const canFallback =
-        statusCode === undefined || statusCode === null || statusCode >= 500 || Boolean(prismaCode);
-
-      if (!canFallback) {
-        throw error;
+      if (Object.keys(backendSafeUserFields).length > 0) {
+        await api.patch(`/users/${id}`, backendSafeUserFields, {
+          headers: { 'x-skip-error-toast': '1' },
+        });
       }
-
+    } catch (error) {
+      // Fallback para atualizar diretamente via Supabase para garantir resiliência
       const { data: updatedRow, error: updateError } = await supabase
         .from('users')
         .update({
