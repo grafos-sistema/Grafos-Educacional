@@ -855,7 +855,14 @@ export function RoleBasedUserWizard({
                     <Input label="Data de Nascimento" type="date" {...register('birthDate')} />
                   </div>
                   <div className="md:col-span-3">
-                    <Select label="Sexo" options={genderOptions} {...register('gender')} />
+                    <Select
+                      label="Sexo"
+                      options={genderOptions}
+                      value={watch('gender') ?? Gender.NOT_INFORMED}
+                      onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                        setValue('gender', e.target.value as Gender, { shouldDirty: true, shouldValidate: true })
+                      }
+                    />
                   </div>
                   <div className="md:col-span-4 xl:col-span-3">
                     <MaskedInput
@@ -875,54 +882,62 @@ export function RoleBasedUserWizard({
                       placeholder="000.000.000-00"
                     />
                   </div>
-                  {role !== UserRole.DIRECTOR && (
-                    <>
-                      <div className="md:col-span-5">
-                        <Input
-                          label="RG"
-                          maxLength={RG_MAX_LENGTH}
-                          placeholder="Somente letras e números"
-                          {...register('rg', {
-                            setValueAs: (value) => sanitizeRgValue(value),
-                            validate: (value) =>
-                              !value ||
-                              /^[A-Z0-9]+$/.test(String(value)) ||
-                              'Informe apenas letras e números',
-                          })}
-                          onInput={(event) => {
-                            const input = event.currentTarget;
-                            input.value = sanitizeRgValue(input.value);
-                          }}
-                          error={errors.rg?.message as string}
-                        />
-                      </div>
-                      <div className="md:col-span-5">
-                        <Select
-                          label="Órgão Emissor"
-                          options={RG_ISSUER_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
-                          {...register('rgEmissor')}
-                          error={errors.rgEmissor?.message as string}
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <Select
-                          label="UF"
-                          options={[{ value: '', label: 'UF' }, ...BRAZILIAN_UF_OPTIONS]}
-                          {...register('rgUf')}
-                        />
-                      </div>
-                      <div className="md:col-span-4">
-                        <Input label="Data de Emissão" type="date" {...register('rgEmissao')} />
-                      </div>
-                      <div className="md:col-span-4">
-                        <Select
-                          label="Nacionalidade"
-                          options={NATIONALITY_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
-                          {...register('nacionalidade')}
-                        />
-                      </div>
-                    </>
-                  )}
+                  <div className="md:col-span-5">
+                    <Input
+                      label="RG"
+                      maxLength={RG_MAX_LENGTH}
+                      placeholder="Somente letras e números"
+                      {...register('rg', {
+                        setValueAs: (value) => sanitizeRgValue(value),
+                        validate: (value) =>
+                          !value ||
+                          /^[A-Z0-9]+$/.test(String(value)) ||
+                          'Informe apenas letras e números',
+                      })}
+                      onInput={(event) => {
+                        const input = event.currentTarget;
+                        input.value = sanitizeRgValue(input.value);
+                      }}
+                      error={errors.rg?.message as string}
+                    />
+                  </div>
+                  <div className="md:col-span-5">
+                    <Select
+                      label="Órgão Emissor"
+                      options={RG_ISSUER_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+                      value={watch('rgEmissor') ?? ''}
+                      onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                        setValue('rgEmissor', e.target.value, { shouldDirty: true, shouldValidate: true })
+                      }
+                      error={errors.rgEmissor?.message as string}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Select
+                      label="UF"
+                      options={[{ value: '', label: 'UF' }, ...BRAZILIAN_UF_OPTIONS]}
+                      value={watch('rgUf') ?? ''}
+                      onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                        setValue('rgUf', e.target.value, { shouldDirty: true, shouldValidate: true })
+                      }
+                    />
+                  </div>
+                  <div className="md:col-span-4">
+                    <Input label="Data de Emissão" type="date" {...register('rgEmissao')} />
+                  </div>
+                  <div className="md:col-span-4">
+                    <Select
+                      label="Nacionalidade"
+                      options={NATIONALITY_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+                      value={watch('nacionalidade') ?? 'Brasileira'}
+                      onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                        setValue('nacionalidade', e.target.value, { shouldDirty: true, shouldValidate: true })
+                      }
+                    />
+                  </div>
+                  <div className="md:col-span-4">
+                    <Input label="Naturalidade" placeholder="Ex: São Luís" {...register('naturalidade')} />
+                  </div>
                 </div>
               </div>
             )}

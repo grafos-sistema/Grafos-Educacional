@@ -409,8 +409,8 @@ async function fetchUserFromSupabaseById(id: string): Promise<User> {
   } as User;
 }
 
-function shouldUseSupabaseAsPrimarySource(role?: UserRole) {
-  return role === UserRole.SUPER_ADMIN_GLOBAL;
+function shouldUseSupabaseAsPrimarySource(_role?: UserRole) {
+  return true;
 }
 
 async function loadParentStudentLinks(
@@ -953,35 +953,54 @@ export const usersService = {
       )
       .reduce<Record<string, any>>((obj, key) => {
         const val = normalizeOptionalString((userData as any)[key]);
-        obj[key] = val;
+        if (key === 'birthDate' || key === 'rgEmissao') {
+          if (typeof val === 'string' && val.trim()) {
+            const trimmed = val.trim();
+            if (trimmed.includes('/')) {
+              const match = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+              obj[key] = match ? `${match[3]}-${match[2]}-${match[1]}T00:00:00.000Z` : trimmed;
+            } else if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+              obj[key] = `${trimmed.split('T')[0]}T00:00:00.000Z`;
+            } else {
+              obj[key] = trimmed;
+            }
+          } else {
+            obj[key] = null;
+          }
+        } else if (key === 'gender') {
+          obj[key] = val && ['MALE', 'FEMALE', 'OTHER', 'NOT_INFORMED'].includes(val) ? val : null;
+        } else {
+          obj[key] = val;
+        }
         return obj;
       }, {});
 
+    // Atualiza diretamente no Supabase como fonte primária
+    const { data: updatedRow, error: updateError } = await supabase
+      .from('users')
+      .update({
+        ...filteredUserData,
+        ...(institutionId !== undefined ? { institutionId } : {}),
+        updatedAt: new Date().toISOString(),
+      })
+      .select('id')
+      .eq('id', id);
+
+    if (updateError) {
+      console.error('Erro ao atualizar usuário no Supabase:', updateError);
+      throw updateError;
+    }
+
+    // Sincroniza com a API REST de retaguarda se disponível (sem enviar institutionId para evitar 400)
     try {
       if (Object.keys(backendSafeUserFields).length > 0) {
-        await api.patch(`/users/${id}`, backendSafeUserFields, {
+        const { institutionId: _unused, ...safeApiFields } = backendSafeUserFields;
+        await api.patch(`/users/${id}`, safeApiFields, {
           headers: { 'x-skip-error-toast': '1' },
         });
       }
-    } catch (error) {
-      // Fallback para atualizar diretamente via Supabase para garantir resiliência
-      const { data: updatedRow, error: updateError } = await supabase
-        .from('users')
-        .update({
-          ...filteredUserData,
-          ...(institutionId !== undefined ? { institutionId } : {}),
-          updatedAt: new Date().toISOString(),
-        })
-        .select('id')
-        .eq('id', id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      if (!updatedRow || updatedRow.length === 0) {
-        throw error;
-      }
+    } catch (_apiErr) {
+      // Supabase já foi atualizado com sucesso
     }
 
     const user = await usersService.findOne(id);

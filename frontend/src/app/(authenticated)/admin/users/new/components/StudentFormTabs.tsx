@@ -748,7 +748,15 @@ export function StudentFormTabs({
                 <Input label="Nome Social" {...register('socialName')} />
               </div>
               <Input label="Data de Nascimento *" type="date" {...register('birthDate', { required: 'Data obrigatória' })} error={errors.birthDate?.message as string} />
-              <Select label="Sexo *" options={genderOptions} {...register('gender', { required: 'Sexo obrigatório' })} error={errors.gender?.message as string} />
+              <Select
+                label="Sexo *"
+                options={genderOptions}
+                value={form.watch('gender') ?? Gender.NOT_INFORMED}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                  form.setValue('gender', e.target.value as Gender, { shouldDirty: true, shouldValidate: true })
+                }
+                error={errors.gender?.message as string}
+              />
               <MaskedInput
                 label="CPF"
                 mask={masks.cpf}

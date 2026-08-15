@@ -310,21 +310,29 @@ export default function UserDetailPage() {
               </span>
             </div>
           </div>
+          {user.socialName && (
+            <div>
+              <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                Nome Social
+              </label>
+              <span className="text-gray-900 dark:text-gray-100">{user.socialName}</span>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-              Gênero
+              Gênero / Sexo
             </label>
             <span className="text-gray-900 dark:text-gray-100">
               {user.gender ? genderLabels[user.gender] : '-'}
             </span>
           </div>
-          {user.nacionalidade && (
+          {(user.nacionalidade || user.naturalidade) && (
             <div>
               <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
                 Nacionalidade / Naturalidade
               </label>
               <span className="text-gray-900 dark:text-gray-100">
-                {user.nacionalidade} {user.naturalidade ? `/ ${user.naturalidade}` : ''}
+                {[user.nacionalidade, user.naturalidade].filter(Boolean).join(' / ')}
               </span>
             </div>
           )}
