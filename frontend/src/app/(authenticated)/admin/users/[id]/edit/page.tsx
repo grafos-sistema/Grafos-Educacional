@@ -371,6 +371,7 @@ export function EditUserPageContent({
         
         // Group healthInfo if student
         healthInfo: user?.role === UserRole.STUDENT ? {
+          tipoSanguineo: (data as any).tipoSanguineo,
           alergias: data.alergias,
           medicamentos: data.medicamentos,
           restricoesAlimentares: data.restricoesAlimentares,
@@ -398,6 +399,7 @@ export function EditUserPageContent({
 
       // Clean up top-level flattened fields for health/transport so they don't pollute users table
       if (user?.role === UserRole.STUDENT) {
+        delete (userData as any).tipoSanguineo;
         delete userData.alergias;
         delete userData.medicamentos;
         delete userData.restricoesAlimentares;
@@ -420,21 +422,11 @@ export function EditUserPageContent({
         }));
       }
       
-      // Clean up photo field which is not a column in users table
+      // Clean up auxiliary fields before passing to service
       delete userData.photo;
       delete userData.password;
       delete (userData as any).confirmPassword;
       delete (userData as any).rgUf;
-      delete userData.naturalidade;
-      // Also clean up registrationNumber
-      delete (userData as any).registrationNumber;
-
-      if (user?.role === UserRole.DIRECTOR) {
-        delete (userData as any).rg;
-        delete (userData as any).rgEmissor;
-        delete (userData as any).rgEmissao;
-        delete (userData as any).nacionalidade;
-      }
 
       await usersService.update(userId, userData as UpdateUserData);
 

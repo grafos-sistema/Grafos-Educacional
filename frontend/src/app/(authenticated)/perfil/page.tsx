@@ -60,6 +60,7 @@ export default function PerfilPage() {
     address: user?.address || '',
     numero: user?.numero || '',
     complemento: user?.complemento || '',
+    bairro: user?.bairro || '',
     city: user?.city || '',
     state: user?.state || '',
     zipCode: user?.zipCode ? formatCep(user.zipCode) : '',
@@ -98,6 +99,7 @@ export default function PerfilPage() {
           ...prev,
           zipCode: formatCep(normalizedCep),
           address: prev.address || result.logradouro || '',
+          bairro: prev.bairro || result.bairro || '',
           city: prev.city || result.localidade || '',
           state: prev.state || result.uf || '',
         }));
@@ -391,6 +393,11 @@ export default function PerfilPage() {
               label="Complemento"
               value={formData.complemento || ''}
               onChange={(e) => handleChange('complemento', e.target.value)}
+            />
+            <Input
+              label="Bairro"
+              value={formData.bairro || ''}
+              onChange={(e) => handleChange('bairro', e.target.value)}
             />
             <Input
               label="Cidade"

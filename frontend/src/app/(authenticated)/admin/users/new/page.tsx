@@ -305,7 +305,6 @@ export function NewUserPageContent({
       delete userData.photo;
       delete userData.avatar;
       delete userData.rgUf;
-      delete userData.naturalidade;
       delete userData.documents;
       delete (userData as any).unitId;
       delete (userData as any).alsoDirectorUserId;

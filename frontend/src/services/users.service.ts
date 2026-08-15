@@ -273,17 +273,86 @@ async function loadUserProfiles(
   if (studentResult.error) throw studentResult.error;
   if (parentResult.error) throw parentResult.error;
 
+  const studentRows = (studentResult.data ?? []) as any[];
+  const studentIds = studentRows.map((row) => row.id).filter(Boolean);
+
+  const healthMap = new Map<string, any>();
+  const transportMap = new Map<string, any>();
+  const studentParentsMap = new Map<string, any[]>();
+
+  if (studentIds.length > 0) {
+    const [healthRes, transportRes, studentParentsRes] = await Promise.all([
+      supabase.from('student_health_records').select('*').in('studentId', studentIds),
+      supabase.from('student_transportation').select('*').in('studentId', studentIds),
+      supabase
+        .from('student_parents')
+        .select(`
+          id,
+          studentId,
+          parentId,
+          relationship,
+          isPrimary,
+          isFinancialResponsible,
+          receivesNotifications,
+          canPickup,
+          parents (
+            id,
+            userId,
+            occupation,
+            user:users (
+              id,
+              name,
+              firstName,
+              lastName,
+              cpf,
+              email,
+              phone
+            )
+          )
+        `)
+        .in('studentId', studentIds),
+    ]);
+
+    if (healthRes.data) {
+      for (const h of healthRes.data) {
+        healthMap.set(h.studentId, h);
+      }
+    }
+    if (transportRes.data) {
+      for (const t of transportRes.data) {
+        transportMap.set(t.studentId, t);
+      }
+    }
+    if (studentParentsRes.data) {
+      for (const sp of studentParentsRes.data) {
+        const list = studentParentsMap.get(sp.studentId) || [];
+        const parentUser = (sp as any).parents?.user;
+        list.push({
+          id: sp.id,
+          studentId: sp.studentId,
+          parentId: sp.parentId,
+          relationship: sp.relationship,
+          isPrimary: sp.isPrimary ?? (sp as any).isFinancialResponsible ?? false,
+          receivesNotifications: sp.receivesNotifications ?? true,
+          canPickup: sp.canPickup ?? false,
+          user: parentUser,
+        });
+        studentParentsMap.set(sp.studentId, list);
+      }
+    }
+  }
+
   return {
     teacherMap: new Map(
       (teacherResult.data ?? []).map((row: any) => [row.userId as string, row as NonNullable<User['teacherProfile']>])
     ),
     studentMap: new Map(
-      (studentResult.data ?? []).map((row: any) => {
+      studentRows.map((row: any) => {
         const studentProfile = {
           ...row,
-          healthRecord: undefined,
-          transportation: undefined,
-          parents: [],
+          healthRecord: healthMap.get(row.id),
+          transportation: transportMap.get(row.id),
+          parents: studentParentsMap.get(row.id) || [],
         };
         return [row.userId as string, studentProfile as NonNullable<User['studentProfile']>];
       })
