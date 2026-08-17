@@ -53,40 +53,10 @@ export class UpdateUserDto extends PartialType(
   @IsString()
   telefoneFixo?: string;
 
-  @ApiProperty({ required: false, example: '123456789' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(30)
-  rg?: string;
-
-  @ApiProperty({ required: false, example: 'SSP/MA' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(20)
-  rgEmissor?: string;
-
-  @ApiProperty({ required: false, example: '2020-01-15' })
-  @IsOptional()
-  @IsString()
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
-    message: 'Data de emissão deve estar no formato YYYY-MM-DD',
-  })
-  rgEmissao?: string;
-
   @ApiProperty({ required: false, example: 'Nome social' })
   @IsOptional()
   @IsString()
   socialName?: string;
-
-  @ApiProperty({ required: false, example: 'Brasileira' })
-  @IsOptional()
-  @IsString()
-  nacionalidade?: string;
-
-  @ApiProperty({ required: false, example: 'São Luís' })
-  @IsOptional()
-  @IsString()
-  naturalidade?: string;
 
   @ApiProperty({ required: false, enum: Gender })
   @IsOptional()

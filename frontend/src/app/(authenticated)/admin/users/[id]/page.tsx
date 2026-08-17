@@ -290,17 +290,6 @@ export default function UserDetailPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-              RG
-            </label>
-            <div className="flex items-center gap-2">
-              <IdentificationIcon className="h-5 w-5 text-gray-400" />
-              <span className="text-gray-900 dark:text-gray-100">
-                {user.rg || '-'} {user.rgEmissor ? `(${user.rgEmissor})` : ''}
-              </span>
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
               Data de Nascimento
             </label>
             <div className="flex items-center gap-2">
@@ -326,16 +315,6 @@ export default function UserDetailPage() {
               {user.gender ? genderLabels[user.gender] : '-'}
             </span>
           </div>
-          {(user.nacionalidade || user.naturalidade) && (
-            <div>
-              <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Nacionalidade / Naturalidade
-              </label>
-              <span className="text-gray-900 dark:text-gray-100">
-                {[user.nacionalidade, user.naturalidade].filter(Boolean).join(' / ')}
-              </span>
-            </div>
-          )}
         </div>
       </div>
 

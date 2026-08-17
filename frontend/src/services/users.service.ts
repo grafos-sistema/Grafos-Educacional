@@ -53,12 +53,7 @@ type AppUserRow = {
   city?: string | null;
   state?: string | null;
   zipCode?: string | null;
-  rg?: string | null;
-  rgEmissor?: string | null;
-  rgEmissao?: string | null;
   socialName?: string | null;
-  nacionalidade?: string | null;
-  naturalidade?: string | null;
   isActive: boolean;
   emailVerified: boolean;
   requestedProfileType?: string | null;
@@ -81,7 +76,7 @@ type StudentParentRow = {
 };
 
 const USER_BASE_COLUMNS =
-  'id, email, role, firstName, lastName, cpf, phone, telefoneFixo, birthDate, gender, avatar, address, numero, complemento, bairro, city, state, zipCode, isActive, emailVerified, requestedProfileType, institutionId, createdAt, updatedAt, rg, rgEmissor, rgEmissao, socialName, nacionalidade, naturalidade';
+  'id, email, role, firstName, lastName, cpf, phone, telefoneFixo, birthDate, gender, avatar, address, numero, complemento, bairro, city, state, zipCode, isActive, emailVerified, requestedProfileType, institutionId, createdAt, updatedAt, socialName';
 
 const TEACHER_LIST_PROFILE_COLUMNS = 'id, userId, specialization, registrationNumber, isActive';
 const STUDENT_LIST_PROFILE_COLUMNS = 'id, userId, registrationNumber, isActive';
@@ -181,12 +176,7 @@ function mapUser(row: AppUserRow, extras?: Partial<User>): User {
     city: row.city ?? undefined,
     state: row.state ?? undefined,
     zipCode: row.zipCode ?? undefined,
-    rg: row.rg ?? undefined,
-    rgEmissor: row.rgEmissor ?? undefined,
-    rgEmissao: row.rgEmissao ?? undefined,
     socialName: row.socialName ?? undefined,
-    nacionalidade: row.nacionalidade ?? undefined,
-    naturalidade: row.naturalidade ?? undefined,
     isActive: row.isActive,
     emailVerified: row.emailVerified,
     requestedProfileType: row.requestedProfileType ?? undefined,
@@ -875,12 +865,7 @@ export const usersService = {
       'role',
       'isActive',
       'telefoneFixo',
-      'rg',
-      'rgEmissor',
-      'rgEmissao',
       'socialName',
-      'nacionalidade',
-      'naturalidade',
       'gender',
       'address',
       'numero',
@@ -919,7 +904,7 @@ export const usersService = {
           if (/^[A-Z]{2}$/.test(uf)) {
             backendSafeUserFields[key] = uf;
           }
-        } else if (key === 'birthDate' || key === 'rgEmissao') {
+        } else if (key === 'birthDate') {
           if (trimmed.includes('/')) {
             const match = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
             if (match) {
@@ -953,7 +938,7 @@ export const usersService = {
       )
       .reduce<Record<string, any>>((obj, key) => {
         const val = normalizeOptionalString((userData as any)[key]);
-        if (key === 'birthDate' || key === 'rgEmissao') {
+        if (key === 'birthDate') {
           if (typeof val === 'string' && val.trim()) {
             const trimmed = val.trim();
             if (trimmed.includes('/')) {

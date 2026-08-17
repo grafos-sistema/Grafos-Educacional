@@ -25,11 +25,6 @@ import { getUserListRouteByRole } from '@/lib/user-route-utils';
 import { Dropdown } from '@/components/ui/HeroDropdown';
 import { useAuthStore } from '@/stores/authStore';
 import { Modal } from '@/components/ui/Modal';
-import {
-  formatRgIssuerValue,
-  parseRgIssuerValue,
-  sanitizeRgValue,
-} from '@/lib/constants/document-options';
 import { presentFriendlyError } from '@/lib/friendly-error';
 
 const genderOptions = [
@@ -123,7 +118,6 @@ export function EditUserPageContent({
       setIsLoadingInstitutions(true);
 
       try {
-        const parsedRgIssuer = parseRgIssuerValue(user.rgEmissor);
         const [institutions, userInstitutionLinks, teacherSubjects, parentChildren] = await Promise.all([
           currentUser?.role === UserRole.SUPER_ADMIN || currentUser?.role === UserRole.SUPER_ADMIN_GLOBAL
             ? institutionsService.getPublicInstitutions()
@@ -216,13 +210,7 @@ export function EditUserPageContent({
         state: user.state || '',
         zipCode: user.zipCode ? formatCEP(user.zipCode) : '',
         isActive: user.isActive,
-        rg: user.rg || '',
-        rgEmissor: parsedRgIssuer.issuer,
-        rgUf: parsedRgIssuer.uf || 'MA',
-        rgEmissao: user.rgEmissao ? new Date(user.rgEmissao).toISOString().split('T')[0] : '',
         socialName: user.socialName || '',
-        nacionalidade: user.nacionalidade || 'Brasileira',
-        naturalidade: user.naturalidade || '',
         telefoneFixo: user.telefoneFixo || '',
         numero: user.numero || '',
         complemento: user.complemento || '',
@@ -357,8 +345,6 @@ export function EditUserPageContent({
       const userData = {
         ...data,
         cpf: data.cpf ? removeMask(data.cpf) : undefined,
-        rg: data.rg ? sanitizeRgValue(data.rg) : undefined,
-        rgEmissor: formatRgIssuerValue(data.rgEmissor, (data as any).rgUf),
         phone: data.phone ? removeMask(data.phone) : undefined,
         zipCode: data.zipCode ? removeMask(data.zipCode) : undefined,
         institutionId:
@@ -426,7 +412,6 @@ export function EditUserPageContent({
       delete userData.photo;
       delete userData.password;
       delete (userData as any).confirmPassword;
-      delete (userData as any).rgUf;
 
       await usersService.update(userId, userData as UpdateUserData);
 

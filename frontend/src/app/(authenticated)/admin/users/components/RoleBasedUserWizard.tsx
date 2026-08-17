@@ -27,13 +27,7 @@ import { MaskedInput, masks, removeMask, validateCPF, formatCPF } from '@/compon
 import { Badge } from '@/components/ui/Badge';
 import { Dropdown } from '@/components/ui/HeroDropdown';
 import { supabase } from '@/lib/supabase';
-import {
-  BRAZILIAN_UF_OPTIONS,
-  NATIONALITY_OPTIONS,
-  RG_ISSUER_OPTIONS,
-  RG_MAX_LENGTH,
-  sanitizeRgValue,
-} from '@/lib/constants/document-options';
+import { BRAZILIAN_UF_OPTIONS } from '@/lib/constants/document-options';
 import { Gender, UserRole } from '@/types/user.types';
 import { AvatarCropModal } from '@/components/ui/AvatarCropModal';
 import { useCepAutofill } from '@/hooks/useCepAutofill';
@@ -881,63 +875,6 @@ export function RoleBasedUserWizard({
                       error={errors.cpf?.message as string}
                       placeholder="000.000.000-00"
                     />
-                  </div>
-                  <div className="md:col-span-5">
-                    <Input
-                      label="RG"
-                      maxLength={RG_MAX_LENGTH}
-                      placeholder="Somente letras e números"
-                      {...register('rg', {
-                        setValueAs: (value) => sanitizeRgValue(value),
-                        validate: (value) =>
-                          !value ||
-                          /^[A-Z0-9]+$/.test(String(value)) ||
-                          'Informe apenas letras e números',
-                      })}
-                      onInput={(event) => {
-                        const input = event.currentTarget;
-                        input.value = sanitizeRgValue(input.value);
-                      }}
-                      error={errors.rg?.message as string}
-                    />
-                  </div>
-                  <div className="md:col-span-5">
-                    <Select
-                      label="Órgão Emissor"
-                      options={RG_ISSUER_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
-                      value={watch('rgEmissor') ?? ''}
-                      onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                        setValue('rgEmissor', e.target.value, { shouldDirty: true, shouldValidate: true })
-                      }
-                      error={errors.rgEmissor?.message as string}
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Select
-                      label="UF"
-                      options={[{ value: '', label: 'UF' }, ...BRAZILIAN_UF_OPTIONS]}
-                      value={watch('rgUf') ?? ''}
-                      onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                        setValue('rgUf', e.target.value, { shouldDirty: true, shouldValidate: true })
-                      }
-                    />
-                  </div>
-                  <div className="md:col-span-4">
-                    <Input label="Data de Emissão" type="date" {...register('rgEmissao')} />
-                  </div>
-                  <div className="md:col-span-4">
-                    <Select
-                      label="Nacionalidade"
-                      options={NATIONALITY_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
-                      value={watch('nacionalidade') ?? 'Brasileira'}
-                      onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                        setValue('nacionalidade', e.target.value, { shouldDirty: true, shouldValidate: true })
-                      }
-                    />
-                  </div>
-                  <div className="md:col-span-4">
-                    <Input label="Naturalidade" placeholder="Ex: São Luís" {...register('naturalidade')} />
-                  </div>
                 </div>
               </div>
             )}

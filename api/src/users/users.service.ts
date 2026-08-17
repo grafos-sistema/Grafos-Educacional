@@ -487,12 +487,7 @@ export class UsersService {
         firstName: true,
         lastName: true,
         cpf: true,
-        rg: true,
-        rgEmissor: true,
-        rgEmissao: true,
         socialName: true,
-        nacionalidade: true,
-        naturalidade: true,
         phone: true,
         telefoneFixo: true,
         birthDate: true,
@@ -624,7 +619,7 @@ export class UsersService {
     // Verifica se usuário existe
     const existingUser = await this.findOne(id);
 
-    const { email, cpf, birthDate, rgEmissao, firstName, lastName, state, ...data } =
+    const { email, cpf, birthDate, firstName, lastName, state, ...data } =
       updateUserDto;
 
     // Verifica email único se fornecido NESTA instituição
@@ -670,7 +665,6 @@ export class UsersService {
 
     // Converte birthDate string para Date se fornecido
     const parsedBirthDate = birthDate ? new Date(birthDate) : undefined;
-    const parsedRgEmissao = rgEmissao ? new Date(rgEmissao) : undefined;
 
     // Atualiza name se firstName ou lastName foram fornecidos
     let fullName: string | undefined;
@@ -687,7 +681,6 @@ export class UsersService {
         email,
         cpf,
         birthDate: parsedBirthDate,
-        rgEmissao: parsedRgEmissao,
         firstName,
         lastName,
         state: state?.toUpperCase(),

@@ -14,12 +14,7 @@ type CreateUserBody = {
   firstName?: string
   lastName?: string
   cpf?: string | null
-  rg?: string | null
-  rgEmissor?: string | null
-  rgEmissao?: string | null
   socialName?: string | null
-  nacionalidade?: string | null
-  naturalidade?: string | null
   phone?: string | null
   telefoneFixo?: string | null
   birthDate?: string | null
@@ -269,12 +264,7 @@ Deno.serve(async (req: Request) => {
       firstName,
       lastName,
       cpf: body?.cpf ?? null,
-      rg: body?.rg ?? null,
-      rgEmissor: body?.rgEmissor ?? null,
-      rgEmissao: body?.rgEmissao ?? null,
       socialName: body?.socialName ?? null,
-      nacionalidade: body?.nacionalidade ?? null,
-      naturalidade: body?.naturalidade ?? null,
       phone: body?.phone ?? null,
       telefoneFixo: body?.telefoneFixo ?? null,
       birthDate: body?.birthDate ?? null,

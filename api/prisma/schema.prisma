@@ -238,11 +238,6 @@ model User {
   firstName     String
   lastName      String
   cpf           String?
-  rg            String?
-  rgEmissor     String?
-  rgEmissao     DateTime?
-  nacionalidade String?
-  naturalidade  String?
   phone         String?
   telefoneFixo  String?
   birthDate     DateTime?

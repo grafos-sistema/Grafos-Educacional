@@ -46,12 +46,7 @@ type AppUserRow = {
   city?: string | null;
   state?: string | null;
   zipCode?: string | null;
-  rg?: string | null;
-  rgEmissor?: string | null;
-  rgEmissao?: string | null;
   socialName?: string | null;
-  nacionalidade?: string | null;
-  naturalidade?: string | null;
   isActive: boolean;
   emailVerified: boolean;
   requestedProfileType?: string | null;
@@ -80,12 +75,7 @@ function mapAppUser(row: AppUserRow, extras?: Partial<User>): User {
     city: row.city ?? undefined,
     state: row.state ?? undefined,
     zipCode: row.zipCode ?? undefined,
-    rg: row.rg ?? undefined,
-    rgEmissor: row.rgEmissor ?? undefined,
-    rgEmissao: row.rgEmissao ?? undefined,
     socialName: row.socialName ?? undefined,
-    nacionalidade: row.nacionalidade ?? undefined,
-    naturalidade: row.naturalidade ?? undefined,
     isActive: row.isActive,
     emailVerified: row.emailVerified,
     requestedProfileType: row.requestedProfileType ?? undefined,

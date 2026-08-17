@@ -20,10 +20,6 @@ import { Institution as InstitutionOption } from '@/components/ui/InstitutionSea
 import { authService } from '@/services/auth.service';
 import { institutionsService } from '@/services/institutions.service';
 import { RoleBasedUserWizard } from '../components/RoleBasedUserWizard';
-import {
-  formatRgIssuerValue,
-  sanitizeRgValue,
-} from '@/lib/constants/document-options';
 import { presentFriendlyError } from '@/lib/friendly-error';
 import { supabase } from '@/lib/supabase';
 
@@ -98,8 +94,6 @@ export function NewUserPageContent({
       isActive: true,
       institutionIds: [],
       institutionId: user?.institutionId,
-      nacionalidade: 'Brasileira',
-      rgUf: 'MA',
     }
   });
 
@@ -250,8 +244,6 @@ export function NewUserPageContent({
         institutionId: primaryInstitutionId,
         institutionIds: normalizedInstitutionIds,
         cpf: data.cpf ? removeMask(data.cpf) : undefined,
-        rg: data.rg ? sanitizeRgValue(data.rg) : undefined,
-        rgEmissor: formatRgIssuerValue(data.rgEmissor, (data as any).rgUf),
         phone: data.phone ? removeMask(data.phone) : undefined,
         zipCode: data.zipCode ? removeMask(data.zipCode) : undefined,
         isActive: true,
@@ -304,7 +296,6 @@ export function NewUserPageContent({
 
       delete userData.photo;
       delete userData.avatar;
-      delete userData.rgUf;
       delete userData.documents;
       delete (userData as any).unitId;
       delete (userData as any).alsoDirectorUserId;

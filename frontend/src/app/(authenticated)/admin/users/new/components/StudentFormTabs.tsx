@@ -27,13 +27,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { observationsService } from '@/services/observations.service';
 import { useAuthStore } from '@/stores/authStore';
-import {
-  BRAZILIAN_UF_OPTIONS,
-  NATIONALITY_OPTIONS,
-  RG_ISSUER_OPTIONS,
-  RG_MAX_LENGTH,
-  sanitizeRgValue,
-} from '@/lib/constants/document-options';
+import { BRAZILIAN_UF_OPTIONS } from '@/lib/constants/document-options';
 import { Gender, UserRole } from '@/types/user.types';
 import { AvatarCropModal } from '@/components/ui/AvatarCropModal';
 import { Modal } from '@/components/ui/Modal';
@@ -764,44 +758,6 @@ export function StudentFormTabs({
                 value={cpf ?? ''}
                 {...register('cpf')}
                 placeholder="000.000.000-00"
-              />
-              <div className="md:col-span-2 lg:col-span-2">
-                <Input
-                  label="RG"
-                  maxLength={RG_MAX_LENGTH}
-                  placeholder="Somente letras e números"
-                  {...register('rg', {
-                    setValueAs: (value) => sanitizeRgValue(value),
-                    validate: (value) =>
-                      !value || /^[A-Z0-9]+$/.test(String(value)) || 'Informe apenas letras e números',
-                  })}
-                  onInput={(event) => {
-                    const input = event.currentTarget;
-                    input.value = sanitizeRgValue(input.value);
-                  }}
-                  error={errors.rg?.message as string}
-                />
-              </div>
-              <div>
-                <Select
-                  label="Órgão Emissor"
-                  options={RG_ISSUER_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
-                  {...register('rgEmissor')}
-                  error={errors.rgEmissor?.message as string}
-                />
-              </div>
-              <div>
-                <Select
-                  label="UF"
-                  options={[{ value: '', label: 'UF' }, ...BRAZILIAN_UF_OPTIONS]}
-                  {...register('rgUf')}
-                />
-              </div>
-              <Input label="Data de Emissão" type="date" {...register('rgEmissao')} />
-              <Select
-                label="Nacionalidade"
-                options={NATIONALITY_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
-                {...register('nacionalidade')}
               />
             </div>
           </div>
