@@ -875,6 +875,7 @@ export function RoleBasedUserWizard({
                       error={errors.cpf?.message as string}
                       placeholder="000.000.000-00"
                     />
+                  </div>
                 </div>
               </div>
             )}
