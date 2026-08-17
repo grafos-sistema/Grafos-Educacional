@@ -968,6 +968,16 @@ export const usersService = {
       }, {});
 
     // Atualiza diretamente no Supabase como fonte primária
+    if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.debug('[usersService.update] Payload enviado para Supabase:', {
+        userId: id,
+        columns: Object.keys(filteredUserData),
+        birthDate_in: (filteredUserData as any).birthDate ?? null,
+        state_in: (filteredUserData as any).state ?? null,
+      });
+    }
+
     const { data: updatedRow, error: updateError } = await supabase
       .from('users')
       .update({
@@ -975,12 +985,26 @@ export const usersService = {
         ...(institutionId !== undefined ? { institutionId } : {}),
         updatedAt: new Date().toISOString(),
       })
-      .select('id')
+      .select('id, birthDate, state, updatedAt')
       .eq('id', id);
 
     if (updateError) {
-      console.error('Erro ao atualizar usuário no Supabase:', updateError);
+      console.error('[usersService.update] Erro ao atualizar usuário no Supabase:', updateError, {
+        payload: filteredUserData,
+      });
       throw updateError;
+    }
+
+    if (!updatedRow || updatedRow.length === 0) {
+      const msg =
+        'Nenhuma linha foi atualizada. Verifique se você tem permissão (RLS policy) para editar este usuário.';
+      console.error('[usersService.update] ' + msg, { id, sentPayload: filteredUserData });
+      throw new Error(msg);
+    }
+
+    if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.debug('[usersService.update] Linha atualizada no DB:', updatedRow[0]);
     }
 
     // Sincroniza com a API REST de retaguarda se disponível (sem enviar institutionId para evitar 400)

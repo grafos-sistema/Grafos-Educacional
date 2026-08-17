@@ -49,13 +49,29 @@ Deno.serve(async (req) => {
 
   const { data: caller, error: callerError } = await supabase
     .from("users")
-    .select('id, role, "institutionId"')
+    .select('id, role, "institutionId", auth_user_id')
     .eq("auth_user_id", authUserData.user.id)
     .maybeSingle()
 
-  if (callerError) return json({ error: "failed_to_load_profile" }, 500)
-  if (!caller) return json({ error: "missing_profile" }, 409)
-  if (caller.role !== "SUPER_ADMIN" && caller.role !== "SUPER_ADMIN_GLOBAL") return json({ error: "not_authorized" }, 403)
+  if (callerError) return json({ error: "failed_to_load_profile", details: callerError.message }, 500)
+  if (!caller) {
+    // Tentativa 2: talvez o auth_user_id nao esteja preenchido, use fallback por id
+    const { data: fallbackCaller, error: fbErr } = await supabase
+      .from("users")
+      .select('id, role, "institutionId", auth_user_id')
+      .eq("id", authUserData.user.id)
+      .maybeSingle()
+    if (fbErr) return json({ error: "failed_to_load_profile_fallback", details: fbErr.message }, 500)
+    if (!fallbackCaller) return json({ error: "missing_profile", authUserId: authUserData.user.id }, 409)
+    ;(caller as any) = fallbackCaller
+  }
+
+  if (caller.role !== "SUPER_ADMIN" && caller.role !== "SUPER_ADMIN_GLOBAL") {
+    return json({
+      error: "not_authorized",
+      details: `Expected SUPER_ADMIN or SUPER_ADMIN_GLOBAL, got '${caller.role}' (callerId ${caller.id})`,
+    }, 403)
+  }
 
   const body = await req.json().catch(() => null) as ResetPasswordBody | null
   const userId = body?.userId?.trim()
