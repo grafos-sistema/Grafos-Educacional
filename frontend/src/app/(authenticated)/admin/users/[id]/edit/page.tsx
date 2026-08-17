@@ -69,9 +69,13 @@ export function EditUserPageContent({
   const queryClient = useQueryClient();
   const params = useParams();
   const currentUser = useAuthStore((state) => state.user);
+  const activeProfile = useAuthStore((state) => state.activeProfile);
+
+  const callerRole = activeProfile ?? currentUser?.role;
+
   const canManagePassword =
-    currentUser?.role === UserRole.SUPER_ADMIN ||
-    currentUser?.role === UserRole.SUPER_ADMIN_GLOBAL;
+    callerRole === UserRole.SUPER_ADMIN ||
+    callerRole === UserRole.SUPER_ADMIN_GLOBAL;
   const userId = userIdProp ?? (params?.id as string);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -128,7 +132,7 @@ export function EditUserPageContent({
 
       try {
         const [institutions, userInstitutionLinks, teacherSubjects, parentChildren] = await Promise.all([
-          currentUser?.role === UserRole.SUPER_ADMIN || currentUser?.role === UserRole.SUPER_ADMIN_GLOBAL
+          callerRole === UserRole.SUPER_ADMIN || callerRole === UserRole.SUPER_ADMIN_GLOBAL
             ? institutionsService.getPublicInstitutions()
             : authService.getInstitutions().catch(() => institutionsService.getPublicInstitutions()),
           supabase.from('user_institutions').select('institutionId, isPrimary').eq('userId', user.id),

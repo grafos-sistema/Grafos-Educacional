@@ -1243,8 +1243,59 @@ export const usersService = {
 
     if (error) {
       if (isSupabaseFunctionHttpError(error)) {
+        const status = error.context.status;
+        let payload: any = null;
+        try {
+          payload = await error.context.clone().json();
+        } catch (_) {
+          // ignore
+        }
+        if (process.env.NODE_ENV !== 'production') {
+          // eslint-disable-next-line no-console
+          console.error('[usersService.adminResetPassword] HTTP error context:', {
+            status,
+            payload,
+          });
+        }
+
+        // Mensagem amigável para erro de permissão
+        if (status === 403) {
+          const errCode = payload && typeof payload.error === 'string' ? payload.error : '';
+          const details = payload && typeof payload.details === 'string' ? payload.details : '';
+
+          if (errCode === 'not_authorized_for_institution') {
+            throw new Error(
+              `Seu usuário (Super Admin Local) só pode resetar senhas de usuários da mesma instituição. ${details}`
+            );
+          }
+          if (errCode === 'not_authorized') {
+            throw new Error(
+              `Apenas Super Admin Global ou Super Admin Local podem resetar senhas. ${details}`
+            );
+          }
+          if (errCode === 'missing_profile') {
+            throw new Error(
+              `Seu usuário autenticado não tem perfil vinculado no banco. ${details}`
+            );
+          }
+          if (errCode === 'target_user_missing_auth_id') {
+            throw new Error(
+              `O usuário alvo não tem auth_user_id vinculado (não foi criado pela nova edge function). ${details}`
+            );
+          }
+          const generic =
+            status === 403
+              ? `Você não tem permissão para resetar esta senha.${details ? ` Detalhes: ${details}` : ''}`
+              : `HTTP ${status} na função admin-reset-user-password.${details ? ` Detalhes: ${details}` : ''}`;
+          throw new Error(generic);
+        }
+
         const functionMessage = await parseSupabaseFunctionError(error);
-        throw new Error(functionMessage);
+        const contextMsg =
+          payload && typeof payload.error === 'string'
+            ? ` (${payload.error}${payload.details ? ` — ${payload.details}` : ''})`
+            : '';
+        throw new Error(functionMessage + contextMsg);
       }
       throw error;
     }
