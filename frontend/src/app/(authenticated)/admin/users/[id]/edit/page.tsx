@@ -26,6 +26,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useAuthStore } from '@/stores/authStore';
 import { Modal } from '@/components/ui/Modal';
 import { presentFriendlyError } from '@/lib/friendly-error';
+import { Dropdown } from '@/components/ui/HeroDropdown';
 
 function buildInitialPassword(email?: string) {
   if (!email) return '';
@@ -700,41 +701,62 @@ export function EditUserPageContent({
                 studentProfileId={user.studentProfile?.id}
                 passwordField={(
                   canManagePassword ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Input
-                        label="Nova senha"
-                        type={showPassword ? 'text' : 'password'}
-                        {...register('password')}
-                        helperText="Defina uma nova senha para o aluno. A alteração será confirmada em modal."
-                        rightIcon={
-                          <button
-                            type="button"
-                            tabIndex={-1}
-                            onClick={() => setShowPassword((value) => !value)}
-                            className="pointer-events-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                            aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                          >
-                            {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                          </button>
-                        }
-                      />
-                      <Input
-                        label="Confirmar nova senha"
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        {...register('confirmPassword')}
-                        helperText="Repita a senha para liberar a confirmação final."
-                        rightIcon={
-                          <button
-                            type="button"
-                            tabIndex={-1}
-                            onClick={() => setShowConfirmPassword((value) => !value)}
-                            className="pointer-events-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                            aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
-                          >
-                            {showConfirmPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                          </button>
-                        }
-                      />
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Input
+                          label="Nova senha"
+                          type={showPassword ? 'text' : 'password'}
+                          {...register('password')}
+                          helperText="Defina uma nova senha para o aluno. A alteração será confirmada em modal."
+                          rightIcon={
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              onClick={() => setShowPassword((value) => !value)}
+                              className="pointer-events-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                              aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                            >
+                              {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                            </button>
+                          }
+                        />
+                        <Input
+                          label="Confirmar nova senha"
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          {...register('confirmPassword')}
+                          helperText="Repita a senha para liberar a confirmação final."
+                          rightIcon={
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              onClick={() => setShowConfirmPassword((value) => !value)}
+                              className="pointer-events-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                              aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
+                            >
+                              {showConfirmPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                            </button>
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center gap-3 p-4 rounded-lg border border-blue-200 bg-blue-50/70 dark:border-blue-900/40 dark:bg-blue-950/30">
+                        <AcademicCapIcon className="h-5 w-5 text-blue-700 dark:text-blue-400 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">Senha padrão automática</p>
+                          <p className="text-xs text-blue-800/90 dark:text-blue-300/90 mt-0.5 truncate">
+                            {user?.email ? buildInitialPassword(user.email) : 'Preencha o email do usuário para gerar.'}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="primary"
+                          size="sm"
+                          onClick={() => setIsResetDefaultPasswordOpen(true)}
+                          disabled={!user?.email || isResettingDefaultPassword}
+                          isLoading={isResettingDefaultPassword}
+                        >
+                          Resetar para padrão
+                        </Button>
+                      </div>
                     </div>
                   ) : null
                 )}
