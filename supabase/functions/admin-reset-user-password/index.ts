@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
 
   if (callerError) return json({ error: "failed_to_load_profile" }, 500)
   if (!caller) return json({ error: "missing_profile" }, 409)
-  if (caller.role !== "SUPER_ADMIN") return json({ error: "not_authorized" }, 403)
+  if (caller.role !== "SUPER_ADMIN" && caller.role !== "SUPER_ADMIN_GLOBAL") return json({ error: "not_authorized" }, 403)
 
   const body = await req.json().catch(() => null) as ResetPasswordBody | null
   const userId = body?.userId?.trim()

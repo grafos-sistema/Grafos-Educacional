@@ -954,6 +954,13 @@ export const usersService = {
           }
         } else if (key === 'gender') {
           obj[key] = val && ['MALE', 'FEMALE', 'OTHER', 'NOT_INFORMED'].includes(val) ? val : null;
+        } else if (key === 'state') {
+          if (typeof val === 'string' && val.trim()) {
+            const uf = val.trim().toUpperCase().slice(0, 2);
+            obj[key] = /^[A-Z]{2}$/.test(uf) ? uf : null;
+          } else {
+            obj[key] = null;
+          }
         } else {
           obj[key] = val;
         }

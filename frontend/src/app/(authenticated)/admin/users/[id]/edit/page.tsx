@@ -22,10 +22,16 @@ import { supabase } from '@/lib/supabase';
 import { teachersService } from '@/services/teachers.service';
 import { teacherSubjectsService } from '@/services/teacher-subjects.service';
 import { getUserListRouteByRole } from '@/lib/user-route-utils';
-import { Dropdown } from '@/components/ui/HeroDropdown';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useAuthStore } from '@/stores/authStore';
 import { Modal } from '@/components/ui/Modal';
 import { presentFriendlyError } from '@/lib/friendly-error';
+
+function buildInitialPassword(email?: string) {
+  if (!email) return '';
+  const [localPart] = email.trim().toLowerCase().split('@');
+  return localPart ? `${localPart}@Grafos` : '';
+}
 
 const genderOptions = [
   { value: Gender.MALE, label: 'Masculino' },
@@ -80,6 +86,8 @@ export function EditUserPageContent({
   const [directorInstitutionName, setDirectorInstitutionName] = useState<string | null>(null);
   const [directorUnitName, setDirectorUnitName] = useState<string | null>(null);
   const [loadedPrimaryUnitId, setLoadedPrimaryUnitId] = useState<string | null>(null);
+  const [isResetDefaultPasswordOpen, setIsResetDefaultPasswordOpen] = useState(false);
+  const [isResettingDefaultPassword, setIsResettingDefaultPassword] = useState(false);
 
   // Buscar usuário
   const { data: user, isLoading, error: queryError } = useQuery({
@@ -202,12 +210,12 @@ export function EditUserPageContent({
         cpf: user.cpf ? formatCPF(user.cpf) : '',
         phone: user.phone ? formatPhone(user.phone) : '',
         birthDate: user.birthDate
-          ? new Date(user.birthDate).toISOString().split('T')[0]
+          ? String(user.birthDate).split('T')[0]
           : '',
         gender: user.gender,
         address: user.address || '',
         city: user.city || '',
-        state: user.state || '',
+        state: user.state ? String(user.state).toUpperCase().slice(0, 2) : '',
         zipCode: user.zipCode ? formatCEP(user.zipCode) : '',
         isActive: user.isActive,
         socialName: user.socialName || '',
@@ -242,7 +250,7 @@ export function EditUserPageContent({
           turma: user.studentProfile.turma || '',
           modalidade: user.studentProfile.modalidade || '',
           turno: user.studentProfile.turno || '',
-          dataMatricula: user.studentProfile.enrollmentDate ? new Date(user.studentProfile.enrollmentDate).toISOString().split('T')[0] : '',
+          dataMatricula: user.studentProfile.enrollmentDate ? String(user.studentProfile.enrollmentDate).split('T')[0] : '',
           observacoes: user.studentProfile.observacoes || '',
           documents: user.studentProfile.documents || [],
           ...user.studentProfile.healthRecord,
@@ -264,7 +272,7 @@ export function EditUserPageContent({
             specialization: user.teacherProfile.specialization || '',
             degree: user.teacherProfile.degree || '',
             registrationNumber: user.teacherProfile.registrationNumber || '',
-            hireDate: user.teacherProfile.hireDate ? new Date(user.teacherProfile.hireDate).toISOString().split('T')[0] : '',
+            hireDate: user.teacherProfile.hireDate ? String(user.teacherProfile.hireDate).split('T')[0] : '',
           } : {}),
 
           ...(user.role === UserRole.PARENT && user.parentProfile ? {
@@ -329,6 +337,36 @@ export function EditUserPageContent({
       setError(info.description);
     } finally {
       setIsTogglingStatus(false);
+    }
+  };
+
+  const handleResetPasswordToDefault = async () => {
+    if (!user?.email) return;
+
+    setIsResettingDefaultPassword(true);
+    setError(null);
+
+    try {
+      const defaultPassword = buildInitialPassword(user.email);
+      if (!defaultPassword) {
+        throw new Error('Não foi possível gerar a senha padrão a partir do email.');
+      }
+
+      await usersService.adminResetPassword(userId, { newPassword: defaultPassword });
+      toast.success(
+        `Senha redefinida para o padrão! (${defaultPassword}) — avise o usuário para alterá-la no primeiro acesso.`
+      );
+      setIsResetDefaultPasswordOpen(false);
+    } catch (err: any) {
+      console.error('Erro ao resetar senha para padrão:', err);
+      const info = presentFriendlyError(
+        err,
+        'Não foi possível redefinir a senha para o padrão agora.'
+      );
+      setError(info.description);
+      toast.error(info.description);
+    } finally {
+      setIsResettingDefaultPassword(false);
     }
   };
 
@@ -618,12 +656,17 @@ export function EditUserPageContent({
                 type="button"
                 className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
                 aria-label="Ações do usuário"
-                disabled={isSubmitting || isTogglingStatus}
+                disabled={isSubmitting || isTogglingStatus || isResettingDefaultPassword}
               >
                 <EllipsisHorizontalIcon className="h-5 w-5" />
               </button>
             )}
             items={[
+              ...(canManagePassword ? [{
+                key: 'reset-default-password',
+                label: 'Resetar senha para padrão',
+                onClick: () => setIsResetDefaultPasswordOpen(true),
+              }] : []),
               {
                 key: user.isActive ? 'deactivate-user' : 'activate-user',
                 label: user.isActive ? 'Desativar Usuário' : 'Ativar Usuário',
@@ -716,41 +759,62 @@ export function EditUserPageContent({
               defaultUnitId={loadedPrimaryUnitId ?? undefined}
               passwordField={(
                 canManagePassword ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
-                      label="Nova senha"
-                      type={showPassword ? 'text' : 'password'}
-                      {...register('password')}
-                      helperText="Defina uma nova senha para o usuário. A alteração será confirmada em modal."
-                      rightIcon={
-                        <button
-                          type="button"
-                          tabIndex={-1}
-                          onClick={() => setShowPassword((value) => !value)}
-                          className="pointer-events-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                          aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                        >
-                          {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                        </button>
-                      }
-                    />
-                    <Input
-                      label="Confirmar nova senha"
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      {...register('confirmPassword')}
-                      helperText="Repita a senha para liberar a confirmação final."
-                      rightIcon={
-                        <button
-                          type="button"
-                          tabIndex={-1}
-                          onClick={() => setShowConfirmPassword((value) => !value)}
-                          className="pointer-events-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                          aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
-                        >
-                          {showConfirmPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                        </button>
-                      }
-                    />
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Input
+                        label="Nova senha"
+                        type={showPassword ? 'text' : 'password'}
+                        {...register('password')}
+                        helperText="Defina uma nova senha para o usuário. A alteração será confirmada em modal."
+                        rightIcon={
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            onClick={() => setShowPassword((value) => !value)}
+                            className="pointer-events-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                            aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                          >
+                            {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                          </button>
+                        }
+                      />
+                      <Input
+                        label="Confirmar nova senha"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        {...register('confirmPassword')}
+                        helperText="Repita a senha para liberar a confirmação final."
+                        rightIcon={
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            onClick={() => setShowConfirmPassword((value) => !value)}
+                            className="pointer-events-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                            aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
+                          >
+                            {showConfirmPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                          </button>
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center gap-3 p-4 rounded-lg border border-blue-200 bg-blue-50/70 dark:border-blue-900/40 dark:bg-blue-950/30">
+                      <AcademicCapIcon className="h-5 w-5 text-blue-700 dark:text-blue-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">Senha padrão automática</p>
+                        <p className="text-xs text-blue-800/90 dark:text-blue-300/90 mt-0.5 truncate">
+                          {user?.email ? buildInitialPassword(user.email) : 'Preencha o email do usuário para gerar.'}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        onClick={() => setIsResetDefaultPasswordOpen(true)}
+                        disabled={!user?.email || isResettingDefaultPassword}
+                        isLoading={isResettingDefaultPassword}
+                      >
+                        Resetar para padrão
+                      </Button>
+                    </div>
                   </div>
                 ) : null
               )}
@@ -826,6 +890,65 @@ export function EditUserPageContent({
               isLoading={isSubmitting}
             >
               Confirmar alteração
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Reset Senha Padrão Modal */}
+      <Modal
+        isOpen={isResetDefaultPasswordOpen}
+        onClose={() => {
+          if (isResettingDefaultPassword) return;
+          setIsResetDefaultPasswordOpen(false);
+        }}
+        title="Resetar senha para padrão"
+        size="sm"
+      >
+        <div className="space-y-5">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-amber-100 dark:bg-amber-900/30">
+              <AcademicCapIcon className="h-6 w-6 text-amber-700 dark:text-amber-400" />
+            </div>
+            <div className="flex-1 space-y-2">
+              {user?.email ? (
+                <>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Senha padrão gerada automaticamente
+                  </p>
+                  <div className="p-3 rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/60 font-mono text-sm font-bold text-gray-900 dark:text-gray-100 break-all">
+                    {buildInitialPassword(user.email)}
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    O usuário receberá esta senha e deverá alterá-la no primeiro acesso ao sistema.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-red-600 dark:text-red-400">
+                  Usuário sem email válido para gerar a senha padrão.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-3 justify-end pt-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (isResettingDefaultPassword) return;
+                setIsResetDefaultPasswordOpen(false);
+              }}
+              disabled={isResettingDefaultPassword}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleResetPasswordToDefault}
+              disabled={!user?.email || isResettingDefaultPassword}
+              isLoading={isResettingDefaultPassword}
+            >
+              Resetar senha
             </Button>
           </div>
         </div>

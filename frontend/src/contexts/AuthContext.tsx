@@ -246,6 +246,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return '/admin/dashboard';
       case 'SUPER_ADMIN_GLOBAL':
         return '/admin/dashboard';
+      case 'DIRECTOR':
+        return '/admin/dashboard';
       case 'INSTITUTION_ADMIN':
         return '/admin/dashboard';
       case 'COORDINATOR':
