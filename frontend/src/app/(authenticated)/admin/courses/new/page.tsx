@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
@@ -12,18 +12,68 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { courseLevelOptions } from '@/lib/constants/course-options';
+import { suggestCourseCode } from '@/lib/constants/course-options';
+import { presentFriendlyError } from '@/lib/friendly-error';
 
 export default function NewCoursePage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nameManuallyEdited, setNameManuallyEdited] = useState(false);
+  const [codeManuallyEdited, setCodeManuallyEdited] = useState(false);
+  const [lastSuggestedName, setLastSuggestedName] = useState('');
+  const [lastSuggestedCode, setLastSuggestedCode] = useState('');
 
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<CreateCourseDto>();
+
+  const selectedLevel = watch('level') ?? '';
+  const watchedName = watch('name') ?? '';
+  const watchedCode = watch('code') ?? '';
+  const nameField = register('name', { required: 'Nome é obrigatório' });
+  const codeField = register('code');
+
+  useEffect(() => {
+    if (!selectedLevel) return;
+
+    if (
+      !nameManuallyEdited ||
+      !watchedName.trim() ||
+      watchedName === lastSuggestedName
+    ) {
+      if (watchedName !== selectedLevel) {
+        setValue('name', selectedLevel, { shouldDirty: true, shouldValidate: true });
+      }
+      setLastSuggestedName(selectedLevel);
+    }
+
+    const suggestedCode = suggestCourseCode(selectedLevel);
+    if (
+      !codeManuallyEdited ||
+      !watchedCode.trim() ||
+      watchedCode === lastSuggestedCode
+    ) {
+      if (watchedCode !== suggestedCode) {
+        setValue('code', suggestedCode, { shouldDirty: true, shouldValidate: true });
+      }
+      setLastSuggestedCode(suggestedCode);
+    }
+  }, [
+    codeManuallyEdited,
+    lastSuggestedCode,
+    lastSuggestedName,
+    nameManuallyEdited,
+    selectedLevel,
+    setValue,
+    watchedCode,
+    watchedName,
+  ]);
 
   const onSubmit = async (data: CreateCourseDto) => {
     if (!user?.institutionId) {
@@ -45,10 +95,11 @@ export default function NewCoursePage() {
       toast.success('Curso criado com sucesso!');
       router.push('/admin/courses');
     } catch (err: any) {
-      console.error('Erro ao criar curso:', err);
-      const errorMsg = err?.message || 'Erro ao criar curso. Tente novamente.';
-      setError(errorMsg);
-      toast.error(errorMsg);
+      const friendlyError = presentFriendlyError(
+        err,
+        'Nao foi possivel criar o curso agora. Revise os dados e tente novamente.'
+      );
+      setError(friendlyError.description);
     } finally {
       setIsSubmitting(false);
     }
@@ -92,14 +143,22 @@ export default function NewCoursePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
                 label="Nome"
-                {...register('name', { required: 'Nome é obrigatório' })}
+                {...nameField}
+                onChange={(event) => {
+                  setNameManuallyEdited(true);
+                  nameField.onChange(event);
+                }}
                 error={errors.name?.message}
                 placeholder="Ex: Ensino Fundamental I"
                 required
               />
               <Input
                 label="Código"
-                {...register('code')}
+                {...codeField}
+                onChange={(event) => {
+                  setCodeManuallyEdited(true);
+                  codeField.onChange(event);
+                }}
                 error={errors.code?.message}
                 placeholder="EF1"
               />

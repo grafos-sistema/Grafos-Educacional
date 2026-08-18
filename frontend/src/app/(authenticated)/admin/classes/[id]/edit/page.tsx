@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
+import { presentFriendlyError } from '@/lib/friendly-error';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { classesService } from '@/services/classes.service';
@@ -76,10 +77,11 @@ export default function EditClassPage() {
       toast.success('Turma atualizada com sucesso!');
       router.push(`/admin/classes/${classId}`);
     } catch (err: any) {
-      console.error('Erro ao atualizar turma:', err);
-      const errorMsg = err?.message || 'Erro ao atualizar turma. Tente novamente.';
-      setError(errorMsg);
-      toast.error(errorMsg);
+      const friendlyError = presentFriendlyError(
+        err,
+        'Nao foi possivel atualizar a turma agora. Revise os dados e tente novamente.'
+      );
+      setError(friendlyError.description);
     } finally {
       setIsSubmitting(false);
     }

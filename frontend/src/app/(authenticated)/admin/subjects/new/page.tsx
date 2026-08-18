@@ -19,6 +19,7 @@ import {
   suggestUniqueSubjectCode,
 } from '@/lib/constants/subject-options';
 import { DEFAULT_SUBJECT_COLOR } from '@/lib/constants/subject-colors';
+import { presentFriendlyError } from '@/lib/friendly-error';
 
 export default function NewSubjectPage() {
   const router = useRouter();
@@ -174,10 +175,11 @@ export default function NewSubjectPage() {
       toast.success('Disciplina criada com sucesso!');
       router.push('/admin/subjects');
     } catch (err: any) {
-      console.error('Erro ao criar disciplina:', err);
-      const errorMsg = err?.message || 'Erro ao criar disciplina. Tente novamente.';
-      setPageError(errorMsg);
-      toast.error(errorMsg);
+      const friendlyError = presentFriendlyError(
+        err,
+        'Nao foi possivel criar a disciplina agora. Revise os dados e tente novamente.'
+      );
+      setPageError(friendlyError.description);
     } finally {
       setIsSubmitting(false);
     }

@@ -245,7 +245,7 @@ export default function Home() {
                 Criar Conta
               </Link>
               <Link
-                href="/login"
+                href="/login/gestao"
                 className="px-5 py-2 ml-4 text-sm font-semibold text-white bg-gradient-to-r border-2 border-grafos-green-dark from-grafos-green to-grafos-teal rounded-lg hover:from-grafos-green-dark hover:to-grafos-teal-dark transition-all shadow-md"
               >
                 Entrar
@@ -261,7 +261,7 @@ export default function Home() {
                 Criar Conta
               </Link>
               <Link
-                href="/login"
+                href="/login/gestao"
                 className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-grafos-green to-grafos-teal rounded-lg hover:from-grafos-green-dark hover:to-grafos-teal-dark transition-all shadow-md"
               >
                 Entrar

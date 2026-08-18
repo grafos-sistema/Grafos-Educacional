@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
+import { presentFriendlyError } from '@/lib/friendly-error';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { subjectsService } from '@/services/subjects.service';
@@ -192,10 +193,11 @@ export default function EditSubjectPage() {
       toast.success('Disciplina atualizada com sucesso!');
       router.push(`/admin/subjects/${subjectId}`);
     } catch (err: any) {
-      console.error('Erro ao atualizar disciplina:', err);
-      const errorMsg = err?.message || 'Erro ao atualizar disciplina. Tente novamente.';
-      setPageError(errorMsg);
-      toast.error(errorMsg);
+      const friendlyError = presentFriendlyError(
+        err,
+        'Nao foi possivel atualizar a disciplina agora. Revise os dados e tente novamente.'
+      );
+      setPageError(friendlyError.description);
     } finally {
       setIsSubmitting(false);
     }

@@ -58,6 +58,9 @@ export function Button({
   return (
     <HeroButton
       {...props}
+      // Buttons inside forms must opt into submit explicitly. This prevents
+      // navigation, tab and helper buttons from saving a form accidentally.
+      type={props.type ?? 'button'}
       size={size}
       variant={getHeroVariant()}
       color={getHeroColor()}

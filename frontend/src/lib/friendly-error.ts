@@ -150,7 +150,16 @@ function buildFriendlyMessage(rawMessage: string, fallbackMessage: string): Frie
     };
   }
 
-  if (normalized.includes('forbidden') || normalized.includes('nao tem permissao') || normalized.includes('não tem permissão')) {
+  if (
+    normalized.includes('forbidden') ||
+    normalized.includes('nao tem permissao') ||
+    normalized.includes('não tem permissão') ||
+    normalized.includes('acesso negado') ||
+    normalized.includes('acesso restrito') ||
+    normalized.includes('roles permitidos') ||
+    normalized.includes('apenas super admin') ||
+    normalized.includes('somente super admin')
+  ) {
     return {
       title: 'Acesso nao permitido',
       description: 'Voce nao tem permissao para realizar essa acao.',

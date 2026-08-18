@@ -5,7 +5,11 @@ import { getApiBaseUrl, getApiConfigurationMessage } from './api-url';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
-import { getFriendlyErrorInfo, presentFriendlyError } from '@/lib/friendly-error';
+import {
+  getFriendlyErrorInfo,
+  presentFriendlyError,
+  type FriendlyErrorInfo,
+} from '@/lib/friendly-error';
 
 const apiBaseUrl = getApiBaseUrl();
 const AUTH_ROUTES_THAT_REQUIRE_RELOGIN = ['/auth/profile', '/auth/refresh', '/auth/logout'];
@@ -155,11 +159,16 @@ api.interceptors.response.use(
         case 403:
           // Forbidden - user doesn't have permission
           if (!suppressFriendlyError) {
-            const forbiddenInfo = presentFriendlyError(
+            const friendlyInfo = presentFriendlyError(
               { message: data?.message || 'Você não tem permissão para acessar este recurso' },
               'Voce nao tem permissao para acessar esse recurso.'
             );
-            console.error('Access denied:', forbiddenInfo.rawMessage);
+            const handledError = error as {
+              __friendlyHandled?: boolean;
+              __friendlyErrorInfo?: FriendlyErrorInfo;
+            };
+            handledError.__friendlyHandled = true;
+            handledError.__friendlyErrorInfo = friendlyInfo;
           }
           break;
 

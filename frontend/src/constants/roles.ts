@@ -1,7 +1,9 @@
 import { UserRole } from '@/types/user.types';
 
 export const ROLE_LABELS: Record<UserRole, string> = {
+  [UserRole.SUPER_ADMIN_GLOBAL]: 'Super Admin Global',
   [UserRole.SUPER_ADMIN]: 'Super Administrador',
+  [UserRole.DIRECTOR]: 'Diretor',
   [UserRole.INSTITUTION_ADMIN]: 'Administrador da Instituição',
   [UserRole.COORDINATOR]: 'Coordenador',
   [UserRole.TEACHER]: 'Professor',
@@ -10,7 +12,9 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 };
 
 export const ROLE_COLORS: Record<UserRole, string> = {
+  [UserRole.SUPER_ADMIN_GLOBAL]: 'bg-indigo-100 text-indigo-800',
   [UserRole.SUPER_ADMIN]: 'bg-purple-100 text-purple-800',
+  [UserRole.DIRECTOR]: 'bg-cyan-100 text-cyan-800',
   [UserRole.INSTITUTION_ADMIN]: 'bg-blue-100 text-blue-800',
   [UserRole.COORDINATOR]: 'bg-green-100 text-green-800',
   [UserRole.TEACHER]: 'bg-yellow-100 text-yellow-800',
@@ -24,8 +28,10 @@ export const ROLE_HIERARCHY = [
   UserRole.PARENT,
   UserRole.TEACHER,
   UserRole.COORDINATOR,
+  UserRole.DIRECTOR,
   UserRole.INSTITUTION_ADMIN,
   UserRole.SUPER_ADMIN,
+  UserRole.SUPER_ADMIN_GLOBAL,
 ];
 
 // Permission system
@@ -105,7 +111,35 @@ export enum Permission {
 
 // Role permissions mapping
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
+  [UserRole.SUPER_ADMIN_GLOBAL]: Object.values(Permission),
+
   [UserRole.SUPER_ADMIN]: Object.values(Permission),
+
+  [UserRole.DIRECTOR]: [
+    Permission.VIEW_USERS,
+    Permission.CREATE_USERS,
+    Permission.EDIT_USERS,
+    Permission.VIEW_STUDENTS,
+    Permission.CREATE_STUDENTS,
+    Permission.EDIT_STUDENTS,
+    Permission.VIEW_TEACHERS,
+    Permission.CREATE_TEACHERS,
+    Permission.EDIT_TEACHERS,
+    Permission.VIEW_CLASSES,
+    Permission.CREATE_CLASSES,
+    Permission.EDIT_CLASSES,
+    Permission.VIEW_SUBJECTS,
+    Permission.CREATE_SUBJECTS,
+    Permission.EDIT_SUBJECTS,
+    Permission.VIEW_GRADES,
+    Permission.PUBLISH_GRADES,
+    Permission.VIEW_ATTENDANCE,
+    Permission.VIEW_CONTENT,
+    Permission.VIEW_ACTIVITIES,
+    Permission.VIEW_REPORTS,
+    Permission.GENERATE_REPORTS,
+    Permission.VIEW_DASHBOARD,
+  ],
 
   [UserRole.INSTITUTION_ADMIN]: [
     Permission.VIEW_USERS,
@@ -218,6 +252,8 @@ export function isRoleHigherOrEqual(userRole: UserRole, compareRole: UserRole): 
 }
 
 export function canManageRole(userRole: UserRole, targetRole: UserRole): boolean {
+  if (userRole === UserRole.SUPER_ADMIN_GLOBAL) return true;
+
   // Super admin can manage all roles
   if (userRole === UserRole.SUPER_ADMIN) return true;
 

@@ -13,6 +13,7 @@ import {
 } from '@/components/institutions/InstitutionFormTabs';
 import { resolveInstitutionUnitDirectors } from '@/lib/institution-unit-directors';
 import { institutionsService } from '@/services/institutions.service';
+import { presentFriendlyError } from '@/lib/friendly-error';
 
 interface EditInstitutionPageProps {
   params: Promise<{ id: string }>;
@@ -110,12 +111,10 @@ export default function EditInstitutionPage({ params }: EditInstitutionPageProps
       toast.success('Instituição atualizada com sucesso!');
       router.push('/super-admin/institutions');
     } catch (error: unknown) {
-      console.error('Erro ao atualizar instituição:', error);
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Erro ao atualizar instituição. Verifique os dados fornecidos.';
-      toast.error(message);
+      presentFriendlyError(
+        error,
+        'Nao foi possivel atualizar a instituicao agora. Verifique os dados e tente novamente.'
+      );
     } finally {
       setIsSubmitting(false);
     }

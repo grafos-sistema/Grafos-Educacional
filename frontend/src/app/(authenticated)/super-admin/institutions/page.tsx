@@ -252,6 +252,15 @@ export default function InstitutionsPage() {
                                       <div className="text-sm text-gray-500 dark:text-gray-400">
                                         Diretor: {unit.managerName?.trim() || 'Não vinculado'}
                                       </div>
+                                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                                        Localização:{' '}
+                                        {[
+                                          [unit.address, unit.numero].filter(Boolean).join(', '),
+                                          [unit.city, unit.state].filter(Boolean).join(' - '),
+                                        ]
+                                          .filter(Boolean)
+                                          .join(' • ') || 'Não informada'}
+                                      </div>
                                     </div>
                                   </div>
                                 ))}

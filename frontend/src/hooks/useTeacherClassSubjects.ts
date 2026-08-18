@@ -15,7 +15,6 @@ export function useTeacherClassSubjects() {
       const assignments = await teachersService.getTeacherClasses(teacherId);
       return assignments.filter(
         (assignment) =>
-          assignment.assignmentType !== 'main_teacher' &&
           Boolean(assignment.subjectId) &&
           Boolean(assignment.subject?.id)
       );

@@ -196,7 +196,9 @@ export function InstitutionFormTabs({ form, institutionId }: InstitutionFormTabs
   });
 
   const activeIndex = tabs.findIndex((tab) => tab.id === activeTab);
-  const institutionName = watch('name') || 'Nova Instituição';
+  // Keep an empty value empty so the user can remove the suggested name and
+  // type a different one without the fallback being written back into the input.
+  const institutionName = watch('name') ?? '';
   const slugValue = watch('slug') || '';
   const cnpjValue = watch('cnpj') || '';
   const websiteValue = watch('website') || '';
@@ -354,7 +356,7 @@ export function InstitutionFormTabs({ form, institutionId }: InstitutionFormTabs
                   <div className="md:col-span-2">
                     <Input
                       label="Nome da Instituição *"
-                      placeholder="Ex: SESI"
+                      placeholder="Nova Instituição"
                       value={institutionName}
                       onChange={(event) => {
                         const sanitized = sanitizeInstitutionName(event.target.value);

@@ -21,6 +21,7 @@ import {
   getClassSeriesOptions,
   supportsClassSeriesOptions,
 } from '@/lib/constants/class-options';
+import { presentFriendlyError } from '@/lib/friendly-error';
 
 export default function NewClassPage() {
   const router = useRouter();
@@ -136,10 +137,11 @@ export default function NewClassPage() {
       toast.success('Turma criada com sucesso!');
       router.push('/admin/classes');
     } catch (err: any) {
-      console.error('Erro ao criar turma:', err);
-      const errorMsg = err?.message || 'Erro ao criar turma. Tente novamente.';
-      setError(errorMsg);
-      toast.error(errorMsg);
+      const friendlyError = presentFriendlyError(
+        err,
+        'Nao foi possivel criar a turma agora. Revise os dados e tente novamente.'
+      );
+      setError(friendlyError.description);
     } finally {
       setIsSubmitting(false);
     }

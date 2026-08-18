@@ -7,6 +7,7 @@ import {
   InstitutionFilterParams,
 } from '@/types/institution.types';
 import { PaginatedResponse } from '@/types/common.types';
+import { BASE_SUBJECT_CATALOG } from '@/lib/constants/base-subjects';
 
 export interface PublicInstitution {
   id: string;
@@ -132,6 +133,39 @@ async function fetchInstitutionWithUnits(id: string): Promise<Institution> {
   };
 }
 
+async function ensureBaseSubjects(institutionId: string) {
+  const { data: existingSubjects, error: existingSubjectsError } = await supabase
+    .from('subjects')
+    .select('name')
+    .eq('institutionId', institutionId);
+
+  if (existingSubjectsError) throw existingSubjectsError;
+
+  const existingNames = new Set(
+    (existingSubjects ?? [])
+      .map((subject) => subject.name?.trim().toLocaleLowerCase('pt-BR'))
+      .filter(Boolean)
+  );
+  const now = new Date().toISOString();
+  const missingSubjects = BASE_SUBJECT_CATALOG.filter(
+    (subject) => !existingNames.has(subject.name.toLocaleLowerCase('pt-BR'))
+  ).map((subject) => ({
+    id: crypto.randomUUID(),
+    name: subject.name,
+    code: subject.code,
+    description: subject.description,
+    isActive: true,
+    institutionId,
+    createdAt: now,
+    updatedAt: now,
+  }));
+
+  if (missingSubjects.length === 0) return;
+
+  const { error } = await supabase.from('subjects').insert(missingSubjects);
+  if (error) throw error;
+}
+
 export const institutionsService = {
   /**
    * Get all active institutions (public endpoint)
@@ -240,6 +274,11 @@ export const institutionsService = {
 
       if (unitsError) throw unitsError;
     }
+
+    // New institutions start with the standard curriculum catalog. The
+    // operation is idempotent so a retry after a partial save does not create
+    // duplicate disciplines.
+    await ensureBaseSubjects(created.id);
 
     return fetchInstitutionWithUnits(created.id);
   },

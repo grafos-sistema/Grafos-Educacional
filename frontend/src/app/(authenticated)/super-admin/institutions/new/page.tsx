@@ -11,6 +11,7 @@ import {
   type InstitutionFormValues,
 } from '@/components/institutions/InstitutionFormTabs';
 import { institutionsService } from '@/services/institutions.service';
+import { presentFriendlyError } from '@/lib/friendly-error';
 
 const normalizeIsActive = (value?: InstitutionFormValues['isActive']) =>
   value === true || value === 'true';
@@ -58,12 +59,10 @@ export default function NewInstitutionPage() {
       toast.success('Instituição cadastrada com sucesso!');
       router.push('/super-admin/institutions');
     } catch (error: unknown) {
-      console.error('Erro ao cadastrar instituição:', error);
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Erro ao cadastrar instituição. Verifique se o slug já está em uso.';
-      toast.error(message);
+      presentFriendlyError(
+        error,
+        'Nao foi possivel cadastrar a instituicao agora. Verifique os dados e tente novamente.'
+      );
     } finally {
       setIsSubmitting(false);
     }

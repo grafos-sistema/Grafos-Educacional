@@ -33,11 +33,17 @@ export class SubjectsController {
 
   @Post()
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+  )
   @ApiOperation({
     summary: 'Criar nova disciplina',
     description:
-      'SUPER_ADMIN, INSTITUTION_ADMIN e COORDINATOR podem criar disciplinas em suas instituições',
+      'SUPER_ADMIN_GLOBAL, SUPER_ADMIN, DIRECTOR, INSTITUTION_ADMIN e COORDINATOR podem criar disciplinas em suas instituições',
   })
   @ApiResponse({
     status: 201,
@@ -163,11 +169,17 @@ export class SubjectsController {
 
   @Patch(':id')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+  )
   @ApiOperation({
     summary: 'Atualizar disciplina',
     description:
-      'SUPER_ADMIN, INSTITUTION_ADMIN e COORDINATOR podem atualizar disciplinas de suas instituições',
+      'SUPER_ADMIN_GLOBAL, SUPER_ADMIN, DIRECTOR, INSTITUTION_ADMIN e COORDINATOR podem atualizar disciplinas de suas instituições',
   })
   @ApiResponse({
     status: 200,

@@ -33,11 +33,16 @@ export class CoursesController {
 
   @Post()
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+  )
   @ApiOperation({
     summary: 'Criar novo curso',
     description:
-      'SUPER_ADMIN e INSTITUTION_ADMIN podem criar cursos em suas instituições',
+      'SUPER_ADMIN_GLOBAL, SUPER_ADMIN, DIRECTOR e INSTITUTION_ADMIN podem criar cursos em suas instituições',
   })
   @ApiResponse({
     status: 201,
@@ -153,11 +158,16 @@ export class CoursesController {
 
   @Patch(':id')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+  )
   @ApiOperation({
     summary: 'Atualizar curso',
     description:
-      'SUPER_ADMIN e INSTITUTION_ADMIN podem atualizar cursos de suas instituições',
+      'SUPER_ADMIN_GLOBAL, SUPER_ADMIN, DIRECTOR e INSTITUTION_ADMIN podem atualizar cursos de suas instituições',
   })
   @ApiResponse({
     status: 200,

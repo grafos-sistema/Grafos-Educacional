@@ -42,11 +42,17 @@ export class ClassesController {
 
   @Post()
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+  )
   @ApiOperation({
     summary: 'Criar nova turma',
     description:
-      'SUPER_ADMIN, INSTITUTION_ADMIN e COORDINATOR podem criar turmas em suas instituições',
+      'SUPER_ADMIN_GLOBAL, SUPER_ADMIN, DIRECTOR, INSTITUTION_ADMIN e COORDINATOR podem criar turmas em suas instituições',
   })
   @ApiResponse({
     status: 201,
@@ -374,11 +380,17 @@ export class ClassesController {
 
   @Patch(':id')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+  )
   @ApiOperation({
     summary: 'Atualizar turma',
     description:
-      'SUPER_ADMIN, INSTITUTION_ADMIN e COORDINATOR podem atualizar turmas de suas instituições',
+      'SUPER_ADMIN_GLOBAL, SUPER_ADMIN, DIRECTOR, INSTITUTION_ADMIN e COORDINATOR podem atualizar turmas de suas instituições',
   })
   @ApiResponse({
     status: 200,

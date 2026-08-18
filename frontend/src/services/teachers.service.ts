@@ -14,6 +14,7 @@ export interface TeacherClass {
     id: string;
     name: string;
     grade: string;
+    isActive: boolean;
     section?: string;
     shift?: string;
     academicYear?: {
@@ -78,6 +79,9 @@ export const teachersService = {
         id: item.class?.id ?? item.classId ?? '',
         name: item.class?.name ?? '',
         grade: item.class?.grade ?? '',
+        // The API already returns the class status. Preserve it instead of
+        // dropping it while adapting the response for the teacher screens.
+        isActive: item.class?.isActive !== false,
         section: item.class?.section ?? undefined,
         shift: item.class?.shift ?? undefined,
         academicYear: item.class?.academicYear ?? undefined,
