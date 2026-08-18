@@ -15,11 +15,6 @@ if [ -z "${DATABASE_URL:-}" ]; then
   exit 1
 fi
 
-if [ -z "${DIRECT_URL:-}" ]; then
-  echo "❌ DIRECT_URL is missing"
-  exit 1
-fi
-
 echo "🧪 [debug:entrypoint] DATABASE_URL is set"
 
 DB_HOST=$(node -e "const url = new URL(process.env.DATABASE_URL); process.stdout.write(url.hostname || '')")
@@ -50,42 +45,51 @@ echo "✅ PostgreSQL is accepting connections!"
 echo "⏳ Waiting for PostgreSQL to be fully ready..."
 sleep 5
 
-# Ensure Prisma schema exists when using Supabase (database is never empty).
-HAS_SCHEMA_PARAM=$(node -e "const u=new URL(process.env.DATABASE_URL); process.stdout.write(u.searchParams.has('schema') ? '1' : '0')")
-if [ "$HAS_SCHEMA_PARAM" -eq 0 ]; then
-  export APP_DB_SCHEMA="public"
-  export DATABASE_URL=$(node -e "const u=new URL(process.env.DATABASE_URL); u.searchParams.set('schema', process.env.APP_DB_SCHEMA); process.stdout.write(u.toString())")
-  export DIRECT_URL=$(node -e "const u=new URL(process.env.DIRECT_URL); u.searchParams.set('schema', process.env.APP_DB_SCHEMA); process.stdout.write(u.toString())")
-  echo "🧪 [debug:entrypoint] schema param not set; defaulting to schema=${APP_DB_SCHEMA}"
-fi
-
-DB_SCHEMA=$(node -e "const u=new URL(process.env.DATABASE_URL); process.stdout.write(u.searchParams.get('schema') || 'public')")
-ADMIN_DIRECT_URL=$(node -e "const u=new URL(process.env.DIRECT_URL); u.searchParams.delete('schema'); u.searchParams.delete('pgbouncer'); process.stdout.write(u.toString())")
-
-if [ "$DB_SCHEMA" != "public" ]; then
-  echo "🔄 Ensuring schema exists: ${DB_SCHEMA}"
-  echo "CREATE SCHEMA IF NOT EXISTS \"${DB_SCHEMA}\";" | npx prisma db execute --stdin --url="$ADMIN_DIRECT_URL"
-fi
-
-# Rodar migrations
-echo "🔄 Running database migrations..."
-set +e
-MIGRATE_OUTPUT=$(npx prisma migrate deploy 2>&1)
-MIGRATE_EXIT_CODE=$?
-set -e
-
-if [ $MIGRATE_EXIT_CODE -ne 0 ]; then
-  echo "$MIGRATE_OUTPUT"
-  if echo "$MIGRATE_OUTPUT" | grep -q "P3005"; then
-    echo "⚠️  Prisma migrate skipped: schema ${DB_SCHEMA} already contains tables and is not baselined by Prisma."
-    echo "⚠️  Continuing startup because this environment uses a pre-existing Supabase schema."
-  else
-    echo "❌ prisma migrate deploy failed (exit=$MIGRATE_EXIT_CODE)"
-    exit $MIGRATE_EXIT_CODE
+if [ "${RUN_PRISMA_MIGRATIONS:-false}" = "true" ]; then
+  if [ -z "${DIRECT_URL:-}" ]; then
+    echo "❌ DIRECT_URL is required when RUN_PRISMA_MIGRATIONS=true"
+    exit 1
   fi
-fi
 
-echo "$MIGRATE_OUTPUT"
+  # Migrations are normally applied by GitHub Actions. This block is opt-in
+  # for environments that explicitly need Prisma migrations during startup.
+  HAS_SCHEMA_PARAM=$(node -e "const u=new URL(process.env.DATABASE_URL); process.stdout.write(u.searchParams.has('schema') ? '1' : '0')")
+  if [ "$HAS_SCHEMA_PARAM" -eq 0 ]; then
+    export APP_DB_SCHEMA="public"
+    export DATABASE_URL=$(node -e "const u=new URL(process.env.DATABASE_URL); u.searchParams.set('schema', process.env.APP_DB_SCHEMA); process.stdout.write(u.toString())")
+    export DIRECT_URL=$(node -e "const u=new URL(process.env.DIRECT_URL); u.searchParams.set('schema', process.env.APP_DB_SCHEMA); process.stdout.write(u.toString())")
+    echo "🧪 [debug:entrypoint] schema param not set; defaulting to schema=${APP_DB_SCHEMA}"
+  fi
+
+  DB_SCHEMA=$(node -e "const u=new URL(process.env.DATABASE_URL); process.stdout.write(u.searchParams.get('schema') || 'public')")
+  ADMIN_DIRECT_URL=$(node -e "const u=new URL(process.env.DIRECT_URL); u.searchParams.delete('schema'); u.searchParams.delete('pgbouncer'); process.stdout.write(u.toString())")
+
+  if [ "$DB_SCHEMA" != "public" ]; then
+    echo "🔄 Ensuring schema exists: ${DB_SCHEMA}"
+    echo "CREATE SCHEMA IF NOT EXISTS \"${DB_SCHEMA}\";" | npx prisma db execute --stdin --url="$ADMIN_DIRECT_URL"
+  fi
+
+  echo "🔄 Running database migrations..."
+  set +e
+  MIGRATE_OUTPUT=$(npx prisma migrate deploy 2>&1)
+  MIGRATE_EXIT_CODE=$?
+  set -e
+
+  if [ $MIGRATE_EXIT_CODE -ne 0 ]; then
+    echo "$MIGRATE_OUTPUT"
+    if echo "$MIGRATE_OUTPUT" | grep -q "P3005"; then
+      echo "⚠️  Prisma migrate skipped: schema ${DB_SCHEMA} already contains tables and is not baselined by Prisma."
+      echo "⚠️  Continuing startup because this environment uses a pre-existing Supabase schema."
+    else
+      echo "❌ prisma migrate deploy failed (exit=$MIGRATE_EXIT_CODE)"
+      exit $MIGRATE_EXIT_CODE
+    fi
+  fi
+
+  echo "$MIGRATE_OUTPUT"
+else
+  echo "⏭️  Skipping Prisma migrations; deploy them through GitHub Actions."
+fi
 
 echo "✨ Initialization complete!"
 echo "🚀 Starting application..."
