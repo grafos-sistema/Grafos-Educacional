@@ -32,7 +32,9 @@ import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
 import { presentFriendlyError } from '@/lib/friendly-error';
 
 const roleLabels: Record<UserRole, string> = {
+  SUPER_ADMIN_GLOBAL: 'Super Admin Global',
   SUPER_ADMIN: 'Super Admin',
+  DIRECTOR: 'Diretor(a)',
   INSTITUTION_ADMIN: 'Secretário(a)',
   COORDINATOR: 'Coordenador',
   TEACHER: 'Professor',

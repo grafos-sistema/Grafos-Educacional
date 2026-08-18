@@ -400,7 +400,11 @@ export class UsersService {
       where.parentProfile = hasParentProfile ? { isNot: null } : { is: null };
     }
 
-    const [data, total] = await Promise.all([
+    // A listagem não deve depender de todas as colunas opcionais dos perfis.
+    // O banco pode estar sendo atualizado pelo CI enquanto a API continua
+    // atendendo requisições; por isso carregamos primeiro apenas os campos
+    // essenciais de users e depois anexamos um resumo dos perfis.
+    const [baseData, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
         skip,
@@ -421,37 +425,64 @@ export class UsersService {
           requestedProfileType: true,
           createdAt: true,
           updatedAt: true,
-          teacherProfile: {
-            select: {
-              id: true,
-              userId: true,
-              specialization: true,
-              degree: true,
-              registrationNumber: true,
-              isActive: true,
-            },
-          },
-          studentProfile: {
-            select: {
-              id: true,
-              userId: true,
-              registrationNumber: true,
-              enrollmentNumber: true,
-              isActive: true,
-            },
-          },
-          parentProfile: {
-            select: {
-              id: true,
-              userId: true,
-              occupation: true,
-              isActive: true,
-            },
-          },
         },
       }),
       this.prisma.user.count({ where }),
     ]);
+
+    const teacherProfiles = new Map<string, any>();
+    const studentProfiles = new Map<string, any>();
+    const parentProfiles = new Map<string, any>();
+
+    try {
+      const userIds = baseData.map((user) => user.id);
+
+      if (userIds.length > 0) {
+        const [teachers, students, parents] = await Promise.all([
+          this.prisma.teacher.findMany({
+            where: { userId: { in: userIds } },
+            select: {
+              id: true,
+              userId: true,
+            },
+          }),
+          this.prisma.student.findMany({
+            where: { userId: { in: userIds } },
+            select: {
+              id: true,
+              userId: true,
+            },
+          }),
+          this.prisma.parent.findMany({
+            where: { userId: { in: userIds } },
+            select: {
+              id: true,
+              userId: true,
+            },
+          }),
+        ]);
+
+        for (const profile of teachers) teacherProfiles.set(profile.userId, profile);
+        for (const profile of students) studentProfiles.set(profile.userId, profile);
+        for (const profile of parents) parentProfiles.set(profile.userId, profile);
+      }
+    } catch (error) {
+      // A profile ausente ou uma coluna opcional incompatível não pode
+      // impedir a listagem dos usuários. O detalhe fica no log da API para
+      // diagnóstico, mas a resposta principal continua utilizável.
+      this.logger.warn(
+        `Não foi possível carregar o resumo dos perfis na listagem: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+
+    const data = baseData.map((user) => ({
+      ...user,
+      teacherProfile: teacherProfiles.get(user.id),
+      studentProfile: studentProfiles.get(user.id),
+      parentProfile: parentProfiles.get(user.id),
+    }));
 
     const totalPages = Math.ceil(total / limit);
 
