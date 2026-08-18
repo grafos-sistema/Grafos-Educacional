@@ -13,6 +13,7 @@ import { classesService } from '@/services/classes.service';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ClassSubjectsManager } from '@/components/classes/ClassSubjectsManager';
+import { ClassStudentsManager } from '@/components/classes/ClassStudentsManager';
 
 export default function ClassDetailPage() {
   const router = useRouter();
@@ -136,6 +137,12 @@ export default function ClassDetailPage() {
       <ClassSubjectsManager
         classId={classId}
         description="Adicione aqui as disciplinas que pertencem a esta turma. Esse vínculo será usado tanto pela coordenação quanto pela grade de horários."
+      />
+
+      <ClassStudentsManager
+        classId={classId}
+        institutionId={classData.institutionId}
+        maxStudents={classData.maxStudents}
       />
     </div>
   );

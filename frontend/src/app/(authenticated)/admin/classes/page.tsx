@@ -187,6 +187,16 @@ export default function ClassesPage() {
           <button
             onClick={(e) => {
               e.stopPropagation();
+              router.push(`/admin/classes/${classItem.id}`);
+            }}
+            className="text-violet-600 hover:text-violet-700 dark:text-violet-400"
+            title="Gerenciar alunos"
+          >
+            <UserGroupIcon className="h-5 w-5" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
               router.push(`/admin/classes/${classItem.id}/edit`);
             }}
             className="text-gray-600 hover:text-gray-700 dark:text-gray-400"

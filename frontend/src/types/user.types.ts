@@ -50,6 +50,7 @@ export interface StudentProfile {
   curso?: string;
   serie?: string;
   turma?: string;
+  turmaId?: string;
   modalidade?: string;
   turno?: string;
   observacoes?: string;
@@ -203,6 +204,7 @@ export interface CreateUserDto {
   curso?: string;
   serie?: string;
   turma?: string;
+  turmaId?: string;
   modalidade?: string;
   turno?: string;
   dataMatricula?: string;
@@ -286,6 +288,7 @@ export interface UpdateUserData {
   curso?: string;
   serie?: string;
   turma?: string;
+  turmaId?: string;
   modalidade?: string;
   turno?: string;
   dataMatricula?: string;

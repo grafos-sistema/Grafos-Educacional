@@ -34,9 +34,12 @@ import { useToast } from '@/hooks/useToast';
 import { OptimizedImage } from '@/components/performance/OptimizedImage';
 import { getUserEditRouteByRole } from '@/lib/user-route-utils';
 import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
+import { StudentClassEnrollmentManager } from '@/components/classes/StudentClassEnrollmentManager';
 
 const roleLabels: Record<UserRole, string> = {
+  SUPER_ADMIN_GLOBAL: 'Super Admin Global',
   SUPER_ADMIN: 'Super Admin',
+  DIRECTOR: 'Diretor(a)',
   INSTITUTION_ADMIN: 'Secretário(a)',
   COORDINATOR: 'Coordenador',
   TEACHER: 'Professor',
@@ -105,19 +108,6 @@ export default function UserDetailPage() {
         limit: 1000,
       }),
     enabled: linkModal && user?.role === UserRole.PARENT,
-  });
-
-  // Buscar pais disponíveis (para vincular a um aluno)
-  const { data: availableParents } = useQuery({
-    queryKey: ['parents-list', currentUser?.institutionId],
-    queryFn: () =>
-      usersService.findAll({
-        institutionId: currentUser?.institutionId,
-        role: UserRole.PARENT,
-        isActive: true,
-        limit: 1000,
-      }),
-    enabled: linkModal && user?.role === UserRole.STUDENT,
   });
 
   // Mutation para vincular pai-filho
@@ -640,7 +630,7 @@ export default function UserDetailPage() {
                       style={{
                         backgroundColor: tc.subject?.color
                           ? `${tc.subject.color}20`
-                          : tc.assignmentType === 'main_teacher'
+                          : (tc.assignmentType as string | undefined) === 'main_teacher'
                             ? '#DBEAFE'
                             : '#E5E7EB',
                       }}
@@ -649,7 +639,7 @@ export default function UserDetailPage() {
                         className="h-6 w-6"
                         style={{
                           color: tc.subject?.color
-                            || (tc.assignmentType === 'main_teacher' ? '#2563EB' : '#6B7280'),
+                            || ((tc.assignmentType as string | undefined) === 'main_teacher' ? '#2563EB' : '#6B7280'),
                         }}
                       />
                     </div>
@@ -660,7 +650,7 @@ export default function UserDetailPage() {
                         </div>
                         {tc.assignmentLabel && (
                           <Badge
-                            variant={tc.assignmentType === 'main_teacher' ? 'success' : 'secondary'}
+                            variant={(tc.assignmentType as string | undefined) === 'main_teacher' ? 'success' : 'info'}
                             size="sm"
                           >
                             {tc.assignmentLabel}
@@ -719,13 +709,15 @@ export default function UserDetailPage() {
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
               {user.role === UserRole.PARENT ? 'Filhos Vinculados' : 'Responsáveis'}
             </h3>
-            <Button
-              onClick={() => setLinkModal(true)}
-              leftIcon={<PlusIcon className="h-5 w-5" />}
-              size="sm"
-            >
-              {user.role === UserRole.PARENT ? 'Vincular Filho' : 'Vincular Responsável'}
-            </Button>
+            {user.role === UserRole.PARENT && (
+              <Button
+                onClick={() => setLinkModal(true)}
+                leftIcon={<PlusIcon className="h-5 w-5" />}
+                size="sm"
+              >
+                Vincular Filho
+              </Button>
+            )}
           </div>
 
           {user.role === UserRole.PARENT && children && children.length > 0 ? (
@@ -787,20 +779,6 @@ export default function UserDetailPage() {
                       </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() =>
-                      setConfirmDialog({
-                        isOpen: true,
-                        id: link.id,
-                        name: `${link.parent?.user?.firstName} ${link.parent?.user?.lastName}`,
-                      })
-                    }
-                    className="text-red-600 hover:text-red-700 dark:text-red-400"
-                    title="Remover vínculo"
-                    disabled={unlinkMutation.isPending}
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
                 </div>
               ))}
             </div>
@@ -839,53 +817,41 @@ export default function UserDetailPage() {
         </div>
       </div>
 
+      {user.role === UserRole.STUDENT && user.studentProfile && (
+        <StudentClassEnrollmentManager
+          studentId={user.studentProfile.id}
+          studentUserId={user.id}
+          institutionId={user.institutionId}
+        />
+      )}
+
       {/* Modal de Vincular */}
       <Modal
-        isOpen={linkModal}
+        isOpen={linkModal && user.role === UserRole.PARENT}
         onClose={() => {
           setLinkModal(false);
           setSelectedUserId('');
           setRelationship('');
         }}
-        title={
-          user.role === UserRole.PARENT
-            ? 'Vincular Filho'
-            : 'Vincular Responsável'
-        }
+        title="Vincular Filho"
         size="md"
       >
         <div className="space-y-4">
           <Select
-            label={user.role === UserRole.PARENT ? 'Selecione o aluno' : 'Selecione o responsável'}
+            label="Selecione o aluno"
             value={selectedUserId}
             onChange={(e) => setSelectedUserId(e.target.value)}
             options={[
               {
                 value: '',
-                label:
-                  user.role === UserRole.PARENT
-                    ? 'Selecione um aluno'
-                    : 'Selecione um responsável',
+                label: 'Selecione um aluno',
               },
-              ...(user.role === UserRole.PARENT
-                ? availableStudents?.data
-                    .filter(
-                      (student) =>
-                        !children?.some((c) => c.studentId === student.id)
-                    )
-                    .map((student) => ({
-                      value: student.id,
-                      label: `${student.firstName} ${student.lastName}`,
-                    })) || []
-                : availableParents?.data
-                    .filter(
-                      (parent) =>
-                        !parents?.some((p) => p.parentId === parent.id)
-                    )
-                    .map((parent) => ({
-                      value: parent.id,
-                      label: `${parent.firstName} ${parent.lastName}`,
-                    })) || []),
+              ...(availableStudents?.data
+                .filter((student) => !children?.some((c) => c.studentId === student.id))
+                .map((student) => ({
+                  value: student.id,
+                  label: `${student.firstName} ${student.lastName}`,
+                })) || []),
             ]}
           />
           <Select

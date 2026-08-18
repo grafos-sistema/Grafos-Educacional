@@ -236,6 +236,7 @@ export function StudentFormTabs({
   const selectedCourseName = watch('curso') as string | undefined;
   const selectedGrade = watch('serie') as string | undefined;
   const selectedClassName = watch('turma') as string | undefined;
+  const selectedClassId = watch('turmaId') as string | undefined;
   const selectedShift = watch('turno') as string | undefined;
   const selectedPhoto = watch('photo');
   const currentAvatar = watch('avatar');
@@ -311,11 +312,20 @@ export function StudentFormTabs({
     return [
       { value: '', label: 'Selecione uma turma' },
       ...classes.map((item) => ({
-        value: item.name,
+        value: item.id,
         label: `${item.name}${item.shift ? ` • ${item.shift}` : ''}`,
       })),
     ];
   }, [classesData?.data, selectedGrade]);
+
+  useEffect(() => {
+    if (selectedClassId || !selectedClassName || !classesData?.data?.length) return;
+
+    const matchingClass = classesData.data.find((item) => item.name === selectedClassName);
+    if (matchingClass) {
+      setValue('turmaId', matchingClass.id, { shouldDirty: false });
+    }
+  }, [classesData?.data, selectedClassId, selectedClassName, setValue]);
 
   const responsibleOptions = useMemo(
     () => (watchResponsaveis ?? [])
@@ -971,6 +981,7 @@ export function StudentFormTabs({
                     setValue('curso', '', { shouldDirty: true });
                     setValue('serie', '', { shouldDirty: true });
                     setValue('turma', '', { shouldDirty: true });
+                    setValue('turmaId', '', { shouldDirty: true });
                   }}
                   error={errors.institutionId?.message as string}
                   disabled={isLoadingInstitutions}
@@ -995,6 +1006,7 @@ export function StudentFormTabs({
                 onChange={(event) => {
                   setValue('anoLetivo', event.target.value, { shouldDirty: true, shouldValidate: true });
                   setValue('turma', '', { shouldDirty: true });
+                  setValue('turmaId', '', { shouldDirty: true });
                 }}
                 disabled={isLoadingAcademicYears || !effectiveInstitutionId}
               />
@@ -1009,6 +1021,7 @@ export function StudentFormTabs({
                   setValue('curso', event.target.value, { shouldDirty: true, shouldValidate: true });
                   setValue('serie', '', { shouldDirty: true });
                   setValue('turma', '', { shouldDirty: true });
+                  setValue('turmaId', '', { shouldDirty: true });
                 }}
                 disabled={isLoadingCourses || !effectiveInstitutionId}
               />
@@ -1019,17 +1032,19 @@ export function StudentFormTabs({
                 onChange={(event) => {
                   setValue('serie', event.target.value, { shouldDirty: true, shouldValidate: true });
                   setValue('turma', '', { shouldDirty: true });
+                  setValue('turmaId', '', { shouldDirty: true });
                 }}
                 disabled={!selectedCourse?.id || isLoadingClasses}
               />
               <Select
                 label="Turma *"
                 options={classOptions}
-                value={selectedClassName ?? ''}
+                value={selectedClassId ?? ''}
                 onChange={(event) => {
-                  const nextClassName = event.target.value;
-                  const nextClass = (classesData?.data ?? []).find((item) => item.name === nextClassName);
-                  setValue('turma', nextClassName, { shouldDirty: true, shouldValidate: true });
+                  const nextClassId = event.target.value;
+                  const nextClass = (classesData?.data ?? []).find((item) => item.id === nextClassId);
+                  setValue('turmaId', nextClassId, { shouldDirty: true, shouldValidate: true });
+                  setValue('turma', nextClass?.name ?? '', { shouldDirty: true, shouldValidate: true });
                   if (nextClass?.grade) setValue('serie', nextClass.grade, { shouldDirty: true, shouldValidate: true });
                   if (nextClass?.shift) setValue('turno', nextClass.shift, { shouldDirty: true, shouldValidate: true });
                 }}
@@ -1050,6 +1065,7 @@ export function StudentFormTabs({
               <input type="hidden" {...register('curso', { required: 'Obrigatório' })} />
               <input type="hidden" {...register('serie', { required: 'Obrigatório' })} />
               <input type="hidden" {...register('turma', { required: 'Obrigatório' })} />
+              <input type="hidden" {...register('turmaId')} />
               <input type="hidden" {...register('turno', { required: 'Obrigatório' })} />
               <Input
                 label="Data da Matrícula *"

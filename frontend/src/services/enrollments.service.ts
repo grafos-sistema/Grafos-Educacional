@@ -138,4 +138,30 @@ export const enrollmentsService = {
   async remove(id: string): Promise<void> {
     await api.delete(`/enrollments/${id}`);
   },
+
+  async syncStudentClass(studentId: string, classId?: string): Promise<void> {
+    const current = await this.findAll({ studentId, isActive: true, limit: 1000 });
+    const matching = classId
+      ? current.data.find((enrollment) => enrollment.classId === classId)
+      : undefined;
+
+    if (classId && !matching) {
+      const currentEnrollment = current.data[0];
+      if (currentEnrollment) {
+        await this.transfer(currentEnrollment.id, { newClassId: classId });
+      } else {
+        await this.create({ classId, studentId });
+      }
+    }
+
+    const activeAfterSync = classId
+      ? (await this.findAll({ studentId, isActive: true, limit: 1000 })).data
+      : current.data;
+
+    for (const enrollment of activeAfterSync) {
+      if (!classId || enrollment.classId !== classId) {
+        await this.remove(enrollment.id);
+      }
+    }
+  },
 };

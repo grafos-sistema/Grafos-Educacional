@@ -37,11 +37,11 @@ export class EnrollmentsController {
 
   @Post()
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
   @ApiOperation({
     summary: 'Matricular aluno em turma',
     description:
-      'SUPER_ADMIN, INSTITUTION_ADMIN e COORDINATOR podem matricular alunos em turmas',
+      'SUPER_ADMIN, DIRECTOR, INSTITUTION_ADMIN e COORDINATOR podem matricular alunos em turmas',
   })
   @ApiResponse({
     status: 201,
@@ -167,11 +167,11 @@ export class EnrollmentsController {
 
   @Patch(':id/transfer')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
   @ApiOperation({
     summary: 'Transferir aluno para outra turma',
     description:
-      'SUPER_ADMIN, INSTITUTION_ADMIN e COORDINATOR podem transferir alunos entre turmas. A matrícula atual é desativada e uma nova matrícula é criada.',
+      'SUPER_ADMIN, DIRECTOR, INSTITUTION_ADMIN e COORDINATOR podem transferir alunos entre turmas. A matrícula atual é desativada e uma nova matrícula é criada.',
   })
   @ApiResponse({
     status: 200,
@@ -194,11 +194,11 @@ export class EnrollmentsController {
 
   @Delete(':id')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
   @ApiOperation({
     summary: 'Cancelar matrícula (soft delete)',
     description:
-      'SUPER_ADMIN, INSTITUTION_ADMIN e COORDINATOR podem cancelar matrículas.',
+      'SUPER_ADMIN, DIRECTOR, INSTITUTION_ADMIN e COORDINATOR podem cancelar matrículas.',
   })
   @ApiResponse({
     status: 200,

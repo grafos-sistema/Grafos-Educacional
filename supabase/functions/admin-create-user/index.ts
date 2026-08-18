@@ -50,6 +50,7 @@ type CreateUserBody = {
   curso?: string | null
   serie?: string | null
   turma?: string | null
+  turmaId?: string | null
   modalidade?: string | null
   turno?: string | null
   dataMatricula?: string | null
@@ -346,6 +347,39 @@ Deno.serve(async (req: Request) => {
     })
 
     if (!studentError) {
+      if (body?.turmaId) {
+        const { data: selectedClass, error: classLookupError } = await supabase
+          .from("classes")
+          .select("id, institutionId, isActive")
+          .eq("id", body.turmaId)
+          .maybeSingle()
+
+        if (classLookupError || !selectedClass) {
+          await cleanup()
+          return json({ error: "student_class_not_found", details: "A turma selecionada não foi encontrada." }, 400)
+        }
+
+        if (!selectedClass.isActive || selectedClass.institutionId !== institutionId) {
+          await cleanup()
+          return json({ error: "student_class_not_available", details: "A turma selecionada não está disponível para esta instituição." }, 400)
+        }
+
+        const { error: enrollmentError } = await supabase.from("class_enrollments").insert({
+          id: crypto.randomUUID(),
+          studentId,
+          classId: body.turmaId,
+          enrollmentDate: body?.dataMatricula ?? now,
+          isActive: true,
+          createdAt: now,
+          updatedAt: now,
+        })
+
+        if (enrollmentError) {
+          await cleanup()
+          return json({ error: "failed_to_enroll_student", details: enrollmentError.message }, 500)
+        }
+      }
+
       if (body?.healthInfo) {
         await supabase.from("student_health_records").insert({
           id: crypto.randomUUID(),

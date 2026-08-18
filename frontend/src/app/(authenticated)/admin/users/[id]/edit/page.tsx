@@ -21,6 +21,7 @@ import { institutionsService } from '@/services/institutions.service';
 import { supabase } from '@/lib/supabase';
 import { teachersService } from '@/services/teachers.service';
 import { teacherSubjectsService } from '@/services/teacher-subjects.service';
+import { enrollmentsService } from '@/services/enrollments.service';
 import { getUserListRouteByRole } from '@/lib/user-route-utils';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useAuthStore } from '@/stores/authStore';
@@ -118,6 +119,13 @@ export function EditUserPageContent({
     queryKey: ['teacher-classes', teacherProfileId],
     queryFn: () => teachersService.getTeacherClasses(teacherProfileId as string),
     enabled: Boolean(teacherProfileId),
+  });
+  const studentProfileId = user?.role === UserRole.STUDENT ? user.studentProfile?.id : undefined;
+  const { data: studentEnrollmentData } = useQuery({
+    queryKey: ['student-class-enrollment', studentProfileId],
+    queryFn: () => enrollmentsService.findAll({ studentId: studentProfileId as string, isActive: true, limit: 1000 }),
+    enabled: Boolean(studentProfileId),
+    retry: false,
   });
 
   const form = useForm<EditUserFormData>();
@@ -266,6 +274,7 @@ export function EditUserPageContent({
           curso: user.studentProfile.curso || '',
           serie: user.studentProfile.serie || '',
           turma: user.studentProfile.turma || '',
+          turmaId: studentEnrollmentData?.data?.[0]?.classId || '',
           modalidade: user.studentProfile.modalidade || '',
           turno: user.studentProfile.turno || '',
           dataMatricula: user.studentProfile.enrollmentDate ? String(user.studentProfile.enrollmentDate).split('T')[0] : '',
@@ -308,7 +317,7 @@ export function EditUserPageContent({
     };
 
     loadExtraData();
-  }, [currentUser?.role, reset, user]);
+  }, [currentUser?.role, reset, studentEnrollmentData?.data, user]);
 
   const selectedPrimaryInstitutionId = watch('institutionId') ?? user?.institutionId ?? '';
 

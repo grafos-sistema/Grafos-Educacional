@@ -3,6 +3,7 @@ import { fetchCurrentUserProfile } from '@/lib/auth-profile';
 import { getValidInstitutionIds, isUuid } from '@/lib/institution-filter';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
+import { enrollmentsService } from '@/services/enrollments.service';
 import {
   User,
   CreateUserDto,
@@ -282,9 +283,8 @@ async function loadUserProfiles(
           parentId,
           relationship,
           isPrimary,
-          isFinancialResponsible,
-          receivesNotifications,
-          canPickup,
+          notificacoes,
+          podeRetirar,
           parents (
             id,
             userId,
@@ -322,9 +322,9 @@ async function loadUserProfiles(
           studentId: sp.studentId,
           parentId: sp.parentId,
           relationship: sp.relationship,
-          isPrimary: sp.isPrimary ?? (sp as any).isFinancialResponsible ?? false,
-          receivesNotifications: sp.receivesNotifications ?? true,
-          canPickup: sp.canPickup ?? false,
+          isPrimary: sp.isPrimary ?? false,
+          receivesNotifications: sp.notificacoes ?? true,
+          canPickup: sp.podeRetirar ?? false,
           user: parentUser,
         });
         studentParentsMap.set(sp.studentId, list);
@@ -860,6 +860,7 @@ export const usersService = {
       curso,
       serie,
       turma,
+      turmaId,
       modalidade,
       turno,
       dataMatricula,
@@ -1046,6 +1047,14 @@ export const usersService = {
         .eq('id', studentId);
 
       if (studentUpdateError) throw studentUpdateError;
+
+      // O nome da turma continua sendo salvo no perfil para exibição e
+      // compatibilidade, mas a matrícula oficial precisa existir em
+      // class_enrollments. A sincronização também transfere o aluno quando
+      // ele já está matriculado em outra turma.
+      if (turmaId !== undefined) {
+        await enrollmentsService.syncStudentClass(studentId, turmaId || undefined);
+      }
 
       // Update health record if healthInfo is provided
       if (healthInfo && Object.keys(healthInfo).length > 0) {

@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ClassSubjectsManager } from '@/components/classes/ClassSubjectsManager';
+import { ClassStudentsManager } from '@/components/classes/ClassStudentsManager';
 import { classShiftOptions } from '@/lib/constants/class-options';
 
 export default function EditClassPage() {
@@ -63,7 +64,7 @@ export default function EditClassPage() {
       const updateData: UpdateClassDto = {
         ...updateFields,
         maxStudents: data.maxStudents ? Number(data.maxStudents) : undefined,
-        baseRoom: data.name?.trim() || classData.name,
+        baseRoom: data.name?.trim() || classData?.name || '',
       };
 
       await classesService.update(classId, updateData);
@@ -263,6 +264,12 @@ export default function EditClassPage() {
       <ClassSubjectsManager
         classId={classId}
         description="Aqui o administrador já consegue vincular ou remover disciplinas da turma sem precisar entrar primeiro na visualização."
+      />
+
+      <ClassStudentsManager
+        classId={classId}
+        institutionId={classData.institutionId}
+        maxStudents={classData.maxStudents}
       />
     </div>
   );
