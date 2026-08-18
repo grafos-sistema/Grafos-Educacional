@@ -798,12 +798,28 @@ export const usersService = {
         throw error;
       }
 
-      const createdUser = (result as { user?: { id?: string } } | null)?.user;
+      // A Edge Function cria o usuário com a service role e já devolve a linha
+      // criada. Não faça uma nova consulta em public.users aqui: o RLS permite
+      // que cada usuário leia apenas o próprio registro, então o cadastro feito
+      // por um diretor para outra pessoa pode retornar PGRST116/406 mesmo tendo
+      // sido concluído com sucesso.
+      const createdUser = (result as { user?: AppUserRow | null } | null)?.user;
       if (!createdUser?.id) {
         throw new Error('Resposta inválida ao criar usuário');
       }
 
-      return fetchUserFromSupabaseById(createdUser.id);
+      return mapUser({
+        ...createdUser,
+        // A função sempre define estes campos, mesmo sem repetir todas as
+        // colunas de public.users na resposta compacta.
+        firstName: createdUser.firstName ?? '',
+        lastName: createdUser.lastName ?? '',
+        isActive: createdUser.isActive ?? true,
+        emailVerified: createdUser.emailVerified ?? true,
+        requestedProfileType: createdUser.requestedProfileType ?? null,
+        createdAt: createdUser.createdAt ?? new Date().toISOString(),
+        updatedAt: createdUser.updatedAt ?? new Date().toISOString(),
+      });
     } catch (error) {
       if (isSupabaseFunctionHttpError(error) || error instanceof Error) {
         throw error;
