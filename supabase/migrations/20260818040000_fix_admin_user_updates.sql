@@ -20,6 +20,7 @@
 
 DROP POLICY IF EXISTS users_update_self ON public.users;
 DROP POLICY IF EXISTS users_update_staff ON public.users;
+DROP POLICY IF EXISTS users_update_combined ON public.users;
 
 CREATE POLICY users_update_combined ON public.users
 FOR UPDATE TO authenticated
