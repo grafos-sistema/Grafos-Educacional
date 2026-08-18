@@ -288,16 +288,22 @@ export function EditUserPageContent({
           convenioMedico: parseStudentTagList(user.studentProfile.healthRecord?.convenioMedico),
           ...user.studentProfile.transportation,
           responsaveis: (user.studentProfile as any).parents?.length > 0 
-            ? (user.studentProfile as any).parents.map((p: any, index: number) => ({
+            ? (user.studentProfile as any).parents.map((p: any, index: number) => {
+                const parentUser = p.parent?.user ?? p.user ?? {};
+                return {
                 id: index + 1,
                 linkId: p.id,
-                nome: p.user?.name || `${p.user?.firstName || ''} ${p.user?.lastName || ''}`.trim() || '',
+                nome: parentUser.name || `${parentUser.firstName || ''} ${parentUser.lastName || ''}`.trim() || '',
                 parentesco: p.relationship || '',
-                cpf: p.user?.cpf ? formatCPF(p.user?.cpf) : '',
-                email: p.user?.email || '',
-                celular: p.user?.phone ? formatPhone(p.user?.phone) : '',
+                cpf: parentUser.cpf ? formatCPF(parentUser.cpf) : '',
+                email: parentUser.email || '',
+                celular: parentUser.phone ? formatPhone(parentUser.phone) : '',
+                whatsapp: parentUser.whatsapp ? formatPhone(parentUser.whatsapp) : '',
                 financeiro: p.isPrimary || false,
-              }))
+                notificacoes: p.receivesNotifications ?? p.notificacoes ?? false,
+                podeRetirar: p.canPickup ?? p.podeRetirar ?? false,
+              };
+              })
             : [{ id: 1 }],
         } : {}),
           ...(user.role === UserRole.TEACHER && user.teacherProfile ? {

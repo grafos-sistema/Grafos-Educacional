@@ -132,8 +132,8 @@ export function StudentClassEnrollmentManager({
       {isLoadingClasses || isLoadingEnrollment ? (
         <LoadingSpinner size="sm" text="Carregando turmas..." />
       ) : (
-        <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:items-end">
-          <div className="w-full max-w-2xl">
+        <div className="grid w-full grid-cols-[minmax(0,9fr)_minmax(0,1fr)] items-end gap-3">
+          <div className="min-w-0 w-full">
             <Select
               label="Turma"
               value={selectedClassId}
@@ -147,7 +147,7 @@ export function StudentClassEnrollmentManager({
             onClick={() => syncMutation.mutate()}
             disabled={!hasChanged || syncMutation.isPending || !institutionId}
             isLoading={syncMutation.isPending}
-            className="min-w-[150px] bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500"
+            className="h-12 min-w-0 w-full rounded-lg bg-emerald-600 px-3 text-white hover:bg-emerald-700 focus:ring-emerald-500"
           >
             Salvar turma
           </Button>
