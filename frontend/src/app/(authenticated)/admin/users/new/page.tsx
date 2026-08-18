@@ -161,6 +161,12 @@ export function NewUserPageContent({
   }, [getValues, setValue, user]);
 
   const currentRole = watch('role');
+  const canManageTeacherAssignments = [
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+  ].includes((user?.activeProfile ?? user?.role) as UserRole);
   const currentEmail = watch('email');
   const selectedPrimaryInstitutionId = watch('institutionId') ?? user?.institutionId ?? '';
   const selectedAdditionalInstitutionIds = (watch('institutionIds') as string[] | undefined) ?? [];
@@ -255,7 +261,7 @@ export function NewUserPageContent({
           ? getSelectedPhotoFile((data as any).photo)
           : null;
 
-      if (Array.isArray((data as any).subjectIds)) {
+      if (canManageTeacherAssignments && Array.isArray((data as any).subjectIds)) {
         userData.subjectIds = (data as any).subjectIds;
       }
 
@@ -419,6 +425,7 @@ export function NewUserPageContent({
               onPrimaryInstitutionChange={handlePrimaryInstitutionChange}
               onToggleAdditionalInstitution={toggleAdditionalInstitution}
               isRoleLocked={lockRole}
+              canManageTeacherAssignments={canManageTeacherAssignments}
             />
           ) : (
             <>

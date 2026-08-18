@@ -138,16 +138,25 @@ function getInitialPasswordFromEmail(email?: string) {
   return localPart ? `${localPart}@Grafos` : '';
 }
 
-function buildSteps(role?: UserRole, mode: 'create' | 'edit' = 'create'): StepDefinition[] {
+function buildSteps(
+  role?: UserRole,
+  mode: 'create' | 'edit' = 'create',
+  canManageTeacherAssignments = true
+): StepDefinition[] {
   if (role === UserRole.TEACHER) {
     const teacherSteps: StepDefinition[] = [
       { id: 'identity', label: 'Dados Pessoais', subtitle: 'Identificação do professor', icon: IdentificationIcon },
       { id: 'contact', label: 'Contato', subtitle: 'Endereço e contatos', icon: MapPinIcon },
       { id: 'profile', label: 'Dados Profissionais', subtitle: 'Formação e registro', icon: BriefcaseIcon },
       { id: 'institution', label: 'Instituição', subtitle: 'Escolas em que atua', icon: BuildingOffice2Icon },
-      { id: 'subjects', label: 'Disciplinas', subtitle: 'Disciplinas que leciona', icon: AcademicCapIcon },
-      { id: 'classes', label: 'Turmas', subtitle: 'Turmas em que atua', icon: UserGroupIcon },
     ];
+
+    if (canManageTeacherAssignments) {
+      teacherSteps.push(
+        { id: 'subjects', label: 'Disciplinas', subtitle: 'Disciplinas que leciona', icon: AcademicCapIcon },
+        { id: 'classes', label: 'Turmas', subtitle: 'Turmas em que atua', icon: UserGroupIcon },
+      );
+    }
 
     if (mode === 'edit') {
       teacherSteps.push({
@@ -299,7 +308,10 @@ export function RoleBasedUserWizard({
     [selectedAdditionalInstitutionIds, selectedPrimaryInstitutionId]
   );
 
-  const steps = useMemo(() => buildSteps(role, mode), [mode, role]);
+  const steps = useMemo(
+    () => buildSteps(role, mode, canManageTeacherAssignments),
+    [canManageTeacherAssignments, mode, role]
+  );
   const activeIndex = Math.max(0, steps.findIndex((step) => step.id === activeStepId));
   const activeStep = steps[activeIndex] ?? steps[0];
   const searchableInstitutions = useMemo(() => {
@@ -567,10 +579,12 @@ export function RoleBasedUserWizard({
     if (!firstName || !lastName) items.push('Preencher nome e sobrenome.');
     if (!email) items.push('Informar email de acesso.');
     if (!selectedPrimaryInstitutionId) items.push('Definir a instituição principal.');
-    if (role === UserRole.TEACHER && selectedSubjects.length === 0) items.push('Vincular ao menos uma disciplina.');
+    if (role === UserRole.TEACHER && canManageTeacherAssignments && selectedSubjects.length === 0) {
+      items.push('Vincular ao menos uma disciplina.');
+    }
     if (role === UserRole.PARENT && linkedStudents.length === 0) items.push('Vincular ao menos um aluno.');
     return items;
-  }, [email, firstName, lastName, linkedStudents.length, role, selectedPrimaryInstitutionId, selectedSubjects.length]);
+  }, [canManageTeacherAssignments, email, firstName, lastName, linkedStudents.length, role, selectedPrimaryInstitutionId, selectedSubjects.length]);
 
   const status = pendencias.length === 0 ? 'Pronto para uso' : pendencias.length <= 2 ? 'Incompleto' : 'Cadastrado';
 

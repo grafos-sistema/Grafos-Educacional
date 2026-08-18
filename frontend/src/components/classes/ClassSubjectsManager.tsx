@@ -3,9 +3,9 @@
  import { useMemo, useState } from 'react';
  import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
  import { AcademicCapIcon, TrashIcon } from '@heroicons/react/24/outline';
- import { classesService } from '@/services/classes.service';
- import { subjectsService } from '@/services/subjects.service';
- import { usersService } from '@/services/users.service';
+import { classesService } from '@/services/classes.service';
+import { subjectsService } from '@/services/subjects.service';
+import { teacherSubjectsService } from '@/services/teacher-subjects.service';
  import { useAuthStore } from '@/stores/authStore';
  import { UserRole } from '@/types/user.types';
  import { Button } from '@/components/ui/Button';
@@ -61,17 +61,11 @@
      enabled: Boolean(user?.institutionId),
    });
 
-   const { data: teachersData, isLoading: loadingTeachers } = useQuery({
-     queryKey: ['teachers', 'class-subject-manager', user?.institutionId],
-     queryFn: () =>
-       usersService.findAll({
-         institutionId: user?.institutionId,
-         isActive: true,
-         hasTeacherProfile: true,
-         limit: 1000,
-       }),
-     enabled: Boolean(user?.institutionId),
-   });
+  const { data: subjectTeachers = [], isLoading: loadingSubjectTeachers } = useQuery({
+    queryKey: ['teacher-subjects', 'subject', subjectId],
+    queryFn: () => teacherSubjectsService.getBySubject(subjectId),
+    enabled: Boolean(subjectId) && canManageClassSubjects,
+  });
 
    const linkedSubjectIds = useMemo(
      () => new Set(classSubjects.map((item) => item.subjectId)),
@@ -91,18 +85,26 @@
      [linkedSubjectIds, subjectsData?.data]
    );
 
-   const teacherOptions = useMemo(
-     () => [
-       { value: '', label: 'Sem professor definido' },
-       ...((teachersData?.data ?? [])
-         .filter((teacher) => Boolean(teacher.teacherProfile?.id))
-         .map((teacher) => ({
-           value: teacher.teacherProfile!.id,
-           label: `${teacher.firstName} ${teacher.lastName}`,
-         })) ?? []),
-     ],
-     [teachersData?.data]
-   );
+  const teacherOptions = useMemo(
+    () => [
+      {
+        value: '',
+        label: subjectId
+          ? 'Sem professor definido'
+          : 'Selecione a disciplina primeiro',
+      },
+      ...subjectTeachers
+        .map((item) => item.teacher)
+        .filter((teacher): teacher is NonNullable<typeof teacher> => Boolean(teacher?.id))
+        .map((teacher) => ({
+          value: teacher.id,
+          label: teacher.user
+            ? `${teacher.user.firstName} ${teacher.user.lastName}`
+            : 'Professor',
+        })),
+    ],
+    [subjectId, subjectTeachers]
+  );
 
    const resetForm = () => {
      setSubjectId('');
@@ -192,7 +194,7 @@
                value={teacherId}
                onChange={(event) => setTeacherId(event.target.value)}
                options={teacherOptions}
-               disabled={loadingTeachers || isBusy}
+               disabled={!subjectId || loadingSubjectTeachers || isBusy}
              />
              <Input
                label="Horas/semana"
@@ -215,7 +217,7 @@
            </div>
          ) : null}
 
-         {(loadingClassSubjects || loadingSubjects || loadingTeachers) && (
+         {(loadingClassSubjects || loadingSubjects || loadingSubjectTeachers) && (
            <div className="flex justify-center py-8">
              <LoadingSpinner size="md" text="Carregando vínculos da turma..." />
            </div>

@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { usersService } from '@/services/users.service';
 import { teachersService } from '@/services/teachers.service';
+import { teacherSubjectsService } from '@/services/teacher-subjects.service';
 import { UserRole, Gender } from '@/types/user.types';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -50,6 +51,12 @@ export default function CoordinatorTeacherDetailPage() {
     enabled: Boolean(teacherProfileId),
   });
 
+  const { data: teacherSubjects = [] } = useQuery({
+    queryKey: ['coordinator-teacher-subjects', teacherProfileId],
+    queryFn: () => teacherSubjectsService.getByTeacher(teacherProfileId!),
+    enabled: Boolean(teacherProfileId),
+  });
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -82,7 +89,37 @@ export default function CoordinatorTeacherDetailPage() {
         <h1 className="mb-2 text-2xl font-bold text-gray-900 dark:text-white">
           Detalhes do Professor
         </h1>
-        <p className="text-gray-600 dark:text-gray-400">Informações completas do professor</p>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <p className="text-gray-600 dark:text-gray-400">Informações completas do professor</p>
+          <Button
+            onClick={() => router.push('/coordinator/academic-distribution')}
+            leftIcon={<AcademicCapIcon className="h-4 w-4" />}
+          >
+            Gerenciar distribuição
+          </Button>
+        </div>
+      </div>
+
+      <div className="mb-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+        <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
+          Disciplinas habilitadas
+        </h3>
+        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+          Estas são as disciplinas que podem ser distribuídas para o professor nas turmas.
+        </p>
+        {teacherSubjects.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {teacherSubjects.map((item) => (
+              <Badge key={item.id} variant="info">
+                {item.subject.name}{item.subject.code ? ` (${item.subject.code})` : ''}
+              </Badge>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Nenhuma disciplina habilitada. Use “Gerenciar distribuição” para configurar.
+          </p>
+        )}
       </div>
 
       <div className="mb-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
@@ -227,7 +264,7 @@ export default function CoordinatorTeacherDetailPage() {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {item.class.course?.name ? <Badge variant="secondary">{item.class.course.name}</Badge> : null}
+                    {item.class.course?.name ? <Badge variant="info">{item.class.course.name}</Badge> : null}
                     {item.class.academicYear?.year ? (
                       <Badge variant="info">{String(item.class.academicYear.year)}</Badge>
                     ) : null}

@@ -42,6 +42,50 @@ export class TeacherSubjectsService {
     });
   }
 
+  async findAllBySubject(subjectId: string) {
+    const subject = await this.prisma.subject.findUnique({
+      where: { id: subjectId },
+    });
+
+    if (!subject) {
+      throw new NotFoundException('Disciplina não encontrada');
+    }
+
+    return this.prisma.teacherSubject.findMany({
+      where: { subjectId },
+      include: {
+        subject: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            color: true,
+            description: true,
+          },
+        },
+        teacher: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        teacher: {
+          user: {
+            firstName: 'asc',
+          },
+        },
+      },
+    });
+  }
+
   async findAllByTeacherUserId(userId: string) {
     const teacher = await this.prisma.teacher.findUnique({
       where: { userId },

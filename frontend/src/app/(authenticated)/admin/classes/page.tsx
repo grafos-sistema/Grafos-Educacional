@@ -30,6 +30,8 @@ import { presentFriendlyError } from '@/lib/friendly-error';
 export default function ClassesPage() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const currentRole = user?.activeProfile || user?.role;
+  const canRemoveClasses = currentRole !== UserRole.COORDINATOR;
   const [filters, setFilters] = useState<ClassesFilterParams>({
     page: 1,
     limit: 20,
@@ -184,16 +186,18 @@ export default function ClassesPage() {
           >
             <PencilIcon className="h-5 w-5" />
           </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setDeleteModal({ isOpen: true, class: classItem });
-            }}
-            className="text-red-600 hover:text-red-700 dark:text-red-400"
-            title="Remover"
-          >
-            <TrashIcon className="h-5 w-5" />
-          </button>
+          {canRemoveClasses && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeleteModal({ isOpen: true, class: classItem });
+              }}
+              className="text-red-600 hover:text-red-700 dark:text-red-400"
+              title="Remover"
+            >
+              <TrashIcon className="h-5 w-5" />
+            </button>
+          )}
         </div>
       ),
     },
@@ -342,7 +346,7 @@ export default function ClassesPage() {
             <p>
               <strong>Desativar</strong> mantém a turma no banco, apenas marcando-a como inativa.
             </p>
-            {user?.role === UserRole.SUPER_ADMIN && (
+            {currentRole === UserRole.SUPER_ADMIN && (
               <p className="mt-2">
                 <strong>Excluir permanentemente</strong> remove a turma de forma definitiva.
               </p>
@@ -361,7 +365,7 @@ export default function ClassesPage() {
             >
               Apenas desativar
             </Button>
-            {user?.role === UserRole.SUPER_ADMIN && (
+            {currentRole === UserRole.SUPER_ADMIN && (
               <Button
                 variant="danger"
                 onClick={() =>

@@ -28,6 +28,8 @@ import { presentFriendlyError } from '@/lib/friendly-error';
 export default function SubjectsPage() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const currentRole = user?.activeProfile || user?.role;
+  const canRemoveSubjects = currentRole !== UserRole.COORDINATOR;
   const [filters, setFilters] = useState<SubjectsFilterParams>({
     page: 1,
     limit: 20,
@@ -152,16 +154,18 @@ export default function SubjectsPage() {
           >
             <PencilIcon className="h-5 w-5" />
           </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setDeleteModal({ isOpen: true, subject });
-            }}
-            className="text-red-600 hover:text-red-700 dark:text-red-400"
-            title="Remover"
-          >
-            <TrashIcon className="h-5 w-5" />
-          </button>
+          {canRemoveSubjects && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeleteModal({ isOpen: true, subject });
+              }}
+              className="text-red-600 hover:text-red-700 dark:text-red-400"
+              title="Remover"
+            >
+              <TrashIcon className="h-5 w-5" />
+            </button>
+          )}
         </div>
       ),
     },
@@ -274,7 +278,7 @@ export default function SubjectsPage() {
             <p>
               <strong>Desativar</strong> mantém a disciplina no banco, apenas marcando-a como inativa.
             </p>
-            {user?.role === UserRole.SUPER_ADMIN && (
+            {currentRole === UserRole.SUPER_ADMIN && (
               <p className="mt-2">
                 <strong>Excluir permanentemente</strong> remove a disciplina de forma definitiva.
               </p>
@@ -293,7 +297,7 @@ export default function SubjectsPage() {
             >
               Apenas desativar
             </Button>
-            {user?.role === UserRole.SUPER_ADMIN && (
+            {currentRole === UserRole.SUPER_ADMIN && (
               <Button
                 variant="danger"
                 onClick={() =>

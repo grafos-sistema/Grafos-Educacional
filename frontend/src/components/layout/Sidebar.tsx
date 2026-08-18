@@ -141,6 +141,10 @@ const coordinatorSectionConfig: Array<{
     itemNames: ['Professores', 'Alunos'],
   },
   {
+    title: 'Estrutura Acadêmica',
+    itemNames: ['Distribuição Acadêmica', 'Disciplinas', 'Turmas'],
+  },
+  {
     title: 'Operação Acadêmica',
     itemNames: ['Acompanhamento', 'Grade de Horários', 'Planos de Ensino', 'Observações', 'Rankings'],
   },
@@ -267,11 +271,12 @@ const navigation: NavItem[] = [
     name: 'Turmas',
     baseRoute: '/classes',
     icon: BookOpenIcon,
-    roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.TEACHER],
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER],
     pathMapping: {
       [UserRole.SUPER_ADMIN]: '/admin/classes',
       [UserRole.DIRECTOR]: '/admin/classes',
       [UserRole.INSTITUTION_ADMIN]: '/admin/classes',
+      [UserRole.COORDINATOR]: '/admin/classes',
       [UserRole.TEACHER]: '/professor/my-classes',
     },
     displayNameMapping: {
@@ -282,12 +287,22 @@ const navigation: NavItem[] = [
     name: 'Disciplinas',
     baseRoute: '/subjects',
     icon: BookOpenIcon,
-    roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.STUDENT],
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.STUDENT],
     pathMapping: {
       [UserRole.SUPER_ADMIN]: '/admin/subjects',
       [UserRole.DIRECTOR]: '/admin/subjects',
       [UserRole.INSTITUTION_ADMIN]: '/admin/subjects',
+      [UserRole.COORDINATOR]: '/admin/subjects',
       [UserRole.STUDENT]: '/aluno/subjects',
+    },
+  },
+  {
+    name: 'Distribuição Acadêmica',
+    baseRoute: '/academic-distribution',
+    icon: AcademicCapIcon,
+    roles: [UserRole.COORDINATOR],
+    pathMapping: {
+      [UserRole.COORDINATOR]: '/coordinator/academic-distribution',
     },
   },
   {

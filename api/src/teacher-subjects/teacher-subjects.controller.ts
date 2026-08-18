@@ -59,6 +59,18 @@ export class TeacherSubjectsController {
     return this.teacherSubjectsService.findAllByTeacher(teacherId);
   }
 
+  @Get('subject/:subjectId')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @ApiOperation({ summary: 'Listar professores habilitados para uma disciplina' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de professores vinculados à disciplina',
+    type: [TeacherSubjectResponseDto],
+  })
+  async getBySubject(@Param('subjectId') subjectId: string) {
+    return this.teacherSubjectsService.findAllBySubject(subjectId);
+  }
+
   @Post('my-subjects')
   @Roles(UserRole.TEACHER)
   @ApiOperation({ summary: 'Adicionar disciplina às minhas disciplinas' })

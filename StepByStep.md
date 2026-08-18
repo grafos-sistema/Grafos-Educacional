@@ -11,17 +11,16 @@ Use esta ordem para evitar cadastros incompletos:
 3. Diretor cria os Anos Letivos de cada Anexo sob sua responsabilidade.
 4. Diretor cadastra os Cursos.
 5. Diretor cadastra as Disciplinas de cada instituição.
-6. Diretor cadastra os Coordenadores e os Professores.
-7. Ao cadastrar cada Professor, o responsável seleciona uma ou mais Disciplinas para o seu perfil.
+6. Diretor cadastra os Coordenadores e os Professores com os dados pessoais e profissionais, sem misturar o cadastro com a distribuição acadêmica.
 8. Administrador da Instituição ou Coordenação cria as Turmas, vinculando cada uma a um Curso e a um Ano Letivo.
-9. Depois que Professores e Turmas existirem, a Coordenação distribui as Disciplinas nas Turmas e escolhe o Professor responsável por cada uma.
+9. Na tela **Distribuição Acadêmica**, a Coordenação primeiro habilita as Disciplinas de cada Professor e depois distribui Disciplina + Professor nas Turmas.
 10. Administrador da Instituição ou Coordenação cadastra os Alunos e realiza suas matrículas nas Turmas.
 11. Coordenação configura a Grade de Horários, com revisão do Diretor.
 12. Todos os perfis conferem seus acessos e dados antes do início das aulas.
 
-> Regra principal: não é possível vincular corretamente um Professor a uma Turma antes de existirem o Professor, a Disciplina e a Turma. Por isso o vínculo com Disciplinas acontece no cadastro do Professor, enquanto o vínculo com Turmas é concluído na distribuição das Disciplinas da Turma.
+> Regra principal: não é possível vincular corretamente um Professor a uma Turma antes de existirem o Professor, a Disciplina e a Turma. O cadastro do Professor é uma etapa administrativa; os dois vínculos acadêmicos são concluídos pela Coordenação na **Distribuição Acadêmica**.
 
-> **Atenção sobre os dois tipos de vínculo:** selecionar uma Disciplina no cadastro do Professor registra as disciplinas que ele pode lecionar. Isso é diferente de colocar esse Professor em uma Turma. O vínculo operacional **Disciplina + Professor + Turma** é feito no detalhe da Turma pela Coordenação ou pelo Super Admin. O Diretor acompanha e revisa esses vínculos, mas não os altera nessa tela.
+> **Atenção sobre os dois tipos de vínculo:** habilitar uma Disciplina para o Professor registra o que ele pode lecionar. Isso é diferente de colocar esse Professor em uma Turma. O vínculo operacional **Disciplina + Professor + Turma** é feito pela Coordenação na tela **Distribuição Acadêmica** ou no detalhe da Turma. O Diretor acompanha e revisa esses vínculos, mas não os altera.
 
 ## Antes de começar
 
@@ -80,7 +79,7 @@ Os Cursos devem existir antes das Turmas, porque cada Turma precisa estar vincul
 
 ## 4. Diretor — cadastrar Disciplinas
 
-As Disciplinas devem existir antes do cadastro dos Professores, pois o formulário de Professor carrega as Disciplinas disponíveis para criar os vínculos.
+As Disciplinas devem existir antes da distribuição acadêmica, pois a Coordenação precisará selecioná-las para habilitar os Professores e distribuí-las nas Turmas.
 
 1. Acesse **Disciplinas**.
 2. Cadastre cada Disciplina da Instituição.
@@ -98,38 +97,19 @@ As Disciplinas devem existir antes do cadastro dos Professores, pois o formulár
 
 O Coordenador será responsável principalmente pela distribuição pedagógica: conferir as Turmas, vincular Disciplinas e indicar os Professores responsáveis por cada componente.
 
-## 6. Diretor — cadastrar Professores e vincular Disciplinas
+## 6. Diretor — cadastrar Professores
 
-O cadastro do Professor possui duas partes diferentes: vínculo com Disciplinas e vínculo com Turmas.
+O Diretor cadastra a pessoa e o perfil profissional. A distribuição acadêmica fica em uma etapa separada, executada pela Coordenação, para evitar que o cadastro do Professor seja confundido com sua lotação em Turmas.
 
-### 6.1 Criar o Professor e selecionar as Disciplinas
+### 6.1 Criar o Professor
 
 1. Acesse **Professores** ou **Todos os Usuários**.
 2. Clique em **Novo Professor**.
-3. Preencha os dados pessoais, contato, Instituição e demais informações do perfil.
-4. Na etapa de Disciplinas, selecione **uma ou mais Disciplinas** que o Professor poderá lecionar.
-5. Não salve o Professor sem selecionar suas Disciplinas; o sistema sinaliza essa pendência.
-6. Salve o cadastro.
-7. Se necessário, abra a edição do Professor depois para revisar ou atualizar as Disciplinas vinculadas.
+3. Preencha os dados pessoais, contato, Instituição e dados profissionais.
+4. Salve o cadastro do Professor.
+5. Não é necessário escolher Disciplinas ou Turmas nesta etapa.
 
-Esse vínculo registra quais Disciplinas fazem parte da atuação do Professor. Ele ainda não define em qual Turma o Professor lecionará.
-
-> Na criação inicial, o Diretor pode selecionar as Disciplinas do Professor no próprio assistente de cadastro. Depois que o Professor já foi salvo, a manutenção desse vínculo fica com a Coordenação, o Administrador da Instituição ou o Super Admin. Quando o Diretor abrir a edição, os vínculos aparecem para consulta e não devem ser modificados por esse fluxo.
-
-### 6.2 Vincular o Professor às Turmas
-
-O vínculo com Turmas só pode ser concluído depois que as Turmas forem criadas.
-
-1. Crie as Turmas seguindo a etapa seguinte deste documento.
-2. Acesse a configuração ou detalhe da Turma.
-3. Abra **Disciplinas da Turma**.
-4. Selecione a Disciplina que será oferecida naquela Turma.
-5. Selecione o Professor responsável.
-6. Informe a carga horária semanal, quando aplicável.
-7. Salve o vínculo.
-8. Repita para cada combinação de Disciplina, Professor e Turma.
-
-> **Quem pode fazer esta etapa:** somente a **Coordenação** ou o **Super Admin** pode vincular e remover Disciplinas/Professores da Turma. O Diretor visualiza os vínculos atuais para acompanhar a organização, mas não recebe controles de alteração. Na tela de criação do Professor, o sistema orienta que as Turmas sejam vinculadas depois; portanto, não considere o cadastro concluído para fins de aula até que as combinações Disciplina + Professor + Turma estejam configuradas.
+O Professor aparecerá imediatamente para a Coordenação na tela **Distribuição Acadêmica**.
 
 ## 7. Administrador da Instituição ou Coordenação — criar as Turmas
 
@@ -144,28 +124,30 @@ Cada Turma precisa de três referências obrigatórias: **Curso**, **Ano Letivo*
 7. Salve a Turma.
 8. Repita para todas as séries, seções e turnos da Instituição.
 
-Após criar cada Turma, siga a etapa **6.2** para distribuir suas Disciplinas e Professores. O Diretor define e revisa a estrutura pedagógica; a criação da Turma é executada pelo Administrador da Instituição, pela Coordenação ou por outro perfil autorizado conforme as permissões do sistema.
+Após criar cada Turma, siga a etapa **8** para distribuir suas Disciplinas e Professores. O Diretor revisa a estrutura pedagógica; a criação da Turma é executada pelo Administrador da Instituição ou pela Coordenação.
 
 ## 8. Coordenação — distribuir Disciplinas, Professores e carga horária
 
 Essa é a etapa que completa o vínculo acadêmico do Professor com as Turmas. O Diretor acompanha e valida a organização; a Coordenação executa a distribuição pedagógica. O Administrador da Instituição apoia os cadastros, mas não substitui a Coordenação na inclusão/remoção da Disciplina da Turma.
 
-Para cada Turma:
+O fluxo recomendado é usar **Distribuição Acadêmica**:
 
-1. Abra a Turma criada.
-2. Localize o painel **Disciplinas da Turma**.
-3. Selecione uma Disciplina já cadastrada.
-4. Selecione um Professor que tenha essa Disciplina vinculada ao seu perfil.
-5. Informe as horas semanais.
-6. Salve.
-7. Confira na lista se a Disciplina aparece com o Professor correto.
-8. Repita até que todas as Disciplinas da Turma estejam distribuídas.
+1. Acesse **Distribuição Acadêmica**.
+2. Selecione um Professor.
+3. Marque as Disciplinas que ele pode lecionar e clique em **Salvar disciplinas**.
+4. Selecione uma Turma.
+5. No painel **Disciplinas da turma selecionada**, escolha uma Disciplina.
+6. O seletor de Professor mostrará somente professores habilitados para aquela Disciplina.
+7. Informe as horas semanais e clique em **Vincular**.
+8. Confira a lista e repita até completar a Turma.
+
+Também é possível abrir o detalhe da Turma e usar o mesmo painel **Disciplinas da Turma**.
 
 Se uma Disciplina ou Professor não aparecer no seletor, revise nesta ordem:
 
 - a Disciplina está cadastrada e ativa;
 - o Professor está ativo;
-- o Professor possui a Disciplina vinculada ao seu perfil;
+- a Coordenação habilitou a Disciplina no perfil do Professor;
 - o Professor e a Turma pertencem à Instituição correta;
 - a Turma está vinculada ao Ano Letivo correto.
 
@@ -260,9 +242,9 @@ Depois de ter Disciplinas e Turmas vinculadas, o Professor deve:
 | Responsável | Responsabilidades principais |
 | --- | --- |
 | Super Admin Global | Criar Instituições, Anexos, Diretores e estrutura global de acesso |
-| Diretor | Criar Anos Letivos dos Anexos, Cursos, Disciplinas, usuários, selecionar Disciplinas no cadastro inicial do Professor e revisar os vínculos acadêmicos |
+| Diretor | Criar Anos Letivos dos Anexos, Cursos, Disciplinas e usuários; revisar os vínculos acadêmicos |
 | Administrador da Instituição / Secretário | Apoiar os cadastros administrativos e escolares conforme as permissões atribuídas |
-| Coordenador | Manter os vínculos Professor-Disciplina, distribuir Disciplinas e Professores nas Turmas, revisar horários e acompanhar a operação pedagógica |
+| Coordenador | Acessar Distribuição Acadêmica, manter os vínculos Professor-Disciplina, distribuir Disciplinas e Professores nas Turmas, revisar horários e acompanhar a operação pedagógica |
 | Professor | Conferir seus vínculos, planejar aulas, registrar conteúdos, frequência, atividades e notas |
 | Aluno | Consultar sua vida escolar e acompanhar atividades e resultados |
 | Responsável | Acompanhar a vida escolar dos Alunos vinculados e manter seus contatos atualizados |

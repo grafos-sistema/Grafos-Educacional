@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateClassSubjectDto } from './dto';
@@ -34,15 +35,49 @@ export class ClassSubjectsService {
       );
     }
 
+    if (subjectExists.institutionId !== classExists.institutionId) {
+      throw new ForbiddenException(
+        'A disciplina não pertence à mesma instituição da turma',
+      );
+    }
+
     // Verificar se o professor existe (apenas se teacherId foi fornecido)
     if (teacherId) {
       const teacherExists = await this.prisma.teacher.findUnique({
         where: { id: teacherId },
+        include: {
+          user: {
+            select: {
+              institutionId: true,
+            },
+          },
+        },
       });
 
       if (!teacherExists) {
         throw new NotFoundException(
           `Professor com ID ${teacherId} não encontrado`,
+        );
+      }
+
+      if (teacherExists.user.institutionId !== classExists.institutionId) {
+        throw new ForbiddenException(
+          'O professor não pertence à mesma instituição da turma',
+        );
+      }
+
+      const teacherSubject = await this.prisma.teacherSubject.findUnique({
+        where: {
+          teacherId_subjectId: {
+            teacherId,
+            subjectId,
+          },
+        },
+      });
+
+      if (!teacherSubject) {
+        throw new ForbiddenException(
+          'Habilite primeiro esta disciplina no perfil do professor',
         );
       }
     }

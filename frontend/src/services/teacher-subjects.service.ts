@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { fetchCurrentUserProfile } from '@/lib/auth-profile';
+import api from '@/lib/api';
 
 export interface TeacherSubject {
   id: string;
@@ -13,6 +14,15 @@ export interface TeacherSubject {
     code?: string;
     color?: string;
     description?: string;
+  };
+  teacher?: {
+    id: string;
+    user?: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    };
   };
 }
 
@@ -28,6 +38,15 @@ type DbTeacherSubject = {
     code: string | null;
     color: string | null;
     description: string | null;
+  } | null;
+  teacher?: {
+    id: string;
+    user?: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    } | null;
   } | null;
 };
 
@@ -45,6 +64,12 @@ function mapTeacherSubject(row: DbTeacherSubject): TeacherSubject {
       color: row.subject?.color ?? undefined,
       description: row.subject?.description ?? undefined,
     },
+    teacher: row.teacher
+      ? {
+          id: row.teacher.id,
+          user: row.teacher.user ?? undefined,
+        }
+      : undefined,
   };
 }
 
@@ -65,7 +90,7 @@ export const teacherSubjectsService = {
       .order('createdAt', { ascending: true });
 
     if (error) throw error;
-    return ((data ?? []) as DbTeacherSubject[]).map(mapTeacherSubject);
+    return ((data ?? []) as unknown as DbTeacherSubject[]).map(mapTeacherSubject);
   },
 
   // Adicionar disciplina às minhas disciplinas
@@ -191,44 +216,25 @@ export const teacherSubjectsService = {
 
   // Admin: Listar disciplinas de um professor
   getByTeacher: async (teacherId: string): Promise<TeacherSubject[]> => {
-    const { data, error } = await supabase
-      .from('teacher_subjects')
-      .select('id, teacherId, subjectId, createdAt, updatedAt, subject:subjects(id, name, code, color, description)')
-      .eq('teacherId', teacherId)
-      .order('createdAt', { ascending: true });
+    const response = await api.get<DbTeacherSubject[]>(`/teacher-subjects/teacher/${teacherId}`);
+    const data = response as unknown as DbTeacherSubject[];
+    return (data ?? []).map(mapTeacherSubject);
+  },
 
-    if (error) throw error;
-    return ((data ?? []) as DbTeacherSubject[]).map(mapTeacherSubject);
+  // Admin: Listar professores habilitados para uma disciplina
+  getBySubject: async (subjectId: string): Promise<TeacherSubject[]> => {
+    const response = await api.get<DbTeacherSubject[]>(`/teacher-subjects/subject/${subjectId}`);
+    const data = response as unknown as DbTeacherSubject[];
+    return (data ?? []).map(mapTeacherSubject);
   },
 
   // Admin: Sincronizar disciplinas de um professor
   syncTeacherSubjects: async (teacherId: string, subjectIds: string[]): Promise<TeacherSubject[]> => {
     const uniqueIds = Array.from(new Set(subjectIds)).filter(Boolean);
-
-    const { error: deleteError } = await supabase
-      .from('teacher_subjects')
-      .delete()
-      .eq('teacherId', teacherId);
-
-    if (deleteError) throw deleteError;
-
-    if (uniqueIds.length > 0) {
-      const now = new Date().toISOString();
-      const payload = uniqueIds.map((id) => ({
-        id: crypto.randomUUID(),
-        teacherId,
-        subjectId: id,
-        createdAt: now,
-        updatedAt: now,
-      }));
-
-      const { error: insertError } = await supabase
-        .from('teacher_subjects')
-        .insert(payload);
-
-      if (insertError) throw insertError;
-    }
-
-    return teacherSubjectsService.getByTeacher(teacherId);
+    const response = await api.put<DbTeacherSubject[]>(`/teacher-subjects/teacher/${teacherId}/sync`, {
+      subjectIds: uniqueIds,
+    });
+    const data = response as unknown as DbTeacherSubject[];
+    return (data ?? []).map(mapTeacherSubject);
   },
 };

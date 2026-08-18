@@ -155,189 +155,48 @@ export const classesService = {
   async findAll(params: ClassesFilterParams = {}): Promise<PaginatedClasses> {
     const page = params.page ?? 1;
     const limit = params.limit ?? 10;
-    const from = (page - 1) * limit;
-    const to = from + limit - 1;
-
-    const institutionId =
-      params.institutionId ?? (await fetchCurrentUserProfile()).institutionId;
-
-    let query = supabase
-      .from('classes')
-      .select(
-        'id, name, grade, section, shift, baseRoom, maxStudents, isActive, institutionId, courseId, academicYearId, mainTeacherId, createdAt, updatedAt, course:courses(id, name), academicYear:academic_years(id, name, year), mainTeacher:teachers(id, user:users(id, firstName, lastName, email))',
-        { count: 'exact' }
-      )
-      .eq('institutionId', institutionId)
-      .order('name', { ascending: true })
-      .range(from, to);
-
-    if (params.courseId) {
-      query = query.eq('courseId', params.courseId);
-    }
-
-    if (params.academicYearId) {
-      query = query.eq('academicYearId', params.academicYearId);
-    }
-
-    if (typeof params.isActive === 'boolean') {
-      query = query.eq('isActive', params.isActive);
-    }
-
-    if (params.search && params.search.trim().length > 0) {
-      const term = params.search.trim();
-      query = query.or(
-        `name.ilike.%${term}%,grade.ilike.%${term}%,section.ilike.%${term}%`
-      );
-    }
-
-    const { data, error, count } = await query;
-
-    if (error) throw error;
-
-    const classes = ((data ?? []) as unknown) as DbClass[];
-    const classIds = classes.map((c) => c.id);
-
-    const enrollmentsCountByClassId = new Map<string, number>();
-    if (classIds.length > 0) {
-      const { data: enrollments, error: enrollmentsError } = await supabase
-        .from('class_enrollments')
-        .select('classId')
-        .in('classId', classIds)
-        .eq('isActive', true);
-
-      if (enrollmentsError) throw enrollmentsError;
-
-      for (const item of enrollments ?? []) {
-        const classId = (item as any).classId as string;
-        enrollmentsCountByClassId.set(
-          classId,
-          (enrollmentsCountByClassId.get(classId) ?? 0) + 1
-        );
-      }
-    }
-
-    const mapped: Class[] = classes.map((row) =>
-      mapClassRow(row, enrollmentsCountByClassId)
-    );
-
-    const total = count ?? 0;
-    const totalPages = Math.max(1, Math.ceil(total / limit));
-
-    return {
-      data: mapped,
-      meta: {
-        total,
+    return (await api.get<PaginatedClasses>('/classes', {
+      params: {
         page,
         limit,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1,
+        institutionId: params.institutionId,
+        courseId: params.courseId,
+        academicYearId: params.academicYearId,
+        search: params.search?.trim() || undefined,
+        isActive: params.isActive,
       },
-    };
+    })) as unknown as PaginatedClasses;
   },
 
   /**
    * Buscar turma por ID
    */
   async findOne(id: string): Promise<Class> {
-    const { data, error } = await supabase
-      .from('classes')
-      .select(
-        'id, name, grade, section, shift, baseRoom, maxStudents, isActive, institutionId, courseId, academicYearId, mainTeacherId, createdAt, updatedAt, course:courses(id, name), academicYear:academic_years(id, name, year), mainTeacher:teachers(id, user:users(id, firstName, lastName, email))'
-      )
-      .eq('id', id)
-      .single();
-
-    if (error) throw error;
-
-    const row = (data as unknown) as DbClass;
-
-    const { data: enrollments, error: enrollmentsError, count } = await supabase
-      .from('class_enrollments')
-      .select('id', { count: 'exact', head: true })
-      .eq('classId', id)
-      .eq('isActive', true);
-
-    if (enrollmentsError) throw enrollmentsError;
-    void enrollments;
-
-    return {
-      ...mapClassRow(row),
-      _count: {
-        enrollments: count ?? 0,
-      },
-    } as Class;
+    return (await api.get<Class>(`/classes/${id}`)) as unknown as Class;
   },
 
   /**
    * Criar nova turma
    */
   async create(data: CreateClassDto): Promise<Class> {
-    const now = new Date().toISOString();
-    const institutionId =
-      data.institutionId ?? (await fetchCurrentUserProfile()).institutionId;
-
-    const payload = {
-      id: crypto.randomUUID(),
-      name: data.name,
-      grade: data.grade,
-      section: data.section,
-      shift: data.shift,
-      baseRoom: data.baseRoom,
-      maxStudents: data.maxStudents,
-      isActive: data.isActive ?? true,
-      institutionId,
-      courseId: data.courseId,
-      academicYearId: data.academicYearId,
-      mainTeacherId: data.mainTeacherId ?? null,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    const { data: created, error } = await supabase
-      .from('classes')
-      .insert(payload)
-      .select(
-        'id, name, grade, section, shift, baseRoom, maxStudents, isActive, institutionId, courseId, academicYearId, mainTeacherId, createdAt, updatedAt, course:courses(id, name), academicYear:academic_years(id, name, year), mainTeacher:teachers(id, user:users(id, firstName, lastName, email))'
-      )
-      .single();
-
-    if (error) throw error;
-    return (await this.findOne((created as any).id)) as Class;
+    return (await api.post<Class>('/classes', data)) as unknown as Class;
   },
 
   /**
    * Atualizar turma
    */
   async update(id: string, data: UpdateClassDto): Promise<Class> {
-    const now = new Date().toISOString();
-
-    const { error } = await supabase
-      .from('classes')
-      .update({
-        ...data,
-        baseRoom: data.baseRoom === undefined ? undefined : data.baseRoom || null,
-        updatedAt: now,
-      })
-      .eq('id', id);
-
-    if (error) throw error;
-    return this.findOne(id);
+    return (await api.patch<Class>(`/classes/${id}`, {
+      ...data,
+      baseRoom: data.baseRoom === undefined ? undefined : data.baseRoom || null,
+    })) as unknown as Class;
   },
 
   /**
    * Remover turma (soft delete)
    */
   async remove(id: string): Promise<Class> {
-    const now = new Date().toISOString();
-
-    const { error } = await supabase
-      .from('classes')
-      .update({ isActive: false, updatedAt: now })
-      .eq('id', id);
-
-    if (error) throw error;
-    return this.findOne(id);
+    return (await api.delete<Class>(`/classes/${id}`)) as unknown as Class;
   },
 
   /**
@@ -353,16 +212,9 @@ export const classesService = {
    * Listar disciplinas da turma
    */
   async getClassSubjects(classId: string): Promise<ClassSubject[]> {
-    const { data, error } = await supabase
-      .from('class_subjects')
-      .select(
-        'id, weeklyHours, classId, subjectId, teacherId, createdAt, updatedAt, subject:subjects(*), teacher:teachers(id, user:users(*))'
-      )
-      .eq('classId', classId)
-      .order('createdAt', { ascending: true });
-
-    if (error) throw error;
-    return ((data ?? []) as DbClassSubject[]).map(mapClassSubject);
+    const response = await api.get<DbClassSubject[]>(`/classes/${classId}/subjects`);
+    const data = response as unknown as DbClassSubject[];
+    return (data ?? []).map(mapClassSubject);
   },
 
   /**
