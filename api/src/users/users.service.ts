@@ -584,7 +584,6 @@ export class UsersService {
                 parentId: true,
                 relationship: true,
                 isPrimary: true,
-                isFinancialResponsible: true,
                 receivesNotifications: true,
                 canPickup: true,
                 parent: {

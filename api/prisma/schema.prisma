@@ -511,9 +511,8 @@ model StudentParent {
 
   relationship  String   // "Responsável", "Avô", "Avó", "Tio", "Tia", etc.
   isPrimary     Boolean  @default(false)
-  isFinancialResponsible Boolean @default(false)
-  receivesNotifications Boolean @default(false)
-  canPickup     Boolean  @default(false)
+  receivesNotifications Boolean @default(false) @map("notificacoes")
+  canPickup     Boolean  @default(false) @map("podeRetirar")
   createdAt     DateTime @default(now())
 
   @@unique([studentId, parentId])
