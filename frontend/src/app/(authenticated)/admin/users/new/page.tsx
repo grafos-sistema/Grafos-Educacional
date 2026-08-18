@@ -14,7 +14,7 @@ import { usersService } from '@/services/users.service';
 import { CreateUserDto, UserRole } from '@/types/user.types';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/Button';
-import { removeMask } from '@/components/ui/MaskedInput';
+import { removeMask, validateCPF } from '@/components/ui/MaskedInput';
 import { StudentFormTabs } from './components/StudentFormTabs';
 import { Institution as InstitutionOption } from '@/components/ui/InstitutionSearch';
 import { authService } from '@/services/auth.service';
@@ -203,6 +203,17 @@ export function NewUserPageContent({
   };
 
   const onSubmit = async (data: CreateUserDto) => {
+    const normalizedCpf = typeof data.cpf === 'string' ? removeMask(data.cpf) : '';
+
+    if (normalizedCpf && !validateCPF(normalizedCpf)) {
+      const info = presentFriendlyError(
+        new Error('CPF inválido'),
+        'Informe um CPF válido para continuar o cadastro.'
+      );
+      setError(info.description);
+      return;
+    }
+
     const primaryInstitutionId =
       typeof data.institutionId === 'string'
         ? data.institutionId.trim()

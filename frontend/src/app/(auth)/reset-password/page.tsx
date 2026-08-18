@@ -14,8 +14,7 @@ import { useAuthStore } from '@/stores/authStore';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-  const user = useAuthStore((state) => state.user);
-  const setUser = useAuthStore((state) => state.setUser);
+  const clearAuthStore = useAuthStore((state) => state.logout);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -73,16 +72,19 @@ export default function ResetPasswordPage() {
         await authService.resetPassword('', data.password);
       }
 
-      if (user) {
-        setUser({
-          ...user,
-          mustChangePassword: false,
-        });
-      }
-
       setSuccessMessage('Senha atualizada com sucesso. Voce ja pode entrar com a nova senha.');
 
-      if (hasAuthenticatedSession) {
+      if (isAuthenticatedPasswordChange) {
+        // A troca obrigatória conclui o primeiro acesso. Encerrar a sessão
+        // evita que o usuário continue com a sessão inicial e força um novo
+        // login usando a senha recém-definida.
+        await authService.logout();
+        clearAuthStore();
+
+        window.setTimeout(() => {
+          router.replace('/login/gestao');
+        }, 1200);
+      } else if (hasAuthenticatedSession) {
         window.setTimeout(() => {
           router.push('/');
         }, 1200);

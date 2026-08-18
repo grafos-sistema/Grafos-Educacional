@@ -107,6 +107,18 @@ function buildFriendlyMessage(rawMessage: string, fallbackMessage: string): Frie
     };
   }
 
+  if (
+    normalized.includes('cpf inválido') ||
+    normalized.includes('cpf invalido') ||
+    normalized.includes('cpf deve conter')
+  ) {
+    return {
+      title: 'CPF inválido',
+      description: 'Informe um CPF válido para continuar o cadastro.',
+      rawMessage,
+    };
+  }
+
   if (normalized.includes('student_requires_at_least_one_guardian')) {
     return {
       title: 'Responsavel obrigatorio',

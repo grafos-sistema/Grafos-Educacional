@@ -6,6 +6,7 @@ import {
   IsOptional,
   MaxLength,
   IsArray,
+  IsBoolean,
 } from 'class-validator';
 
 export class CreateSubjectDto {
@@ -44,6 +45,26 @@ export class CreateSubjectDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiProperty({
+    description: 'Cor usada para identificar a disciplina na interface',
+    example: '#2563EB',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20, { message: 'A cor deve ter no máximo 20 caracteres' })
+  color?: string;
+
+  @ApiProperty({
+    description: 'Define se a disciplina está ativa',
+    example: true,
+    required: false,
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 
   @ApiProperty({
     description: 'Carga horária semanal',
