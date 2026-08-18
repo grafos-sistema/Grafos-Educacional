@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   AcademicCapIcon,
+  BookOpenIcon,
   EyeIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
@@ -18,6 +19,7 @@ import { Pagination } from '@/components/ui/Pagination';
 import { Select } from '@/components/ui/Select';
 import { formatPhone } from '@/components/ui/MaskedInput';
 import { TeacherSubjectsModal } from '@/components/teachers/TeacherSubjectsModal';
+import { TeacherClassesModal } from '@/components/teachers/TeacherClassesModal';
 
 export default function CoordinatorTeachersPage() {
   const router = useRouter();
@@ -30,6 +32,10 @@ export default function CoordinatorTeachersPage() {
     isActive: undefined,
   });
   const [teacherForSubjects, setTeacherForSubjects] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [teacherForClasses, setTeacherForClasses] = useState<{
     id: string;
     name: string;
   } | null>(null);
@@ -97,7 +103,7 @@ export default function CoordinatorTeachersPage() {
     {
       key: 'actions',
       label: 'Ações',
-      className: 'w-28',
+      className: 'w-36',
       render: (teacher) => (
         <div className="flex items-center gap-3">
           <button
@@ -129,6 +135,24 @@ export default function CoordinatorTeachersPage() {
             aria-label={`Definir disciplinas de ${teacher.firstName} ${teacher.lastName}`}
           >
             <AcademicCapIcon className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (teacher.teacherProfile?.id) {
+                setTeacherForClasses({
+                  id: teacher.teacherProfile.id,
+                  name: `${teacher.firstName} ${teacher.lastName}`,
+                });
+              }
+            }}
+            disabled={!teacher.teacherProfile?.id}
+            className="text-purple-600 transition-colors hover:text-purple-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-purple-400"
+            title="Definir turmas"
+            aria-label={`Definir turmas de ${teacher.firstName} ${teacher.lastName}`}
+          >
+            <BookOpenIcon className="h-5 w-5" />
           </button>
         </div>
       ),
@@ -223,6 +247,12 @@ export default function CoordinatorTeachersPage() {
         onClose={() => setTeacherForSubjects(null)}
         teacherId={teacherForSubjects?.id ?? null}
         teacherName={teacherForSubjects?.name}
+      />
+      <TeacherClassesModal
+        isOpen={Boolean(teacherForClasses)}
+        onClose={() => setTeacherForClasses(null)}
+        teacherId={teacherForClasses?.id ?? null}
+        teacherName={teacherForClasses?.name}
       />
     </div>
   );

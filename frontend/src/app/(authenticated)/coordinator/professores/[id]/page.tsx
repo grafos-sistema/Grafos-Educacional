@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   AcademicCapIcon,
   ArrowLeftIcon,
+  BookOpenIcon,
   CalendarIcon,
   EnvelopeIcon,
   IdentificationIcon,
@@ -21,6 +22,7 @@ import { Badge } from '@/components/ui/Badge';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
 import { TeacherSubjectsModal } from '@/components/teachers/TeacherSubjectsModal';
+import { TeacherClassesModal } from '@/components/teachers/TeacherClassesModal';
 
 const genderLabels: Record<Gender, string> = {
   MALE: 'Masculino',
@@ -39,6 +41,7 @@ export default function CoordinatorTeacherDetailPage() {
   const params = useParams();
   const userId = params?.id as string;
   const [isSubjectsModalOpen, setIsSubjectsModalOpen] = useState(false);
+  const [isClassesModalOpen, setIsClassesModalOpen] = useState(false);
 
   const { data: user, isLoading } = useQuery({
     queryKey: ['coordinator-teacher-detail', userId],
@@ -94,13 +97,23 @@ export default function CoordinatorTeacherDetailPage() {
         </h1>
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <p className="text-gray-600 dark:text-gray-400">Informações completas do professor</p>
-          <Button
-            onClick={() => setIsSubjectsModalOpen(true)}
-            disabled={!teacherProfileId}
-            leftIcon={<AcademicCapIcon className="h-4 w-4" />}
-          >
-            Definir disciplinas
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => setIsSubjectsModalOpen(true)}
+              disabled={!teacherProfileId}
+              leftIcon={<AcademicCapIcon className="h-4 w-4" />}
+            >
+              Definir disciplinas
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setIsClassesModalOpen(true)}
+              disabled={!teacherProfileId}
+              leftIcon={<BookOpenIcon className="h-4 w-4" />}
+            >
+              Definir turmas
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -302,6 +315,12 @@ export default function CoordinatorTeacherDetailPage() {
       <TeacherSubjectsModal
         isOpen={isSubjectsModalOpen}
         onClose={() => setIsSubjectsModalOpen(false)}
+        teacherId={teacherProfileId ?? null}
+        teacherName={`${user.firstName} ${user.lastName}`}
+      />
+      <TeacherClassesModal
+        isOpen={isClassesModalOpen}
+        onClose={() => setIsClassesModalOpen(false)}
         teacherId={teacherProfileId ?? null}
         teacherName={`${user.firstName} ${user.lastName}`}
       />

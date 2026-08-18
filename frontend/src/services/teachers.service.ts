@@ -1,7 +1,9 @@
+import api from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 
 export interface TeacherClass {
   id: string;
+  classSubjectId?: string;
   classId: string;
   subjectId: string;
   teacherId: string;
@@ -35,22 +37,16 @@ export interface TeacherClass {
   };
 }
 
-type DbTeacherClass = {
+type ApiTeacherClass = {
   id: string;
-  classId: string;
-  subjectId: string;
-  teacherId: string;
-  weeklyHours: number | null;
-  class?: {
-    id: string;
-    name: string;
-    grade: string;
-    section: string | null;
-    shift: string | null;
-    academicYear?: { id: string; year: number; name: string } | null;
-    course?: { id: string; name: string } | null;
-  } | null;
-  subject?: { id: string; name: string; code: string | null; color: string | null } | null;
+  classSubjectId?: string;
+  classId?: string;
+  subjectId?: string;
+  teacherId?: string;
+  weeklyHours?: number | null;
+  assignmentLabel?: string;
+  class?: TeacherClass['class'];
+  subject?: TeacherClass['subject'];
 };
 
 type DbTeacherSubject = {
@@ -68,72 +64,41 @@ export const teachersService = {
    * Listar turmas que o professor leciona
    */
   async getTeacherClasses(teacherId: string): Promise<TeacherClass[]> {
-    const { data: classSubjectData, error: classSubjectError } = await supabase
-      .from('class_subjects')
-      .select(
-        'id, classId, subjectId, teacherId, weeklyHours, class:classes(id, name, grade, section, shift, academicYear:academic_years(id, year, name), course:courses(id, name)), subject:subjects(id, name, code, color)'
-      )
-      .eq('teacherId', teacherId);
-
-    if (classSubjectError) throw classSubjectError;
-
-    const rows = (classSubjectData ?? []) as DbTeacherClass[];
-    const classIds = Array.from(new Set(rows.map((row) => row.classId)));
-    const enrollmentsCountByClassId = new Map<string, number>();
-
-    if (classIds.length > 0) {
-      const { data: enrollments, error: enrollmentsError } = await supabase
-        .from('class_enrollments')
-        .select('classId')
-        .in('classId', classIds)
-        .eq('isActive', true);
-
-      if (enrollmentsError) throw enrollmentsError;
-
-      for (const item of enrollments ?? []) {
-        const classId = (item as any).classId as string;
-        enrollmentsCountByClassId.set(
-          classId,
-          (enrollmentsCountByClassId.get(classId) ?? 0) + 1
-        );
-      }
-    }
-
-    const classSubjectAssignments = rows.map((row) => ({
-      id: row.id,
-      classId: row.classId,
-      subjectId: row.subjectId,
-      teacherId: row.teacherId,
-      weeklyHours: row.weeklyHours ?? undefined,
+    const response = await api.get<ApiTeacherClass[]>(`/teachers/${teacherId}/classes`);
+    return (response as unknown as ApiTeacherClass[]).map((item) => ({
+      id: item.classSubjectId ?? item.id,
+      classSubjectId: item.classSubjectId ?? item.id,
+      classId: item.classId ?? item.class?.id ?? '',
+      subjectId: item.subjectId ?? item.subject?.id ?? '',
+      teacherId: item.teacherId ?? teacherId,
+      weeklyHours: item.weeklyHours ?? undefined,
       assignmentType: 'subject' as const,
-      assignmentLabel: 'Disciplina atribuída',
+      assignmentLabel: item.assignmentLabel ?? 'Disciplina atribuída',
       class: {
-        id: row.class?.id ?? row.classId,
-        name: row.class?.name ?? '',
-        grade: row.class?.grade ?? '',
-        section: row.class?.section ?? undefined,
-        shift: row.class?.shift ?? undefined,
-        academicYear: row.class?.academicYear ?? undefined,
-        course: row.class?.course ?? undefined,
-        _count: {
-          enrollments: enrollmentsCountByClassId.get(row.classId) ?? 0,
-        },
+        id: item.class?.id ?? item.classId ?? '',
+        name: item.class?.name ?? '',
+        grade: item.class?.grade ?? '',
+        section: item.class?.section ?? undefined,
+        shift: item.class?.shift ?? undefined,
+        academicYear: item.class?.academicYear ?? undefined,
+        course: item.class?.course ?? undefined,
+        _count: item.class?._count ?? { enrollments: 0 },
       },
-      subject: {
-        id: row.subject?.id ?? row.subjectId,
-        name: row.subject?.name ?? '',
-        code: row.subject?.code ?? undefined,
-        color: row.subject?.color ?? undefined,
-      },
+      subject: item.subject
+        ? {
+            id: item.subject.id,
+            name: item.subject.name ?? '',
+            code: item.subject.code ?? undefined,
+            color: item.subject.color ?? undefined,
+          }
+        : undefined,
     }));
-
-    return classSubjectAssignments;
   },
 
   /**
    * Listar disciplinas do professor
    */
-  async getTeacherSubjects(teacherId: string): Promise<any[]> {
+  async getTeacherSubjects(teacherId: string): Promise<DbTeacherSubject['subject'][]> {
     const { data, error } = await supabase
       .from('teacher_subjects')
       .select('subject:subjects(id, name, code, color, description)')
@@ -141,8 +106,8 @@ export const teachersService = {
       .order('createdAt', { ascending: true });
 
     if (error) throw error;
-    return ((data ?? []) as DbTeacherSubject[])
+    return ((data ?? []) as unknown as DbTeacherSubject[])
       .map((row) => row.subject)
-      .filter(Boolean) as any[];
+      .filter((subject): subject is NonNullable<DbTeacherSubject['subject']> => Boolean(subject));
   },
 };

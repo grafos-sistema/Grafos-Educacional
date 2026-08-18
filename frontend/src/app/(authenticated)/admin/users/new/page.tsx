@@ -22,6 +22,7 @@ import { institutionsService } from '@/services/institutions.service';
 import { RoleBasedUserWizard } from '../components/RoleBasedUserWizard';
 import { presentFriendlyError } from '@/lib/friendly-error';
 import { supabase } from '@/lib/supabase';
+import { serializeStudentTagList } from '@/lib/student-form-utils';
 
 const roleOptions = [
   { value: UserRole.INSTITUTION_ADMIN, label: 'Secretário(a)' },
@@ -275,10 +276,10 @@ export function NewUserPageContent({
         userData.healthInfo = {
            tipoSanguineo: data.tipoSanguineo,
            convenioMedico: data.convenioMedico,
-           alergias: data.alergias,
-           medicamentos: data.medicamentos,
-           necessidadesEspeciais: data.necessidadesEspeciais,
-           restricoesAlimentares: data.restricoesAlimentares,
+           alergias: serializeStudentTagList(data.alergias),
+           medicamentos: serializeStudentTagList(data.medicamentos),
+           necessidadesEspeciais: serializeStudentTagList(data.necessidadesEspeciais),
+           restricoesAlimentares: serializeStudentTagList(data.restricoesAlimentares),
            contatoEmergencia: data.contatoEmergencia
         };
         
@@ -304,6 +305,8 @@ export function NewUserPageContent({
       delete userData.avatar;
       delete userData.documents;
       delete (userData as any).unitId;
+      delete (userData as any).unidade;
+      delete (userData as any).modalidade;
       delete (userData as any).alsoDirectorUserId;
 
       const createdUser = await usersService.create(userData);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef, type ChangeEvent, type DragEvent, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { UseFormReturn } from 'react-hook-form';
@@ -34,6 +35,11 @@ import { Modal } from '@/components/ui/Modal';
 import { presentFriendlyError } from '@/lib/friendly-error';
 import { supabase } from '@/lib/supabase';
 import { useCepAutofill } from '@/hooks/useCepAutofill';
+import { coursesService } from '@/services/courses.service';
+import { academicYearsService } from '@/services/academic-years.service';
+import { classesService } from '@/services/classes.service';
+import { classShiftOptions, getClassSeriesOptions } from '@/lib/constants/class-options';
+import { parseStudentTagList } from '@/lib/student-form-utils';
 import {
   STUDENT_DOCUMENT_DEFINITIONS,
   type PendingStudentDocumentUpload,
@@ -149,6 +155,63 @@ function TabHeader({ tab, rightContent }: { tab: (typeof tabs)[number]; rightCon
   );
 }
 
+function TagInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string[];
+  onChange: (value: string[]) => void;
+  placeholder?: string;
+}) {
+  const [draft, setDraft] = useState('');
+
+  const addTag = (rawValue: string) => {
+    const nextValue = rawValue.trim();
+    if (!nextValue) return;
+
+    const exists = value.some((item) => item.toLocaleLowerCase() === nextValue.toLocaleLowerCase());
+    if (!exists) onChange([...value, nextValue]);
+    setDraft('');
+  };
+
+  return (
+    <div>
+      <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
+      <div className="min-h-[44px] rounded-lg border border-gray-300 bg-white px-3 py-2 shadow-sm focus-within:border-primary-500 focus-within:ring-1 focus-within:ring-primary-500 dark:border-gray-600 dark:bg-gray-800">
+        <div className="flex flex-wrap items-center gap-2">
+          {value.map((tag) => (
+            <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
+              {tag}
+              <button type="button" onClick={() => onChange(value.filter((item) => item !== tag))} className="text-primary-500 hover:text-primary-800" aria-label={`Remover ${tag}`}>
+                ×
+              </button>
+            </span>
+          ))}
+          <input
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ',') {
+                event.preventDefault();
+                addTag(draft);
+              } else if (event.key === 'Backspace' && !draft && value.length > 0) {
+                onChange(value.slice(0, -1));
+              }
+            }}
+            onBlur={() => addTag(draft)}
+            placeholder={value.length === 0 ? placeholder : 'Digite e pressione Enter'}
+            className="min-w-[150px] flex-1 border-0 bg-transparent p-0 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white"
+          />
+        </div>
+      </div>
+      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Pressione Enter para adicionar cada item.</p>
+    </div>
+  );
+}
+
 export function StudentFormTabs({
   form,
   availableInstitutions,
@@ -158,14 +221,22 @@ export function StudentFormTabs({
   passwordField,
   studentProfileId,
 }: StudentFormTabsProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('pessoais');
   const { register, formState: { errors }, watch, setValue, trigger, getValues } = form;
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((state) => state.user);
+  const currentRole = currentUser?.activeProfile ?? currentUser?.role;
+  const isDirector = currentRole === UserRole.DIRECTOR;
 
   const usaTransporte = watch('usaTransporte');
   const watchResponsaveis = watch('responsaveis');
   const selectedInstitutionId = watch('institutionId');
+  const selectedAcademicYearName = watch('anoLetivo') as string | undefined;
+  const selectedCourseName = watch('curso') as string | undefined;
+  const selectedGrade = watch('serie') as string | undefined;
+  const selectedClassName = watch('turma') as string | undefined;
+  const selectedShift = watch('turno') as string | undefined;
   const selectedPhoto = watch('photo');
   const currentAvatar = watch('avatar');
   const firstName = watch('firstName');
@@ -179,7 +250,87 @@ export function StudentFormTabs({
   const dataMatricula = watch('dataMatricula') as string | undefined;
   const situacao = watch('situacao') as string | undefined;
   const tipoTransporte = watch('tipoTransporte') as string | undefined;
+  const emergencyContact = watch('contatoEmergencia') as string | undefined;
   const watchedDocuments = watch('documents') as PendingStudentDocumentUpload[] | undefined;
+  const effectiveInstitutionId = selectedInstitutionId || currentUser?.institutionId;
+
+  const { data: academicYearsData, isLoading: isLoadingAcademicYears } = useQuery({
+    queryKey: ['student-form-academic-years', effectiveInstitutionId],
+    queryFn: () => academicYearsService.findAll({ institutionId: effectiveInstitutionId, isActive: true, limit: 1000 }),
+    enabled: Boolean(effectiveInstitutionId),
+  });
+
+  const { data: coursesData, isLoading: isLoadingCourses } = useQuery({
+    queryKey: ['student-form-courses', effectiveInstitutionId],
+    queryFn: () => coursesService.findAll({ institutionId: effectiveInstitutionId, isActive: true, limit: 1000 }),
+    enabled: Boolean(effectiveInstitutionId),
+  });
+
+  const selectedAcademicYear = useMemo(
+    () => (academicYearsData?.data ?? []).find(
+      (item) => String(item.year) === String(selectedAcademicYearName ?? '') || item.name === selectedAcademicYearName
+    ),
+    [academicYearsData?.data, selectedAcademicYearName]
+  );
+
+  const selectedCourse = useMemo(
+    () => (coursesData?.data ?? []).find((item) => item.name === selectedCourseName),
+    [coursesData?.data, selectedCourseName]
+  );
+
+  const { data: classesData, isLoading: isLoadingClasses } = useQuery({
+    queryKey: [
+      'student-form-classes',
+      effectiveInstitutionId,
+      selectedAcademicYear?.id,
+      selectedCourse?.id,
+    ],
+    queryFn: () => classesService.findAll({
+      institutionId: effectiveInstitutionId,
+      academicYearId: selectedAcademicYear?.id,
+      courseId: selectedCourse?.id,
+      isActive: true,
+      limit: 1000,
+    }),
+    enabled: Boolean(effectiveInstitutionId && selectedAcademicYear?.id && selectedCourse?.id),
+  });
+
+  const gradeOptions = useMemo(() => {
+    const configuredOptions = getClassSeriesOptions(selectedCourse?.level);
+    if (configuredOptions.length > 1) return configuredOptions;
+
+    const grades = Array.from(new Set((classesData?.data ?? []).map((item) => item.grade).filter(Boolean)));
+    return [
+      { value: '', label: 'Selecione a série/ano' },
+      ...grades.map((grade) => ({ value: grade, label: grade })),
+    ];
+  }, [classesData?.data, selectedCourse?.level]);
+
+  const classOptions = useMemo(() => {
+    const classes = (classesData?.data ?? []).filter((item) => !selectedGrade || item.grade === selectedGrade);
+    return [
+      { value: '', label: 'Selecione uma turma' },
+      ...classes.map((item) => ({
+        value: item.name,
+        label: `${item.name}${item.shift ? ` • ${item.shift}` : ''}`,
+      })),
+    ];
+  }, [classesData?.data, selectedGrade]);
+
+  const responsibleOptions = useMemo(
+    () => (watchResponsaveis ?? [])
+      .map((item: any) => {
+        const name = String(item?.nome ?? '').trim();
+        const phone = String(item?.celular ?? '').trim();
+        if (!name) return null;
+        return {
+          value: `${name} — ${phone || 'telefone não informado'}`,
+          label: `${name} — ${phone || 'telefone não informado'}`,
+        };
+      })
+      .filter(Boolean) as Array<{ value: string; label: string }>,
+    [watchResponsaveis]
+  );
   const { fillAddressFromCep } = useCepAutofill({
     form,
     fields: {
@@ -221,6 +372,13 @@ export function StudentFormTabs({
     const initial = form.getValues('responsaveis');
     return initial && initial.length > 0 ? initial.map((r: any, i: number) => ({ id: r.id || i + 1 })) : [{ id: 1 }];
   });
+
+  useEffect(() => {
+    if (isDirector && currentUser?.institutionId && selectedInstitutionId !== currentUser.institutionId) {
+      setValue('institutionId', currentUser.institutionId, { shouldValidate: true });
+      setValue('institutionIds', [currentUser.institutionId], { shouldValidate: true });
+    }
+  }, [currentUser?.institutionId, isDirector, selectedInstitutionId, setValue]);
 
   useEffect(() => {
     if (watchResponsaveis && watchResponsaveis.length > 0) {
@@ -792,35 +950,107 @@ export function StudentFormTabs({
                   setValue('situacao', event.target.value, { shouldDirty: true, shouldValidate: true })
                 }
               />
-              <Select 
-                label="Escola *" 
-                value={selectedInstitutionId || ''}
-                onChange={(event: ChangeEvent<HTMLSelectElement>) => {
-                  const nextInstitutionId = event.target.value;
-                  const selectedInstitution = availableInstitutions.find((institution) => institution.id === nextInstitutionId);
-                  setValue('institutionId', nextInstitutionId, { shouldDirty: true, shouldValidate: true });
-                  setValue('institutionIds', nextInstitutionId ? [nextInstitutionId] : [], { shouldDirty: true, shouldValidate: true });
-                  setValue('escola', selectedInstitution?.name ?? '', { shouldDirty: true, shouldValidate: true });
-                }}
-                error={errors.institutionId?.message as string}
-                disabled={isLoadingInstitutions}
-                options={[
-                  { value: '', label: 'Selecione uma escola...' },
-                  ...availableInstitutions.map((institution) => ({ value: institution.id, label: institution.name }))
-                ]}
-              />
+              {isDirector ? (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Escola</label>
+                  <div className="flex h-11 items-center rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                    {availableInstitutions.find((institution) => institution.id === effectiveInstitutionId)?.name || 'Instituição vinculada ao diretor'}
+                  </div>
+                </div>
+              ) : (
+                <Select
+                  label="Escola *"
+                  value={selectedInstitutionId || ''}
+                  onChange={(event: ChangeEvent<HTMLSelectElement>) => {
+                    const nextInstitutionId = event.target.value;
+                    const selectedInstitution = availableInstitutions.find((institution) => institution.id === nextInstitutionId);
+                    setValue('institutionId', nextInstitutionId, { shouldDirty: true, shouldValidate: true });
+                    setValue('institutionIds', nextInstitutionId ? [nextInstitutionId] : [], { shouldDirty: true, shouldValidate: true });
+                    setValue('escola', selectedInstitution?.name ?? '', { shouldDirty: true, shouldValidate: true });
+                    setValue('anoLetivo', '', { shouldDirty: true });
+                    setValue('curso', '', { shouldDirty: true });
+                    setValue('serie', '', { shouldDirty: true });
+                    setValue('turma', '', { shouldDirty: true });
+                  }}
+                  error={errors.institutionId?.message as string}
+                  disabled={isLoadingInstitutions}
+                  options={[
+                    { value: '', label: 'Selecione uma escola...' },
+                    ...availableInstitutions.map((institution) => ({ value: institution.id, label: institution.name }))
+                  ]}
+                />
+              )}
               <input
                 type="hidden"
                 {...register('institutionId', { required: 'Obrigatório' })}
               />
               <input type="hidden" {...register('escola')} />
-              <Input label="Unidade *" {...register('unidade', { required: 'Obrigatório' })} />
-              <Input label="Ano Letivo *" {...register('anoLetivo', { required: 'Obrigatório' })} />
-              <Input label="Curso *" {...register('curso', { required: 'Obrigatório' })} />
-              <Input label="Série/Ano *" {...register('serie', { required: 'Obrigatório' })} />
-              <Input label="Turma *" {...register('turma', { required: 'Obrigatório' })} />
-              <Input label="Turno *" {...register('turno', { required: 'Obrigatório' })} />
-              <Input label="Modalidade *" {...register('modalidade', { required: 'Obrigatório' })} />
+              <Select
+                label="Ano Letivo *"
+                options={[
+                  { value: '', label: isLoadingAcademicYears ? 'Carregando anos letivos...' : 'Selecione o ano letivo' },
+                  ...(academicYearsData?.data ?? []).map((item) => ({ value: String(item.year), label: item.name || String(item.year) })),
+                ]}
+                value={selectedAcademicYearName ?? ''}
+                onChange={(event) => {
+                  setValue('anoLetivo', event.target.value, { shouldDirty: true, shouldValidate: true });
+                  setValue('turma', '', { shouldDirty: true });
+                }}
+                disabled={isLoadingAcademicYears || !effectiveInstitutionId}
+              />
+              <Select
+                label="Curso *"
+                options={[
+                  { value: '', label: isLoadingCourses ? 'Carregando cursos...' : 'Selecione o curso' },
+                  ...(coursesData?.data ?? []).map((item) => ({ value: item.name, label: item.name })),
+                ]}
+                value={selectedCourseName ?? ''}
+                onChange={(event) => {
+                  setValue('curso', event.target.value, { shouldDirty: true, shouldValidate: true });
+                  setValue('serie', '', { shouldDirty: true });
+                  setValue('turma', '', { shouldDirty: true });
+                }}
+                disabled={isLoadingCourses || !effectiveInstitutionId}
+              />
+              <Select
+                label="Série/Ano *"
+                options={gradeOptions}
+                value={selectedGrade ?? ''}
+                onChange={(event) => {
+                  setValue('serie', event.target.value, { shouldDirty: true, shouldValidate: true });
+                  setValue('turma', '', { shouldDirty: true });
+                }}
+                disabled={!selectedCourse?.id || isLoadingClasses}
+              />
+              <Select
+                label="Turma *"
+                options={classOptions}
+                value={selectedClassName ?? ''}
+                onChange={(event) => {
+                  const nextClassName = event.target.value;
+                  const nextClass = (classesData?.data ?? []).find((item) => item.name === nextClassName);
+                  setValue('turma', nextClassName, { shouldDirty: true, shouldValidate: true });
+                  if (nextClass?.grade) setValue('serie', nextClass.grade, { shouldDirty: true, shouldValidate: true });
+                  if (nextClass?.shift) setValue('turno', nextClass.shift, { shouldDirty: true, shouldValidate: true });
+                }}
+                disabled={!selectedAcademicYear?.id || !selectedCourse?.id || isLoadingClasses}
+              />
+              <Select
+                label="Turno *"
+                options={[
+                  ...classShiftOptions,
+                  ...Array.from(new Set((classesData?.data ?? []).map((item) => item.shift).filter(Boolean)))
+                    .filter((shift) => !classShiftOptions.some((option) => option.value === shift))
+                    .map((shift) => ({ value: shift as string, label: shift as string })),
+                ]}
+                value={selectedShift ?? ''}
+                onChange={(event) => setValue('turno', event.target.value, { shouldDirty: true, shouldValidate: true })}
+              />
+              <input type="hidden" {...register('anoLetivo', { required: 'Obrigatório' })} />
+              <input type="hidden" {...register('curso', { required: 'Obrigatório' })} />
+              <input type="hidden" {...register('serie', { required: 'Obrigatório' })} />
+              <input type="hidden" {...register('turma', { required: 'Obrigatório' })} />
+              <input type="hidden" {...register('turno', { required: 'Obrigatório' })} />
               <Input
                 label="Data da Matrícula *"
                 type="date"
@@ -998,19 +1228,62 @@ export function StudentFormTabs({
               />
               <Input label="Convênio Médico" {...register('convenioMedico')} />
               <div className="md:col-span-2">
-                <Input label="Alergias" {...register('alergias')} placeholder="Especifique se houver" />
+                <TagInput
+                  label="Alergias"
+                  value={parseStudentTagList(watch('alergias'))}
+                  onChange={(value) => setValue('alergias', value, { shouldDirty: true, shouldValidate: true })}
+                  placeholder="Ex.: Dipirona, poeira..."
+                />
               </div>
               <div className="md:col-span-2">
-                <Input label="Medicamentos de uso contínuo" {...register('medicamentos')} />
+                <TagInput
+                  label="Medicamentos de uso contínuo"
+                  value={parseStudentTagList(watch('medicamentos'))}
+                  onChange={(value) => setValue('medicamentos', value, { shouldDirty: true, shouldValidate: true })}
+                  placeholder="Ex.: Dipirona"
+                />
               </div>
               <div className="md:col-span-2">
-                <Input label="Necessidades especiais" {...register('necessidadesEspeciais')} />
+                <TagInput
+                  label="Necessidades especiais"
+                  value={parseStudentTagList(watch('necessidadesEspeciais'))}
+                  onChange={(value) => setValue('necessidadesEspeciais', value, { shouldDirty: true, shouldValidate: true })}
+                  placeholder="Informe uma necessidade"
+                />
               </div>
               <div className="md:col-span-2">
-                <Input label="Restrições alimentares" {...register('restricoesAlimentares')} />
+                <TagInput
+                  label="Restrições alimentares"
+                  value={parseStudentTagList(watch('restricoesAlimentares'))}
+                  onChange={(value) => setValue('restricoesAlimentares', value, { shouldDirty: true, shouldValidate: true })}
+                  placeholder="Ex.: lactose, amendoim..."
+                />
               </div>
               <div className="md:col-span-2">
-                <Input label="Contato de emergência (Nome e Telefone)" {...register('contatoEmergencia')} />
+                <Select
+                  label="Contato de emergência"
+                  options={[
+                    { value: '', label: responsibleOptions.length > 0 ? 'Selecione um responsável' : 'Cadastre um responsável primeiro' },
+                    ...responsibleOptions,
+                  ]}
+                  value={emergencyContact ?? ''}
+                  onChange={(event) => setValue('contatoEmergencia', event.target.value, { shouldDirty: true, shouldValidate: true })}
+                  disabled={responsibleOptions.length === 0}
+                />
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    A lista usa os responsáveis preenchidos na aba “Responsáveis”.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => router.push('/admin/users/new?role=PARENT')}
+                    leftIcon={<PlusIcon className="h-4 w-4" />}
+                  >
+                    Adicionar novo responsável
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

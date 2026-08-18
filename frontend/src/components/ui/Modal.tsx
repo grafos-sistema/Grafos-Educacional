@@ -71,7 +71,7 @@ export function Modal({
   return (
     <div
       className={joinClasses(
-        'fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto bg-black/10 p-4 py-6 backdrop-blur-sm',
+        'fixed inset-0 z-[80] flex items-center justify-center overflow-y-auto bg-black/10 p-4 py-6 backdrop-blur-sm',
         overlayClassName
       )}
       onClick={() => {

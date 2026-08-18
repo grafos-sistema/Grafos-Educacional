@@ -27,6 +27,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { Modal } from '@/components/ui/Modal';
 import { presentFriendlyError } from '@/lib/friendly-error';
 import { Dropdown } from '@/components/ui/HeroDropdown';
+import { parseStudentTagList, serializeStudentTagList } from '@/lib/student-form-utils';
 
 function buildInitialPassword(email?: string) {
   if (!email) return '';
@@ -56,7 +57,11 @@ interface EditUserPageContentProps {
   successRoute?: string;
 }
 
-type EditUserFormData = UpdateUserData & {
+type EditUserFormData = Omit<UpdateUserData, 'alergias' | 'medicamentos' | 'necessidadesEspeciais' | 'restricoesAlimentares'> & {
+  alergias?: string[];
+  medicamentos?: string[];
+  necessidadesEspeciais?: string[];
+  restricoesAlimentares?: string[];
   confirmPassword?: string;
 };
 
@@ -266,6 +271,10 @@ export function EditUserPageContent({
           observacoes: user.studentProfile.observacoes || '',
           documents: user.studentProfile.documents || [],
           ...user.studentProfile.healthRecord,
+          alergias: parseStudentTagList(user.studentProfile.healthRecord?.alergias),
+          medicamentos: parseStudentTagList(user.studentProfile.healthRecord?.medicamentos),
+          necessidadesEspeciais: parseStudentTagList(user.studentProfile.healthRecord?.necessidadesEspeciais),
+          restricoesAlimentares: parseStudentTagList(user.studentProfile.healthRecord?.restricoesAlimentares),
           ...user.studentProfile.transportation,
           responsaveis: (user.studentProfile as any).parents?.length > 0 
             ? (user.studentProfile as any).parents.map((p: any, index: number) => ({
@@ -408,10 +417,10 @@ export function EditUserPageContent({
         // Group healthInfo if student
         healthInfo: user?.role === UserRole.STUDENT ? {
           tipoSanguineo: (data as any).tipoSanguineo,
-          alergias: data.alergias,
-          medicamentos: data.medicamentos,
-          restricoesAlimentares: data.restricoesAlimentares,
-          necessidadesEspeciais: data.necessidadesEspeciais,
+          alergias: serializeStudentTagList(data.alergias),
+          medicamentos: serializeStudentTagList(data.medicamentos),
+          restricoesAlimentares: serializeStudentTagList(data.restricoesAlimentares),
+          necessidadesEspeciais: serializeStudentTagList(data.necessidadesEspeciais),
           convenioMedico: data.convenioMedico,
           contatoEmergencia: data.contatoEmergencia,
         } : undefined,
@@ -447,6 +456,8 @@ export function EditUserPageContent({
         delete userData.empresaTransporte;
         delete userData.motoristaTransporte;
         delete userData.rotaTransporte;
+        delete (userData as any).unidade;
+        delete (userData as any).modalidade;
       }
       
       if (userData.responsaveis && Array.isArray(userData.responsaveis)) {

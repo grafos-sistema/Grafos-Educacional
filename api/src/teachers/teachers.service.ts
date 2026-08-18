@@ -287,7 +287,13 @@ export class TeachersService {
     });
 
     const subjectAssignments = classSubjects.map((cs) => ({
-      ...cs.class,
+      id: cs.id,
+      classSubjectId: cs.id,
+      classId: cs.class.id,
+      subjectId: cs.subject.id,
+      teacherId,
+      weeklyHours: cs.weeklyHours,
+      class: cs.class,
       subject: cs.subject,
       assignmentType: 'subject',
       assignmentLabel: 'Disciplina atribuída',
