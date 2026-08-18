@@ -2,7 +2,7 @@ ALTER TYPE "UserRole" ADD VALUE IF NOT EXISTS 'SUPER_ADMIN_GLOBAL';
 ALTER TYPE "UserRole" ADD VALUE IF NOT EXISTS 'DIRECTOR';
 
 CREATE TABLE IF NOT EXISTS "institution_units" (
-  "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "id" TEXT PRIMARY KEY DEFAULT (gen_random_uuid()::text),
   "institutionId" TEXT NOT NULL REFERENCES "institutions"("id") ON DELETE CASCADE,
   "name" TEXT NOT NULL,
   "code" TEXT,
@@ -24,9 +24,9 @@ CREATE TABLE IF NOT EXISTS "institution_units" (
 CREATE INDEX IF NOT EXISTS "institution_units_institutionId_idx" ON "institution_units"("institutionId");
 
 CREATE TABLE IF NOT EXISTS "institution_documents" (
-  "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "id" TEXT PRIMARY KEY DEFAULT (gen_random_uuid()::text),
   "institutionId" TEXT NOT NULL REFERENCES "institutions"("id") ON DELETE CASCADE,
-  "unitId" UUID REFERENCES "institution_units"("id") ON DELETE SET NULL,
+  "unitId" TEXT REFERENCES "institution_units"("id") ON DELETE SET NULL,
   "type" TEXT NOT NULL,
   "title" TEXT NOT NULL,
   "filePath" TEXT NOT NULL,
@@ -44,9 +44,9 @@ CREATE INDEX IF NOT EXISTS "institution_documents_unitId_idx" ON "institution_do
 CREATE INDEX IF NOT EXISTS "institution_documents_type_idx" ON "institution_documents"("type");
 
 CREATE TABLE IF NOT EXISTS "user_units" (
-  "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "id" TEXT PRIMARY KEY DEFAULT (gen_random_uuid()::text),
   "userId" TEXT NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
-  "unitId" UUID NOT NULL REFERENCES "institution_units"("id") ON DELETE CASCADE,
+  "unitId" TEXT NOT NULL REFERENCES "institution_units"("id") ON DELETE CASCADE,
   "isActive" BOOLEAN NOT NULL DEFAULT true,
   "isPrimary" BOOLEAN NOT NULL DEFAULT false,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
