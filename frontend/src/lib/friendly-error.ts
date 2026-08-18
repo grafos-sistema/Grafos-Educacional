@@ -93,7 +93,13 @@ function buildFriendlyMessage(rawMessage: string, fallbackMessage: string): Frie
     };
   }
 
-  if (normalized.includes('users_cpf_key') || (normalized.includes('cpf') && normalized.includes('duplicate key'))) {
+  if (
+    normalized.includes('users_cpf_key') ||
+    (normalized.includes('cpf') && normalized.includes('duplicate key')) ||
+    normalized.includes('cpf_already_registered') ||
+    normalized.includes('já existe um usuário com este cpf') ||
+    normalized.includes('ja existe um usuario com este cpf')
+  ) {
     return {
       title: 'CPF ja cadastrado',
       description: 'Esse CPF ja esta em uso por outro usuario. Confira o numero informado antes de tentar novamente.',
