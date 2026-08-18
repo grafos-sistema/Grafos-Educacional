@@ -3,7 +3,7 @@ ALTER TYPE "UserRole" ADD VALUE IF NOT EXISTS 'DIRECTOR';
 
 CREATE TABLE IF NOT EXISTS "institution_units" (
   "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  "institutionId" UUID NOT NULL REFERENCES "institutions"("id") ON DELETE CASCADE,
+  "institutionId" TEXT NOT NULL REFERENCES "institutions"("id") ON DELETE CASCADE,
   "name" TEXT NOT NULL,
   "code" TEXT,
   "slug" TEXT,
@@ -25,7 +25,7 @@ CREATE INDEX IF NOT EXISTS "institution_units_institutionId_idx" ON "institution
 
 CREATE TABLE IF NOT EXISTS "institution_documents" (
   "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  "institutionId" UUID NOT NULL REFERENCES "institutions"("id") ON DELETE CASCADE,
+  "institutionId" TEXT NOT NULL REFERENCES "institutions"("id") ON DELETE CASCADE,
   "unitId" UUID REFERENCES "institution_units"("id") ON DELETE SET NULL,
   "type" TEXT NOT NULL,
   "title" TEXT NOT NULL,
@@ -45,7 +45,7 @@ CREATE INDEX IF NOT EXISTS "institution_documents_type_idx" ON "institution_docu
 
 CREATE TABLE IF NOT EXISTS "user_units" (
   "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  "userId" UUID NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+  "userId" TEXT NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
   "unitId" UUID NOT NULL REFERENCES "institution_units"("id") ON DELETE CASCADE,
   "isActive" BOOLEAN NOT NULL DEFAULT true,
   "isPrimary" BOOLEAN NOT NULL DEFAULT false,
