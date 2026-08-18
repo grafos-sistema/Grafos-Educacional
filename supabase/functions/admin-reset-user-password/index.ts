@@ -115,12 +115,16 @@ Deno.serve(async (req) => {
     }, 409)
   }
 
-  const isGlobal = caller.role === "SUPER_ADMIN_GLOBAL"
-  const isLocal = caller.role === "SUPER_ADMIN"
+  // O role do banco é a fonte de autorização. Normalizamos apenas a
+  // representação para tolerar valores textuais legados sem abrir acesso
+  // baseado em activeProfile/localStorage do frontend.
+  const callerRole = String(caller.role ?? "").trim().toUpperCase()
+  const isGlobal = callerRole === "SUPER_ADMIN_GLOBAL"
+  const isLocal = callerRole === "SUPER_ADMIN"
   if (!isGlobal && !isLocal) {
     return json({
       error: "not_authorized",
-      details: `Esperava SUPER_ADMIN ou SUPER_ADMIN_GLOBAL, recebeu '${caller.role}' (callerId ${caller.id}).`,
+      details: `Esperava SUPER_ADMIN ou SUPER_ADMIN_GLOBAL, recebeu '${callerRole || "(vazio)"}' (callerId ${caller.id}).`,
       authUserId: authUserData.user.id,
       callerInstitutionId: caller.institutionId ?? null,
       callerAuthUserId: (caller.auth_user_id as string | null | undefined) ?? null,
@@ -197,7 +201,7 @@ Deno.serve(async (req) => {
     debug: {
       targetRole: (targetUser as any).role ?? null,
       targetEmail: (targetUser as any).email ?? null,
-      callerRole: caller.role,
+      callerRole,
     },
   })
 })

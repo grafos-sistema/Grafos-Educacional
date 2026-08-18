@@ -1152,10 +1152,24 @@ export const usersService = {
   },
 
   async adminResetPassword(id: string, data: AdminResetPasswordData): Promise<{ message: string }> {
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError || !session?.access_token) {
+      throw new Error('Sessão do Supabase não encontrada ou expirada. Faça login novamente.');
+    }
+
     const { data: result, error } = await supabase.functions.invoke('admin-reset-user-password', {
       body: {
         userId: id,
         newPassword: data.newPassword,
+      },
+      // Deixa explícito que a Edge Function deve autorizar o usuário atual,
+      // evitando qualquer ambiguidade com tokens armazenados por integrações.
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
       },
     });
 

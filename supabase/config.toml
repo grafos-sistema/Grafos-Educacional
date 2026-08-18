@@ -1,4 +1,8 @@
 
+[functions.admin-reset-user-password]
+enabled = true
+verify_jwt = true
+
 [functions.admin-sync-student-parents]
 enabled = true
 verify_jwt = false
