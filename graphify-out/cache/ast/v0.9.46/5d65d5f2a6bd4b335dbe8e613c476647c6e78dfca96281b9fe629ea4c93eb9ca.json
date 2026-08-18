@@ -1,0 +1,1 @@
+{"nodes": [{"id": "$graphify-root$_supabase_migrations_20251209181246_add_attendance_indexes_sql", "label": "20251209181246_add_attendance_indexes.sql", "file_type": "code", "source_file": "supabase/migrations/20251209181246_add_attendance_indexes.sql", "source_location": null}], "edges": []}

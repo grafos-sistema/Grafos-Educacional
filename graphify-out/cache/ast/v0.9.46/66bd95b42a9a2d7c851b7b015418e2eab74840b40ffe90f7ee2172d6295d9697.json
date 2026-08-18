@@ -1,0 +1,1 @@
+{"nodes": [{"id": "$graphify-root$_api_prisma_migrations_20251118182813_allow_same_email_per_institution_migration_sql", "label": "migration.sql", "file_type": "code", "source_file": "api/prisma/migrations/20251118182813_allow_same_email_per_institution/migration.sql", "source_location": null}], "edges": []}

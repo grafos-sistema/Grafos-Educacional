@@ -1,0 +1,1 @@
+{"nodes": [{"id": "$graphify-root$_api_prisma_migrations_20251209181246_add_attendance_indexes_migration_sql", "label": "migration.sql", "file_type": "code", "source_file": "api/prisma/migrations/20251209181246_add_attendance_indexes/migration.sql", "source_location": null}], "edges": []}

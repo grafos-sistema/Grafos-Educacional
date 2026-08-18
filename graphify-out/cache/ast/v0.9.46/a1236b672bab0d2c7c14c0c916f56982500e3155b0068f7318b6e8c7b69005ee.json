@@ -1,0 +1,1 @@
+{"nodes": [{"id": "$graphify-root$_api_prisma_migrations_20251117151641_add_rankings_gamification_migration_sql", "label": "migration.sql", "file_type": "code", "source_file": "api/prisma/migrations/20251117151641_add_rankings_gamification/migration.sql", "source_location": null}], "edges": []}
