@@ -615,12 +615,83 @@ export class UsersService {
   /**
    * Atualiza um usuário
    */
-  async update(id: string, updateUserDto: UpdateUserDto) {
+  async update(
+    id: string,
+    updateUserDto: UpdateUserDto,
+    currentUser: {
+      userId: string;
+      role: UserRole;
+      institutionId?: string | null;
+    },
+  ) {
     // Verifica se usuário existe
-    const existingUser = await this.findOne(id);
+    const existingUser = await this.findOne(id, currentUser);
 
-    const { email, cpf, birthDate, firstName, lastName, state, ...data } =
-      updateUserDto;
+    const {
+      email,
+      cpf,
+      birthDate,
+      firstName,
+      lastName,
+      state,
+      institutionId,
+      institutionIds,
+      ...data
+    } = updateUserDto;
+
+    const isGlobalAdmin =
+      currentUser.role === UserRole.SUPER_ADMIN_GLOBAL ||
+      currentUser.role === UserRole.SUPER_ADMIN;
+
+    if (data.role && data.role !== existingUser.role && !isGlobalAdmin) {
+      throw new ForbiddenException(
+        'Somente administradores globais podem alterar o cargo de um usuário',
+      );
+    }
+
+    const shouldSyncInstitutionLinks =
+      institutionId !== undefined || institutionIds !== undefined;
+    const primaryInstitutionId = institutionId ?? existingUser.institutionId;
+    const requestedInstitutionIds = shouldSyncInstitutionLinks
+      ? Array.from(new Set([primaryInstitutionId, ...(institutionIds ?? [])]))
+      : [];
+
+    if (shouldSyncInstitutionLinks) {
+      if (!primaryInstitutionId || requestedInstitutionIds.length === 0) {
+        throw new BadRequestException(
+          'O usuário precisa estar vinculado a pelo menos uma instituição',
+        );
+      }
+
+      if (!isGlobalAdmin) {
+        const allowedInstitutionIds = await this.getAllowedInstitutionIds(
+          currentUser,
+        );
+        const hasUnauthorizedInstitution = requestedInstitutionIds.some(
+          (requestedId) => !allowedInstitutionIds.includes(requestedId),
+        );
+
+        if (hasUnauthorizedInstitution) {
+          throw new ForbiddenException(
+            'Você não tem permissão para vincular este usuário a uma das instituições selecionadas',
+          );
+        }
+      }
+
+      const activeInstitutions = await this.prisma.institution.findMany({
+        where: {
+          id: { in: requestedInstitutionIds },
+          isActive: true,
+        },
+        select: { id: true },
+      });
+
+      if (activeInstitutions.length !== requestedInstitutionIds.length) {
+        throw new BadRequestException(
+          'Uma ou mais instituições selecionadas não foram encontradas ou estão inativas',
+        );
+      }
+    }
 
     // Verifica email único se fornecido NESTA instituição
     if (email) {
@@ -674,33 +745,50 @@ export class UsersService {
       fullName = `${newFirstName} ${newLastName}`.trim();
     }
 
-    return this.prisma.user.update({
-      where: { id },
-      data: {
-        ...data,
-        email,
-        cpf,
-        birthDate: parsedBirthDate,
-        firstName,
-        lastName,
-        state: state?.toUpperCase(),
-        ...(fullName && { name: fullName }),
-      },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        cpf: true,
-        phone: true,
-        birthDate: true,
-        avatar: true,
-        role: true,
-        institutionId: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+    return this.prisma.$transaction(async (transaction) => {
+      const updatedUser = await transaction.user.update({
+        where: { id },
+        data: {
+          ...data,
+          email,
+          cpf,
+          birthDate: parsedBirthDate,
+          firstName,
+          lastName,
+          state: state?.toUpperCase(),
+          ...(institutionId !== undefined ? { institutionId } : {}),
+          ...(fullName && { name: fullName }),
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          cpf: true,
+          phone: true,
+          birthDate: true,
+          avatar: true,
+          role: true,
+          institutionId: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      if (shouldSyncInstitutionLinks) {
+        await transaction.userInstitution.deleteMany({ where: { userId: id } });
+        await transaction.userInstitution.createMany({
+          data: requestedInstitutionIds.map((requestedId) => ({
+            userId: id,
+            institutionId: requestedId,
+            isActive: true,
+            isPrimary: requestedId === primaryInstitutionId,
+          })),
+        });
+      }
+
+      return updatedUser;
     });
   }
 

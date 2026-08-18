@@ -253,11 +253,10 @@ export class UsersController {
   }
 
   @Patch(':id')
-  @UseGuards(OwnershipGuard)
   @ApiOperation({
     summary: 'Atualizar usuário',
     description:
-      'Usuários podem atualizar apenas seus próprios dados. Admins podem atualizar qualquer usuário.',
+      'Usuários podem atualizar seus próprios dados. Usuários administrativos podem atualizar usuários das instituições permitidas.',
   })
   @ApiResponse({
     status: 200,
@@ -268,8 +267,12 @@ export class UsersController {
   @ApiResponse({ status: 404, description: 'Usuário não encontrado' })
   @ApiResponse({ status: 409, description: 'Email ou CPF já cadastrado' })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(id, updateUserDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ) {
+    return this.usersService.update(id, updateUserDto, currentUser);
   }
 
   @Delete(':id')

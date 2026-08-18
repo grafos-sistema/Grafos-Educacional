@@ -889,9 +889,9 @@ export const usersService = {
             const trimmed = val.trim();
             if (trimmed.includes('/')) {
               const match = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-              obj[key] = match ? `${match[3]}-${match[2]}-${match[1]}T00:00:00.000Z` : trimmed;
+              obj[key] = match ? `${match[3]}-${match[2]}-${match[1]}` : trimmed;
             } else if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
-              obj[key] = `${trimmed.split('T')[0]}T00:00:00.000Z`;
+              obj[key] = trimmed.split('T')[0];
             } else {
               obj[key] = trimmed;
             }
@@ -916,82 +916,28 @@ export const usersService = {
         return obj;
       }, {});
 
-    // Atualiza diretamente no Supabase como fonte primária
+    const apiPayload = {
+      ...filteredUserData,
+      ...(institutionId !== undefined ? { institutionId } : {}),
+      ...(institutionIds !== undefined ? { institutionIds } : {}),
+    };
+
     if (process.env.NODE_ENV !== 'production') {
       // eslint-disable-next-line no-console
-      console.debug('[usersService.update] Payload enviado para Supabase:', {
+      console.debug('[usersService.update] Payload enviado para a API:', {
         userId: id,
-        columns: Object.keys(filteredUserData),
-        birthDate_in: (filteredUserData as any).birthDate ?? null,
-        state_in: (filteredUserData as any).state ?? null,
+        columns: Object.keys(apiPayload),
+        birthDate_in: (apiPayload as any).birthDate ?? null,
+        state_in: (apiPayload as any).state ?? null,
       });
     }
 
-    const { data: updatedRow, error: updateError } = await supabase
-      .from('users')
-      .update({
-        ...filteredUserData,
-        ...(institutionId !== undefined ? { institutionId } : {}),
-        updatedAt: new Date().toISOString(),
-      })
-      .select('id, birthDate, state, updatedAt')
-      .eq('id', id);
-
-    if (updateError) {
-      console.error('[usersService.update] Erro ao atualizar usuário no Supabase:', updateError, {
-        payload: filteredUserData,
-      });
-      throw updateError;
-    }
-
-    if (!updatedRow || updatedRow.length === 0) {
-      const msg =
-        'Nenhuma linha foi atualizada. Verifique se você tem permissão (RLS policy) para editar este usuário.';
-      console.error('[usersService.update] ' + msg, { id, sentPayload: filteredUserData });
-      throw new Error(msg);
-    }
-
-    if (process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
-      console.debug('[usersService.update] Linha atualizada no DB:', updatedRow[0]);
-    }
+    await api.patch<User>(`/users/${id}`, apiPayload, {
+      headers: { 'x-skip-error-toast': '1' },
+    });
 
     const user = await usersService.findOne(id);
 
-    const shouldSyncInstitutionLinks =
-      institutionId !== undefined || institutionIds !== undefined;
-
-    const normalizedInstitutionIds = shouldSyncInstitutionLinks
-      ? Array.from(
-          new Set([institutionId || user.institutionId, ...((institutionIds ?? []) as string[])].filter(Boolean))
-        )
-      : [];
-
-    if (shouldSyncInstitutionLinks && normalizedInstitutionIds.length > 0) {
-      const now = new Date().toISOString();
-      const { error: deleteInstitutionLinksError } = await supabase
-        .from('user_institutions')
-        .delete()
-        .eq('userId', id);
-
-      if (deleteInstitutionLinksError) throw deleteInstitutionLinksError;
-
-      const payload = normalizedInstitutionIds.map((itemId) => ({
-        id: crypto.randomUUID(),
-        userId: id,
-        institutionId: itemId,
-        isActive: true,
-        isPrimary: itemId === (institutionId || user.institutionId),
-        createdAt: now,
-        updatedAt: now,
-      }));
-
-      const { error: insertInstitutionLinksError } = await supabase
-        .from('user_institutions')
-        .insert(payload);
-
-      if (insertInstitutionLinksError) throw insertInstitutionLinksError;
-    }
     if (user.role === 'TEACHER') {
       const teacherPayload = {
         specialization: normalizeOptionalString(specialization) ?? null,

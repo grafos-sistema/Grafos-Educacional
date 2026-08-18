@@ -4,9 +4,11 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Gender } from '@prisma/client';
 import {
   IsBoolean,
+  IsArray,
   IsEnum,
   IsOptional,
   IsString,
+  IsUUID,
   Matches,
   MaxLength,
 } from 'class-validator';
@@ -32,6 +34,16 @@ export class UpdateUserDto extends PartialType(
   @IsOptional()
   @IsString()
   institutionId?: string;
+
+  @ApiProperty({
+    description: 'Instituições adicionais vinculadas ao usuário',
+    required: false,
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  institutionIds?: string[];
 
   @ApiProperty({ required: false })
   @IsOptional()
