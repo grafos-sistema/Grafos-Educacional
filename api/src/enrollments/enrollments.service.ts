@@ -40,10 +40,21 @@ export class EnrollmentsService {
     }
 
     // Verifica se aluno existe e está ativo
+    // Não carregue o usuário inteiro aqui. A coluna legada `users.password`
+    // ainda contém NULL em registros criados pelo Supabase/Auth, enquanto o
+    // schema Prisma antigo a declara como String. Selecionar somente a coluna
+    // necessária evita que a leitura falhe com P2032 antes da matrícula ser
+    // criada.
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
-      include: {
-        user: true,
+      select: {
+        id: true,
+        isActive: true,
+        user: {
+          select: {
+            institutionId: true,
+          },
+        },
       },
     });
 

@@ -822,6 +822,11 @@ export default function UserDetailPage() {
           studentId={user.studentProfile.id}
           studentUserId={user.id}
           institutionId={user.institutionId}
+          currentClassName={user.studentProfile.turma}
+          currentAcademicYearName={user.studentProfile.anoLetivo}
+          currentCourseName={user.studentProfile.curso}
+          currentGrade={user.studentProfile.serie}
+          currentShift={user.studentProfile.turno}
         />
       )}
 

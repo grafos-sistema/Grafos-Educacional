@@ -47,10 +47,14 @@ Deno.serve(async (req) => {
     const now = new Date().toISOString()
 
     // 1. Get all current parents for this student
-    const { data: existingLinks } = await supabase
+    const { data: existingLinks, error: existingLinksError } = await supabase
       .from("student_parents")
       .select("id, parentId")
       .eq("studentId", studentId)
+
+    if (existingLinksError) {
+      return json({ error: "failed_to_read_student_parents", details: existingLinksError.message }, 500)
+    }
 
     const currentLinkIds = new Set((existingLinks || []).map(link => link.id))
 
@@ -67,7 +71,7 @@ Deno.serve(async (req) => {
 
       // Tentar encontrar responsável existente por CPF (prioritário) ou email
       if (resp.cpf || resp.email) {
-        let query = supabase.from("users").select("id").eq("institutionId", institutionId)
+        let query = supabase.from("users").select("id").eq("institutionId", institutionId).eq("role", "PARENT")
         if (resp.cpf && resp.email) {
           query = query.or(`cpf.eq.${resp.cpf},email.eq.${resp.email}`)
         } else if (resp.cpf) {
@@ -81,7 +85,7 @@ Deno.serve(async (req) => {
           parentUserId = existingParent.id
 
           // Atualizar dados do responsável existente
-          await supabase.from("users").update({
+          const { error: parentUpdateError } = await supabase.from("users").update({
             name: nomeCompleto,
             firstName: primeiroNome,
             lastName: ultimoNome,
@@ -89,6 +93,10 @@ Deno.serve(async (req) => {
             whatsapp: resp.whatsapp ?? null,
             updatedAt: now,
           }).eq('id', parentUserId)
+
+          if (parentUpdateError) {
+            return json({ error: "failed_to_update_parent_user", details: parentUpdateError.message }, 500)
+          }
         }
       }
 
@@ -117,7 +125,7 @@ Deno.serve(async (req) => {
 
         if (pAuth?.user) {
           parentUserId = pAuth.user.id
-          await supabase.from("users").insert({
+          const { error: parentInsertError } = await supabase.from("users").insert({
             id: parentUserId,
             auth_user_id: parentUserId,
             email: parentEmail,
@@ -135,6 +143,10 @@ Deno.serve(async (req) => {
             createdAt: now,
             updatedAt: now,
           })
+
+          if (parentInsertError) {
+            return json({ error: "failed_to_create_parent_user", details: parentInsertError.message }, 500)
+          }
         }
       }
 
@@ -149,12 +161,16 @@ Deno.serve(async (req) => {
           parentProfileId = pProfile.id
         } else {
           parentProfileId = crypto.randomUUID()
-          await supabase.from("parents").insert({
+          const { error: parentProfileError } = await supabase.from("parents").insert({
             id: parentProfileId,
             userId: parentUserId,
             createdAt: now,
             updatedAt: now,
           })
+
+          if (parentProfileError) {
+            return json({ error: "failed_to_create_parent_profile", details: parentProfileError.message }, 500)
+          }
         }
 
         // Verificar se o vínculo já existe
@@ -167,16 +183,19 @@ Deno.serve(async (req) => {
 
         if (existingLink) {
           // Atualizar vínculo existente
-          await supabase.from("student_parents").update({
+          const { error: linkUpdateError } = await supabase.from("student_parents").update({
             relationship: resp.parentesco ?? 'Responsável',
             isPrimary: resp.financeiro ?? false,
             notificacoes: resp.notificacoes ?? false,
             podeRetirar: resp.podeRetirar ?? false,
           }).eq("id", existingLink.id)
+          if (linkUpdateError) {
+            return json({ error: "failed_to_update_student_parent_link", details: linkUpdateError.message }, 500)
+          }
           currentLinkIds.delete(existingLink.id)
         } else {
           // Criar novo vínculo
-          await supabase.from("student_parents").insert({
+          const { error: linkInsertError } = await supabase.from("student_parents").insert({
             id: crypto.randomUUID(),
             studentId: studentId,
             parentId: parentProfileId,
@@ -186,6 +205,9 @@ Deno.serve(async (req) => {
             podeRetirar: resp.podeRetirar ?? false,
             createdAt: now,
           })
+          if (linkInsertError) {
+            return json({ error: "failed_to_create_student_parent_link", details: linkInsertError.message }, 500)
+          }
         }
       }
     }
@@ -193,7 +215,10 @@ Deno.serve(async (req) => {
     // 3. Remove links that were deleted in the UI
     if (currentLinkIds.size > 0) {
       const idsToDelete = Array.from(currentLinkIds)
-      await supabase.from("student_parents").delete().in("id", idsToDelete)
+      const { error: deleteLinksError } = await supabase.from("student_parents").delete().in("id", idsToDelete)
+      if (deleteLinksError) {
+        return json({ error: "failed_to_remove_student_parent_links", details: deleteLinksError.message }, 500)
+      }
     }
 
     return json({ success: true }, 200)

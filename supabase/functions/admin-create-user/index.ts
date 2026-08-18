@@ -246,11 +246,16 @@ Deno.serve(async (req: Request) => {
   }
 
   const authUser = authResult.user
+  const createdRelatedAuthIds: string[] = []
 
   const cleanup = async () => {
     await supabase.from("user_institutions").delete().eq("userId", authUser.id)
     await supabase.from("users").delete().eq("id", authUser.id)
     await supabase.auth.admin.deleteUser(authUser.id)
+    for (const relatedAuthId of createdRelatedAuthIds) {
+      await supabase.from("users").delete().eq("id", relatedAuthId)
+      await supabase.auth.admin.deleteUser(relatedAuthId)
+    }
   }
 
   const { data: appUser, error: appUserError } = await supabase
@@ -346,8 +351,12 @@ Deno.serve(async (req: Request) => {
       updatedAt: now,
     })
 
-    if (!studentError) {
-      if (body?.turmaId) {
+    if (studentError) {
+      await cleanup()
+      return json({ error: "failed_to_create_student_profile", details: studentError.message }, 500)
+    }
+
+    if (body?.turmaId) {
         const { data: selectedClass, error: classLookupError } = await supabase
           .from("classes")
           .select("id, institutionId, isActive")
@@ -380,7 +389,7 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      if (body?.healthInfo) {
+    if (body?.healthInfo) {
         await supabase.from("student_health_records").insert({
           id: crypto.randomUUID(),
           studentId: studentId,
@@ -390,7 +399,7 @@ Deno.serve(async (req: Request) => {
         })
       }
 
-      if (body?.transportInfo) {
+    if (body?.transportInfo) {
         await supabase.from("student_transportation").insert({
           id: crypto.randomUUID(),
           studentId: studentId,
@@ -400,7 +409,7 @@ Deno.serve(async (req: Request) => {
         })
       }
 
-      if (body?.responsaveis && Array.isArray(body.responsaveis)) {
+    if (body?.responsaveis && Array.isArray(body.responsaveis)) {
         for (const resp of body.responsaveis) {
           // Apenas o nome é obrigatório; email e CPF são opcionais
           if (!resp.nome?.trim()) continue;
@@ -413,7 +422,7 @@ Deno.serve(async (req: Request) => {
 
           // Tentar encontrar responsável existente por CPF (prioritário) ou email
           if (resp.cpf || resp.email) {
-            let query = supabase.from("users").select("id").eq("institutionId", institutionId)
+            let query = supabase.from("users").select("id").eq("institutionId", institutionId).eq("role", "PARENT")
             if (resp.cpf && resp.email) {
               query = query.or(`cpf.eq.${resp.cpf},email.eq.${resp.email}`)
             } else if (resp.cpf) {
@@ -455,7 +464,8 @@ Deno.serve(async (req: Request) => {
 
             if (pAuth?.user) {
               parentUserId = pAuth.user.id
-              await supabase.from("users").insert({
+              createdRelatedAuthIds.push(parentUserId)
+              const { error: parentUserError } = await supabase.from("users").insert({
                 id: parentUserId,
                 auth_user_id: parentUserId,
                 email: parentEmail,
@@ -474,6 +484,10 @@ Deno.serve(async (req: Request) => {
                 createdAt: now,
                 updatedAt: now,
               })
+              if (parentUserError) {
+                await cleanup()
+                return json({ error: "failed_to_create_parent_user", details: parentUserError.message }, 500)
+              }
             }
           }
 
@@ -490,16 +504,20 @@ Deno.serve(async (req: Request) => {
               parentProfileId = pProfile.id
             } else {
               parentProfileId = crypto.randomUUID()
-              await supabase.from("parents").insert({
+              const { error: parentProfileError } = await supabase.from("parents").insert({
                 id: parentProfileId,
                 userId: parentUserId,
                 createdAt: now,
                 updatedAt: now,
               })
+              if (parentProfileError) {
+                await cleanup()
+                return json({ error: "failed_to_create_parent_profile", details: parentProfileError.message }, 500)
+              }
             }
 
             // Criar vínculo aluno ↔ responsável
-            await supabase.from("student_parents").insert({
+            const { error: studentParentError } = await supabase.from("student_parents").insert({
               id: crypto.randomUUID(),
               studentId: studentId,
               parentId: parentProfileId,
@@ -509,10 +527,13 @@ Deno.serve(async (req: Request) => {
               podeRetirar: resp.podeRetirar ?? false,
               createdAt: now,
             })
+            if (studentParentError) {
+              await cleanup()
+              return json({ error: "failed_to_link_student_parent", details: studentParentError.message }, 500)
+            }
           }
         }
       }
-    }
   }
 
   if (role === "TEACHER") {

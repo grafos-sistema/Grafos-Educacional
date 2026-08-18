@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
@@ -14,15 +14,26 @@ interface StudentClassEnrollmentManagerProps {
   studentId: string;
   studentUserId?: string;
   institutionId?: string | null;
+  currentClassName?: string | null;
+  currentAcademicYearName?: string | null;
+  currentCourseName?: string | null;
+  currentGrade?: string | null;
+  currentShift?: string | null;
 }
 
 export function StudentClassEnrollmentManager({
   studentId,
   studentUserId,
   institutionId,
+  currentClassName,
+  currentAcademicYearName,
+  currentCourseName,
+  currentGrade,
+  currentShift,
 }: StudentClassEnrollmentManagerProps) {
   const queryClient = useQueryClient();
   const [selectedClassId, setSelectedClassId] = useState('');
+  const initialSelectionResolved = useRef(false);
 
   const { data: classesData, isLoading: isLoadingClasses } = useQuery({
     queryKey: ['student-class-options', institutionId],
@@ -43,9 +54,40 @@ export function StudentClassEnrollmentManager({
 
   const activeEnrollment = enrollmentData?.data?.[0];
 
+  const profileClass = useMemo(() => {
+    const className = String(currentClassName ?? '').trim();
+    if (!className) return undefined;
+
+    return (classesData?.data ?? []).find((classItem) => {
+      if (classItem.name !== className) return false;
+      if (currentCourseName && classItem.course?.name !== currentCourseName) return false;
+      if (currentGrade && classItem.grade !== currentGrade) return false;
+      if (currentShift && classItem.shift !== currentShift) return false;
+      if (
+        currentAcademicYearName &&
+        classItem.academicYear &&
+        classItem.academicYear.name !== currentAcademicYearName &&
+        String(classItem.academicYear.year) !== String(currentAcademicYearName).replace(/\D/g, '')
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [
+    classesData?.data,
+    currentAcademicYearName,
+    currentClassName,
+    currentCourseName,
+    currentGrade,
+    currentShift,
+  ]);
+
   useEffect(() => {
-    setSelectedClassId(activeEnrollment?.classId ?? '');
-  }, [activeEnrollment?.classId]);
+    if (initialSelectionResolved.current || isLoadingClasses || isLoadingEnrollment) return;
+
+    setSelectedClassId(activeEnrollment?.classId ?? profileClass?.id ?? '');
+    initialSelectionResolved.current = true;
+  }, [activeEnrollment?.classId, isLoadingClasses, isLoadingEnrollment, profileClass?.id]);
 
   const classOptions = useMemo(
     () => [
@@ -90,8 +132,8 @@ export function StudentClassEnrollmentManager({
       {isLoadingClasses || isLoadingEnrollment ? (
         <LoadingSpinner size="sm" text="Carregando turmas..." />
       ) : (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div className="min-w-0 flex-1">
+        <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:items-end">
+          <div className="w-full max-w-2xl">
             <Select
               label="Turma"
               value={selectedClassId}
@@ -105,6 +147,7 @@ export function StudentClassEnrollmentManager({
             onClick={() => syncMutation.mutate()}
             disabled={!hasChanged || syncMutation.isPending || !institutionId}
             isLoading={syncMutation.isPending}
+            className="min-w-[150px] bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500"
           >
             Salvar turma
           </Button>

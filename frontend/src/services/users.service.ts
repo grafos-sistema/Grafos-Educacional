@@ -1078,13 +1078,18 @@ export const usersService = {
         if (transportError) throw transportError;
       }
 
-      // Sync responsaveis
-      if (responsaveis && Array.isArray(responsaveis)) {
+      // Não sobrescreva vínculos existentes com uma linha vazia quando o
+      // perfil antigo não trouxe os responsáveis por alguma indisponibilidade
+      // temporária. A criação/edição exige ao menos um nome válido.
+      const responsaveisValidos = Array.isArray(responsaveis)
+        ? responsaveis.filter((responsavel: any) => String(responsavel?.nome ?? '').trim())
+        : [];
+      if (responsaveisValidos.length > 0) {
         const { data: syncData, error: syncError } = await supabase.functions.invoke('admin-sync-student-parents', {
           body: {
             studentId,
             institutionId: user.institutionId,
-            responsaveis,
+            responsaveis: responsaveisValidos,
           },
         });
         
@@ -1386,48 +1391,22 @@ export const usersService = {
    * Listar relacionamentos de um pai (seus filhos)
    */
   async getParentChildren(parentId: string): Promise<ParentStudent[]> {
-    const { data: parent, error: parentError } = await supabase
-      .from('parents')
-      .select('id, userId')
-      .eq('userId', parentId)
-      .maybeSingle();
-
-    if (parentError) throw parentError;
-    if (!parent) {
-      throw new Error('Responsável não encontrado');
-    }
-
-    const { data, error } = await supabase
-      .from('student_parents')
-      .select('id, parentId, studentId, relationship, isPrimary, createdAt')
-      .eq('parentId', parent.id);
-
-    if (error) throw error;
-    return loadParentStudentLinks((data ?? []) as StudentParentRow[], 'student');
+    // As telas administrativas precisam consultar a API, que aplica a
+    // autorização por instituição. A leitura direta via Supabase pode ser
+    // filtrada pela RLS e retornar uma lista vazia para Diretor/Coordenador.
+    const response = await api.get<ParentStudent[]>(`/users/${parentId}/children`);
+    return response as unknown as ParentStudent[];
   },
 
   /**
    * Listar relacionamentos de um aluno (seus responsáveis)
    */
   async getStudentParents(studentId: string): Promise<ParentStudent[]> {
-    const { data: student, error: studentError } = await supabase
-      .from('students')
-      .select('id, userId')
-      .eq('userId', studentId)
-      .maybeSingle();
-
-    if (studentError) throw studentError;
-    if (!student) {
-      throw new Error('Aluno não encontrado');
-    }
-
-    const { data, error } = await supabase
-      .from('student_parents')
-      .select('id, parentId, studentId, relationship, isPrimary, createdAt')
-      .eq('studentId', student.id);
-
-    if (error) throw error;
-    return loadParentStudentLinks((data ?? []) as StudentParentRow[], 'parent');
+    // A API é a fonte autorizada para o Diretor/Coordenador. Consultar
+    // student_parents diretamente no navegador fazia a RLS esconder vínculos
+    // existentes sem produzir erro visível.
+    const response = await api.get<ParentStudent[]>(`/users/${studentId}/parents`);
+    return response as unknown as ParentStudent[];
   },
 
   /**
