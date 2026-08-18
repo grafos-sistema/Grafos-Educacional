@@ -7,6 +7,7 @@ import {
   IsInt,
   Min,
   MaxLength,
+  IsBoolean,
 } from 'class-validator';
 
 export class CreateClassDto {
@@ -111,4 +112,14 @@ export class CreateClassDto {
   @IsOptional()
   @IsUUID('4', { message: 'ID do professor titular inválido' })
   mainTeacherId?: string;
+
+  @ApiProperty({
+    description: 'Define se a turma está ativa',
+    example: true,
+    required: false,
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
