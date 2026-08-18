@@ -1,0 +1,1 @@
+{"nodes": [{"id": "$graphify-root$_supabase_migrations_20260624021903_revoke_rls_auto_enable_sql", "label": "20260624021903_revoke_rls_auto_enable.sql", "file_type": "code", "source_file": "supabase/migrations/20260624021903_revoke_rls_auto_enable.sql", "source_location": null}], "edges": []}

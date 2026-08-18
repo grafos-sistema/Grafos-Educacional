@@ -3,7 +3,7 @@
 O repositório agora possui dois workflows:
 
 - `CI`: valida o contrato das migrations e compila API, frontend e landing em Pull Requests e em `main`.
-- `Deploy Supabase`: em um push para `main` que altere `supabase/`, executa `db push` e publica todas as Edge Functions.
+- `Deploy Supabase`: em um push para `main` que altere `supabase/`, valida o histórico, aplica as migrations pendentes com `db push --include-all` e publica as Edge Functions.
 
 O deploy de produção usa `concurrency` para impedir que duas execuções apliquem migrations ao mesmo tempo.
 
@@ -30,28 +30,25 @@ Crie migrations localmente com o CLI:
 ```bash
 supabase migration new nome_da_alteracao
 supabase db reset
-supabase db push --dry-run
 ```
 
-Faça commit da migration e abra um Pull Request. Após o merge em `main`, o workflow aplica somente migrations ainda ausentes no histórico remoto e publica as Edge Functions.
+Faça commit da migration e abra um Pull Request. Após o merge em `main`, o workflow aplica as migrations somente no ambiente de produção e publica as Edge Functions. Não execute `supabase db push --linked` localmente contra produção.
 
 Não use `supabase db reset --linked` em produção: esse comando é destrutivo e deve ficar restrito a ambientes descartáveis.
 
-## Atenção às migrations legadas
+## Histórico reconciliado
 
-O diretório atual contém migrations antigas que não seguem o padrão oficial `YYYYMMDDHHmmss_nome.sql`, incluindo arquivos com timestamps de 8 dígitos e arquivos sem timestamp. O workflow bloqueia o deploy até que isso seja reconciliado.
+As migrations que já estavam registradas no projeto remoto foram alinhadas aos timestamps armazenados em `supabase_migrations.schema_migrations`. Os arquivos atuais seguem o padrão oficial `YYYYMMDDHHmmss_nome.sql`; migrations posteriores permanecem no repositório para serem aplicadas pelo CI quando ainda não estiverem no histórico remoto.
 
-Não renomeie esses arquivos automaticamente: o Supabase compara os timestamps locais com `supabase_migrations.schema_migrations`, e uma renomeação pode fazer uma alteração já aplicada parecer nova.
-
-Faça a reconciliação uma única vez, com acesso ao projeto correto:
+O histórico remoto não deve ser reparado em lote nem alterado manualmente. Se uma nova divergência aparecer, interrompa o deploy e compare primeiro:
 
 ```bash
 supabase link --project-ref hwbnmnbieqcxbejtbsdu
 supabase migration list
-supabase db push --dry-run
+supabase db push --dry-run --include-all
 ```
 
-Compare o histórico remoto com o Git. Para migrations já aplicadas, use `supabase migration repair` somente com o timestamp confirmado no banco; para alterações ainda não aplicadas, crie novos arquivos com timestamp de 14 dígitos. Depois rode `supabase db reset` localmente e faça o merge dessa correção.
+Use `supabase migration repair` somente para timestamps confirmados e somente quando a alteração correspondente já estiver comprovadamente aplicada no banco.
 
 ## Deploy da aplicação
 
