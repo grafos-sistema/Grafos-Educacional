@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
@@ -84,6 +84,20 @@ export default function NewAcademicYearPage() {
   const endDay = watch('endDay');
   const startDate = watch('startDate');
   const selectedUnitId = watch('unitId');
+  const academicYearName = watch('name');
+  const lastGeneratedName = useRef(`Ano Letivo ${currentYear}`);
+
+  useEffect(() => {
+    const generatedName = `Ano Letivo ${selectedYear}`;
+    const nameWasGenerated = academicYearName === lastGeneratedName.current;
+
+    // Atualiza a sugestão quando o ano muda, mas preserva qualquer nome
+    // digitado manualmente pelo usuário.
+    if (nameWasGenerated || !academicYearName?.trim()) {
+      setValue('name', generatedName, { shouldDirty: false });
+      lastGeneratedName.current = generatedName;
+    }
+  }, [academicYearName, selectedYear, setValue]);
 
   useEffect(() => {
     if (!isDirector) return;

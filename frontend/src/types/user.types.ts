@@ -257,11 +257,14 @@ export interface PublicRegisterData {
 }
 
 export interface UpdateUserData {
+  role?: UserRole;
   firstName?: string;
   lastName?: string;
   email?: string;
   cpf?: string;
   socialName?: string;
+  avatar?: string;
+  photo?: FileList | File[] | null;
   phone?: string;
   telefoneFixo?: string;
   birthDate?: string;
@@ -287,6 +290,20 @@ export interface UpdateUserData {
   turno?: string;
   dataMatricula?: string;
   observacoes?: string;
+
+  // Campos achatados usados pelos formulários de aluno
+  tipoSanguineo?: string;
+  alergias?: string;
+  medicamentos?: string;
+  restricoesAlimentares?: string;
+  necessidadesEspeciais?: string;
+  convenioMedico?: string;
+  contatoEmergencia?: string;
+  usaTransporte?: string;
+  tipoTransporte?: string;
+  empresaTransporte?: string;
+  motoristaTransporte?: string;
+  rotaTransporte?: string;
 
   healthInfo?: Record<string, any>;
   transportInfo?: Record<string, any>;

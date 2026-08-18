@@ -39,6 +39,7 @@ interface NavItem {
   pathMapping: Partial<Record<UserRole, string>>; // Role-specific paths
   displayNameMapping?: Partial<Record<UserRole, string>>;
   requiresOriginalRole?: UserRole[];
+  excludedOriginalRoles?: UserRole[];
 }
 
 interface NavigationSection {
@@ -430,6 +431,7 @@ const navigation: NavItem[] = [
     baseRoute: '/academic-years',
     icon: CalendarIcon,
     roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN],
+    excludedOriginalRoles: [UserRole.SUPER_ADMIN_GLOBAL],
     pathMapping: {
       [UserRole.SUPER_ADMIN]: '/admin/academic-years',
       [UserRole.DIRECTOR]: '/admin/academic-years',
@@ -461,9 +463,10 @@ const navigation: NavItem[] = [
     name: 'Comunicados',
     baseRoute: '/communication',
     icon: BellIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT],
+    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT],
     pathMapping: {
       [UserRole.SUPER_ADMIN_GLOBAL]: '/communication',
+      [UserRole.SUPER_ADMIN]: '/communication',
       [UserRole.INSTITUTION_ADMIN]: '/communication',
       [UserRole.COORDINATOR]: '/communication',
       [UserRole.TEACHER]: '/communication',
@@ -509,7 +512,10 @@ export function Sidebar({
   const { startNavigation } = useAuthenticatedNavigation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const currentRole = user?.activeProfile || user?.role;
-  const navigationRole = currentRole;
+  // O Super Admin Global usa a navegação administrativa completa. As exceções
+  // ficam declaradas no próprio item, como no menu de Anos Letivos.
+  const navigationRole =
+    currentRole === UserRole.SUPER_ADMIN_GLOBAL ? UserRole.SUPER_ADMIN : currentRole;
 
   // #region debug-point menu-nav-bounce-sidebar
   const dbgEnabled =
@@ -541,6 +547,9 @@ export function Sidebar({
         if (!navigationRole) return false;
         if (!item.roles.includes(navigationRole)) return false;
         if (item.requiresOriginalRole && !item.requiresOriginalRole.includes(currentRole as UserRole)) {
+          return false;
+        }
+        if (item.excludedOriginalRoles?.includes(currentRole as UserRole)) {
           return false;
         }
         return true;
