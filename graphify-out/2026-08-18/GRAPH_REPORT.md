@@ -1,16 +1,16 @@
-# Graph Report - Grafos-Educacional  (2026-08-17)
+# Graph Report - Grafos-Educacional  (2026-08-18)
 
 ## Corpus Check
-- 778 files · ~1,151,173 words
+- 778 files · ~1,151,185 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 6814 nodes · 12344 edges · 598 communities (443 shown, 155 thin omitted)
+- 6814 nodes · 12344 edges · 599 communities (443 shown, 156 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 73 edges (avg confidence: 0.78)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `89059a9d`
+- Built from commit: `f64b50d7`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -538,9 +538,10 @@
 - zustand
 - support-tickets/page.tsx
 - SkeletonLoader.tsx
-- 📖 Documentação Interativa (Swagger)
-- 🔟 Módulo de Comunicação
-- ✅ 3. Sitemap Dinâmico (sitemap.ts)
+- AppModule
+- 9️⃣ Módulo de Banco de Questões
+- 📞 Informações Técnicas
+- 🔍 Ferramentas de Validação
 
 ## God Nodes (most connected - your core abstractions)
 1. `ApiResponse` - 225 edges
@@ -569,15 +570,15 @@
 ## Import Cycles
 - None detected.
 
-## Communities (598 total, 155 thin omitted)
+## Communities (599 total, 156 thin omitted)
 
 ### Community 0 - "authStore.ts"
 Cohesion: 0.09
 Nodes (58): AcademicYearsPage(), AlunosPage(), ClassesPage(), CoordenadoresPage(), CoursesPage(), DiretoresPage(), ProfessoresPage(), SecretariosPage() (+50 more)
 
 ### Community 1 - "app.module.ts"
-Cohesion: 0.03
-Nodes (79): AcademicPeriodsModule, Module, AcademicYearsModule, Module, AchievementsModule, Module, AnnouncementsModule, Module (+71 more)
+Cohesion: 0.04
+Nodes (77): AcademicPeriodsModule, Module, AcademicYearsModule, Module, AchievementsModule, Module, AnnouncementsModule, Module (+69 more)
 
 ### Community 2 - "schedules/page.tsx"
 Cohesion: 0.14
@@ -1397,11 +1398,11 @@ Nodes (15): Atividades Impressas (Worksheets), Avaliações e Notas, Banco de Qu
 
 ### Community 413 - "📚 Documentação da API - Sistema Grafos"
 Cohesion: 0.14
-Nodes (13): Comandos Úteis, 📚 Documentação da API - Sistema Grafos, Em Desenvolvimento, Em Desenvolvimento 🚧, 📝 Glossário, Implementado ✅, 📞 Informações Técnicas, 🎯 O que é a API? (+5 more)
+Nodes (13): Como Acessar, 📚 Documentação da API - Sistema Grafos, 📖 Documentação Interativa (Swagger), Em Desenvolvimento, Em Desenvolvimento 🚧, Exemplo de Uso do Swagger, 📝 Glossário, Implementado ✅ (+5 more)
 
 ### Community 414 - "📋 Módulos da API"
 Cohesion: 0.14
-Nodes (14): 1️⃣1️⃣ Módulo de Relatórios e Dashboard, 1️⃣ Módulo de Autenticação (Auth), 2️⃣ Módulo de Instituições (Institutions), 3️⃣ Módulo de Usuários (Users), 4️⃣ Módulo de Professores (Teachers), 5️⃣ Módulo de Alunos (Students), 6️⃣ Módulo de Pais/Responsáveis (Parents), 9️⃣ Módulo de Banco de Questões (+6 more)
+Nodes (14): 1️⃣1️⃣ Módulo de Relatórios e Dashboard, 1️⃣ Módulo de Autenticação (Auth), 2️⃣ Módulo de Instituições (Institutions), 3️⃣ Módulo de Usuários (Users), 4️⃣ Módulo de Professores (Teachers), 5️⃣ Módulo de Alunos (Students), 6️⃣ Módulo de Pais/Responsáveis (Parents), Comunicados (Announcements) (+6 more)
 
 ### Community 416 - "✅ Concluído"
 Cohesion: 0.14
@@ -1537,7 +1538,7 @@ Nodes (8): Available Utilities (`src/lib/utils/performance.ts`), debounce / thro
 
 ### Community 449 - "Melhorias de SEO - Grafos Plataforma Educacional"
 Cohesion: 0.25
-Nodes (7): Comandos de Verificação, 🔍 Ferramentas de Validação, Melhorias de SEO - Grafos Plataforma Educacional, Online, Principais Benefícios, 📋 Resumo das Implementações, ✨ Resumo Final
+Nodes (7): ✅ 3. Sitemap Dinâmico (sitemap.ts), Configurações, Melhorias de SEO - Grafos Plataforma Educacional, Principais Benefícios, 📋 Resumo das Implementações, ✨ Resumo Final, URLs Incluídas
 
 ### Community 450 - "STUDENT"
 Cohesion: 0.25
@@ -2043,22 +2044,22 @@ Nodes (3): 🚧 Em Desenvolvimento, ✨ Funcionalidades, 🎯 Próximas Melhoria
 Cohesion: 0.53
 Nodes (5): formatCpf(), formatDateTime(), getStatusBadgeVariant(), SuperAdminSupportTicketsPage(), SuperAdminSupportTickets
 
-### Community 595 - "📖 Documentação Interativa (Swagger)"
+### Community 596 - "9️⃣ Módulo de Banco de Questões"
 Cohesion: 0.50
-Nodes (4): Como Acessar, 📖 Documentação Interativa (Swagger), Exemplo de Uso do Swagger, O que Você Pode Fazer
+Nodes (4): 9️⃣ Módulo de Banco de Questões, Atividades Impressas, Categorias de Questões, Questões
 
-### Community 596 - "🔟 Módulo de Comunicação"
+### Community 597 - "📞 Informações Técnicas"
 Cohesion: 0.50
-Nodes (4): Comunicados (Announcements), Eventos (Events), 🔟 Módulo de Comunicação, Notificações (Notifications)
+Nodes (4): Comandos Úteis, 📞 Informações Técnicas, Requisitos do Sistema, Variáveis de Ambiente
 
-### Community 597 - "✅ 3. Sitemap Dinâmico (sitemap.ts)"
+### Community 598 - "🔍 Ferramentas de Validação"
 Cohesion: 0.67
-Nodes (3): ✅ 3. Sitemap Dinâmico (sitemap.ts), Configurações, URLs Incluídas
+Nodes (3): Comandos de Verificação, 🔍 Ferramentas de Validação, Online
 
 ## Knowledge Gaps
 - **2079 isolated node(s):** `docker-entrypoint.sh script`, `$schema`, `collection`, `sourceRoot`, `deleteOutDir` (+2074 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **155 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **156 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -2074,6 +2075,6 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `authStore.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.09269662921348315 - nodes in this community are weakly interconnected._
 - **Should `app.module.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.03358656537385046 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.03595638078396699 - nodes in this community are weakly interconnected._
 - **Should `schedules/page.tsx` be split into smaller, more focused modules?**
   _Cohesion score 0.13825757575757575 - nodes in this community are weakly interconnected._

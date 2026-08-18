@@ -303,19 +303,6 @@
       "norm_label": "announcementsmodule"
     },
     {
-      "label": "AppModule",
-      "file_type": "code",
-      "source_file": "api/src/app.module.ts",
-      "source_location": "L120",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "id": "api_src_app_module_appmodule",
-      "community": 1,
-      "community_name": "app.module.ts",
-      "norm_label": "appmodule"
-    },
-    {
       "label": "AssignmentsModule",
       "file_type": "code",
       "source_file": "api/src/assignments/assignments.module.ts",
@@ -2776,7 +2763,7 @@
       "label": "CallerRow",
       "file_type": "code",
       "source_file": "supabase/functions/admin-reset-user-password/index.ts",
-      "source_location": "L15",
+      "source_location": "L18",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
@@ -2789,7 +2776,7 @@
       "label": "ResetPasswordBody",
       "file_type": "code",
       "source_file": "supabase/functions/admin-reset-user-password/index.ts",
-      "source_location": "L10",
+      "source_location": "L13",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
@@ -7076,6 +7063,19 @@
       "norm_label": "skeletonloaderprops"
     },
     {
+      "label": "AppModule",
+      "file_type": "code",
+      "source_file": "api/src/app.module.ts",
+      "source_location": "L120",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "id": "api_src_app_module_appmodule",
+      "community": 595,
+      "community_name": "AppModule",
+      "norm_label": "appmodule"
+    },
+    {
       "label": "ActivitiesController",
       "file_type": "code",
       "source_file": "api/src/activities/activities.controller.ts",
@@ -8839,18 +8839,6 @@
       "norm_label": "getusereditroutebyrole()"
     },
     {
-      "label": ".configure()",
-      "file_type": "code",
-      "source_file": "api/src/app.module.ts",
-      "source_location": "L121",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "api_src_app_module_appmodule_configure",
-      "community": 1,
-      "community_name": "app.module.ts",
-      "norm_label": ".configure()"
-    },
-    {
       "label": ".use()",
       "file_type": "code",
       "source_file": "api/src/common/middleware/security-headers.middleware.ts",
@@ -8873,18 +8861,6 @@
       "community": 1,
       "community_name": "app.module.ts",
       "norm_label": "validate()"
-    },
-    {
-      "label": "bootstrap()",
-      "file_type": "code",
-      "source_file": "api/src/main.ts",
-      "source_location": "L10",
-      "_callable": true,
-      "_origin": "ast",
-      "id": "api_src_main_bootstrap",
-      "community": 1,
-      "community_name": "app.module.ts",
-      "norm_label": "bootstrap()"
     },
     {
       "label": "EditInstitutionPage()",
@@ -10990,7 +10966,7 @@
       "label": "checkRoleAccess()",
       "file_type": "code",
       "source_file": "frontend/middleware.ts",
-      "source_location": "L153",
+      "source_location": "L156",
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_middleware_checkroleaccess",
@@ -11002,7 +10978,7 @@
       "label": "getRedirectPathByRole()",
       "file_type": "code",
       "source_file": "frontend/middleware.ts",
-      "source_location": "L132",
+      "source_location": "L133",
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_middleware_getredirectpathbyrole",
@@ -11014,7 +10990,7 @@
       "label": "middleware()",
       "file_type": "code",
       "source_file": "frontend/middleware.ts",
-      "source_location": "L45",
+      "source_location": "L46",
       "_callable": true,
       "_origin": "ast",
       "id": "frontend_middleware_middleware",
@@ -12682,7 +12658,7 @@
       "label": "getJwt()",
       "file_type": "code",
       "source_file": "supabase/functions/admin-reset-user-password/index.ts",
-      "source_location": "L33",
+      "source_location": "L37",
       "_callable": true,
       "_origin": "ast",
       "id": "supabase_functions_admin_reset_user_password_index_getjwt",
@@ -12694,7 +12670,7 @@
       "label": "json()",
       "file_type": "code",
       "source_file": "supabase/functions/admin-reset-user-password/index.ts",
-      "source_location": "L22",
+      "source_location": "L25",
       "_callable": true,
       "_origin": "ast",
       "id": "supabase_functions_admin_reset_user_password_index_json",
@@ -12706,7 +12682,7 @@
       "label": "loadCaller()",
       "file_type": "code",
       "source_file": "supabase/functions/admin-reset-user-password/index.ts",
-      "source_location": "L45",
+      "source_location": "L49",
       "_callable": true,
       "_origin": "ast",
       "id": "supabase_functions_admin_reset_user_password_index_loadcaller",
@@ -21283,6 +21259,30 @@
       "norm_label": "skeletontable()"
     },
     {
+      "label": ".configure()",
+      "file_type": "code",
+      "source_file": "api/src/app.module.ts",
+      "source_location": "L121",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "api_src_app_module_appmodule_configure",
+      "community": 595,
+      "community_name": "AppModule",
+      "norm_label": ".configure()"
+    },
+    {
+      "label": "bootstrap()",
+      "file_type": "code",
+      "source_file": "api/src/main.ts",
+      "source_location": "L10",
+      "_callable": true,
+      "_origin": "ast",
+      "id": "api_src_main_bootstrap",
+      "community": 595,
+      "community_name": "AppModule",
+      "norm_label": "bootstrap()"
+    },
+    {
       "label": ".addQuestion()",
       "file_type": "code",
       "source_file": "api/src/activities/activities.controller.ts",
@@ -25339,17 +25339,6 @@
       "norm_label": "app.module.ts"
     },
     {
-      "label": "Module",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "_origin": "ast",
-      "id": "api_src_app_module_ts_module",
-      "community": 1,
-      "community_name": "app.module.ts",
-      "norm_label": "module"
-    },
-    {
       "label": "assignments.module.ts",
       "file_type": "code",
       "source_file": "api/src/assignments/assignments.module.ts",
@@ -25711,17 +25700,6 @@
       "community": 1,
       "community_name": "app.module.ts",
       "norm_label": "module"
-    },
-    {
-      "label": "main.ts",
-      "file_type": "code",
-      "source_file": "api/src/main.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "api_src_main",
-      "community": 1,
-      "community_name": "app.module.ts",
-      "norm_label": "main.ts"
     },
     {
       "label": "notifications.module.ts",
@@ -26107,17 +26085,6 @@
       "community": 1,
       "community_name": "app.module.ts",
       "norm_label": "module"
-    },
-    {
-      "label": "app.e2e-spec.ts",
-      "file_type": "code",
-      "source_file": "api/test/app.e2e-spec.ts",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "api_test_app_e2e_spec",
-      "community": 1,
-      "community_name": "app.module.ts",
-      "norm_label": "app.e2e-spec.ts"
     },
     {
       "label": "institutions/[id]/edit/page.tsx",
@@ -30879,7 +30846,7 @@
       "label": "config",
       "file_type": "code",
       "source_file": "frontend/middleware.ts",
-      "source_location": "L160",
+      "source_location": "L163",
       "_origin": "ast",
       "id": "frontend_middleware_config",
       "community": 130,
@@ -51992,16 +51959,16 @@
       "norm_label": "api/md/documentacao-cliente.md"
     },
     {
-      "label": "Comandos \u00dateis",
+      "label": "Como Acessar",
       "file_type": "document",
       "node_kind": "heading",
       "source_file": "api/md/DOCUMENTACAO-CLIENTE.md",
-      "source_location": "L741",
+      "source_location": "L620",
       "_origin": "ast",
-      "id": "api_md_documentacao_cliente_comandos_\u00fateis",
+      "id": "api_md_documentacao_cliente_como_acessar",
       "community": 413,
       "community_name": "\ud83d\udcda Documenta\u00e7\u00e3o da API - Sistema Grafos",
-      "norm_label": "comandos uteis"
+      "norm_label": "como acessar"
     },
     {
       "label": "\ud83d\udcda Documenta\u00e7\u00e3o da API - Sistema Grafos",
@@ -52014,6 +51981,18 @@
       "community": 413,
       "community_name": "\ud83d\udcda Documenta\u00e7\u00e3o da API - Sistema Grafos",
       "norm_label": "\ud83d\udcda documentacao da api - sistema grafos"
+    },
+    {
+      "label": "\ud83d\udcd6 Documenta\u00e7\u00e3o Interativa (Swagger)",
+      "file_type": "document",
+      "node_kind": "heading",
+      "source_file": "api/md/DOCUMENTACAO-CLIENTE.md",
+      "source_location": "L618",
+      "_origin": "ast",
+      "id": "api_md_documentacao_cliente_documenta\u00e7\u00e3o_interativa_swagger",
+      "community": 413,
+      "community_name": "\ud83d\udcda Documenta\u00e7\u00e3o da API - Sistema Grafos",
+      "norm_label": "\ud83d\udcd6 documentacao interativa (swagger)"
     },
     {
       "label": "Em Desenvolvimento",
@@ -52040,6 +52019,18 @@
       "norm_label": "em desenvolvimento \ud83d\udea7"
     },
     {
+      "label": "Exemplo de Uso do Swagger",
+      "file_type": "document",
+      "node_kind": "heading",
+      "source_file": "api/md/DOCUMENTACAO-CLIENTE.md",
+      "source_location": "L635",
+      "_origin": "ast",
+      "id": "api_md_documentacao_cliente_exemplo_de_uso_do_swagger",
+      "community": 413,
+      "community_name": "\ud83d\udcda Documenta\u00e7\u00e3o da API - Sistema Grafos",
+      "norm_label": "exemplo de uso do swagger"
+    },
+    {
       "label": "\ud83d\udcdd Gloss\u00e1rio",
       "file_type": "document",
       "node_kind": "heading",
@@ -52064,16 +52055,16 @@
       "norm_label": "implementado \u2705"
     },
     {
-      "label": "\ud83d\udcde Informa\u00e7\u00f5es T\u00e9cnicas",
+      "label": "O que Voc\u00ea Pode Fazer",
       "file_type": "document",
       "node_kind": "heading",
       "source_file": "api/md/DOCUMENTACAO-CLIENTE.md",
-      "source_location": "L702",
+      "source_location": "L625",
       "_origin": "ast",
-      "id": "api_md_documentacao_cliente_informa\u00e7\u00f5es_t\u00e9cnicas",
+      "id": "api_md_documentacao_cliente_o_que_voc\u00ea_pode_fazer",
       "community": 413,
       "community_name": "\ud83d\udcda Documenta\u00e7\u00e3o da API - Sistema Grafos",
-      "norm_label": "\ud83d\udcde informacoes tecnicas"
+      "norm_label": "o que voce pode fazer"
     },
     {
       "label": "\ud83c\udfaf O que \u00e9 a API?",
@@ -52112,18 +52103,6 @@
       "norm_label": "\ud83d\udd2e proximos passos"
     },
     {
-      "label": "Requisitos do Sistema",
-      "file_type": "document",
-      "node_kind": "heading",
-      "source_file": "api/md/DOCUMENTACAO-CLIENTE.md",
-      "source_location": "L704",
-      "_origin": "ast",
-      "id": "api_md_documentacao_cliente_requisitos_do_sistema",
-      "community": 413,
-      "community_name": "\ud83d\udcda Documenta\u00e7\u00e3o da API - Sistema Grafos",
-      "norm_label": "requisitos do sistema"
-    },
-    {
       "label": "\u2705 Status do Projeto",
       "file_type": "document",
       "node_kind": "heading",
@@ -52134,18 +52113,6 @@
       "community": 413,
       "community_name": "\ud83d\udcda Documenta\u00e7\u00e3o da API - Sistema Grafos",
       "norm_label": "\u2705 status do projeto"
-    },
-    {
-      "label": "Vari\u00e1veis de Ambiente",
-      "file_type": "document",
-      "node_kind": "heading",
-      "source_file": "api/md/DOCUMENTACAO-CLIENTE.md",
-      "source_location": "L717",
-      "_origin": "ast",
-      "id": "api_md_documentacao_cliente_vari\u00e1veis_de_ambiente",
-      "community": 413,
-      "community_name": "\ud83d\udcda Documenta\u00e7\u00e3o da API - Sistema Grafos",
-      "norm_label": "variaveis de ambiente"
     },
     {
       "label": "1\ufe0f\u20e31\ufe0f\u20e3 M\u00f3dulo de Relat\u00f3rios e Dashboard",
@@ -68958,52 +68925,37 @@
       "norm_label": "skeletonloader.tsx"
     },
     {
-      "label": "Como Acessar",
-      "file_type": "document",
-      "node_kind": "heading",
-      "source_file": "api/md/DOCUMENTACAO-CLIENTE.md",
-      "source_location": "L620",
+      "label": "Module",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
       "_origin": "ast",
-      "id": "api_md_documentacao_cliente_como_acessar",
+      "id": "api_src_app_module_ts_module",
       "community": 595,
-      "community_name": "\ud83d\udcd6 Documenta\u00e7\u00e3o Interativa (Swagger)",
-      "norm_label": "como acessar"
+      "community_name": "AppModule",
+      "norm_label": "module"
     },
     {
-      "label": "\ud83d\udcd6 Documenta\u00e7\u00e3o Interativa (Swagger)",
-      "file_type": "document",
-      "node_kind": "heading",
-      "source_file": "api/md/DOCUMENTACAO-CLIENTE.md",
-      "source_location": "L618",
+      "label": "main.ts",
+      "file_type": "code",
+      "source_file": "api/src/main.ts",
+      "source_location": "L1",
       "_origin": "ast",
-      "id": "api_md_documentacao_cliente_documenta\u00e7\u00e3o_interativa_swagger",
+      "id": "api_src_main",
       "community": 595,
-      "community_name": "\ud83d\udcd6 Documenta\u00e7\u00e3o Interativa (Swagger)",
-      "norm_label": "\ud83d\udcd6 documentacao interativa (swagger)"
+      "community_name": "AppModule",
+      "norm_label": "main.ts"
     },
     {
-      "label": "Exemplo de Uso do Swagger",
-      "file_type": "document",
-      "node_kind": "heading",
-      "source_file": "api/md/DOCUMENTACAO-CLIENTE.md",
-      "source_location": "L635",
+      "label": "app.e2e-spec.ts",
+      "file_type": "code",
+      "source_file": "api/test/app.e2e-spec.ts",
+      "source_location": "L1",
       "_origin": "ast",
-      "id": "api_md_documentacao_cliente_exemplo_de_uso_do_swagger",
+      "id": "api_test_app_e2e_spec",
       "community": 595,
-      "community_name": "\ud83d\udcd6 Documenta\u00e7\u00e3o Interativa (Swagger)",
-      "norm_label": "exemplo de uso do swagger"
-    },
-    {
-      "label": "O que Voc\u00ea Pode Fazer",
-      "file_type": "document",
-      "node_kind": "heading",
-      "source_file": "api/md/DOCUMENTACAO-CLIENTE.md",
-      "source_location": "L625",
-      "_origin": "ast",
-      "id": "api_md_documentacao_cliente_o_que_voc\u00ea_pode_fazer",
-      "community": 595,
-      "community_name": "\ud83d\udcd6 Documenta\u00e7\u00e3o Interativa (Swagger)",
-      "norm_label": "o que voce pode fazer"
+      "community_name": "AppModule",
+      "norm_label": "app.e2e-spec.ts"
     },
     {
       "label": "Comunicados (Announcements)",
@@ -69054,6 +69006,54 @@
       "norm_label": "notificacoes (notifications)"
     },
     {
+      "label": "Comandos \u00dateis",
+      "file_type": "document",
+      "node_kind": "heading",
+      "source_file": "api/md/DOCUMENTACAO-CLIENTE.md",
+      "source_location": "L741",
+      "_origin": "ast",
+      "id": "api_md_documentacao_cliente_comandos_\u00fateis",
+      "community": 597,
+      "community_name": "\ud83d\udcde Informa\u00e7\u00f5es T\u00e9cnicas",
+      "norm_label": "comandos uteis"
+    },
+    {
+      "label": "\ud83d\udcde Informa\u00e7\u00f5es T\u00e9cnicas",
+      "file_type": "document",
+      "node_kind": "heading",
+      "source_file": "api/md/DOCUMENTACAO-CLIENTE.md",
+      "source_location": "L702",
+      "_origin": "ast",
+      "id": "api_md_documentacao_cliente_informa\u00e7\u00f5es_t\u00e9cnicas",
+      "community": 597,
+      "community_name": "\ud83d\udcde Informa\u00e7\u00f5es T\u00e9cnicas",
+      "norm_label": "\ud83d\udcde informacoes tecnicas"
+    },
+    {
+      "label": "Requisitos do Sistema",
+      "file_type": "document",
+      "node_kind": "heading",
+      "source_file": "api/md/DOCUMENTACAO-CLIENTE.md",
+      "source_location": "L704",
+      "_origin": "ast",
+      "id": "api_md_documentacao_cliente_requisitos_do_sistema",
+      "community": 597,
+      "community_name": "\ud83d\udcde Informa\u00e7\u00f5es T\u00e9cnicas",
+      "norm_label": "requisitos do sistema"
+    },
+    {
+      "label": "Vari\u00e1veis de Ambiente",
+      "file_type": "document",
+      "node_kind": "heading",
+      "source_file": "api/md/DOCUMENTACAO-CLIENTE.md",
+      "source_location": "L717",
+      "_origin": "ast",
+      "id": "api_md_documentacao_cliente_vari\u00e1veis_de_ambiente",
+      "community": 597,
+      "community_name": "\ud83d\udcde Informa\u00e7\u00f5es T\u00e9cnicas",
+      "norm_label": "variaveis de ambiente"
+    },
+    {
       "label": "\u2705 3. Sitemap Din\u00e2mico (sitemap.ts)",
       "file_type": "document",
       "node_kind": "heading",
@@ -69061,7 +69061,7 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "frontend_md_seo_improvements_3_sitemap_din\u00e2mico_sitemap_ts",
-      "community": 597,
+      "community": 598,
       "community_name": "\u2705 3. Sitemap Din\u00e2mico (sitemap.ts)",
       "norm_label": "\u2705 3. sitemap dinamico (sitemap.ts)"
     },
@@ -69073,7 +69073,7 @@
       "source_location": "L60",
       "_origin": "ast",
       "id": "frontend_md_seo_improvements_configura\u00e7\u00f5es",
-      "community": 597,
+      "community": 598,
       "community_name": "\u2705 3. Sitemap Din\u00e2mico (sitemap.ts)",
       "norm_label": "configuracoes"
     },
@@ -69085,7 +69085,7 @@
       "source_location": "L52",
       "_origin": "ast",
       "id": "frontend_md_seo_improvements_urls_inclu\u00eddas",
-      "community": 597,
+      "community": 598,
       "community_name": "\u2705 3. Sitemap Din\u00e2mico (sitemap.ts)",
       "norm_label": "urls incluidas"
     },
@@ -82707,7 +82707,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/middleware.ts",
-      "source_location": "L104",
+      "source_location": "L105",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_middleware_middleware",
@@ -82719,7 +82719,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/middleware.ts",
-      "source_location": "L120",
+      "source_location": "L121",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_middleware_middleware",
@@ -185458,7 +185458,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/middleware.ts",
-      "source_location": "L132",
+      "source_location": "L133",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_middleware",
@@ -185469,7 +185469,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/middleware.ts",
-      "source_location": "L153",
+      "source_location": "L156",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_middleware",
@@ -185480,7 +185480,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/middleware.ts",
-      "source_location": "L160",
+      "source_location": "L163",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_middleware",
@@ -185513,7 +185513,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/middleware.ts",
-      "source_location": "L45",
+      "source_location": "L46",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_middleware",
@@ -208074,7 +208074,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "supabase/functions/admin-reset-user-password/index.ts",
-      "source_location": "L10",
+      "source_location": "L13",
       "weight": 1.0,
       "_origin": "ast",
       "source": "supabase_functions_admin_reset_user_password_index",
@@ -208085,7 +208085,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "supabase/functions/admin-reset-user-password/index.ts",
-      "source_location": "L15",
+      "source_location": "L18",
       "weight": 1.0,
       "_origin": "ast",
       "source": "supabase_functions_admin_reset_user_password_index",
@@ -208096,7 +208096,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "supabase/functions/admin-reset-user-password/index.ts",
-      "source_location": "L22",
+      "source_location": "L25",
       "weight": 1.0,
       "_origin": "ast",
       "source": "supabase_functions_admin_reset_user_password_index",
@@ -208107,7 +208107,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "supabase/functions/admin-reset-user-password/index.ts",
-      "source_location": "L33",
+      "source_location": "L37",
       "weight": 1.0,
       "_origin": "ast",
       "source": "supabase_functions_admin_reset_user_password_index",
@@ -208129,7 +208129,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "supabase/functions/admin-reset-user-password/index.ts",
-      "source_location": "L45",
+      "source_location": "L49",
       "weight": 1.0,
       "_origin": "ast",
       "source": "supabase_functions_admin_reset_user_password_index",
@@ -222855,5 +222855,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "6faaac129d51651e7869e56227c5c6fcc900fc5f"
+  "built_at_commit": "f64b50d7163fee6c9880eda4765fc19081edc4f1"
 }

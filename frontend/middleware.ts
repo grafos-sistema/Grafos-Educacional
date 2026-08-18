@@ -35,6 +35,7 @@ const authRoutes = [
 const roleRoutes: Record<string, string[]> = {
   SUPER_ADMIN_GLOBAL: ['/super-admin', '/admin', '/coordinator', '/professor', '/aluno', '/responsaveis', '/communication'],
   SUPER_ADMIN: ['/super-admin', '/admin', '/coordinator', '/professor', '/aluno', '/responsaveis'],
+  DIRECTOR: ['/admin', '/super-admin/questions'],
   INSTITUTION_ADMIN: ['/admin', '/coordinator', '/professor', '/aluno', '/responsaveis'],
   COORDINATOR: ['/coordinator', '/professor', '/aluno'],
   TEACHER: ['/professor'],
@@ -136,6 +137,8 @@ function getRedirectPathByRole(role: string): string {
     case 'SUPER_ADMIN':
       return '/admin/dashboard';
     case 'INSTITUTION_ADMIN':
+      return '/admin/dashboard';
+    case 'DIRECTOR':
       return '/admin/dashboard';
     case 'COORDINATOR':
       return '/coordinator/dashboard';

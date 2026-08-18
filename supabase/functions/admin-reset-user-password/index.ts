@@ -5,7 +5,10 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST,OPTIONS",
+  "Access-Control-Expose-Headers": "X-Function-Version",
 }
+
+const FUNCTION_VERSION = "2026-08-18-global-only-v2"
 
 type ResetPasswordBody = {
   userId?: string
@@ -26,6 +29,7 @@ function json(data: unknown, status = 200) {
       ...corsHeaders,
       "Content-Type": "application/json",
       Connection: "keep-alive",
+      "X-Function-Version": FUNCTION_VERSION,
     },
   })
 }
@@ -123,6 +127,7 @@ Deno.serve(async (req) => {
   if (!isGlobal) {
     return json({
       error: "not_authorized",
+      functionVersion: FUNCTION_VERSION,
       details: `Esperava SUPER_ADMIN_GLOBAL, recebeu '${callerRole || "(vazio)"}' (callerId ${caller.id}).`,
       authUserId: authUserData.user.id,
       callerInstitutionId: caller.institutionId ?? null,

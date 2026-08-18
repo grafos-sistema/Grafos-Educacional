@@ -41,7 +41,7 @@ jobs:
           test -n "$SUPABASE_PROJECT_REF" || { echo "::error::SUPABASE_PROJECT_REF não está configurado."; exit 1; }
 
       - name: Deploy Edge Functions
-        run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF" --use-api
+        run: supabase functions deploy admin-reset-user-password --project-ref "$SUPABASE_PROJECT_REF" --use-api
 
   deploy-database:
     name: Apply migrations
