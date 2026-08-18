@@ -171,7 +171,11 @@
        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
          <div className={`${compact ? 'mb-4' : 'mb-6'}`}>
            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{title}</h2>
-           <p className="text-sm text-gray-600 dark:text-gray-400">{description}</p>
+           <p className="text-sm text-gray-600 dark:text-gray-400">
+             {currentRole === UserRole.DIRECTOR
+               ? 'Consulte as disciplinas, os professores responsáveis e a carga horária desta turma.'
+               : description}
+           </p>
          </div>
 
          {canManageClassSubjects ? (
@@ -209,12 +213,7 @@
                Vincular
              </Button>
            </div>
-         ) : (
-           <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-4 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-100">
-             Somente `SUPER_ADMIN` e `COORDINATOR` podem vincular ou remover disciplinas da turma.
-             Os vínculos atuais continuam visíveis para consulta.
-           </div>
-         )}
+         ) : null}
 
          {(loadingClassSubjects || loadingSubjects || loadingTeachers) && (
            <div className="flex justify-center py-8">

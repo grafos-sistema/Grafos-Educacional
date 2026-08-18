@@ -975,7 +975,10 @@ export const usersService = {
       }
 
       const refreshedUser = await usersService.findOne(id);
-      if (refreshedUser.teacherProfile) {
+      // `subjectIds` é opcional no modo de edição. Quando o solicitante é
+      // Diretor, os vínculos professor-disciplina ficam apenas para consulta;
+      // não sincronize com [] e não tente apagar vínculos por engano.
+      if (refreshedUser.teacherProfile && subjectIds !== undefined) {
         await import('@/services/teacher-subjects.service').then(({ teacherSubjectsService }) =>
           teacherSubjectsService.syncTeacherSubjects(refreshedUser.teacherProfile!.id, subjectIds ?? [])
         );

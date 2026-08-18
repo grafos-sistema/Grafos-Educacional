@@ -72,6 +72,12 @@ export function EditUserPageContent({
   const activeProfile = useAuthStore((state) => state.activeProfile);
 
   const callerRole = activeProfile ?? currentUser?.role;
+  const canManageTeacherAssignments = [
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+  ].includes(callerRole as UserRole);
 
   // A troca de perfil/localStorage só controla a navegação da interface. A
   // permissão para redefinir senha deve seguir o papel principal vindo do
@@ -396,7 +402,7 @@ export function EditUserPageContent({
             ? data.institutionId.trim()
             : (user?.institutionId ?? ''),
         institutionIds: Array.from(new Set([data.institutionId || user?.institutionId, ...((data as any).institutionIds ?? [])].filter(Boolean))),
-        subjectIds: (data as any).subjectIds ?? [],
+        subjectIds: canManageTeacherAssignments ? ((data as any).subjectIds ?? []) : undefined,
         linkedStudents: (data as any).linkedStudents ?? [],
         
         // Group healthInfo if student
@@ -785,6 +791,7 @@ export function EditUserPageContent({
               directorInstitutionName={directorInstitutionName}
               directorUnitName={directorUnitName}
               defaultUnitId={loadedPrimaryUnitId ?? undefined}
+              canManageTeacherAssignments={canManageTeacherAssignments}
               passwordField={(
                 canManagePassword ? (
                   <div className="space-y-4">

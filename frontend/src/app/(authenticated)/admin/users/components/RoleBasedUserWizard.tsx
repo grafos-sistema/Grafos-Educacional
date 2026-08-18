@@ -111,6 +111,7 @@ interface RoleBasedUserWizardProps {
   directorUnitName?: string | null;
   defaultUnitId?: string;
   onPromoteExistingDirector?: (directorId: string) => void | Promise<void>;
+  canManageTeacherAssignments?: boolean;
 }
 
 const genderOptions = [
@@ -228,6 +229,7 @@ export function RoleBasedUserWizard({
   directorUnitName = null,
   defaultUnitId,
   onPromoteExistingDirector,
+  canManageTeacherAssignments = true,
 }: RoleBasedUserWizardProps) {
   const [activeStepId, setActiveStepId] = useState('identity');
   const [subjectOptions, setSubjectOptions] = useState<SubjectOption[]>([]);
@@ -578,6 +580,8 @@ export function RoleBasedUserWizard({
   };
 
   const toggleSubject = (subjectId: string) => {
+    if (!canManageTeacherAssignments) return;
+
     const next = selectedSubjects.includes(subjectId)
       ? selectedSubjects.filter((id) => id !== subjectId)
       : [...selectedSubjects, subjectId];
@@ -1123,6 +1127,13 @@ export function RoleBasedUserWizard({
               <div>
                 <TabHeader step={activeStep} />
 
+                {!canManageTeacherAssignments && (
+                  <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
+                    As disciplinas vinculadas ao professor estão disponíveis apenas para consulta nesta tela.
+                    A Coordenação, o Administrador da Instituição ou o Super Admin é responsável por incluir ou remover esses vínculos.
+                  </div>
+                )}
+
                 {isLoadingDynamicOptions ? (
                   <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-sm text-gray-500 dark:text-gray-400">
                     Carregando disciplinas...
@@ -1139,7 +1150,9 @@ export function RoleBasedUserWizard({
                       return (
                         <label
                           key={subject.id}
-                          className={`flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-colors ${
+                          className={`flex items-start gap-3 rounded-xl border p-4 transition-colors ${
+                            canManageTeacherAssignments ? 'cursor-pointer' : 'cursor-default opacity-90'
+                          } ${
                             isSelected
                               ? 'border-primary-300 bg-primary-50/80 dark:bg-primary-900/20'
                               : 'border-gray-200 dark:border-gray-700 hover:border-primary-200'
@@ -1149,6 +1162,7 @@ export function RoleBasedUserWizard({
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleSubject(subject.id)}
+                            disabled={!canManageTeacherAssignments}
                             className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                           />
                           <div className="min-w-0">

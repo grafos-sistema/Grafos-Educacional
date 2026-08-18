@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { subjectsService } from '@/services/subjects.service';
 import { UpdateSubjectDto } from '@/types/subject.types';
@@ -22,6 +22,7 @@ import { DEFAULT_SUBJECT_COLOR } from '@/lib/constants/subject-colors';
 
 export default function EditSubjectPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const params = useParams();
   const subjectId = params?.id as string;
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -180,7 +181,14 @@ export default function EditSubjectPage() {
         color: selectedColor,
       };
 
-      await subjectsService.update(subjectId, updateData);
+      const updatedSubject = await subjectsService.update(subjectId, updateData);
+      // Atualiza o detalhe com a resposta do PATCH antes da navegação e invalida
+      // a lista, evitando que o status antigo permaneça no cache por até 60 segundos.
+      queryClient.setQueryData(['subject', subjectId], updatedSubject);
+      await queryClient.invalidateQueries({
+        queryKey: ['subjects'],
+        refetchType: 'all',
+      });
       toast.success('Disciplina atualizada com sucesso!');
       router.push(`/admin/subjects/${subjectId}`);
     } catch (err: any) {

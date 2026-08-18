@@ -3,7 +3,6 @@ import { getApiBaseUrl, getApiConfigurationMessage } from '@/lib/api-url';
 import {
   clearCurrentUserProfileCache,
   fetchCurrentUserProfile,
-  fetchUserInstitutions,
 } from '@/lib/auth-profile';
 import { supabase } from '@/lib/supabase';
 import { AuthResponse, LoginCredentials, User, PublicRegisterData } from '@/types/user.types';
@@ -125,7 +124,32 @@ export const authService = {
   /**
    * Change password (authenticated user)
    */
-  async changePassword(_currentPassword: string, newPassword: string): Promise<void> {
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    if (currentPassword === newPassword) {
+      throw new Error('A nova senha deve ser diferente da senha atual.');
+    }
+
+    const {
+      data: { user: authUser },
+      error: authUserError,
+    } = await supabase.auth.getUser();
+
+    if (authUserError || !authUser?.email) {
+      throw new Error('Sessão do usuário não encontrada. Faça login novamente.');
+    }
+
+    // A troca obrigatória acontece em uma sessão autenticada no Supabase. Revalidar
+    // a senha atual antes do update evita que a mesma senha seja aceita como nova
+    // e impede que uma tentativa com senha incorreta pareça ter dado certo.
+    const { error: verificationError } = await supabase.auth.signInWithPassword({
+      email: authUser.email,
+      password: currentPassword,
+    });
+
+    if (verificationError) {
+      throw new Error('Senha atual incorreta.');
+    }
+
     const { error } = await supabase.auth.updateUser({
       password: newPassword,
       data: {
@@ -163,7 +187,13 @@ export const authService = {
    * Get user institutions
    */
   async getInstitutions(): Promise<UserInstitutionOption[]> {
-    return fetchUserInstitutions();
+    // A consulta direta a user_institutions via REST estava gerando 502/CORS
+    // intermitente no navegador. O backend já possui essa consulta com Prisma e
+    // também devolve a instituição principal; use-o como fonte única para o menu.
+    const response = await api.get<UserInstitutionOption[]>('/auth/institutions', {
+      headers: { 'x-skip-error-toast': '1' },
+    });
+    return response as unknown as UserInstitutionOption[];
   },
 
   /**

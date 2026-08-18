@@ -126,8 +126,12 @@ export default function NewClassPage() {
 
       await classesService.create(classData);
 
-      // Invalidar cache para forçar refresh da lista de turmas
-      await queryClient.invalidateQueries({ queryKey: ['classes'] });
+      // A lista fica inativa enquanto o formulário está aberto. RefetchType=all
+      // garante que ela seja atualizada antes de voltar para a listagem.
+      await queryClient.invalidateQueries({
+        queryKey: ['classes'],
+        refetchType: 'all',
+      });
 
       toast.success('Turma criada com sucesso!');
       router.push('/admin/classes');

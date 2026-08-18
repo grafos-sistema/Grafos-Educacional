@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { subjectsService } from '@/services/subjects.service';
@@ -22,6 +22,7 @@ import { DEFAULT_SUBJECT_COLOR } from '@/lib/constants/subject-colors';
 
 export default function NewSubjectPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
@@ -159,6 +160,17 @@ export default function NewSubjectPage() {
       };
 
       await subjectsService.create(subjectData);
+      // A lista previamente visitada fica inativa enquanto este formulário está aberto.
+      // Invalide também as consultas inativas para que a disciplina apareça imediatamente
+      // ao voltar para a listagem, sem depender de um recarregamento manual.
+      await queryClient.invalidateQueries({
+        queryKey: ['subjects'],
+        refetchType: 'all',
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ['subject-codes'],
+        refetchType: 'all',
+      });
       toast.success('Disciplina criada com sucesso!');
       router.push('/admin/subjects');
     } catch (err: any) {

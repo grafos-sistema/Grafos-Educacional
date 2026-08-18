@@ -21,6 +21,7 @@ export default function ResetPasswordPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hasRecoveryToken, setHasRecoveryToken] = useState(false);
   const [hasAuthenticatedSession, setHasAuthenticatedSession] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -40,6 +41,8 @@ export default function ResetPasswordPage() {
     });
   }, []);
 
+  const isAuthenticatedPasswordChange = hasAuthenticatedSession && !hasRecoveryToken;
+
   const {
     register,
     handleSubmit,
@@ -54,7 +57,21 @@ export default function ResetPasswordPage() {
       setErrorMessage(null);
       setSuccessMessage(null);
 
-      await authService.resetPassword('', data.password);
+      if (isAuthenticatedPasswordChange) {
+        if (!currentPassword) {
+          setErrorMessage('Informe sua senha atual para continuar.');
+          return;
+        }
+
+        if (currentPassword === data.password) {
+          setErrorMessage('A nova senha deve ser diferente da senha atual.');
+          return;
+        }
+
+        await authService.changePassword(currentPassword, data.password);
+      } else {
+        await authService.resetPassword('', data.password);
+      }
 
       if (user) {
         setUser({
@@ -110,6 +127,18 @@ export default function ResetPasswordPage() {
             <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
               {errorMessage}
             </div>
+          )}
+
+          {isAuthenticatedPasswordChange && (
+            <Input
+              label="Senha atual"
+              type="password"
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              helperText="Informe a senha inicial recebida no primeiro acesso. A nova senha precisa ser diferente dela."
+              required
+            />
           )}
 
           <Input

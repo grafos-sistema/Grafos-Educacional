@@ -3,7 +3,6 @@
 import { Fragment } from 'react';
 import { Menu, Transition } from '@headlessui/react';
 import { useAuth } from '@/contexts/AuthContext';
-import { ROLE_LABELS } from '@/constants/roles';
 import { cn } from '@/lib/utils';
 import {
   Cog6ToothIcon,
@@ -111,17 +110,6 @@ export function Header({ title }: HeaderProps) {
             leaveTo="transform opacity-0 scale-95"
           >
             <Menu.Items className="absolute right-0 z-10 mt-2.5 w-64 origin-top-right rounded-xl bg-white py-2 shadow-lg ring-1 ring-secondary-900/5 focus:outline-none">
-              {/* User info */}
-              <div className="px-4 py-3 border-b border-secondary-100">
-                <p className="text-sm font-medium text-secondary-900">
-                  {user?.firstName} {user?.lastName}
-                </p>
-                <p className="text-xs text-secondary-500 mt-0.5">{user?.email}</p>
-                <span className="inline-flex items-center rounded-full bg-primary-50 px-2 py-1 text-xs font-medium text-primary-700 mt-2">
-                  {user?.role && ROLE_LABELS[user.role]}
-                </span>
-              </div>
-
               {/* Profile Switcher */}
               <ProfileSwitcher />
 

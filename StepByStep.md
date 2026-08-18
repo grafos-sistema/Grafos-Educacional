@@ -21,6 +21,8 @@ Use esta ordem para evitar cadastros incompletos:
 
 > Regra principal: não é possível vincular corretamente um Professor a uma Turma antes de existirem o Professor, a Disciplina e a Turma. Por isso o vínculo com Disciplinas acontece no cadastro do Professor, enquanto o vínculo com Turmas é concluído na distribuição das Disciplinas da Turma.
 
+> **Atenção sobre os dois tipos de vínculo:** selecionar uma Disciplina no cadastro do Professor registra as disciplinas que ele pode lecionar. Isso é diferente de colocar esse Professor em uma Turma. O vínculo operacional **Disciplina + Professor + Turma** é feito no detalhe da Turma pela Coordenação ou pelo Super Admin. O Diretor acompanha e revisa esses vínculos, mas não os altera nessa tela.
+
 ## Antes de começar
 
 Se a escola estiver sendo implantada do zero, a equipe de Desenvolvimento — **Super Admin Global**: Eric Victor, Jonhy Moreno e Wesley Martins — deve criar a Instituição e seus Anexos.
@@ -112,6 +114,8 @@ O cadastro do Professor possui duas partes diferentes: vínculo com Disciplinas 
 
 Esse vínculo registra quais Disciplinas fazem parte da atuação do Professor. Ele ainda não define em qual Turma o Professor lecionará.
 
+> Na criação inicial, o Diretor pode selecionar as Disciplinas do Professor no próprio assistente de cadastro. Depois que o Professor já foi salvo, a manutenção desse vínculo fica com a Coordenação, o Administrador da Instituição ou o Super Admin. Quando o Diretor abrir a edição, os vínculos aparecem para consulta e não devem ser modificados por esse fluxo.
+
 ### 6.2 Vincular o Professor às Turmas
 
 O vínculo com Turmas só pode ser concluído depois que as Turmas forem criadas.
@@ -125,7 +129,7 @@ O vínculo com Turmas só pode ser concluído depois que as Turmas forem criadas
 7. Salve o vínculo.
 8. Repita para cada combinação de Disciplina, Professor e Turma.
 
-> Na tela de criação do Professor, o sistema orienta que as Turmas sejam vinculadas depois. Portanto, não considere o cadastro concluído para fins de aula até que as combinações Disciplina + Professor + Turma estejam configuradas.
+> **Quem pode fazer esta etapa:** somente a **Coordenação** ou o **Super Admin** pode vincular e remover Disciplinas/Professores da Turma. O Diretor visualiza os vínculos atuais para acompanhar a organização, mas não recebe controles de alteração. Na tela de criação do Professor, o sistema orienta que as Turmas sejam vinculadas depois; portanto, não considere o cadastro concluído para fins de aula até que as combinações Disciplina + Professor + Turma estejam configuradas.
 
 ## 7. Administrador da Instituição ou Coordenação — criar as Turmas
 
@@ -144,7 +148,7 @@ Após criar cada Turma, siga a etapa **6.2** para distribuir suas Disciplinas e 
 
 ## 8. Coordenação — distribuir Disciplinas, Professores e carga horária
 
-Essa é a etapa que completa o vínculo acadêmico do Professor com as Turmas. O Diretor acompanha e valida a organização; a Coordenação executa a distribuição pedagógica.
+Essa é a etapa que completa o vínculo acadêmico do Professor com as Turmas. O Diretor acompanha e valida a organização; a Coordenação executa a distribuição pedagógica. O Administrador da Instituição apoia os cadastros, mas não substitui a Coordenação na inclusão/remoção da Disciplina da Turma.
 
 Para cada Turma:
 
@@ -256,9 +260,9 @@ Depois de ter Disciplinas e Turmas vinculadas, o Professor deve:
 | Responsável | Responsabilidades principais |
 | --- | --- |
 | Super Admin Global | Criar Instituições, Anexos, Diretores e estrutura global de acesso |
-| Diretor | Criar Anos Letivos dos Anexos, Cursos, Disciplinas, usuários e acompanhar a implantação local |
+| Diretor | Criar Anos Letivos dos Anexos, Cursos, Disciplinas, usuários, selecionar Disciplinas no cadastro inicial do Professor e revisar os vínculos acadêmicos |
 | Administrador da Instituição / Secretário | Apoiar os cadastros administrativos e escolares conforme as permissões atribuídas |
-| Coordenador | Distribuir Disciplinas e Professores nas Turmas, revisar horários e acompanhar a operação pedagógica |
+| Coordenador | Manter os vínculos Professor-Disciplina, distribuir Disciplinas e Professores nas Turmas, revisar horários e acompanhar a operação pedagógica |
 | Professor | Conferir seus vínculos, planejar aulas, registrar conteúdos, frequência, atividades e notas |
 | Aluno | Consultar sua vida escolar e acompanhar atividades e resultados |
 | Responsável | Acompanhar a vida escolar dos Alunos vinculados e manter seus contatos atualizados |
