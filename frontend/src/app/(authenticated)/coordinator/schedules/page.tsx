@@ -26,6 +26,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ClassSubjectsManager } from '@/components/classes/ClassSubjectsManager';
 import { useToast } from '@/hooks/useToast';
+import { presentFriendlyError } from '@/lib/friendly-error';
 import {
   DAYS_OF_WEEK,
   DAY_LABELS,
@@ -120,8 +121,10 @@ export default function SchedulesManagementPage() {
       resetForm();
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.message || 'Erro ao cadastrar horário';
-      toast.error(message);
+      presentFriendlyError(
+        error,
+        'Não foi possível cadastrar este horário. Revise a turma, a disciplina e os horários informados.',
+      );
     },
   });
 
@@ -137,8 +140,10 @@ export default function SchedulesManagementPage() {
       resetForm();
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.message || 'Erro ao atualizar horário';
-      toast.error(message);
+      presentFriendlyError(
+        error,
+        'Não foi possível atualizar este horário. Revise a turma, a disciplina e os horários informados.',
+      );
     },
   });
 
@@ -152,8 +157,7 @@ export default function SchedulesManagementPage() {
       setDeletingSchedule(null);
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.message || 'Erro ao remover horário';
-      toast.error(message);
+      presentFriendlyError(error, 'Não foi possível remover este horário agora.');
     },
   });
 
@@ -195,7 +199,10 @@ export default function SchedulesManagementPage() {
         formData.endTime
       )
     ) {
-      toast.error('Conflito de horário detectado! Já existe outra aula neste horário.');
+      presentFriendlyError(
+        { message: 'Conflito de horário: já existe outra aula agendada neste dia e horário.' },
+        'Escolha outro horário para a turma.',
+      );
       return;
     }
 
@@ -245,7 +252,10 @@ export default function SchedulesManagementPage() {
         editingSchedule.id
       )
     ) {
-      toast.error('Conflito de horário detectado! Já existe outra aula neste horário.');
+      presentFriendlyError(
+        { message: 'Conflito de horário: já existe outra aula agendada neste dia e horário.' },
+        'Escolha outro horário para a turma.',
+      );
       return;
     }
 

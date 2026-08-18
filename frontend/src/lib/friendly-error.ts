@@ -119,6 +119,21 @@ function buildFriendlyMessage(rawMessage: string, fallbackMessage: string): Frie
     };
   }
 
+  if (
+    normalized.includes('conflito de horário') ||
+    normalized.includes('conflito de horario') ||
+    normalized.includes('já tem aula') ||
+    normalized.includes('ja tem aula') ||
+    normalized.includes('já possui aula') ||
+    normalized.includes('ja possui aula')
+  ) {
+    return {
+      title: 'Conflito de horário',
+      description: rawMessage,
+      rawMessage,
+    };
+  }
+
   if (normalized.includes('student_requires_at_least_one_guardian')) {
     return {
       title: 'Responsavel obrigatorio',

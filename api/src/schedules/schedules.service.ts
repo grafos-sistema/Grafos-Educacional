@@ -21,13 +21,14 @@ export class SchedulesService {
       room: string | null;
       class?: { baseRoom: string | null; name: string } | null;
     },
-  >(
-    schedule: T,
-  ) {
+  >(schedule: T) {
     return {
       ...schedule,
       effectiveRoom:
-        schedule.room || schedule.class?.baseRoom || schedule.class?.name || null,
+        schedule.room ||
+        schedule.class?.baseRoom ||
+        schedule.class?.name ||
+        null,
     };
   }
 
@@ -39,11 +40,26 @@ export class SchedulesService {
     return hours * 60 + minutes;
   }
 
+  private dayLabel(dayOfWeek: string): string {
+    const labels: Record<string, string> = {
+      MONDAY: 'segunda-feira',
+      TUESDAY: 'terça-feira',
+      WEDNESDAY: 'quarta-feira',
+      THURSDAY: 'quinta-feira',
+      FRIDAY: 'sexta-feira',
+      SATURDAY: 'sábado',
+      SUNDAY: 'domingo',
+    };
+
+    return labels[dayOfWeek] || 'neste dia';
+  }
+
   /**
    * Valida se há conflito de horário
    */
   private async validateTimeConflict(
     classId: string,
+    teacherId: string | null | undefined,
     dayOfWeek: string,
     startTime: string,
     endTime: string,
@@ -59,29 +75,76 @@ export class SchedulesService {
       );
     }
 
-    // Busca horários existentes para a turma no mesmo dia
+    // Busca horários da turma e, quando houver professor vinculado, também
+    // horários desse professor em qualquer outra turma no mesmo dia.
     const existingSchedules = await this.prisma.classSchedule.findMany({
       where: {
-        classId,
         dayOfWeek: dayOfWeek as any,
         id: excludeScheduleId ? { not: excludeScheduleId } : undefined,
+        OR: [
+          { classId },
+          ...(teacherId ? [{ classSubject: { teacherId } }] : []),
+        ],
+      },
+      include: {
+        class: {
+          select: { name: true },
+        },
+        classSubject: {
+          select: {
+            teacherId: true,
+            subject: {
+              select: { name: true },
+            },
+            teacher: {
+              select: {
+                user: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
     // Verifica conflitos de horário
-    for (const schedule of existingSchedules) {
-      const existingStart = this.timeToMinutes(schedule.startTime);
-      const existingEnd = this.timeToMinutes(schedule.endTime);
+    for (const existingSchedule of existingSchedules) {
+      const existingStart = this.timeToMinutes(existingSchedule.startTime);
+      const existingEnd = this.timeToMinutes(existingSchedule.endTime);
 
-      // Verifica se há sobreposição de horários
+      // Dois intervalos se sobrepõem quando o início de um acontece antes do
+      // término do outro e o término acontece depois do início do outro.
+      // Assim, 08:49–09:40 conflita com 08:00–08:50, enquanto 08:50–09:40
+      // pode começar exatamente quando o horário anterior termina.
       const hasOverlap =
-        (startMinutes >= existingStart && startMinutes < existingEnd) ||
-        (endMinutes > existingStart && endMinutes <= existingEnd) ||
-        (startMinutes <= existingStart && endMinutes >= existingEnd);
+        startMinutes < existingEnd && endMinutes > existingStart;
 
       if (hasOverlap) {
+        const isTeacherConflict =
+          Boolean(teacherId) &&
+          existingSchedule.classSubject?.teacherId === teacherId &&
+          existingSchedule.classId !== classId;
+
+        if (isTeacherConflict) {
+          const teacherUser = existingSchedule.classSubject?.teacher?.user;
+          const teacherName = [teacherUser?.firstName, teacherUser?.lastName]
+            .filter(Boolean)
+            .join(' ');
+          const teacherLabel = teacherName || 'Este professor';
+
+          throw new ConflictException(
+            `${teacherLabel} já tem aula na turma ${existingSchedule.class?.name || 'outra turma'} ` +
+              `na ${this.dayLabel(dayOfWeek)}, das ${existingSchedule.startTime} às ${existingSchedule.endTime}. ` +
+              'Escolha outro horário para evitar conflito.',
+          );
+        }
+
         throw new ConflictException(
-          `Conflito de horário: já existe uma aula agendada de ${schedule.startTime} às ${schedule.endTime} neste dia`,
+          `Conflito de horário: já existe uma aula agendada de ${existingSchedule.startTime} às ${existingSchedule.endTime} neste dia`,
         );
       }
     }
@@ -111,6 +174,11 @@ export class SchedulesService {
     // Verifica se ClassSubject existe e pertence à turma
     const classSubject = await this.prisma.classSubject.findUnique({
       where: { id: classSubjectId },
+      select: {
+        id: true,
+        classId: true,
+        teacherId: true,
+      },
     });
 
     if (!classSubject) {
@@ -122,7 +190,13 @@ export class SchedulesService {
     }
 
     // Valida conflitos de horário
-    await this.validateTimeConflict(classId, dayOfWeek, startTime, endTime);
+    await this.validateTimeConflict(
+      classId,
+      classSubject.teacherId,
+      dayOfWeek,
+      startTime,
+      endTime,
+    );
 
     const createdSchedule = await this.prisma.classSchedule.create({
       data: {
@@ -312,6 +386,7 @@ export class SchedulesService {
 
       await this.validateTimeConflict(
         schedule.classId,
+        schedule.classSubject?.teacherId,
         finalDayOfWeek,
         finalStartTime,
         finalEndTime,
@@ -325,8 +400,7 @@ export class SchedulesService {
         dayOfWeek,
         startTime,
         endTime,
-        room:
-          room !== undefined ? this.normalizeOptionalRoom(room) : undefined,
+        room: room !== undefined ? this.normalizeOptionalRoom(room) : undefined,
       },
       include: {
         class: {
