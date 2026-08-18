@@ -73,7 +73,8 @@ export class PdfService {
     try {
       const page = await browser.newPage();
       await page.setContent(html, {
-        waitUntil: 'networkidle0',
+        // @types/puppeteer 5 não conhece a opção suportada pelo Puppeteer 24.
+        waitUntil: 'networkidle0' as any,
       });
 
       const pdfBuffer = await page.pdf({

@@ -562,6 +562,12 @@ export const usersService = {
           },
         };
       } catch (error) {
+        // A API é a fonte oficial das listagens administrativas. Não faça
+        // fallback silencioso para o Supabase, pois o RLS direto pode
+        // devolver apenas o usuário autenticado e mascarar um erro real do
+        // Railway como uma lista vazia/incompleta.
+        console.error('[usersService.findAll] Falha ao listar usuários pela API', error);
+        throw error;
       }
     }
 

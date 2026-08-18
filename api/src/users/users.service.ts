@@ -684,7 +684,9 @@ export class UsersService {
       institutionId !== undefined || institutionIds !== undefined;
     const primaryInstitutionId = institutionId ?? existingUser.institutionId;
     const requestedInstitutionIds = shouldSyncInstitutionLinks
-      ? Array.from(new Set([primaryInstitutionId, ...(institutionIds ?? [])]))
+      ? Array.from(new Set([primaryInstitutionId, ...(institutionIds ?? [])])).filter(
+          (value): value is string => Boolean(value),
+        )
       : [];
 
     if (shouldSyncInstitutionLinks) {

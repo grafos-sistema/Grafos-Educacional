@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTeacherSubjectDto, BulkCreateTeacherSubjectDto } from './dto';
@@ -125,6 +126,12 @@ export class TeacherSubjectsService {
       throw new NotFoundException('Professor não encontrado');
     }
 
+    if (!teacher.user.institutionId) {
+      throw new BadRequestException(
+        'O professor precisa estar vinculado a uma instituição',
+      );
+    }
+
     // Verificar se todas as disciplinas existem e pertencem à mesma instituição
     const subjects = await this.prisma.subject.findMany({
       where: {
@@ -182,6 +189,12 @@ export class TeacherSubjectsService {
 
     if (!teacher) {
       throw new NotFoundException('Professor não encontrado');
+    }
+
+    if (!teacher.user.institutionId) {
+      throw new BadRequestException(
+        'O professor precisa estar vinculado a uma instituição',
+      );
     }
 
     // Verificar se todas as disciplinas existem e pertencem à mesma instituição

@@ -258,8 +258,9 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   // Foreign Keys
-  institutionId String
-  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  // SUPER_ADMIN_GLOBAL pode existir sem instituição vinculada.
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id], onDelete: Cascade)
 
   // Relations
   teacherProfile  Teacher?
