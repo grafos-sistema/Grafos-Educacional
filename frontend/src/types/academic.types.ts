@@ -27,6 +27,8 @@ export interface AcademicYear {
   endDate: string;
   isActive: boolean;
   institutionId: string;
+  unitId?: string | null;
+  unitName?: string;
   createdAt: string;
   updatedAt: string;
   periods?: AcademicPeriod[];
@@ -65,6 +67,7 @@ export interface CreateAcademicYearDto {
   startDate: string;
   endDate: string;
   institutionId: string;
+  unitId?: string | null;
   isActive?: boolean;
 }
 

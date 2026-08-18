@@ -429,9 +429,10 @@ const navigation: NavItem[] = [
     name: 'Anos Letivos',
     baseRoute: '/academic-years',
     icon: CalendarIcon,
-    roles: [UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN],
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN],
     pathMapping: {
       [UserRole.SUPER_ADMIN]: '/admin/academic-years',
+      [UserRole.DIRECTOR]: '/admin/academic-years',
       [UserRole.INSTITUTION_ADMIN]: '/admin/academic-years',
     },
   },
@@ -508,8 +509,7 @@ export function Sidebar({
   const { startNavigation } = useAuthenticatedNavigation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const currentRole = user?.activeProfile || user?.role;
-  const navigationRole =
-    currentRole === UserRole.SUPER_ADMIN_GLOBAL ? UserRole.SUPER_ADMIN : currentRole;
+  const navigationRole = currentRole;
 
   // #region debug-point menu-nav-bounce-sidebar
   const dbgEnabled =

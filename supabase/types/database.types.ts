@@ -68,6 +68,7 @@ export type Database = {
           isActive: boolean
           name: string
           startDate: string
+          unitId: string | null
           updatedAt: string
           year: number
         }
@@ -79,6 +80,7 @@ export type Database = {
           isActive?: boolean
           name: string
           startDate: string
+          unitId?: string | null
           updatedAt: string
           year: number
         }
@@ -90,6 +92,7 @@ export type Database = {
           isActive?: boolean
           name?: string
           startDate?: string
+          unitId?: string | null
           updatedAt?: string
           year?: number
         }
@@ -99,6 +102,13 @@ export type Database = {
             columns: ["institutionId"]
             isOneToOne: false
             referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academic_years_unitId_fkey"
+            columns: ["unitId"]
+            isOneToOne: false
+            referencedRelation: "institution_units"
             referencedColumns: ["id"]
           },
         ]

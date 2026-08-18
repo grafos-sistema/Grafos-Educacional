@@ -5,6 +5,7 @@ import {
   UpdateAcademicYearDto,
   PaginatedAcademicYears,
 } from '@/types/academic.types';
+import type { InstitutionUnit } from '@/types/institution.types';
 import { supabase } from '@/lib/supabase';
 import { fetchCurrentUserProfile } from '@/lib/auth-profile';
 import api from '@/lib/api';
@@ -13,8 +14,42 @@ export interface AcademicYearsFilterParams {
   page?: number;
   limit?: number;
   institutionId?: string;
+  unitId?: string;
   year?: number;
   isActive?: boolean;
+}
+
+const DIRECTOR_UNIT_COLUMNS =
+  'id, institutionId, name, code, slug, type, managerName, directorUserId, address, numero, complemento, city, state, zipCode, phone, email, isActive, createdAt, updatedAt';
+
+async function attachUnitNames(academicYears: AcademicYear[]) {
+  const unitIds = Array.from(
+    new Set(
+      academicYears
+        .map((academicYear) => academicYear.unitId)
+        .filter((unitId): unitId is string => Boolean(unitId))
+    )
+  );
+
+  if (unitIds.length === 0) return academicYears;
+
+  const { data: units, error } = await supabase
+    .from('institution_units')
+    .select('id, name')
+    .in('id', unitIds);
+
+  if (error) throw error;
+
+  const unitNameMap = new Map(
+    (units ?? []).map((unit) => [unit.id as string, unit.name as string])
+  );
+
+  return academicYears.map((academicYear) => ({
+    ...academicYear,
+    unitName: academicYear.unitId
+      ? unitNameMap.get(academicYear.unitId) ?? undefined
+      : undefined,
+  }));
 }
 
 export const academicYearsService = {
@@ -41,6 +76,10 @@ export const academicYearsService = {
       query = query.eq('isActive', params.isActive);
     }
 
+    if (params.unitId) {
+      query = query.eq('unitId', params.unitId);
+    }
+
     if (typeof params.year === 'number') {
       query = query.eq('year', params.year);
     }
@@ -48,7 +87,7 @@ export const academicYearsService = {
     const { data, error, count } = await query;
     if (error) throw error;
 
-    const academicYears = (data ?? []) as AcademicYear[];
+    const academicYears = await attachUnitNames((data ?? []) as AcademicYear[]);
     const academicYearIds = academicYears.map((academicYear) => academicYear.id);
     const periodsCountMap = new Map<string, number>();
 
@@ -97,7 +136,24 @@ export const academicYearsService = {
       .single();
 
     if (error) throw error;
-    return data as AcademicYear;
+    const [academicYear] = await attachUnitNames([data as AcademicYear]);
+    return academicYear;
+  },
+
+  /**
+   * Lista os Anexos em que o usuário autenticado está cadastrado como Diretor.
+   */
+  async findManagedUnits(): Promise<InstitutionUnit[]> {
+    const profile = await fetchCurrentUserProfile();
+    const { data, error } = await supabase
+      .from('institution_units')
+      .select(DIRECTOR_UNIT_COLUMNS)
+      .eq('directorUserId', profile.id)
+      .eq('isActive', true)
+      .order('name', { ascending: true });
+
+    if (error) throw error;
+    return (data ?? []) as InstitutionUnit[];
   },
 
   /**
@@ -136,6 +192,7 @@ export const academicYearsService = {
       endDate: data.endDate,
       isActive: data.isActive ?? true,
       institutionId,
+      unitId: data.unitId ?? null,
       createdAt: now,
       updatedAt: now,
     };
@@ -147,7 +204,8 @@ export const academicYearsService = {
       .single();
 
     if (error) throw error;
-    return created as AcademicYear;
+    const [academicYear] = await attachUnitNames([created as AcademicYear]);
+    return academicYear;
   },
 
   /**

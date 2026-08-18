@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { academicYearsService } from '@/services/academic-years.service';
 import { CreateAcademicYearDto } from '@/types/academic.types';
 import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/user.types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -65,7 +66,15 @@ export default function NewAcademicYearPage() {
       endMonth: '',
       startDate: '',
       endDate: '',
+      unitId: '',
     },
+  });
+
+  const isDirector = user?.role === UserRole.DIRECTOR;
+  const { data: managedUnits = [], isLoading: isLoadingManagedUnits } = useQuery({
+    queryKey: ['academic-year-managed-units', user?.id],
+    queryFn: () => academicYearsService.findManagedUnits(),
+    enabled: isDirector,
   });
 
   const selectedYear = Number(watch('year')) || currentYear;
@@ -74,6 +83,16 @@ export default function NewAcademicYearPage() {
   const endMonth = watch('endMonth');
   const endDay = watch('endDay');
   const startDate = watch('startDate');
+  const selectedUnitId = watch('unitId');
+
+  useEffect(() => {
+    if (!isDirector) return;
+
+    const selectedUnitStillExists = managedUnits.some((unit) => unit.id === selectedUnitId);
+    if (!selectedUnitStillExists) {
+      setValue('unitId', managedUnits[0]?.id ?? '');
+    }
+  }, [isDirector, managedUnits, selectedUnitId, setValue]);
 
   const startDayOptions = useMemo(
     () => getDayOptions(selectedYear, startMonth),
@@ -127,8 +146,16 @@ export default function NewAcademicYearPage() {
   }, [clearErrors, endDay, endMonth, selectedYear, setValue]);
 
   const onSubmit = async (data: NewAcademicYearFormValues) => {
-    if (!user?.institutionId) {
+    const selectedUnit = managedUnits.find((unit) => unit.id === data.unitId);
+    const institutionId = isDirector ? selectedUnit?.institutionId : user?.institutionId;
+
+    if (!institutionId) {
       setError('Instituição não encontrada');
+      return;
+    }
+
+    if (isDirector && !selectedUnit) {
+      setError('Selecione o Anexo responsável pelo ano letivo');
       return;
     }
 
@@ -136,13 +163,14 @@ export default function NewAcademicYearPage() {
     setError(null);
 
     try {
-      const academicYearData = {
+      const academicYearData: CreateAcademicYearDto = {
         year: parseInt(data.year, 10),
         name: data.name.trim(),
         startDate: data.startDate,
         endDate: data.endDate,
         isActive: data.isActive,
-        institutionId: user.institutionId,
+        institutionId,
+        unitId: isDirector ? selectedUnit?.id : undefined,
       };
 
       await academicYearsService.create(academicYearData);
@@ -180,7 +208,9 @@ export default function NewAcademicYearPage() {
           Novo Ano Letivo
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Preencha os dados para criar um novo ano letivo
+          {isDirector
+            ? 'Crie um Ano Letivo para o Anexo selecionado'
+            : 'Preencha os dados para criar um novo ano letivo'}
         </p>
       </div>
 
@@ -218,6 +248,29 @@ export default function NewAcademicYearPage() {
                 required
               />
             </div>
+            {isDirector ? (
+              <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/50 dark:bg-blue-900/20">
+                <Select
+                  label="Anexo responsável"
+                  options={[
+                    {
+                      value: '',
+                      label: isLoadingManagedUnits ? 'Carregando Anexos...' : 'Selecione um Anexo',
+                    },
+                    ...managedUnits.map((unit) => ({ value: unit.id, label: unit.name })),
+                  ]}
+                  {...register('unitId', {
+                    required: 'Selecione o Anexo responsável',
+                  })}
+                  error={errors.unitId?.message as string | undefined}
+                  disabled={isLoadingManagedUnits || managedUnits.length === 0}
+                  required
+                />
+                <p className="mt-2 text-sm text-blue-800 dark:text-blue-200">
+                  O Diretor só pode criar e gerenciar anos letivos dos Anexos vinculados ao seu usuário.
+                </p>
+              </div>
+            ) : null}
           </div>
 
           {/* Datas */}

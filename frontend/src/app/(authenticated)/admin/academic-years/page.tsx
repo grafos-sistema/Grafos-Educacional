@@ -1,7 +1,7 @@
 'use client';
 
 import { toast } from 'react-hot-toast';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -30,6 +30,8 @@ export default function AcademicYearsPage() {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const isSuperAdmin = user?.role === UserRole.SUPER_ADMIN;
+  const isDirector = user?.role === UserRole.DIRECTOR;
+  const [selectedUnitId, setSelectedUnitId] = useState('');
   const [filters, setFilters] = useState<AcademicYearsFilterParams>({
     page: 1,
     limit: 20,
@@ -43,10 +45,39 @@ export default function AcademicYearsPage() {
   const [isSoftDeleting, setIsSoftDeleting] = useState(false);
   const [isPermanentDeleting, setIsPermanentDeleting] = useState(false);
 
+  const { data: managedUnits = [], isLoading: isLoadingManagedUnits } = useQuery({
+    queryKey: ['academic-year-managed-units', user?.id],
+    queryFn: () => academicYearsService.findManagedUnits(),
+    enabled: isDirector,
+  });
+
+  useEffect(() => {
+    if (!isDirector) return;
+
+    const selectedUnitStillExists = managedUnits.some((unit) => unit.id === selectedUnitId);
+    if (!selectedUnitStillExists) {
+      setSelectedUnitId(managedUnits[0]?.id ?? '');
+    }
+  }, [isDirector, managedUnits, selectedUnitId]);
+
+  const academicYearsFilters = useMemo(
+    () => ({
+      ...filters,
+      institutionId: isDirector
+        ? managedUnits.find((unit) => unit.id === selectedUnitId)?.institutionId
+        : filters.institutionId,
+      unitId: isDirector ? selectedUnitId || undefined : undefined,
+    }),
+    [filters, isDirector, managedUnits, selectedUnitId]
+  );
+
+  const canLoadAcademicYears = !isDirector || (!isLoadingManagedUnits && Boolean(selectedUnitId));
+
   // Buscar anos letivos
   const { data, isLoading } = useQuery({
-    queryKey: ['academic-years', filters],
-    queryFn: () => academicYearsService.findAll(filters),
+    queryKey: ['academic-years', academicYearsFilters],
+    queryFn: () => academicYearsService.findAll(academicYearsFilters),
+    enabled: canLoadAcademicYears,
   });
   const { data: deleteImpact, isLoading: isLoadingDeleteImpact } = useQuery<AcademicYearDeleteImpact>({
     queryKey: ['academic-year-delete-impact', deleteModal.academicYear?.id],
@@ -129,6 +160,15 @@ export default function AcademicYearsPage() {
       ),
     },
     {
+      key: 'unit',
+      label: 'Anexo',
+      render: (academicYear) => (
+        <span className="text-gray-700 dark:text-gray-300">
+          {academicYear.unitName || 'Institucional'}
+        </span>
+      ),
+    },
+    {
       key: 'periods',
       label: 'Períodos',
       render: (academicYear) => (
@@ -196,9 +236,32 @@ export default function AcademicYearsPage() {
           Anos Letivos
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Gerencie os anos letivos da instituição
+          {isDirector
+            ? 'Gerencie os anos letivos dos Anexos sob sua responsabilidade'
+            : 'Gerencie os anos letivos da instituição'}
         </p>
       </div>
+
+      {isDirector ? (
+        <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/50 dark:bg-blue-900/20">
+          <Select
+            label="Anexo sob sua responsabilidade"
+            options={[
+              { value: '', label: isLoadingManagedUnits ? 'Carregando Anexos...' : 'Selecione um Anexo' },
+              ...managedUnits.map((unit) => ({ value: unit.id, label: unit.name })),
+            ]}
+            value={selectedUnitId}
+            onChange={(event) => {
+              setSelectedUnitId(event.target.value);
+              setFilters((current) => ({ ...current, page: 1 }));
+            }}
+            disabled={isLoadingManagedUnits || managedUnits.length === 0}
+          />
+          <p className="mt-2 text-sm text-blue-800 dark:text-blue-200">
+            Cada Anexo possui seus próprios Anos Letivos. Você só pode gerenciar os Anexos vinculados ao seu usuário.
+          </p>
+        </div>
+      ) : null}
 
       {/* Filtros */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6">
@@ -238,19 +301,25 @@ export default function AcademicYearsPage() {
       {/* Header com botão de criar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
         <div>
-          {data && (
+          {isDirector && !isLoadingManagedUnits && managedUnits.length === 0 ? (
+            <p className="text-sm text-amber-700 dark:text-amber-300">
+              Nenhum Anexo está vinculado ao seu usuário como Diretor.
+            </p>
+          ) : data ? (
             <p className="text-sm text-gray-600 dark:text-gray-400">
               {data.meta.total} ano(s) letivo(s) encontrado(s)
             </p>
-          )}
+          ) : null}
         </div>
-        <Button
-          onClick={() => router.push('/admin/academic-years/new')}
-          leftIcon={<PlusIcon className="h-5 w-5" />}
-          className="w-full sm:w-auto"
-        >
-          Novo Ano Letivo
-        </Button>
+        {(!isDirector || managedUnits.length > 0) ? (
+          <Button
+            onClick={() => router.push('/admin/academic-years/new')}
+            leftIcon={<PlusIcon className="h-5 w-5" />}
+            className="w-full sm:w-auto"
+          >
+            Novo Ano Letivo
+          </Button>
+        ) : null}
       </div>
 
       {/* Tabela */}

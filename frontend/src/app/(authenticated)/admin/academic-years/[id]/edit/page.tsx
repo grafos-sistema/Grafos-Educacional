@@ -146,6 +146,20 @@ export default function EditAcademicYearPage() {
             </div>
           </div>
 
+          {academicYear.unitId ? (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/50 dark:bg-blue-900/20">
+              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                Anexo responsável
+              </p>
+              <p className="mt-1 text-sm text-blue-800 dark:text-blue-200">
+                {academicYear.unitName || 'Anexo vinculado'}
+              </p>
+              <p className="mt-1 text-xs text-blue-700 dark:text-blue-300">
+                O Anexo não pode ser alterado depois da criação do ano letivo.
+              </p>
+            </div>
+          ) : null}
+
           {/* Datas */}
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
