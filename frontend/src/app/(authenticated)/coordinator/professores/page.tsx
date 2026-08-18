@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
+  AcademicCapIcon,
   EyeIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
@@ -91,19 +92,39 @@ export default function CoordinatorTeachersPage() {
     {
       key: 'actions',
       label: 'Ações',
-      className: 'w-20',
+      className: 'w-28',
       render: (teacher) => (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            router.push(`/coordinator/professores/${teacher.id}`);
-          }}
-          className="text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400"
-          title="Visualizar dados"
-        >
-          <EyeIcon className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/coordinator/professores/${teacher.id}`);
+            }}
+            className="text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400"
+            title="Visualizar dados"
+            aria-label={`Visualizar ${teacher.firstName} ${teacher.lastName}`}
+          >
+            <EyeIcon className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (teacher.teacherProfile?.id) {
+                router.push(
+                  `/coordinator/academic-distribution?teacherId=${encodeURIComponent(teacher.teacherProfile.id)}`
+                );
+              }
+            }}
+            disabled={!teacher.teacherProfile?.id}
+            className="text-emerald-600 transition-colors hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-emerald-400"
+            title="Definir disciplinas"
+            aria-label={`Definir disciplinas de ${teacher.firstName} ${teacher.lastName}`}
+          >
+            <AcademicCapIcon className="h-5 w-5" />
+          </button>
+        </div>
       ),
     },
   ];

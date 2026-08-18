@@ -92,10 +92,17 @@ export default function CoordinatorTeacherDetailPage() {
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <p className="text-gray-600 dark:text-gray-400">Informações completas do professor</p>
           <Button
-            onClick={() => router.push('/coordinator/academic-distribution')}
+            onClick={() => {
+              if (teacherProfileId) {
+                router.push(
+                  `/coordinator/academic-distribution?teacherId=${encodeURIComponent(teacherProfileId)}`
+                );
+              }
+            }}
+            disabled={!teacherProfileId}
             leftIcon={<AcademicCapIcon className="h-4 w-4" />}
           >
-            Gerenciar distribuição
+            Definir disciplinas
           </Button>
         </div>
       </div>
@@ -117,7 +124,7 @@ export default function CoordinatorTeacherDetailPage() {
           </div>
         ) : (
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Nenhuma disciplina habilitada. Use “Gerenciar distribuição” para configurar.
+            Nenhuma disciplina habilitada. Use “Definir disciplinas” para configurar.
           </p>
         )}
       </div>

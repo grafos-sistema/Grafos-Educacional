@@ -70,6 +70,13 @@ export default function AcademicDistributionPage() {
     setSelectedSubjectIds(teacherSubjects.map((item) => item.subjectId));
   }, [teacherId, teacherSubjects]);
 
+  useEffect(() => {
+    const requestedTeacherId = new URLSearchParams(window.location.search).get('teacherId');
+    if (requestedTeacherId) {
+      setTeacherId(requestedTeacherId);
+    }
+  }, []);
+
   const teacherOptions = useMemo(
     () => [
       { value: '', label: 'Selecione um professor' },

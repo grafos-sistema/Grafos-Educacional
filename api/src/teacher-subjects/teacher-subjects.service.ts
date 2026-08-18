@@ -102,7 +102,13 @@ export class TeacherSubjectsService {
     // Verificar se professor existe
     const teacher = await this.prisma.teacher.findUnique({
       where: { id: teacherId },
-      include: { user: true },
+      include: {
+        user: {
+          select: {
+            institutionId: true,
+          },
+        },
+      },
     });
 
     if (!teacher) {
@@ -163,7 +169,13 @@ export class TeacherSubjectsService {
     // Verificar se professor existe
     const teacher = await this.prisma.teacher.findUnique({
       where: { id: teacherId },
-      include: { user: true },
+      include: {
+        user: {
+          select: {
+            institutionId: true,
+          },
+        },
+      },
     });
 
     if (!teacher) {
@@ -228,7 +240,13 @@ export class TeacherSubjectsService {
     // Verificar se professor existe
     const teacher = await this.prisma.teacher.findUnique({
       where: { id: teacherId },
-      include: { user: true },
+      include: {
+        user: {
+          select: {
+            institutionId: true,
+          },
+        },
+      },
     });
 
     if (!teacher) {

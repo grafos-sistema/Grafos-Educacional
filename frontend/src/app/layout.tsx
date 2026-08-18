@@ -147,13 +147,27 @@ export default function RootLayout({
                 // no navegador e podem lançar este erro fora do código da aplicação.
                 // Interceptamos somente essa assinatura conhecida para não ocultar
                 // erros reais do Grafos.
+                function isKnownWebVitalsError(message, stack) {
+                  return (
+                    message.indexOf("reading 'startTime'") !== -1 &&
+                    (stack.indexOf('reportAllChanges') !== -1 || stack === '')
+                  );
+                }
+
                 window.addEventListener('error', function(event) {
                   var message = String(event.message || '');
                   var stack = event.error && event.error.stack ? String(event.error.stack) : '';
-                  if (
-                    message.indexOf("reading 'startTime'") !== -1 &&
-                    stack.indexOf('reportAllChanges') !== -1
-                  ) {
+                  if (isKnownWebVitalsError(message, stack)) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                  }
+                }, true);
+
+                window.addEventListener('unhandledrejection', function(event) {
+                  var reason = event.reason || {};
+                  var message = String(reason.message || reason || '');
+                  var stack = reason.stack ? String(reason.stack) : '';
+                  if (isKnownWebVitalsError(message, stack)) {
                     event.preventDefault();
                     event.stopImmediatePropagation();
                   }
