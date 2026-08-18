@@ -1,16 +1,16 @@
 # Graph Report - Grafos-Educacional  (2026-08-17)
 
 ## Corpus Check
-- 778 files · ~1,150,957 words
+- 778 files · ~1,151,173 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 6812 nodes · 12342 edges · 594 communities (437 shown, 157 thin omitted)
+- 6814 nodes · 12344 edges · 598 communities (443 shown, 155 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 73 edges (avg confidence: 0.78)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `0dd29267`
+- Built from commit: `89059a9d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -18,7 +18,7 @@
 - authStore.ts
 - app.module.ts
 - schedules/page.tsx
-- services/rankings.service.ts
+- supabase.ts
 - AssignmentsController
 - AttendancesService
 - ActivitiesController
@@ -32,11 +32,11 @@
 - CreateTeacherDto
 - ParentStudentsService
 - hero/index.ts
-- QueryEventDto
+- events.controller.ts
 - SchedulesService
 - ClassSubjectRequestsService
 - CreateGradeDto
-- AnnouncementsService
+- CreateAnnouncementDto
 - CreateCourseDto
 - PrismaService
 - CreateLessonContentDto
@@ -62,11 +62,11 @@
 - CreateAcademicYearDto
 - ObservationsService
 - ClassesService
-- activities.service.ts
+- activities.controller.ts
 - CreateClassSubjectDto
 - cn
 - 20251021184836_/migration.sql
-- IDEBService
+- CreateIDEBTargetDto
 - 20251021184836_initial_schema.sql
 - ApiResponse
 - QuestionsController
@@ -75,25 +75,25 @@
 - CreateSubjectDto
 - users/[id]/edit/page.tsx
 - question-categories.controller.ts
-- support-tickets.service.ts
+- LoginHelpModal.tsx
 - Guia de Implantação: Separação Landing Page e Sistema Municipal
 - AuthController
 - GradesController
-- teacher-subjects.controller.ts
+- TeacherSubjectsService
 - Melhorias Implementadas - API Backend
 - dependencies
-- classes.controller.ts
+- EnrollmentsService
 - ♿ Relatório de Acessibilidade - WCAG 2.1 AA
 - 📚 Documentação do Sistema Grafos - Plataforma Educacional
-- activities.controller.ts
+- jwt-auth.guard.ts
 - DashboardService
 - TeacherSubjectsController
-- questions/page.tsx
+- layout-routes.tsx
 - 🐳 Docker + Deploy - Sistema de Gestão Escolar
 - EventsController
 - ✅ Checklist Diário - Grafos para 100%
 - compilerOptions
-- AuthContext.tsx
+- providers.tsx
 - InstitutionsController
 - ParentsController
 - NotificationsController
@@ -106,14 +106,14 @@
 - ✅ Relatório Completo de Melhorias - Frontend
 - ⚡ Relat
 - FilterBuilder
-- InstitutionGuard
+- auth.module.ts
 - scripts
 - Docker Setup - Sistema de Gestão Escolar
 - accessibility.ts
 - 20260624_integrate_auth_users.sql
 - AchievementsController
 - AuthService
-- CreateAssignmentDto
+- GradeSubmissionDto
 - date.validator.ts
 - EventsService
 - CreateUserDto
@@ -129,8 +129,8 @@
 - api-common-responses.decorator.ts
 - filter.dto.ts
 - manifest.json
-- professor/subject-requests/page.tsx
-- SubjectColorPicker.tsx
+- services/class-subject-requests.service.ts
+- subjects/[id]/edit/page.tsx
 - setup.sh
 - jest
 - "exams"
@@ -147,13 +147,13 @@
 - CreateNotificationDto
 - middleware.ts
 - Changelog: Separação Landing Page e Sistema Municipal
-- useAuth
+- AuthContext.tsx
 - Customização por Município
 - devDependencies
 - public-create-support-ticket/index.ts
 - database.types.ts
 - api/package.json
-- UpdateAcademicPeriodDto
+- api.ts
 - EnvironmentVariables
 - admin-create-user/index.ts
 - 20260804143000_fix_global_admin_profile_updates.sql
@@ -161,7 +161,7 @@
 - 🌐 API Endpoints - To Do List
 - 🏗️ Arquitetura do Frontend
 - 20251116025033_add_rankings_gamification/migration.sql
-- AcademicPeriodsService
+- LessonPlansService
 - ✅ Pontos Fortes
 - AttendancesController
 - 🚀 Sistema Grafos - Otimizações de Performance IMPLEMENTADAS
@@ -189,7 +189,7 @@
 - "class_subject_requests"
 - "institution_units"
 - bootstrap-global-admin.ts
-- AppModule
+- AnnouncementsController
 - 📚 Arquivos de Referência
 - ChangePasswordDto
 - Toast.tsx
@@ -199,17 +199,17 @@
 - TC006_patchinstitutionswithvalididanddata.py
 - "teacher_attendances"
 - SecurityLoggerInterceptor
-- CreateActivityDto
+- TeachersController
 - Sistema de Tratamento de Erros
 - app/[institution]/page.tsx
-- ObservationsController
+- AnnouncementsService
 - deno-ambient.d.ts
 - onboard/index.ts
 - "teacher_attendances"
 - public.can_access_institution
 - PublicRegisterDto
 - 20251116140545_add_ideb_tracking/migration.sql
-- SecurityHeadersMiddleware
+- CoursesController
 - backup.sh script
 - sitemap.ts
 - imports
@@ -350,12 +350,12 @@
 - public.institutions
 - public.announcements
 - "users"
-- CalendarQueryDto
-- CreateEventDto
+- IDEBService
+- class-options.ts
 - TestSprite: onboard a repo with a seed test suite
 - QueryActivityDto
-- UpcomingEventsQueryDto
-- PdfService
+- BulkAttendanceDto
+- activities.module.ts
 - TEACHER
 - 📚 Documentação da API - Sistema Grafos
 - 📋 Módulos da API
@@ -365,7 +365,7 @@
 - 4. Segurança Adicional
 - GRAFOS EDUCACIONAL
 - api/README.md
-- InstitutionsService
+- CreateAssignmentDto
 - ❌ Arquivos COM alert() - PRECISAM SER CONVERTIDOS
 - INSTITUTION_ADMIN
 - 🎉 Conquistas - MVP FASE 1 COMPLETO!
@@ -404,7 +404,7 @@
 - Tecnologias Utilizadas
 - 📚 FASE 5: Gestão Pedagógica
 - 🎯 Prioridades de Implementação
-- grade-level.validator.ts
+- parent-students.controller.ts
 - Componentes Criados
 - API Interceptor (`src/lib/api.ts`)
 - 🎯 Prioridades de Implementação
@@ -458,17 +458,17 @@
 - Exemplo Completo
 - DTOs Base
 - Ordenação Avançada
-- 9️⃣ Módulo de Banco de Questões
+- AssignmentsService
 - useAuthStore
 - 📦 FASE 1: Configuração Base e Infraestrutura
 - 🔐 FASE 2: Autenticação e Autorização
 - ❓ FASE 6: Banco de Questões e Atividades Impressas
 - 📢 FASE 7: Comunicação e Notificações
 - 🧪 FASE 9: Testes e Qualidade
-- OwnershipGuard
-- ParentGuard
-- StudentGuard
-- SuperAdminGuard
+- login/admin/page.tsx
+- QuestionsService
+- AddQuestionDto
+- QueryQuestionDto
 - IsCPFConstraint
 - 📁 Estrutura de Arquivos
 - 🍪 Gerenciamento de Tokens
@@ -493,7 +493,7 @@
 - 🎨 MELHORIAS DE FLUXO E UX
 - StepByStep.md
 - Performance
-- api-paginated-response.decorator.ts
+- SubmitAssignmentDto
 - 🎯 AuthContext & Zustand Store
 - 🎨 Design System
 - 🔄 Fluxo de Redirecionamento
@@ -505,7 +505,7 @@
 - ⚙️ FASE 9: Configurações e Administração
 - 🎨 Design System e Bibliotecas
 - ✅ 2. Open Graph e Twitter Cards (layout.tsx:46-68)
-- 📞 Informações Técnicas
+- .uploadImage
 - ✅ 4. Robots.txt (robots.ts)
 - ✅ 7. Otimização de Imagens
 - ✅ 8. PWA & Mobile (manifest.json)
@@ -536,7 +536,11 @@
 - @tanstack/react-query
 - zod
 - zustand
-- 🔍 Ferramentas de Validação
+- support-tickets/page.tsx
+- SkeletonLoader.tsx
+- 📖 Documentação Interativa (Swagger)
+- 🔟 Módulo de Comunicação
+- ✅ 3. Sitemap Dinâmico (sitemap.ts)
 
 ## God Nodes (most connected - your core abstractions)
 1. `ApiResponse` - 225 edges
@@ -551,65 +555,65 @@
 10. `LoadingSpinner()` - 48 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `TeacherRankingsPage()` --indirect_call--> `fetchCurrentUserProfile()`  [INFERRED]
-  frontend/src/app/(authenticated)/professor/rankings/page.tsx → frontend/src/lib/auth-profile.ts
 - `restore.sh script` --calls--> `backup.sh script`  [EXTRACTED]
   restore.sh → backup.sh
-- `SuperAdminLoginPage()` --calls--> `useAuth()`  [EXTRACTED]
-  frontend/src/app/(auth)/login/super-admin/page.tsx → frontend/src/contexts/AuthContext.tsx
+- `ResetPasswordPage()` --calls--> `useAuthStore`  [EXTRACTED]
+  frontend/src/app/(auth)/reset-password/page.tsx → frontend/src/stores/authStore.ts
 - `NewCoursePage()` --calls--> `useAuthStore`  [EXTRACTED]
   frontend/src/app/(authenticated)/admin/courses/new/page.tsx → frontend/src/stores/authStore.ts
 - `AdminRankingsPage()` --calls--> `useAuthStore`  [EXTRACTED]
   frontend/src/app/(authenticated)/admin/rankings/page.tsx → frontend/src/stores/authStore.ts
+- `NewUserPageContentProps` --references--> `UserRole`  [EXTRACTED]
+  frontend/src/app/(authenticated)/admin/users/new/page.tsx → frontend/src/types/user.types.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (594 total, 157 thin omitted)
+## Communities (598 total, 155 thin omitted)
 
 ### Community 0 - "authStore.ts"
-Cohesion: 0.12
-Nodes (48): AcademicYearsPage(), ClassesPage(), CoursesPage(), DiretoresPage(), SecretariosPage(), SubjectsPage(), genderLabels, roleLabels (+40 more)
+Cohesion: 0.09
+Nodes (58): AcademicYearsPage(), AlunosPage(), ClassesPage(), CoordenadoresPage(), CoursesPage(), DiretoresPage(), ProfessoresPage(), SecretariosPage() (+50 more)
 
 ### Community 1 - "app.module.ts"
-Cohesion: 0.04
-Nodes (73): AcademicPeriodsModule, Module, AcademicYearsModule, Module, AchievementsModule, Module, ActivitiesModule, Module (+65 more)
+Cohesion: 0.03
+Nodes (79): AcademicPeriodsModule, Module, AcademicYearsModule, Module, AchievementsModule, Module, AnnouncementsModule, Module (+71 more)
 
 ### Community 2 - "schedules/page.tsx"
 Cohesion: 0.14
 Nodes (27): AdminGradeView, AdminScheduleTab, TeacherSchedulesPage(), CoordinatorTab, SchedulesManagementPage(), ViewMode, EnrichedScheduleItem, ProfessorMySchedulePage() (+19 more)
 
-### Community 3 - "services/rankings.service.ts"
-Cohesion: 0.07
-Nodes (32): AdminRankingsPage(), periodLabels, periodOptions, periodLabels, periodOptions, CoordinatorRankingsPage(), periodLabels, periodOptions (+24 more)
+### Community 3 - "supabase.ts"
+Cohesion: 0.04
+Nodes (63): ResetPasswordPage(), NewCoursePage(), AdminRankingsPage(), periodLabels, periodOptions, periodLabels, periodOptions, CoordinatorRankingsPage() (+55 more)
 
 ### Community 4 - "AssignmentsController"
-Cohesion: 0.13
-Nodes (17): AssignmentsController, ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiTags, Body, Controller (+9 more)
+Cohesion: 0.20
+Nodes (15): AssignmentsController, ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiTags, Body, Controller (+7 more)
 
 ### Community 5 - "AttendancesService"
-Cohesion: 0.06
-Nodes (27): AttendancesService, Injectable, AttendanceResponseDto, ApiProperty, BulkAttendanceDto, StudentAttendanceDto, ApiProperty, IsArray (+19 more)
+Cohesion: 0.09
+Nodes (14): AttendancesService, Injectable, AttendanceResponseDto, ApiProperty, CreateAttendanceDto, ApiProperty, IsDateString, IsEnum (+6 more)
 
 ### Community 6 - "ActivitiesController"
-Cohesion: 0.26
-Nodes (14): ActivitiesController, ApiBearerAuth, ApiOperation, ApiParam, ApiTags, Body, Controller, CurrentUser (+6 more)
+Cohesion: 0.24
+Nodes (15): ActivitiesController, ApiBearerAuth, ApiOperation, ApiParam, ApiTags, Body, Controller, CurrentUser (+7 more)
 
 ### Community 7 - "ParentsService"
 Cohesion: 0.07
 Nodes (21): CreateParentDto, ParentRelationship, ApiProperty, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID (+13 more)
 
 ### Community 8 - "Button.tsx"
-Cohesion: 0.04
-Nodes (94): AdminDashboard(), StudentAttendancePage(), AlunoDashboard(), StudentGradesPage(), DAYS_ORDER, examTypeColors, examTypeLabels, daysOfWeek (+86 more)
+Cohesion: 0.07
+Nodes (47): AdminDashboard(), AlunoDashboard(), daysOfWeek, TODO: Need proper API endpoint to fetch student's enrolled classes, SubjectStats, CoordinatorStudentDetailPage(), formatDate(), genderLabels (+39 more)
 
 ### Community 9 - "LessonPlansController"
-Cohesion: 0.06
-Nodes (35): CreateLessonPlanDto, ApiProperty, IsDateString, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength (+27 more)
+Cohesion: 0.14
+Nodes (22): RejectLessonPlanDto, ApiProperty, IsNotEmpty, IsString, MinLength, LessonPlansController, ApiBearerAuth, ApiOperation (+14 more)
 
 ### Community 10 - "InstitutionFormTabs.tsx"
-Cohesion: 0.06
-Nodes (47): EditInstitutionPage(), EditInstitutionPageProps, normalizeIsActive(), NewInstitutionPage(), normalizeIsActive(), DirectorOption, emptyUnit(), formatCnpj() (+39 more)
+Cohesion: 0.08
+Nodes (38): EditInstitutionPage(), EditInstitutionPageProps, normalizeIsActive(), NewInstitutionPage(), normalizeIsActive(), DirectorOption, emptyUnit(), formatCnpj() (+30 more)
 
 ### Community 11 - "auth.ts"
 Cohesion: 0.08
@@ -620,27 +624,27 @@ Cohesion: 0.08
 Nodes (31): CreateStudentDto, ApiProperty, IsNotEmpty, IsOptional, IsString, IsUUID, Matches, MaxLength (+23 more)
 
 ### Community 13 - "CreateInstitutionDto"
-Cohesion: 0.14
-Nodes (13): CreateInstitutionDto, ApiProperty, IsEmail, IsNotEmpty, IsOptional, IsString, Matches, MaxLength (+5 more)
+Cohesion: 0.08
+Nodes (17): CreateInstitutionDto, ApiProperty, IsEmail, IsNotEmpty, IsOptional, IsString, Matches, MaxLength (+9 more)
 
 ### Community 14 - "CreateTeacherDto"
-Cohesion: 0.06
-Nodes (31): CreateTeacherDto, ApiProperty, IsArray, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength (+23 more)
+Cohesion: 0.09
+Nodes (16): CreateTeacherDto, ApiProperty, IsArray, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength (+8 more)
 
 ### Community 15 - "ParentStudentsService"
-Cohesion: 0.06
-Nodes (29): CreateParentStudentDto, ApiProperty, IsBoolean, IsNotEmpty, IsOptional, IsString, IsUUID, ParentStudentResponseDto (+21 more)
+Cohesion: 0.08
+Nodes (22): CreateParentStudentDto, ApiProperty, IsBoolean, IsNotEmpty, IsOptional, IsString, IsUUID, ParentStudentsController (+14 more)
 
 ### Community 16 - "hero/index.ts"
 Cohesion: 0.07
 Nodes (39): BadgeProps, buildDateWithTime(), DatePickerInput, DatePickerInputProps, formatDateTimeLocalValue(), formatDisplayDate(), formatIsoDate(), formatTimeLabel() (+31 more)
 
-### Community 17 - "QueryEventDto"
-Cohesion: 0.21
-Nodes (10): EventType, QueryEventDto, ApiPropertyOptional, IsDateString, IsEnum, IsOptional, IsString, IsUUID (+2 more)
+### Community 17 - "events.controller.ts"
+Cohesion: 0.06
+Nodes (42): CalendarQueryDto, ApiProperty, ApiPropertyOptional, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString (+34 more)
 
 ### Community 18 - "SchedulesService"
-Cohesion: 0.11
+Cohesion: 0.10
 Nodes (14): CreateScheduleDto, ApiProperty, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, Matches (+6 more)
 
 ### Community 19 - "ClassSubjectRequestsService"
@@ -651,17 +655,17 @@ Nodes (29): ClassSubjectRequestsController, ApiBearerAuth, ApiOperation, ApiQuer
 Cohesion: 0.12
 Nodes (14): CreateGradeDto, ApiProperty, IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID (+6 more)
 
-### Community 21 - "AnnouncementsService"
-Cohesion: 0.06
-Nodes (41): AnnouncementsController, ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiTags, Body, Controller (+33 more)
+### Community 21 - "CreateAnnouncementDto"
+Cohesion: 0.10
+Nodes (22): AnnouncementPriority, CreateAnnouncementDto, ApiProperty, ApiPropertyOptional, IsArray, IsDateString, IsEnum, IsNotEmpty (+14 more)
 
 ### Community 22 - "CreateCourseDto"
-Cohesion: 0.06
-Nodes (30): CoursesController, ApiBearerAuth, ApiOperation, ApiQuery, ApiTags, Body, Controller, Delete (+22 more)
+Cohesion: 0.10
+Nodes (15): CoursesService, Injectable, CourseResponseDto, ApiProperty, CreateCourseDto, ApiProperty, IsNotEmpty, IsOptional (+7 more)
 
 ### Community 23 - "PrismaService"
-Cohesion: 0.08
-Nodes (5): JwtPayload, NotificationsService, Injectable, PrismaService, Injectable
+Cohesion: 0.06
+Nodes (7): JwtPayload, NotificationsService, Injectable, PrismaService, Injectable, TeacherAttendancesService, Injectable
 
 ### Community 24 - "CreateLessonContentDto"
 Cohesion: 0.07
@@ -680,11 +684,11 @@ Cohesion: 0.10
 Nodes (12): ExamsController, Body, Controller, Get, Param, Post, Query, Roles (+4 more)
 
 ### Community 28 - "CreateQuestionDto"
-Cohesion: 0.08
-Nodes (24): CreateQuestionDto, OptionDto, ApiProperty, ApiPropertyOptional, IsArray, IsEnum, IsNotEmpty, IsOptional (+16 more)
+Cohesion: 0.15
+Nodes (15): CreateQuestionDto, OptionDto, ApiProperty, ApiPropertyOptional, IsArray, IsEnum, IsNotEmpty, IsOptional (+7 more)
 
 ### Community 29 - "academic-years/[id]/page.tsx"
-Cohesion: 0.09
+Cohesion: 0.10
 Nodes (34): AcademicYearDetailPage(), allDayOptions, CreateAcademicPeriodFormValues, defaultPeriodFormValues, getDateParts(), normalizeSelectDatePart(), periodTypeLabels, periodTypeOptions (+26 more)
 
 ### Community 30 - "devDependencies"
@@ -692,8 +696,8 @@ Cohesion: 0.06
 Nodes (31): devDependencies, autoprefixer, eslint, eslint-config-next, jsdom, postcss, tailwindcss, @testing-library/jest-dom (+23 more)
 
 ### Community 31 - "services/classes.service.ts"
-Cohesion: 0.07
-Nodes (41): NewClassPage(), NewCoursePage(), buildClassName(), classSectionOptions, classSeriesByCourseLevel, classShiftOptions, CourseSeriesConfig, fundamentalGrades (+33 more)
+Cohesion: 0.11
+Nodes (22): classShiftOptions, ClassesFilterParams, DbClass, DbClassSubject, DbEnrollment, firstRelation(), mapClassRow(), mapClassSubject() (+14 more)
 
 ### Community 32 - "UsersController"
 Cohesion: 0.15
@@ -704,32 +708,32 @@ Cohesion: 0.05
 Nodes (39): concurrently, author, description, devDependencies, concurrently, supabase, engines, node (+31 more)
 
 ### Community 34 - "SkipOwnership"
-Cohesion: 0.15
-Nodes (13): InstitutionAdminGuard, Injectable, SKIP_OWNERSHIP_KEY, TeacherGuard, Injectable, ALLOWED_MIME_TYPES, multerConfig, CurrentUser (+5 more)
+Cohesion: 0.13
+Nodes (14): InstitutionAdminGuard, Injectable, OwnershipGuard, SKIP_OWNERSHIP_KEY, Injectable, TeacherGuard, Injectable, ALLOWED_MIME_TYPES (+6 more)
 
 ### Community 35 - "services/exams.service.ts"
-Cohesion: 0.08
-Nodes (25): PageProps, PageProps, proficiencyLabels, examTypeLabels, PageProps, statusColors, statusLabels, examTypeOptions (+17 more)
+Cohesion: 0.07
+Nodes (28): PageProps, examTypeColors, examTypeLabels, PageProps, proficiencyLabels, examTypeLabels, PageProps, statusColors (+20 more)
 
 ### Community 36 - "user.types.ts"
-Cohesion: 0.06
-Nodes (36): LoginFormData, loginSchema, SuperAdminLoginPage(), ConfiguracoesPage(), getMutationErrorMessage(), roleLabels, Settings, AuthContextType (+28 more)
+Cohesion: 0.05
+Nodes (35): defaultHeader, NewUserPageContent(), NewUserPageContentProps, roleHeader, roleOptions, ConfiguracoesPage(), getMutationErrorMessage(), roleLabels (+27 more)
 
 ### Community 37 - "ReportsController"
-Cohesion: 0.09
-Nodes (25): AttendanceReportQueryDto, ApiPropertyOptional, IsDateString, IsOptional, IsUUID, GradesReportQueryDto, ApiPropertyOptional, IsOptional (+17 more)
+Cohesion: 0.10
+Nodes (23): AttendanceReportQueryDto, ApiPropertyOptional, IsDateString, IsOptional, IsUUID, GradesReportQueryDto, ApiPropertyOptional, IsOptional (+15 more)
 
 ### Community 38 - "announcements/page.tsx"
-Cohesion: 0.03
-Nodes (74): AnnouncementFormState, AnnouncementsPage(), formatDate(), getDefaultScheduledDateTime(), getErrorMessage(), getInitialFilters(), getPriorityVariant(), getUserDisplayName() (+66 more)
+Cohesion: 0.05
+Nodes (59): AnnouncementFormState, AnnouncementsPage(), formatDate(), getDefaultScheduledDateTime(), getErrorMessage(), getInitialFilters(), getPriorityVariant(), getUserDisplayName() (+51 more)
 
 ### Community 39 - "🚀 Deploy - Sistema de Gestão Escolar"
 Cohesion: 0.04
 Nodes (47): 1️⃣ Clone o repositório, 1. Firewall (UFW no Ubuntu), 2. Alterar senhas padrão, 2️⃣ Configure as variáveis de ambiente, 3. Desabilitar portas públicas do banco, 3️⃣ Execute o script de deploy, 4️⃣ Acesse a aplicação, 4. HTTPS (Recomendado) (+39 more)
 
 ### Community 40 - "Sidebar.tsx"
-Cohesion: 0.09
-Nodes (20): AuthenticatedContent(), AuthenticatedLayoutShell(), AuthenticatedNavigationContext, AuthenticatedNavigationContextValue, AuthenticatedNavigationProvider(), defaultAuthenticatedNavigationValue, useAuthenticatedNavigation(), AuthenticatedPageSkeleton() (+12 more)
+Cohesion: 0.08
+Nodes (25): AuthenticatedContent(), AuthenticatedLayoutShell(), AuthenticatedNavigationContext, AuthenticatedNavigationContextValue, AuthenticatedNavigationProvider(), defaultAuthenticatedNavigationValue, useAuthenticatedNavigation(), AuthenticatedPageSkeleton() (+17 more)
 
 ### Community 41 - "RankingsService"
 Cohesion: 0.12
@@ -748,32 +752,32 @@ Cohesion: 0.06
 Nodes (34): AcademicYearsController, ApiBearerAuth, ApiOperation, ApiQuery, ApiTags, Body, Controller, Delete (+26 more)
 
 ### Community 45 - "ObservationsService"
-Cohesion: 0.08
-Nodes (20): CreateObservationDto, ApiProperty, IsBoolean, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength (+12 more)
+Cohesion: 0.06
+Nodes (36): CreateObservationDto, ApiProperty, IsBoolean, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength (+28 more)
 
 ### Community 46 - "ClassesService"
-Cohesion: 0.10
-Nodes (15): ClassesService, Injectable, CreateClassDto, ApiProperty, IsInt, IsNotEmpty, IsOptional, IsString (+7 more)
+Cohesion: 0.08
+Nodes (17): ClassesService, Injectable, ClassResponseDto, ApiProperty, CreateClassDto, ApiProperty, IsInt, IsNotEmpty (+9 more)
 
-### Community 47 - "activities.service.ts"
+### Community 47 - "activities.controller.ts"
 Cohesion: 0.13
-Nodes (14): AddQuestionDto, ApiProperty, ApiPropertyOptional, IsNotEmpty, IsNumber, IsOptional, IsUUID, Min (+6 more)
+Nodes (17): CreateActivityDto, ApiProperty, ApiPropertyOptional, IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString (+9 more)
 
 ### Community 48 - "CreateClassSubjectDto"
-Cohesion: 0.09
+Cohesion: 0.10
 Nodes (20): ClassSubjectsController, ApiBearerAuth, ApiOperation, ApiTags, Body, Controller, Delete, Param (+12 more)
 
 ### Community 49 - "cn"
-Cohesion: 0.11
-Nodes (17): NotificationsPage(), BreadcrumbItem, Breadcrumbs(), getHomeHref(), HIDDEN_SEGMENTS, ROUTE_LABELS, Header(), HeaderProps (+9 more)
+Cohesion: 0.13
+Nodes (12): NotificationsPage(), Header(), HeaderProps, NotificationsBell(), ProfileOption, ProfileSwitcher(), cn(), Notification (+4 more)
 
 ### Community 50 - "20251021184836_/migration.sql"
 Cohesion: 0.20
 Nodes (29): "academic_periods", "academic_years", "activities", "activity_questions", "announcements", "assignment_submissions", "assignments", "attendances" (+21 more)
 
-### Community 51 - "IDEBService"
-Cohesion: 0.08
-Nodes (19): IsValidGradeLevel(), CalculateIDEBDto, ApiProperty, IsInt, IsString, Max, Min, CreateIDEBTargetDto (+11 more)
+### Community 51 - "CreateIDEBTargetDto"
+Cohesion: 0.10
+Nodes (20): IsValidGradeLevel(), IsValidGradeLevelConstraint, ValidatorConstraint, VALID_GRADE_LEVELS, CalculateIDEBDto, ApiProperty, IsInt, IsString (+12 more)
 
 ### Community 52 - "20251021184836_initial_schema.sql"
 Cohesion: 0.20
@@ -784,12 +788,12 @@ Cohesion: 0.21
 Nodes (16): ClassesController, ApiBearerAuth, ApiOperation, ApiQuery, ApiTags, Body, Controller, Delete (+8 more)
 
 ### Community 54 - "QuestionsController"
-Cohesion: 0.12
-Nodes (21): QuestionsController, ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiTags, Body (+13 more)
+Cohesion: 0.16
+Nodes (16): QuestionsController, ApiBearerAuth, ApiOperation, ApiParam, ApiTags, Body, Controller, CurrentUser (+8 more)
 
 ### Community 55 - "LoginDto"
-Cohesion: 0.33
-Nodes (6): LoginDto, ApiProperty, IsEmail, IsNotEmpty, IsString, MinLength
+Cohesion: 0.12
+Nodes (12): AuthResponseDto, ApiProperty, LoginDto, ApiProperty, IsEmail, IsNotEmpty, IsString, MinLength (+4 more)
 
 ### Community 56 - "IDEBController"
 Cohesion: 0.09
@@ -800,16 +804,16 @@ Cohesion: 0.06
 Nodes (31): CreateSubjectDto, ApiProperty, IsArray, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength (+23 more)
 
 ### Community 58 - "users/[id]/edit/page.tsx"
-Cohesion: 0.04
-Nodes (78): genderOptions, profileTypeOptions, RegisterPage(), AlunosPage(), CoordenadoresPage(), ProfessoresPage(), buildSteps(), genderOptions (+70 more)
+Cohesion: 0.05
+Nodes (60): genderOptions, profileTypeOptions, RegisterPage(), buildSteps(), genderOptions, getInitialPasswordFromEmail(), institutionLocation(), InstitutionOption (+52 more)
 
 ### Community 59 - "question-categories.controller.ts"
-Cohesion: 0.11
+Cohesion: 0.12
 Nodes (15): CreateQuestionCategoryDto, ApiProperty, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength, QueryQuestionCategoryDto (+7 more)
 
-### Community 60 - "support-tickets.service.ts"
-Cohesion: 0.31
-Nodes (6): SupportTicketRow, supportTicketsService, CreateSupportTicketInput, SupportTicket, SupportTicketAttachment, SupportTicketStatus
+### Community 60 - "LoginHelpModal.tsx"
+Cohesion: 0.19
+Nodes (13): formatCpf(), formatPhone(), LoginHelpModal(), LoginHelpModalProps, normalizeCpf(), normalizePhone(), Step, SupportTicketRow (+5 more)
 
 ### Community 61 - "Guia de Implantação: Separação Landing Page e Sistema Municipal"
 Cohesion: 0.04
@@ -823,9 +827,9 @@ Nodes (14): AuthController, ApiOkResponse, ApiOperation, ApiTags, Body, Controll
 Cohesion: 0.18
 Nodes (17): GradesController, ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiTags, Body, CacheTTL (+9 more)
 
-### Community 64 - "teacher-subjects.controller.ts"
+### Community 64 - "TeacherSubjectsService"
 Cohesion: 0.12
-Nodes (12): BulkCreateTeacherSubjectDto, CreateTeacherSubjectDto, ApiProperty, IsNotEmpty, IsUUID, SubjectInfoDto, TeacherSubjectResponseDto, ApiProperty (+4 more)
+Nodes (10): BulkCreateTeacherSubjectDto, CreateTeacherSubjectDto, ApiProperty, IsNotEmpty, IsUUID, SubjectInfoDto, TeacherSubjectResponseDto, ApiProperty (+2 more)
 
 ### Community 65 - "Melhorias Implementadas - API Backend"
 Cohesion: 0.05
@@ -835,9 +839,9 @@ Nodes (38): ✅ 1. Documentação Swagger Completa, 1. Testes Unitários Crític
 Cohesion: 0.04
 Nodes (47): dependencies, bcrypt, cache-manager, cache-manager-redis-yet, class-transformer, class-validator, handlebars, helmet (+39 more)
 
-### Community 67 - "classes.controller.ts"
+### Community 67 - "EnrollmentsService"
 Cohesion: 0.09
-Nodes (16): ClassResponseDto, ApiProperty, CreateEnrollmentDto, ApiProperty, IsDateString, IsNotEmpty, IsOptional, IsUUID (+8 more)
+Nodes (14): CreateEnrollmentDto, ApiProperty, IsDateString, IsNotEmpty, IsOptional, IsUUID, EnrollmentResponseDto, ApiProperty (+6 more)
 
 ### Community 68 - "♿ Relatório de Acessibilidade - WCAG 2.1 AA"
 Cohesion: 0.05
@@ -847,9 +851,9 @@ Nodes (43): 1. ✅ Atributos ARIA em Componentes de Formulário, 2. ✅ ARIA Liv
 Cohesion: 0.05
 Nodes (38): 1️⃣ Login Único, 2️⃣ Seleção de Perfil, 3️⃣ Troca Rápida de Perfil, 40+ Módulos Backend Implementados, 🏢 Administrador da Instituição, 📖 Aluno, Autenticação, Backend Totalmente Integrado (+30 more)
 
-### Community 70 - "activities.controller.ts"
-Cohesion: 0.15
-Nodes (14): AuthModule, Global, Module, CurrentUser, Roles(), ROLES_KEY, JwtAuthGuard, Injectable (+6 more)
+### Community 70 - "jwt-auth.guard.ts"
+Cohesion: 0.26
+Nodes (9): CurrentUser, Roles(), ROLES_KEY, JwtAuthGuard, Injectable, RolesGuard, Injectable, ALLOWED_MIME_TYPES (+1 more)
 
 ### Community 71 - "DashboardService"
 Cohesion: 0.15
@@ -859,16 +863,16 @@ Nodes (11): DashboardController, ApiBearerAuth, ApiOperation, ApiTags, Controlle
 Cohesion: 0.22
 Nodes (14): TeacherSubjectsController, ApiBearerAuth, ApiOperation, ApiTags, Body, Controller, CurrentUser, Delete (+6 more)
 
-### Community 73 - "questions/page.tsx"
-Cohesion: 0.04
-Nodes (78): EditSubjectPage(), NewSubjectPage(), MySubjectsPage(), Subject, DIFFICULTY_COLORS, DIFFICULTY_LABELS, TYPE_LABELS, DIFFICULTY_LABELS (+70 more)
+### Community 73 - "layout-routes.tsx"
+Cohesion: 0.05
+Nodes (59): DIFFICULTY_COLORS, DIFFICULTY_LABELS, QuestionBankPage(), TYPE_LABELS, DIFFICULTY_LABELS, TYPE_LABELS, COLORS, DIFFICULTY_COLORS (+51 more)
 
 ### Community 74 - "🐳 Docker + Deploy - Sistema de Gestão Escolar"
 Cohesion: 0.05
 Nodes (38): 1. Configure, 2. Deploy, 3. Acesse, 🏗️ Arquitetura, Atualizar Apenas API, Atualizar Aplicação, 🔄 Atualização, Backup Automático (Cron) (+30 more)
 
 ### Community 75 - "EventsController"
-Cohesion: 0.19
+Cohesion: 0.20
 Nodes (16): EventsController, ApiBearerAuth, ApiOperation, ApiParam, ApiTags, Body, Controller, CurrentUser (+8 more)
 
 ### Community 76 - "✅ Checklist Diário - Grafos para 100%"
@@ -879,9 +883,9 @@ Nodes (37): 1️⃣ RANKINGS E PREMIAÇÕES, 2️⃣ SIMULADOS SAEB, 3️⃣ TRA
 Cohesion: 0.09
 Nodes (22): compilerOptions, allowSyntheticDefaultImports, baseUrl, declaration, emitDecoratorMetadata, esModuleInterop, experimentalDecorators, forceConsistentCasingInFileNames (+14 more)
 
-### Community 78 - "AuthContext.tsx"
-Cohesion: 0.16
-Nodes (10): AppProviders(), AuthProviders(), createQueryClient(), ErrorDialogProvider(), AuthContext, AuthProvider(), useKeyboardFocus(), clearCurrentUserProfileCache() (+2 more)
+### Community 78 - "providers.tsx"
+Cohesion: 0.20
+Nodes (8): AppProviders(), AuthProviders(), createQueryClient(), ErrorDialogProvider(), AuthProvider(), useKeyboardFocus(), FriendlyErrorDialogPayload, registerErrorDialogHandler()
 
 ### Community 79 - "InstitutionsController"
 Cohesion: 0.16
@@ -896,7 +900,7 @@ Cohesion: 0.15
 Nodes (15): NotificationsController, ApiBearerAuth, ApiOperation, ApiQuery, ApiTags, Controller, CurrentUser, Delete (+7 more)
 
 ### Community 82 - "QuestionCategoriesController"
-Cohesion: 0.19
+Cohesion: 0.17
 Nodes (15): QuestionCategoriesController, ApiBearerAuth, ApiOperation, ApiParam, ApiTags, Body, Controller, Delete (+7 more)
 
 ### Community 83 - "AcademicPeriodsController"
@@ -912,8 +916,8 @@ Cohesion: 0.05
 Nodes (34): 1. Sempre use paginação em listas grandes, 2. Limite o máximo de itens por página, 3. Use índices no banco de dados, 4. Busque dados e total em paralelo, 5. Ordenação consistente, 6. Documente os limites no Swagger, Antes, Boas Práticas (+26 more)
 
 ### Community 86 - "TeacherAttendancesController"
-Cohesion: 0.19
-Nodes (15): TeacherAttendancesController, ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiTags, Body, Controller (+7 more)
+Cohesion: 0.10
+Nodes (23): CreateTeacherAttendanceDto, ApiProperty, IsDateString, IsOptional, IsString, IsUUID, TeacherAttendanceResponseDto, ApiProperty (+15 more)
 
 ### Community 88 - "✅ Relatório Completo de Melhorias - Frontend"
 Cohesion: 0.05
@@ -923,9 +927,9 @@ Nodes (36): 1. ✅ `admin/subjects/[id]/edit/page.tsx`, 1. ✅ `src/lib/utils/pe
 Cohesion: 0.05
 Nodes (36): 1. ✅ VirtualList - Virtual Scrolling, 2. ✅ OptimizedImage - Lazy Loading de Imagens, 3. ✅ usePrefetch - Prefetch Inteligente, 4. ✅ useDebounce - Otimização de Inputs, 5. ✅ Funções em performance.ts, Antes das Otimizações, Buscas (Debounce), ✅ Checklist de Implementação (+28 more)
 
-### Community 91 - "InstitutionGuard"
-Cohesion: 0.29
-Nodes (3): InstitutionGuard, SKIP_INSTITUTION_CHECK_KEY, Injectable
+### Community 91 - "auth.module.ts"
+Cohesion: 0.07
+Nodes (14): AuthModule, Global, Module, InstitutionGuard, SKIP_INSTITUTION_CHECK_KEY, Injectable, ParentGuard, Injectable (+6 more)
 
 ### Community 92 - "scripts"
 Cohesion: 0.11
@@ -947,21 +951,17 @@ Nodes (12): public.can_access_institution(), public.current_app_user_id(), publi
 Cohesion: 0.18
 Nodes (11): AchievementsController, ApiBearerAuth, ApiOperation, ApiTags, Controller, CurrentUser, Get, Param (+3 more)
 
-### Community 97 - "AuthService"
-Cohesion: 0.14
-Nodes (6): AuthService, Injectable, RefreshTokenDto, ApiProperty, IsNotEmpty, IsString
-
-### Community 98 - "CreateAssignmentDto"
-Cohesion: 0.06
-Nodes (28): AssignmentResponseDto, ApiProperty, CreateAssignmentDto, ApiProperty, IsDateString, IsNotEmpty, IsNumber, IsOptional (+20 more)
+### Community 98 - "GradeSubmissionDto"
+Cohesion: 0.13
+Nodes (10): AssignmentResponseDto, ApiProperty, GradeSubmissionDto, ApiProperty, IsNumber, IsOptional, IsString, Min (+2 more)
 
 ### Community 99 - "date.validator.ts"
-Cohesion: 0.15
-Nodes (6): IsAfter(), IsAfterConstraint, IsDateInRangeConstraint, IsFutureDateConstraint, IsPastDateConstraint, ValidatorConstraint
+Cohesion: 0.14
+Nodes (7): IsAfterConstraint, IsDateInRangeConstraint, IsFutureDate(), IsFutureDateConstraint, IsPastDate(), IsPastDateConstraint, ValidatorConstraint
 
 ### Community 101 - "CreateUserDto"
-Cohesion: 0.13
-Nodes (14): IsPastDate(), CreateUserDto, ApiProperty, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString (+6 more)
+Cohesion: 0.18
+Nodes (11): CreateUserDto, ApiProperty, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID (+3 more)
 
 ### Community 102 - "scripts"
 Cohesion: 0.22
@@ -1011,13 +1011,13 @@ Nodes (12): ActiveFilterDto, DateRangeFilterDto, PrismaFilter, SearchFilterDto, 
 Cohesion: 0.14
 Nodes (13): background_color, categories, description, display, icons, name, orientation, short_name (+5 more)
 
-### Community 114 - "professor/subject-requests/page.tsx"
-Cohesion: 0.27
+### Community 114 - "services/class-subject-requests.service.ts"
+Cohesion: 0.24
 Nodes (11): CoordinatorSubjectRequestsPage(), SubjectRequestsPage(), ApproveRequestDto, approveSubjectRequest(), cancelSubjectRequest(), ClassSubjectRequest, createSubjectRequest(), CreateSubjectRequestDto (+3 more)
 
-### Community 115 - "SubjectColorPicker.tsx"
-Cohesion: 0.35
-Nodes (11): clamp(), colorFromHue(), hexToRgb(), hsvToRgb(), isValidHexColor(), normalizeHexColor(), rgbToHex(), rgbToHsv() (+3 more)
+### Community 115 - "subjects/[id]/edit/page.tsx"
+Cohesion: 0.14
+Nodes (29): EditSubjectPage(), NewSubjectPage(), clamp(), colorFromHue(), hexToRgb(), hsvToRgb(), isValidHexColor(), normalizeHexColor() (+21 more)
 
 ### Community 116 - "setup.sh"
 Cohesion: 0.52
@@ -1031,17 +1031,13 @@ Nodes (13): jest, collectCoverageFrom, coverageDirectory, moduleFileExtensions, 
 Cohesion: 0.24
 Nodes (12): "exam_answers", "exam_assignments", "exam_attempts", "exam_questions", "exams", "saeb_descriptors", "classes", "institutions" (+4 more)
 
-### Community 119 - "AchievementsService"
-Cohesion: 0.08
-Nodes (12): AchievementsService, Injectable, CreateTeacherAttendanceDto, ApiProperty, IsDateString, IsOptional, IsString, IsUUID (+4 more)
-
 ### Community 120 - "CacheService"
 Cohesion: 0.17
 Nodes (6): CacheModule, Global, Module, CacheService, Injectable, Inject
 
 ### Community 121 - "roles.ts"
-Cohesion: 0.19
-Nodes (9): DashboardPage(), hasAllPermissions(), hasAnyPermission(), hasPermission(), Permission, ROLE_COLORS, ROLE_HIERARCHY, ROLE_LABELS (+1 more)
+Cohesion: 0.22
+Nodes (8): hasAllPermissions(), hasAnyPermission(), hasPermission(), Permission, ROLE_COLORS, ROLE_HIERARCHY, ROLE_LABELS, ROLE_PERMISSIONS
 
 ### Community 122 - "design-tokens.ts"
 Cohesion: 0.15
@@ -1060,8 +1056,8 @@ Cohesion: 0.26
 Nodes (11): "institution_documents", "institution_units", "institutions", "users", trigger_update_institution_documents_updated_at, trigger_update_institution_units_updated_at, trigger_update_user_units_updated_at, update_institution_documents_updated_at() (+3 more)
 
 ### Community 126 - "CreateAcademicPeriodDto"
-Cohesion: 0.18
-Nodes (11): CreateAcademicPeriodDto, ApiProperty, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID (+3 more)
+Cohesion: 0.08
+Nodes (20): AcademicPeriodsService, Injectable, AcademicPeriodResponseDto, ApiProperty, CreateAcademicPeriodDto, ApiProperty, IsEnum, IsInt (+12 more)
 
 ### Community 127 - "RegisterDto"
 Cohesion: 0.14
@@ -1076,16 +1072,16 @@ Cohesion: 0.18
 Nodes (10): CreateNotificationDto, ApiProperty, ApiPropertyOptional, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID (+2 more)
 
 ### Community 130 - "middleware.ts"
-Cohesion: 0.24
-Nodes (9): authRoutes, checkRoleAccess(), config, getRedirectPathByRole(), middleware(), publicRoutes, roleRoutes, clientCookies (+1 more)
+Cohesion: 0.27
+Nodes (8): authRoutes, checkRoleAccess(), config, getRedirectPathByRole(), middleware(), publicRoutes, roleRoutes, serverCookies
 
 ### Community 131 - "Changelog: Separação Landing Page e Sistema Municipal"
 Cohesion: 0.06
 Nodes (33): 1. Configuração e Utilitários, 1. Variáveis de Ambiente, 2. Middleware, 2. Páginas, 3. Documentação, 3. README Principal, 🏗️ Arquitetura Implementada, 📁 Arquivos Criados (+25 more)
 
-### Community 132 - "useAuth"
-Cohesion: 0.11
-Nodes (24): AdminLoginPage(), buildInitialPassword(), DIARY_ROWS, FEATURES, LoginFormData, loginSchema, PERKS, STUDENTS (+16 more)
+### Community 132 - "AuthContext.tsx"
+Cohesion: 0.15
+Nodes (14): AlunoLogin(), buildInitialPassword(), LoginFormData, loginSchema, buildInitialPassword(), LoginFormData, loginSchema, PaisLoginPage() (+6 more)
 
 ### Community 133 - "Customização por Município"
 Cohesion: 0.06
@@ -1107,9 +1103,9 @@ Nodes (10): CompositeTypes, Constants, Database, DatabaseWithoutInternals, Defau
 Cohesion: 0.20
 Nodes (9): author, description, engines, node, npm, license, name, private (+1 more)
 
-### Community 138 - "UpdateAcademicPeriodDto"
-Cohesion: 0.22
-Nodes (6): AcademicPeriodResponseDto, ApiProperty, ApiProperty, IsBoolean, IsOptional, UpdateAcademicPeriodDto
+### Community 138 - "api.ts"
+Cohesion: 0.08
+Nodes (26): priorityColors, priorityLabels, typeLabels, CoordinatorObservations, api, apiBaseUrl, AUTH_ROUTES_THAT_REQUIRE_RELOGIN, TODO: Fix circular dependency with authService (+18 more)
 
 ### Community 139 - "EnvironmentVariables"
 Cohesion: 0.29
@@ -1130,6 +1126,10 @@ Nodes (27): 1. Code Splitting, 1. Page Components (App Router), 2. Feature Compo
 ### Community 145 - "20251116025033_add_rankings_gamification/migration.sql"
 Cohesion: 0.36
 Nodes (7): "achievements", "badges", "points_transactions", "rankings", "classes", "institutions", "users"
+
+### Community 146 - "LessonPlansService"
+Cohesion: 0.11
+Nodes (13): CreateLessonPlanDto, ApiProperty, IsDateString, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength (+5 more)
 
 ### Community 147 - "✅ Pontos Fortes"
 Cohesion: 0.07
@@ -1231,13 +1231,17 @@ Nodes (5): "institution_documents", "institution_units", "institutions", "users"
 Cohesion: 0.53
 Nodes (5): main(), normalizeCpf(), prisma, requiredEnv(), splitName()
 
+### Community 174 - "AnnouncementsController"
+Cohesion: 0.20
+Nodes (17): AnnouncementsController, ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiTags, Body, Controller (+9 more)
+
 ### Community 175 - "📚 Arquivos de Referência"
 Cohesion: 0.08
 Nodes (23): 1. Conversão de alert() → toast() ✅, 2. Lazy Loading Implementado ✅, 3. Debounce em Campos de Busca ✅, 4. Acessibilidade Básica (WCAG 2.1) ✅, 5. Melhorias Adicionais de Acessibilidade ✅, Acessibilidade, Alta Prioridade, 📚 Arquivos de Referência (+15 more)
 
 ### Community 176 - "ChangePasswordDto"
-Cohesion: 0.33
-Nodes (5): ChangePasswordDto, ApiProperty, IsNotEmpty, IsString, MinLength
+Cohesion: 0.18
+Nodes (7): ChangePasswordDto, ApiProperty, IsNotEmpty, IsString, MinLength, ApiProperty, UserResponseDto
 
 ### Community 177 - "Toast.tsx"
 Cohesion: 0.33
@@ -1263,9 +1267,9 @@ Nodes (4): authenticate(), create_institution(), patch_institution(), test_patch
 Cohesion: 0.40
 Nodes (4): "class_subjects", "classes", "teachers", "teacher_attendances"
 
-### Community 185 - "CreateActivityDto"
-Cohesion: 0.15
-Nodes (12): Post, CreateActivityDto, ApiProperty, ApiPropertyOptional, IsDateString, IsNotEmpty, IsNumber, IsOptional (+4 more)
+### Community 185 - "TeachersController"
+Cohesion: 0.19
+Nodes (15): TeachersController, ApiBearerAuth, ApiOperation, ApiQuery, ApiTags, Body, Controller, Delete (+7 more)
 
 ### Community 186 - "Sistema de Tratamento de Erros"
 Cohesion: 0.09
@@ -1274,10 +1278,6 @@ Nodes (19): 1. Erros HTTP (HttpException), 2. Erros de Validação (class-valida
 ### Community 187 - "app/[institution]/page.tsx"
 Cohesion: 0.60
 Nodes (4): generateMetadata(), getInstitution(), Institution, InstitutionPage()
-
-### Community 188 - "ObservationsController"
-Cohesion: 0.19
-Nodes (16): ObservationsController, ApiBearerAuth, ApiOperation, ApiParam, ApiTags, Body, Controller, CurrentUser (+8 more)
 
 ### Community 191 - ""teacher_attendances""
 Cohesion: 0.40
@@ -1288,12 +1288,16 @@ Cohesion: 0.40
 Nodes (3): public.can_access_institution(), public.user_institutions, public.users
 
 ### Community 193 - "PublicRegisterDto"
-Cohesion: 0.11
-Nodes (13): AuthResponseDto, ApiProperty, PublicRegisterDto, RequestedProfileType, ApiProperty, IsDateString, IsEmail, IsEnum (+5 more)
+Cohesion: 0.17
+Nodes (11): PublicRegisterDto, RequestedProfileType, ApiProperty, IsDateString, IsEmail, IsEnum, IsNotEmpty, IsOptional (+3 more)
 
 ### Community 194 - "20251116140545_add_ideb_tracking/migration.sql"
 Cohesion: 0.67
 Nodes (3): "ideb_indicators", "ideb_targets", "institutions"
+
+### Community 195 - "CoursesController"
+Cohesion: 0.15
+Nodes (15): CoursesController, ApiBearerAuth, ApiOperation, ApiQuery, ApiTags, Body, Controller, Delete (+7 more)
 
 ### Community 197 - "sitemap.ts"
 Cohesion: 0.67
@@ -1367,29 +1371,25 @@ Nodes (15): BulkGradeDto, StudentGradeDto, ApiProperty, IsArray, IsDateString, I
 Cohesion: 0.13
 Nodes (14): 1. `@IsCPF()`, 2. `@IsBrazilianPhone()`, 3. `@IsFutureDate()`, 4. `@IsPastDate()`, 5. `@IsDateInRange(minYear, maxYear)`, 6. `@IsAfter(property)`, 7. `@IsValidGradeLevel()`, Combinando Validadores (+6 more)
 
-### Community 406 - "CalendarQueryDto"
-Cohesion: 0.17
-Nodes (12): CalendarQueryDto, ApiProperty, ApiPropertyOptional, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString (+4 more)
-
-### Community 407 - "CreateEventDto"
-Cohesion: 0.18
-Nodes (11): CreateEventDto, ApiProperty, ApiPropertyOptional, IsBoolean, IsDateString, IsEnum, IsNotEmpty, IsOptional (+3 more)
+### Community 407 - "class-options.ts"
+Cohesion: 0.19
+Nodes (14): NewClassPage(), buildClassName(), classSectionOptions, classSeriesByCourseLevel, CourseSeriesConfig, fundamentalGrades, fundamentalOneGrades, fundamentalTwoGrades (+6 more)
 
 ### Community 408 - "TestSprite: onboard a repo with a seed test suite"
 Cohesion: 0.13
 Nodes (14): 1. Understand the app (don't skip — this is where coverage quality comes from), 2. Create the project (FE must have a URL), 3. Author the tests (quality over quantity), 4. Batch-create, 5. Smoke-run a few — NOT all (protect credits), 6. Report, Don'ts, Hand off to verify (+6 more)
 
 ### Community 409 - "QueryActivityDto"
-Cohesion: 0.20
+Cohesion: 0.22
 Nodes (8): Query, QueryActivityDto, ApiPropertyOptional, IsDateString, IsOptional, IsString, IsUUID, Type
 
-### Community 410 - "UpcomingEventsQueryDto"
-Cohesion: 0.20
-Nodes (9): ApiPropertyOptional, IsNumber, IsOptional, IsString, IsUUID, Max, Min, Type (+1 more)
+### Community 410 - "BulkAttendanceDto"
+Cohesion: 0.18
+Nodes (13): BulkAttendanceDto, StudentAttendanceDto, ApiProperty, IsArray, IsDateString, IsEnum, IsNotEmpty, IsOptional (+5 more)
 
-### Community 411 - "PdfService"
-Cohesion: 0.25
-Nodes (3): ActivityPdfData, PdfService, Injectable
+### Community 411 - "activities.module.ts"
+Cohesion: 0.24
+Nodes (5): ActivitiesModule, Module, ActivityPdfData, PdfService, Injectable
 
 ### Community 412 - "TEACHER"
 Cohesion: 0.13
@@ -1397,11 +1397,11 @@ Nodes (15): Atividades Impressas (Worksheets), Avaliações e Notas, Banco de Qu
 
 ### Community 413 - "📚 Documentação da API - Sistema Grafos"
 Cohesion: 0.14
-Nodes (13): Como Acessar, 📚 Documentação da API - Sistema Grafos, 📖 Documentação Interativa (Swagger), Em Desenvolvimento, Em Desenvolvimento 🚧, Exemplo de Uso do Swagger, 📝 Glossário, Implementado ✅ (+5 more)
+Nodes (13): Comandos Úteis, 📚 Documentação da API - Sistema Grafos, Em Desenvolvimento, Em Desenvolvimento 🚧, 📝 Glossário, Implementado ✅, 📞 Informações Técnicas, 🎯 O que é a API? (+5 more)
 
 ### Community 414 - "📋 Módulos da API"
 Cohesion: 0.14
-Nodes (14): 1️⃣1️⃣ Módulo de Relatórios e Dashboard, 1️⃣ Módulo de Autenticação (Auth), 2️⃣ Módulo de Instituições (Institutions), 3️⃣ Módulo de Usuários (Users), 4️⃣ Módulo de Professores (Teachers), 5️⃣ Módulo de Alunos (Students), 6️⃣ Módulo de Pais/Responsáveis (Parents), Comunicados (Announcements) (+6 more)
+Nodes (14): 1️⃣1️⃣ Módulo de Relatórios e Dashboard, 1️⃣ Módulo de Autenticação (Auth), 2️⃣ Módulo de Instituições (Institutions), 3️⃣ Módulo de Usuários (Users), 4️⃣ Módulo de Professores (Teachers), 5️⃣ Módulo de Alunos (Students), 6️⃣ Módulo de Pais/Responsáveis (Parents), 9️⃣ Módulo de Banco de Questões (+6 more)
 
 ### Community 416 - "✅ Concluído"
 Cohesion: 0.14
@@ -1422,6 +1422,10 @@ Nodes (12): ALUNO, Completed tasks, Conteúdos, COORDENADOR, DIRETOR, GRAFOS EDU
 ### Community 420 - "api/README.md"
 Cohesion: 0.17
 Nodes (11): Compile and run the project, Database Setup (Prisma), Deployment, Description, License, Project setup, Resources, Run tests (+3 more)
+
+### Community 421 - "CreateAssignmentDto"
+Cohesion: 0.17
+Nodes (11): CreateAssignmentDto, ApiProperty, IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID (+3 more)
 
 ### Community 422 - "❌ Arquivos COM alert() - PRECISAM SER CONVERTIDOS"
 Cohesion: 0.17
@@ -1533,7 +1537,7 @@ Nodes (8): Available Utilities (`src/lib/utils/performance.ts`), debounce / thro
 
 ### Community 449 - "Melhorias de SEO - Grafos Plataforma Educacional"
 Cohesion: 0.25
-Nodes (7): ✅ 3. Sitemap Dinâmico (sitemap.ts), Configurações, Melhorias de SEO - Grafos Plataforma Educacional, Principais Benefícios, 📋 Resumo das Implementações, ✨ Resumo Final, URLs Incluídas
+Nodes (7): Comandos de Verificação, 🔍 Ferramentas de Validação, Melhorias de SEO - Grafos Plataforma Educacional, Online, Principais Benefícios, 📋 Resumo das Implementações, ✨ Resumo Final
 
 ### Community 450 - "STUDENT"
 Cohesion: 0.25
@@ -1575,9 +1579,9 @@ Nodes (7): 5.1 Módulo de Frequência (Attendances), 5.2 Módulo de Conteúdo de
 Cohesion: 0.29
 Nodes (7): 🎯 Prioridades de Implementação, Sprint 1 (Crítico - Semanas 1-2), Sprint 2 (Alta - Semanas 3-4), Sprint 3 (Alta - Semanas 5-6), Sprint 4 (Média - Semanas 7-8), Sprint 5 (Média - Semanas 9-10), Sprint 6 (Baixa - Semanas 11-12)
 
-### Community 460 - "grade-level.validator.ts"
-Cohesion: 0.29
-Nodes (3): IsValidGradeLevelConstraint, ValidatorConstraint, VALID_GRADE_LEVELS
+### Community 460 - "parent-students.controller.ts"
+Cohesion: 0.23
+Nodes (7): ParentStudentResponseDto, ApiProperty, ApiProperty, IsBoolean, IsOptional, IsString, UpdateParentStudentDto
 
 ### Community 461 - "Componentes Criados"
 Cohesion: 0.29
@@ -1620,8 +1624,8 @@ Cohesion: 0.29
 Nodes (7): 📈 ROADMAP RESUMIDO, Sprint 1 (2 semanas) - CRÍTICO, Sprint 2 (3 semanas) - RANKINGS, Sprint 3 (4 semanas) - SIMULADOS SAEB, Sprint 4 (2 semanas) - IDEB, Sprint 5 (1 semana) - GRÁFICOS, Sprint 6 (1 semana) - POLIMENTO
 
 ### Community 471 - "validate-supabase-migrations.mjs"
-Cohesion: 0.29
-Nodes (6): duplicateVersions, invalidFiles, migrationFiles, migrationsDir, projectRoot, versions
+Cohesion: 0.22
+Nodes (8): duplicateVersions, invalidFiles, knownLegacyMigrationFiles, migrationFiles, migrationsDir, projectRoot, unexpectedInvalidFiles, versions
 
 ### Community 472 - "Boas Práticas"
 Cohesion: 0.33
@@ -1791,13 +1795,9 @@ Nodes (4): DateRangeFilterDto, DTOs Base, QueryListDto, SearchFilterDto, SortFil
 Cohesion: 0.50
 Nodes (4): Múltiplas ordenações, Ordenação Avançada, Ordenação em relações (nested), Ordenação simples
 
-### Community 514 - "9️⃣ Módulo de Banco de Questões"
-Cohesion: 0.50
-Nodes (4): 9️⃣ Módulo de Banco de Questões, Atividades Impressas, Categorias de Questões, Questões
-
 ### Community 515 - "useAuthStore"
-Cohesion: 0.07
-Nodes (41): PendingApprovalPage(), profileTypeLabels, ResetPasswordPage(), SelectProfilePage(), StudentSchedulePage(), CoordinatorStudentsPage(), CoordinatorDashboardPage(), CoordinatorLessonPlansPage() (+33 more)
+Cohesion: 0.05
+Nodes (59): PendingApprovalPage(), profileTypeLabels, SelectProfilePage(), StudentAttendancePage(), StudentGradesPage(), DAYS_ORDER, StudentSchedulePage(), SubjectsPage() (+51 more)
 
 ### Community 516 - "📦 FASE 1: Configuração Base e Infraestrutura"
 Cohesion: 0.50
@@ -1818,6 +1818,18 @@ Nodes (4): 7.1 Módulo de Comunicados (Announcements), 7.2 Módulo de Notificaç
 ### Community 520 - "🧪 FASE 9: Testes e Qualidade"
 Cohesion: 0.50
 Nodes (4): 9.1 Testes Unitários, 9.2 Testes de Integração (E2E), 9.3 Validações e Tratamento de Erros, 🧪 FASE 9: Testes e Qualidade
+
+### Community 521 - "login/admin/page.tsx"
+Cohesion: 0.20
+Nodes (8): AdminLoginPage(), buildInitialPassword(), DIARY_ROWS, FEATURES, LoginFormData, loginSchema, PERKS, STUDENTS
+
+### Community 523 - "AddQuestionDto"
+Cohesion: 0.25
+Nodes (8): AddQuestionDto, ApiProperty, ApiPropertyOptional, IsNotEmpty, IsNumber, IsOptional, IsUUID, Min
+
+### Community 524 - "QueryQuestionDto"
+Cohesion: 0.25
+Nodes (7): QueryQuestionDto, ApiPropertyOptional, IsEnum, IsOptional, IsString, IsUUID, Type
 
 ### Community 526 - "📁 Estrutura de Arquivos"
 Cohesion: 0.50
@@ -1911,6 +1923,10 @@ Nodes (3): Conclusao, Exemplo de Sequencia Real Recomendada, Processo de Uso do 
 Cohesion: 0.67
 Nodes (3): Cache de queries frequentes, Performance, Use contagens condicionais
 
+### Community 549 - "SubmitAssignmentDto"
+Cohesion: 0.33
+Nodes (6): SubmitAssignmentDto, ApiProperty, IsNotEmpty, IsOptional, IsString, IsUUID
+
 ### Community 550 - "🎯 AuthContext & Zustand Store"
 Cohesion: 0.67
 Nodes (3): AuthContext (`src/contexts/AuthContext.tsx`), 🎯 AuthContext & Zustand Store, Zustand Store (`src/stores/authStore.ts`)
@@ -1955,9 +1971,9 @@ Nodes (3): Bibliotecas Principais, 🎨 Design System e Bibliotecas, Paleta de C
 Cohesion: 0.67
 Nodes (3): ✅ 2. Open Graph e Twitter Cards (layout.tsx:46-68), Open Graph, Twitter Cards
 
-### Community 561 - "📞 Informações Técnicas"
-Cohesion: 0.50
-Nodes (4): Comandos Úteis, 📞 Informações Técnicas, Requisitos do Sistema, Variáveis de Ambiente
+### Community 561 - ".uploadImage"
+Cohesion: 0.33
+Nodes (5): ApiBody, ApiConsumes, HttpCode, UploadedFile, UseInterceptors
 
 ### Community 562 - "✅ 4. Robots.txt (robots.ts)"
 Cohesion: 0.67
@@ -2023,29 +2039,41 @@ Nodes (3): Backend, 📦 Build para Produção, Frontend
 Cohesion: 0.67
 Nodes (3): 🚧 Em Desenvolvimento, ✨ Funcionalidades, 🎯 Próximas Melhorias
 
-### Community 593 - "🔍 Ferramentas de Validação"
+### Community 593 - "support-tickets/page.tsx"
+Cohesion: 0.53
+Nodes (5): formatCpf(), formatDateTime(), getStatusBadgeVariant(), SuperAdminSupportTicketsPage(), SuperAdminSupportTickets
+
+### Community 595 - "📖 Documentação Interativa (Swagger)"
+Cohesion: 0.50
+Nodes (4): Como Acessar, 📖 Documentação Interativa (Swagger), Exemplo de Uso do Swagger, O que Você Pode Fazer
+
+### Community 596 - "🔟 Módulo de Comunicação"
+Cohesion: 0.50
+Nodes (4): Comunicados (Announcements), Eventos (Events), 🔟 Módulo de Comunicação, Notificações (Notifications)
+
+### Community 597 - "✅ 3. Sitemap Dinâmico (sitemap.ts)"
 Cohesion: 0.67
-Nodes (3): Comandos de Verificação, 🔍 Ferramentas de Validação, Online
+Nodes (3): ✅ 3. Sitemap Dinâmico (sitemap.ts), Configurações, URLs Incluídas
 
 ## Knowledge Gaps
-- **2077 isolated node(s):** `docker-entrypoint.sh script`, `$schema`, `collection`, `sourceRoot`, `deleteOutDir` (+2072 more)
+- **2079 isolated node(s):** `docker-entrypoint.sh script`, `$schema`, `collection`, `sourceRoot`, `deleteOutDir` (+2074 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **157 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **155 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `ApiResponse` connect `ApiResponse` to `AssignmentsController`, `ActivitiesController`, `LessonPlansController`, `StudentsController`, `CreateTeacherDto`, `ParentStudentsService`, `ClassSubjectRequestsService`, `AttendancesController`, `AnnouncementsService`, `CreateCourseDto`, `CreateLessonContentDto`, `QueryActivityDto`, `UsersController`, `ReportsController`, `announcements/page.tsx`, `CreateAcademicYearDto`, `CreateClassSubjectDto`, `QuestionsController`, `IDEBController`, `CreateActivityDto`, `CreateSubjectDto`, `ObservationsController`, `GradesController`, `DashboardService`, `TeacherSubjectsController`, `EventsController`, `InstitutionsController`, `ParentsController`, `NotificationsController`, `QuestionCategoriesController`, `AcademicPeriodsController`, `EnrollmentsController`, `SchedulesController`?**
+- **Why does `ApiResponse` connect `ApiResponse` to `useAuthStore`, `AssignmentsController`, `ActivitiesController`, `LessonPlansController`, `StudentsController`, `ParentStudentsService`, `ClassSubjectRequestsService`, `AttendancesController`, `CreateLessonContentDto`, `QueryActivityDto`, `UsersController`, `ReportsController`, `CreateAcademicYearDto`, `ObservationsService`, `AnnouncementsController`, `CreateClassSubjectDto`, `.uploadImage`, `QuestionsController`, `IDEBController`, `CreateSubjectDto`, `TeachersController`, `GradesController`, `CoursesController`, `DashboardService`, `TeacherSubjectsController`, `EventsController`, `InstitutionsController`, `ParentsController`, `NotificationsController`, `QuestionCategoriesController`, `AcademicPeriodsController`, `EnrollmentsController`, `SchedulesController`?**
   _High betweenness centrality (0.147) - this node is a cross-community bridge._
-- **Why does `SkipOwnership()` connect `SkipOwnership` to `AssignmentsController`, `LessonPlansController`, `StudentsController`, `CreateTeacherDto`, `ClassSubjectRequestsService`, `AttendancesController`, `CreateCourseDto`, `CreateLessonContentDto`, `UsersController`, `CreateAcademicYearDto`, `ApiResponse`, `CreateSubjectDto`, `GradesController`, `classes.controller.ts`, `activities.controller.ts`, `ParentsController`, `AcademicPeriodsController`, `EnrollmentsController`, `TeacherAttendancesController`, `SchedulesController`?**
+- **Why does `SkipOwnership()` connect `SkipOwnership` to `AssignmentsController`, `LessonPlansController`, `StudentsController`, `ClassSubjectRequestsService`, `AttendancesController`, `CreateLessonContentDto`, `UsersController`, `CreateAcademicYearDto`, `ApiResponse`, `TeachersController`, `CreateSubjectDto`, `GradesController`, `CoursesController`, `jwt-auth.guard.ts`, `ParentsController`, `AcademicPeriodsController`, `EnrollmentsController`, `TeacherAttendancesController`, `SchedulesController`?**
   _High betweenness centrality (0.018) - this node is a cross-community bridge._
-- **Why does `PrismaService` connect `PrismaService` to `app.module.ts`, `AssignmentsController`, `ParentsService`, `LessonPlansController`, `StudentsController`, `CreateTeacherDto`, `ParentStudentsService`, `QueryEventDto`, `AcademicPeriodsService`, `ClassSubjectRequestsService`, `SchedulesService`, `AnnouncementsService`, `CreateCourseDto`, `CreateLessonContentDto`, `ExamsService`, `PdfService`, `CreateQuestionDto`, `GradesService`, `InstitutionsService`, `ReportsController`, `RankingsService`, `SAEBDescriptorsService`, `CreateAcademicYearDto`, `ObservationsService`, `ClassesService`, `activities.service.ts`, `CreateClassSubjectDto`, `IDEBService`, `CreateSubjectDto`, `question-categories.controller.ts`, `teacher-subjects.controller.ts`, `classes.controller.ts`, `activities.controller.ts`, `DashboardService`, `AuthService`, `EventsService`, `AchievementsService`?**
+- **Why does `PrismaService` connect `PrismaService` to `app.module.ts`, `AssignmentsService`, `ParentsService`, `QuestionsService`, `StudentsController`, `CreateInstitutionDto`, `CreateTeacherDto`, `ParentStudentsService`, `events.controller.ts`, `LessonPlansService`, `ClassSubjectRequestsService`, `SchedulesService`, `CreateAnnouncementDto`, `CreateCourseDto`, `IDEBService`, `CreateLessonContentDto`, `ExamsService`, `activities.module.ts`, `CreateQuestionDto`, `GradesService`, `ReportsController`, `RankingsService`, `SAEBDescriptorsService`, `CreateAcademicYearDto`, `ObservationsService`, `ClassesService`, `activities.controller.ts`, `CreateClassSubjectDto`, `CreateIDEBTargetDto`, `CreateSubjectDto`, `question-categories.controller.ts`, `AnnouncementsService`, `TeacherSubjectsService`, `EnrollmentsService`, `DashboardService`, `parent-students.controller.ts`, `auth.module.ts`, `AuthService`, `EventsService`, `CreateAcademicPeriodDto`?**
   _High betweenness centrality (0.016) - this node is a cross-community bridge._
 - **What connects `docker-entrypoint.sh script`, `$schema`, `collection` to the rest of the system?**
-  _2077 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _2079 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `authStore.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.11551606288448393 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09269662921348315 - nodes in this community are weakly interconnected._
 - **Should `app.module.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.038984438984438985 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.03358656537385046 - nodes in this community are weakly interconnected._
 - **Should `schedules/page.tsx` be split into smaller, more focused modules?**
   _Cohesion score 0.13825757575757575 - nodes in this community are weakly interconnected._
