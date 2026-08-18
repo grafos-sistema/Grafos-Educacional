@@ -849,19 +849,19 @@ export class UsersService {
   /**
    * Atualiza avatar do usuário
    */
-  async updateAvatar(userId: string, file: Express.Multer.File) {
-    const [user] = await this.prisma.$queryRaw<
-      Array<{ id: string; institutionId: string | null; avatar: string | null }>
-    >`
-      SELECT id, "institutionId", avatar
-      FROM public.users
-      WHERE id = ${userId}
-      LIMIT 1
-    `;
-
-    if (!user) {
-      throw new NotFoundException('Usuário não encontrado');
-    }
+  async updateAvatar(
+    userId: string,
+    file: Express.Multer.File,
+    currentUser: {
+      userId: string;
+      role: UserRole;
+      institutionId?: string | null;
+    },
+  ) {
+    // Reutiliza a mesma autorização institucional usada na leitura de usuários.
+    // Isso permite que Diretor/Coordenador atualizem usuários da sua instituição,
+    // mas impede acesso a usuários de outra instituição.
+    const user = await this.findOne(userId, currentUser);
 
     if (!file?.buffer?.length) {
       throw new BadRequestException('Arquivo de avatar inválido');

@@ -347,14 +347,13 @@ export class UsersController {
   }
 
   @Post(':id/avatar')
-  @UseGuards(OwnershipGuard)
   @UseInterceptors(FileInterceptor('avatar', multerConfig))
   @HttpCode(HttpStatus.OK)
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary: 'Upload de avatar do usuário',
     description:
-      'Usuários podem fazer upload apenas do seu próprio avatar. Formatos aceitos: JPEG, PNG, WEBP. Tamanho máximo: 5MB.',
+      'Usuários podem atualizar o próprio avatar. Usuários administrativos podem atualizar avatares de usuários da sua instituição. Formatos aceitos: JPEG, PNG, WEBP. Tamanho máximo: 5MB.',
   })
   @ApiBody({
     schema: {
@@ -392,11 +391,12 @@ export class UsersController {
   uploadAvatar(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() currentUser: CurrentUserPayload,
   ) {
     if (!file) {
       throw new BadRequestException('Arquivo de avatar não fornecido');
     }
-    return this.usersService.updateAvatar(id, file);
+    return this.usersService.updateAvatar(id, file, currentUser);
   }
 
   @Get(':id/children')
