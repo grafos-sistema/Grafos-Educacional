@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/Input';
 import { Pagination } from '@/components/ui/Pagination';
 import { Select } from '@/components/ui/Select';
 import { formatPhone } from '@/components/ui/MaskedInput';
+import { TeacherSubjectsModal } from '@/components/teachers/TeacherSubjectsModal';
 
 export default function CoordinatorTeachersPage() {
   const router = useRouter();
@@ -28,6 +29,10 @@ export default function CoordinatorTeachersPage() {
     role: UserRole.TEACHER,
     isActive: undefined,
   });
+  const [teacherForSubjects, setTeacherForSubjects] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['coordinator-teachers', filters, user?.institutionId],
@@ -112,9 +117,10 @@ export default function CoordinatorTeachersPage() {
             onClick={(e) => {
               e.stopPropagation();
               if (teacher.teacherProfile?.id) {
-                router.push(
-                  `/coordinator/academic-distribution?teacherId=${encodeURIComponent(teacher.teacherProfile.id)}`
-                );
+                setTeacherForSubjects({
+                  id: teacher.teacherProfile.id,
+                  name: `${teacher.firstName} ${teacher.lastName}`,
+                });
               }
             }}
             disabled={!teacher.teacherProfile?.id}
@@ -211,6 +217,13 @@ export default function CoordinatorTeachersPage() {
           />
         </div>
       )}
+
+      <TeacherSubjectsModal
+        isOpen={Boolean(teacherForSubjects)}
+        onClose={() => setTeacherForSubjects(null)}
+        teacherId={teacherForSubjects?.id ?? null}
+        teacherName={teacherForSubjects?.name}
+      />
     </div>
   );
 }

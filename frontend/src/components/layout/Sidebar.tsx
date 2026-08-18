@@ -142,7 +142,7 @@ const coordinatorSectionConfig: Array<{
   },
   {
     title: 'Estrutura Acadêmica',
-    itemNames: ['Distribuição Acadêmica', 'Disciplinas', 'Turmas'],
+    itemNames: ['Disciplinas', 'Turmas'],
   },
   {
     title: 'Operação Acadêmica',
@@ -294,15 +294,6 @@ const navigation: NavItem[] = [
       [UserRole.INSTITUTION_ADMIN]: '/admin/subjects',
       [UserRole.COORDINATOR]: '/admin/subjects',
       [UserRole.STUDENT]: '/aluno/subjects',
-    },
-  },
-  {
-    name: 'Distribuição Acadêmica',
-    baseRoute: '/academic-distribution',
-    icon: AcademicCapIcon,
-    roles: [UserRole.COORDINATOR],
-    pathMapping: {
-      [UserRole.COORDINATOR]: '/coordinator/academic-distribution',
     },
   },
   {

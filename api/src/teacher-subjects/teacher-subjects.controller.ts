@@ -197,6 +197,24 @@ export class TeacherSubjectsController {
     );
   }
 
+  @Put('subject/:subjectId/sync')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @ApiOperation({ summary: 'Sincronizar professores de uma disciplina' })
+  @ApiResponse({
+    status: 200,
+    description: 'Professores da disciplina sincronizados',
+    type: [TeacherSubjectResponseDto],
+  })
+  async syncSubjectTeachers(
+    @Param('subjectId') subjectId: string,
+    @Body() body: { teacherIds: string[] },
+  ) {
+    return this.teacherSubjectsService.syncSubjectTeachers(
+      subjectId,
+      body.teacherIds,
+    );
+  }
+
   @Delete('teacher/:teacherId/:subjectId')
   @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
   @ApiOperation({ summary: 'Remover disciplina de um professor' })

@@ -44,10 +44,16 @@ export default function ClassesPage() {
     class: Class | null;
   }>({ isOpen: false, class: null });
 
+  const effectiveFilters = {
+    ...filters,
+    institutionId: user?.institutionId,
+  };
+
   // Buscar turmas
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ['classes', filters],
-    queryFn: () => classesService.findAll(filters),
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['classes', effectiveFilters],
+    queryFn: () => classesService.findAll(effectiveFilters),
+    enabled: Boolean(user?.institutionId),
   });
 
   // Buscar cursos para filtro
@@ -59,6 +65,7 @@ export default function ClassesPage() {
         limit: 100,
         isActive: true,
       }),
+    enabled: Boolean(user?.institutionId),
   });
 
   // Buscar anos letivos para filtro
@@ -70,6 +77,7 @@ export default function ClassesPage() {
         limit: 100,
         isActive: true,
       }),
+    enabled: Boolean(user?.institutionId),
   });
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
@@ -311,6 +319,16 @@ export default function ClassesPage() {
 
       {/* Tabela */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+        {isError ? (
+          <div className="flex flex-col items-center gap-3 p-10 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Não foi possível carregar as turmas agora.
+            </p>
+            <Button variant="outline" onClick={() => refetch()}>
+              Tentar novamente
+            </Button>
+          </div>
+        ) : (
         <Table
           data={data?.data || []}
           columns={columns}
@@ -318,6 +336,7 @@ export default function ClassesPage() {
           isLoading={isLoading}
           emptyMessage="Nenhuma turma encontrada"
         />
+        )}
       </div>
 
       {/* Paginação */}

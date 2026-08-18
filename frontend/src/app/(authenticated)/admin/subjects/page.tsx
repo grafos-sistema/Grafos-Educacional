@@ -11,6 +11,7 @@ import {
   TrashIcon,
   EyeIcon,
   BookOpenIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
 import { subjectsService, SubjectsFilterParams } from '@/services/subjects.service';
 import { Subject } from '@/types/subject.types';
@@ -24,6 +25,7 @@ import { Select } from '@/components/ui/Select';
 import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
 import { presentFriendlyError } from '@/lib/friendly-error';
+import { SubjectTeachersModal } from '@/components/subjects/SubjectTeachersModal';
 
 export default function SubjectsPage() {
   const router = useRouter();
@@ -41,11 +43,21 @@ export default function SubjectsPage() {
     isOpen: boolean;
     subject: Subject | null;
   }>({ isOpen: false, subject: null });
+  const [subjectForTeachers, setSubjectForTeachers] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+
+  const effectiveFilters = {
+    ...filters,
+    institutionId: user?.institutionId,
+  };
 
   // Buscar disciplinas
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ['subjects', filters],
-    queryFn: () => subjectsService.findAll(filters),
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['subjects', effectiveFilters],
+    queryFn: () => subjectsService.findAll(effectiveFilters),
+    enabled: Boolean(user?.institutionId),
   });
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
@@ -144,6 +156,19 @@ export default function SubjectsPage() {
           >
             <EyeIcon className="h-5 w-5" />
           </button>
+          {currentRole === UserRole.COORDINATOR && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setSubjectForTeachers({ id: subject.id, name: subject.name });
+              }}
+              className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+              title="Definir professores"
+              aria-label={`Definir professores da disciplina ${subject.name}`}
+            >
+              <UserGroupIcon className="h-5 w-5" />
+            </button>
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -243,6 +268,16 @@ export default function SubjectsPage() {
 
       {/* Tabela */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+        {isError ? (
+          <div className="flex flex-col items-center gap-3 p-10 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Não foi possível carregar as disciplinas agora.
+            </p>
+            <Button variant="outline" onClick={() => refetch()}>
+              Tentar novamente
+            </Button>
+          </div>
+        ) : (
         <Table
           data={data?.data || []}
           columns={columns}
@@ -250,6 +285,7 @@ export default function SubjectsPage() {
           isLoading={isLoading}
           emptyMessage="Nenhuma disciplina encontrada"
         />
+        )}
       </div>
 
       {/* Paginação */}
@@ -310,6 +346,13 @@ export default function SubjectsPage() {
           </div>
         </div>
       </Modal>
+
+      <SubjectTeachersModal
+        isOpen={Boolean(subjectForTeachers)}
+        onClose={() => setSubjectForTeachers(null)}
+        subjectId={subjectForTeachers?.id ?? null}
+        subjectName={subjectForTeachers?.name}
+      />
     </div>
   );
 }

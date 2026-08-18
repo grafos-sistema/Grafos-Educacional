@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter, useParams } from 'next/navigation';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   AcademicCapIcon,
@@ -19,6 +20,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
+import { TeacherSubjectsModal } from '@/components/teachers/TeacherSubjectsModal';
 
 const genderLabels: Record<Gender, string> = {
   MALE: 'Masculino',
@@ -36,6 +38,7 @@ export default function CoordinatorTeacherDetailPage() {
   const router = useRouter();
   const params = useParams();
   const userId = params?.id as string;
+  const [isSubjectsModalOpen, setIsSubjectsModalOpen] = useState(false);
 
   const { data: user, isLoading } = useQuery({
     queryKey: ['coordinator-teacher-detail', userId],
@@ -92,13 +95,7 @@ export default function CoordinatorTeacherDetailPage() {
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <p className="text-gray-600 dark:text-gray-400">Informações completas do professor</p>
           <Button
-            onClick={() => {
-              if (teacherProfileId) {
-                router.push(
-                  `/coordinator/academic-distribution?teacherId=${encodeURIComponent(teacherProfileId)}`
-                );
-              }
-            }}
+            onClick={() => setIsSubjectsModalOpen(true)}
             disabled={!teacherProfileId}
             leftIcon={<AcademicCapIcon className="h-4 w-4" />}
           >
@@ -301,6 +298,13 @@ export default function CoordinatorTeacherDetailPage() {
           </div>
         )}
       </div>
+
+      <TeacherSubjectsModal
+        isOpen={isSubjectsModalOpen}
+        onClose={() => setIsSubjectsModalOpen(false)}
+        teacherId={teacherProfileId ?? null}
+        teacherName={`${user.firstName} ${user.lastName}`}
+      />
     </div>
   );
 }

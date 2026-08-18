@@ -6,6 +6,7 @@ import {
 } from '@/types/course.types';
 import { supabase } from '@/lib/supabase';
 import { fetchCurrentUserProfile } from '@/lib/auth-profile';
+import api from '@/lib/api';
 
 export interface CoursesFilterParams {
   page?: number;
@@ -22,45 +23,15 @@ export const coursesService = {
   async findAll(params: CoursesFilterParams = {}): Promise<PaginatedCourses> {
     const page = params.page ?? 1;
     const limit = params.limit ?? 10;
-    const from = (page - 1) * limit;
-    const to = from + limit - 1;
-
-    const institutionId =
-      params.institutionId ?? (await fetchCurrentUserProfile()).institutionId;
-
-    let query = supabase
-      .from('courses')
-      .select('*', { count: 'exact' })
-      .eq('institutionId', institutionId)
-      .order('name', { ascending: true })
-      .range(from, to);
-
-    if (typeof params.isActive === 'boolean') {
-      query = query.eq('isActive', params.isActive);
-    }
-
-    if (params.search && params.search.trim().length > 0) {
-      const term = params.search.trim();
-      query = query.or(`name.ilike.%${term}%,code.ilike.%${term}%`);
-    }
-
-    const { data, error, count } = await query;
-    if (error) throw error;
-
-    const total = count ?? 0;
-    const totalPages = Math.max(1, Math.ceil(total / limit));
-
-    return {
-      data: (data ?? []) as Course[],
-      meta: {
-        total,
+    return (await api.get<PaginatedCourses>('/courses', {
+      params: {
         page,
         limit,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1,
+        institutionId: params.institutionId,
+        search: params.search?.trim() || undefined,
+        isActive: params.isActive,
       },
-    };
+    })) as unknown as PaginatedCourses;
   },
 
   /**

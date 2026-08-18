@@ -37,7 +37,10 @@ const roleRoutes: Record<string, string[]> = {
   SUPER_ADMIN: ['/super-admin', '/admin', '/coordinator', '/professor', '/aluno', '/responsaveis'],
   DIRECTOR: ['/admin', '/super-admin/questions'],
   INSTITUTION_ADMIN: ['/admin', '/coordinator', '/professor', '/aluno', '/responsaveis'],
-  COORDINATOR: ['/coordinator', '/professor', '/aluno'],
+  // A coordenação usa as telas de disciplinas e turmas compartilhadas com a
+  // administração. As permissões de criação/edição continuam sendo validadas
+  // pela API, mas o middleware precisa permitir a navegação até essas telas.
+  COORDINATOR: ['/coordinator', '/admin/subjects', '/admin/classes', '/professor', '/aluno'],
   TEACHER: ['/professor'],
   STUDENT: ['/aluno'],
   PARENT: ['/responsaveis'],

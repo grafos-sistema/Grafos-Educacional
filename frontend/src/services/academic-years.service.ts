@@ -59,70 +59,15 @@ export const academicYearsService = {
   async findAll(params: AcademicYearsFilterParams = {}): Promise<PaginatedAcademicYears> {
     const page = params.page ?? 1;
     const limit = params.limit ?? 10;
-    const from = (page - 1) * limit;
-    const to = from + limit - 1;
-
-    const institutionId =
-      params.institutionId ?? (await fetchCurrentUserProfile()).institutionId;
-
-    let query = supabase
-      .from('academic_years')
-      .select('*', { count: 'exact' })
-      .eq('institutionId', institutionId)
-      .order('year', { ascending: false })
-      .range(from, to);
-
-    if (typeof params.isActive === 'boolean') {
-      query = query.eq('isActive', params.isActive);
-    }
-
-    if (params.unitId) {
-      query = query.eq('unitId', params.unitId);
-    }
-
-    if (typeof params.year === 'number') {
-      query = query.eq('year', params.year);
-    }
-
-    const { data, error, count } = await query;
-    if (error) throw error;
-
-    const academicYears = await attachUnitNames((data ?? []) as AcademicYear[]);
-    const academicYearIds = academicYears.map((academicYear) => academicYear.id);
-    const periodsCountMap = new Map<string, number>();
-
-    if (academicYearIds.length > 0) {
-      const { data: periods, error: periodsError } = await supabase
-        .from('academic_periods')
-        .select('academicYearId')
-        .in('academicYearId', academicYearIds)
-        .eq('isActive', true);
-
-      if (periodsError) throw periodsError;
-
-      for (const period of periods ?? []) {
-        const academicYearId = period.academicYearId as string;
-        periodsCountMap.set(academicYearId, (periodsCountMap.get(academicYearId) ?? 0) + 1);
-      }
-    }
-
-    const total = count ?? 0;
-    const totalPages = Math.max(1, Math.ceil(total / limit));
-
-    return {
-      data: academicYears.map((academicYear) => ({
-        ...academicYear,
-        periodsCount: periodsCountMap.get(academicYear.id) ?? 0,
-      })),
-      meta: {
-        total,
+    return (await api.get<PaginatedAcademicYears>('/academic-years', {
+      params: {
         page,
         limit,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1,
+        institutionId: params.institutionId,
+        year: params.year,
+        isActive: params.isActive,
       },
-    };
+    })) as unknown as PaginatedAcademicYears;
   },
 
   /**

@@ -293,6 +293,53 @@ export class TeacherSubjectsService {
     return this.findAllByTeacher(teacherId);
   }
 
+  async syncSubjectTeachers(subjectId: string, teacherIds: string[]) {
+    const subject = await this.prisma.subject.findUnique({
+      where: { id: subjectId },
+      select: { id: true, institutionId: true },
+    });
+
+    if (!subject) {
+      throw new NotFoundException('Disciplina não encontrada');
+    }
+
+    const uniqueTeacherIds = Array.from(new Set(teacherIds.filter(Boolean)));
+
+    if (uniqueTeacherIds.length > 0) {
+      const teachers = await this.prisma.teacher.findMany({
+        where: { id: { in: uniqueTeacherIds } },
+        select: {
+          id: true,
+          user: { select: { institutionId: true } },
+        },
+      });
+
+      if (teachers.length !== uniqueTeacherIds.length) {
+        throw new NotFoundException(
+          'Um ou mais professores não foram encontrados',
+        );
+      }
+
+      if (teachers.some((teacher) => teacher.user.institutionId !== subject.institutionId)) {
+        throw new ForbiddenException(
+          'Professor não pertence à mesma instituição da disciplina',
+        );
+      }
+    }
+
+    await this.prisma.$transaction(async (transaction) => {
+      await transaction.teacherSubject.deleteMany({ where: { subjectId } });
+
+      if (uniqueTeacherIds.length > 0) {
+        await transaction.teacherSubject.createMany({
+          data: uniqueTeacherIds.map((teacherId) => ({ teacherId, subjectId })),
+        });
+      }
+    });
+
+    return this.findAllBySubject(subjectId);
+  }
+
   async remove(teacherId: string, subjectId: string) {
     const teacherSubject = await this.prisma.teacherSubject.findUnique({
       where: {

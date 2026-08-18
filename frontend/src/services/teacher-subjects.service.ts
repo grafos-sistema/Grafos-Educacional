@@ -237,4 +237,14 @@ export const teacherSubjectsService = {
     const data = response as unknown as DbTeacherSubject[];
     return (data ?? []).map(mapTeacherSubject);
   },
+
+  // Coordenador: sincronizar professores habilitados para uma disciplina
+  syncSubjectTeachers: async (subjectId: string, teacherIds: string[]): Promise<TeacherSubject[]> => {
+    const uniqueIds = Array.from(new Set(teacherIds)).filter(Boolean);
+    const response = await api.put<DbTeacherSubject[]>(`/teacher-subjects/subject/${subjectId}/sync`, {
+      teacherIds: uniqueIds,
+    });
+    const data = response as unknown as DbTeacherSubject[];
+    return (data ?? []).map(mapTeacherSubject);
+  },
 };
