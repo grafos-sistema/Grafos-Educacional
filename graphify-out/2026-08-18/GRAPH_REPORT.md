@@ -1,7 +1,7 @@
-# Graph Report - Grafos-Educacional  (2026-08-18)
+# Graph Report - Grafos-Educacional  (2026-08-17)
 
 ## Corpus Check
-- 778 files · ~1,151,203 words
+- 778 files · ~1,151,173 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `6faaac12`
+- Built from commit: `89059a9d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 

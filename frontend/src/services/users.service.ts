@@ -1195,14 +1195,9 @@ export const usersService = {
           const errCode = payload && typeof payload.error === 'string' ? payload.error : '';
           const details = payload && typeof payload.details === 'string' ? payload.details : '';
 
-          if (errCode === 'not_authorized_for_institution') {
-            throw new Error(
-              `Seu usuário (Super Admin Local) só pode resetar senhas de usuários da mesma instituição. ${details}`
-            );
-          }
           if (errCode === 'not_authorized') {
             throw new Error(
-              `Apenas Super Admin Global ou Super Admin Local podem resetar senhas. ${details}`
+              `Apenas Super Admin Global pode resetar senhas. ${details}`
             );
           }
           if (errCode === 'missing_profile') {

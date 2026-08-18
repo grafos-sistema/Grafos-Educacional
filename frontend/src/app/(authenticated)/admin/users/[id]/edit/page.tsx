@@ -73,9 +73,10 @@ export function EditUserPageContent({
 
   const callerRole = activeProfile ?? currentUser?.role;
 
-  const canManagePassword =
-    callerRole === UserRole.SUPER_ADMIN ||
-    callerRole === UserRole.SUPER_ADMIN_GLOBAL;
+  // A troca de perfil/localStorage só controla a navegação da interface. A
+  // permissão para redefinir senha deve seguir o papel principal vindo do
+  // perfil autenticado, e somente o Super Admin Global pode executar essa ação.
+  const canManagePassword = currentUser?.role === UserRole.SUPER_ADMIN_GLOBAL;
   const userId = userIdProp ?? (params?.id as string);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -565,7 +566,7 @@ export function EditUserPageContent({
 
     if (nextPassword) {
       if (!canManagePassword) {
-        const errorMsg = 'Apenas o Super Admin pode redefinir a senha por este fluxo.';
+        const errorMsg = 'Apenas o Super Admin Global pode redefinir senhas por este fluxo.';
         setError(errorMsg);
         toast.error(errorMsg);
         return;

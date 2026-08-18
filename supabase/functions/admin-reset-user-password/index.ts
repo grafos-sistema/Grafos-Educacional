@@ -120,11 +120,10 @@ Deno.serve(async (req) => {
   // baseado em activeProfile/localStorage do frontend.
   const callerRole = String(caller.role ?? "").trim().toUpperCase()
   const isGlobal = callerRole === "SUPER_ADMIN_GLOBAL"
-  const isLocal = callerRole === "SUPER_ADMIN"
-  if (!isGlobal && !isLocal) {
+  if (!isGlobal) {
     return json({
       error: "not_authorized",
-      details: `Esperava SUPER_ADMIN ou SUPER_ADMIN_GLOBAL, recebeu '${callerRole || "(vazio)"}' (callerId ${caller.id}).`,
+      details: `Esperava SUPER_ADMIN_GLOBAL, recebeu '${callerRole || "(vazio)"}' (callerId ${caller.id}).`,
       authUserId: authUserData.user.id,
       callerInstitutionId: caller.institutionId ?? null,
       callerAuthUserId: (caller.auth_user_id as string | null | undefined) ?? null,
@@ -147,39 +146,6 @@ Deno.serve(async (req) => {
 
   if (targetUserError) return json({ error: "failed_to_load_target_user", details: targetUserError.message }, 500)
   if (!targetUser) return json({ error: "user_not_found", details: `userId ${userId} não existe em public.users.` }, 404)
-
-  // ----------------------------------------------------------------
-  // REGRA ESPECÍFICA: SUPER_ADMIN LOCAL SÓ PODE RESETAR USUÁRIOS
-  // DA MESMA INSTITUIÇÃO (ou vinculada via user_institutions)
-  // SUPER_ADMIN_GLOBAL PODE RESETAR QUALQUER UM.
-  // ----------------------------------------------------------------
-  if (isLocal) {
-    const targetInstitutionId = (targetUser as any).institutionId as string | null | undefined
-    const callerInstitutionId = caller.institutionId
-
-    const sameInstitution =
-      callerInstitutionId && targetInstitutionId && callerInstitutionId === targetInstitutionId
-
-    const hasInstitutionLink = !!(
-      callerInstitutionId && targetInstitutionId &&
-      (
-        await supabase
-          .from("user_institutions")
-          .select("id")
-          .eq("userId", caller.id)
-          .eq("institutionId", targetInstitutionId)
-          .eq("isActive", true)
-          .maybeSingle()
-      ).data
-    )
-
-    if (!sameInstitution && !hasInstitutionLink) {
-      return json({
-        error: "not_authorized_for_institution",
-        details: `Super Admin Local (callerId ${caller.id}) não tem vínculo com a instituição do usuário alvo (institutionId ${targetInstitutionId ?? "(null)"}).`,
-      }, 403)
-    }
-  }
 
   if (!targetUser.auth_user_id) {
     return json({
