@@ -400,7 +400,10 @@ async function fetchUserFromSupabaseById(id: string): Promise<User> {
 }
 
 function shouldUseSupabaseAsPrimarySource(_role?: UserRole) {
-  return true;
+  // As telas administrativas precisam consultar a API, que aplica a
+  // autorização por instituição. A leitura direta do Supabase é limitada
+  // pelo RLS ao próprio usuário e faria as listas mostrarem apenas o Diretor.
+  return false;
 }
 
 async function loadParentStudentLinks(
