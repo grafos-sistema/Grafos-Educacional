@@ -84,6 +84,7 @@ function isAdminRole(role: string) {
 
 function isAllowedRole(role: string) {
   return [
+    "SUPER_ADMIN_GLOBAL",
     "DIRECTOR",
     "SUPER_ADMIN",
     "INSTITUTION_ADMIN",
@@ -166,11 +167,16 @@ Deno.serve(async (req: Request) => {
   const role = body?.role?.trim()
   const firstName = body?.firstName?.trim()
   const lastName = body?.lastName?.trim()
-  const institutionId = body?.institutionId?.trim() || caller.institutionId
+  const isCreatingGlobalAdmin = role === "SUPER_ADMIN_GLOBAL"
+  const institutionId = isCreatingGlobalAdmin
+    ? null
+    : (body?.institutionId?.trim() || caller.institutionId)
   const requestedInstitutionIds = Array.isArray(body?.institutionIds)
     ? body?.institutionIds.map((value) => value?.trim()).filter(Boolean) as string[]
     : []
-  const institutionIds = Array.from(new Set([institutionId, ...requestedInstitutionIds].filter(Boolean)))
+  const institutionIds = isCreatingGlobalAdmin
+    ? []
+    : Array.from(new Set([institutionId, ...requestedInstitutionIds].filter(Boolean)))
   const isActive = body?.isActive ?? true
   const generatedPassword = normalizePassword(body?.password) ?? (email ? buildInitialPassword(email) : null)
 
@@ -179,8 +185,12 @@ Deno.serve(async (req: Request) => {
   if (!role || !isAllowedRole(role)) return json({ error: "invalid_role" }, 400)
   if (!firstName) return json({ error: "missing_firstName" }, 400)
   if (!lastName) return json({ error: "missing_lastName" }, 400)
-  if (!institutionId) return json({ error: "missing_institutionId" }, 400)
-  if (institutionIds.length === 0) return json({ error: "missing_institutionIds" }, 400)
+  if (!isCreatingGlobalAdmin && !institutionId) return json({ error: "missing_institutionId" }, 400)
+  if (!isCreatingGlobalAdmin && institutionIds.length === 0) return json({ error: "missing_institutionIds" }, 400)
+
+  if (isCreatingGlobalAdmin && caller.role !== "SUPER_ADMIN_GLOBAL") {
+    return json({ error: "not_authorized_for_role" }, 403)
+  }
 
   if (
     role === "SUPER_ADMIN" &&
@@ -190,39 +200,52 @@ Deno.serve(async (req: Request) => {
     return json({ error: "not_authorized_for_role" }, 403)
   }
 
-  try {
-    for (const targetInstitutionId of institutionIds) {
-      const canAccess = await callerCanAccessInstitution(supabase, caller, targetInstitutionId)
-      if (!canAccess) return json({ error: "not_authorized_for_institution" }, 403)
+  if (!isCreatingGlobalAdmin) {
+    try {
+      for (const targetInstitutionId of institutionIds) {
+        const canAccess = await callerCanAccessInstitution(supabase, caller, targetInstitutionId)
+        if (!canAccess) return json({ error: "not_authorized_for_institution" }, 403)
+      }
+    } catch {
+      return json({ error: "failed_to_check_access" }, 500)
     }
-  } catch {
-    return json({ error: "failed_to_check_access" }, 500)
   }
 
-  const { data: institutions, error: institutionError } = await supabase
-    .from("institutions")
-    .select('id, "isActive"')
-    .in("id", institutionIds)
+  if (!isCreatingGlobalAdmin) {
+    const { data: institutions, error: institutionError } = await supabase
+      .from("institutions")
+      .select('id, "isActive"')
+      .in("id", institutionIds)
 
-  if (institutionError) return json({ error: "failed_to_load_institution" }, 500)
-  if (!institutions || institutions.length !== institutionIds.length) {
-    return json({ error: "institution_not_found" }, 404)
-  }
-  if (institutions.some((institution: { isActive: boolean }) => !institution.isActive)) {
-    return json({ error: "institution_inactive" }, 400)
+    if (institutionError) return json({ error: "failed_to_load_institution" }, 500)
+    if (!institutions || institutions.length !== institutionIds.length) {
+      return json({ error: "institution_not_found" }, 404)
+    }
+    if (institutions.some((institution: { isActive: boolean }) => !institution.isActive)) {
+      return json({ error: "institution_inactive" }, 400)
+    }
   }
 
   const now = new Date().toISOString()
   const fullName = `${firstName} ${lastName}`.trim()
 
-  const { data: existingCpf, error: existingCpfError } = body?.cpf
-    ? await supabase
-        .from("users")
-        .select("id")
-        .eq("institutionId", institutionId)
-        .eq("cpf", body.cpf)
-        .maybeSingle()
-    : { data: null, error: null }
+  let existingCpf: { id: string } | null = null
+  let existingCpfError: { message: string } | null = null
+
+  if (body?.cpf) {
+    let cpfQuery = supabase
+      .from("users")
+      .select("id")
+      .eq("cpf", body.cpf)
+
+    cpfQuery = isCreatingGlobalAdmin
+      ? cpfQuery.is("institutionId", null)
+      : cpfQuery.eq("institutionId", institutionId)
+
+    const result = await cpfQuery.maybeSingle()
+    existingCpf = result.data
+    existingCpfError = result.error
+  }
 
   if (existingCpfError) return json({ error: "failed_to_check_cpf" }, 500)
   if (existingCpf) return json({ error: "cpf_already_registered" }, 409)
@@ -297,23 +320,25 @@ Deno.serve(async (req: Request) => {
     return json({ error: "failed_to_create_app_user", details: appUserError?.message }, 500)
   }
 
-  const institutionLinks = institutionIds.map((targetInstitutionId) => ({
-    id: crypto.randomUUID(),
-    userId: appUser.id,
-    institutionId: targetInstitutionId,
-    isActive: true,
-    isPrimary: targetInstitutionId === institutionId,
-    createdAt: now,
-    updatedAt: now,
-  }))
+  if (institutionIds.length > 0) {
+    const institutionLinks = institutionIds.map((targetInstitutionId) => ({
+      id: crypto.randomUUID(),
+      userId: appUser.id,
+      institutionId: targetInstitutionId,
+      isActive: true,
+      isPrimary: targetInstitutionId === institutionId,
+      createdAt: now,
+      updatedAt: now,
+    }))
 
-  const { error: linkError } = await supabase
-    .from("user_institutions")
-    .upsert(institutionLinks, { onConflict: "userId,institutionId" })
+    const { error: linkError } = await supabase
+      .from("user_institutions")
+      .upsert(institutionLinks, { onConflict: "userId,institutionId" })
 
-  if (linkError) {
-    await cleanup()
-    return json({ error: "failed_to_link_user_institution", details: linkError.message }, 500)
+    if (linkError) {
+      await cleanup()
+      return json({ error: "failed_to_link_user_institution", details: linkError.message }, 500)
+    }
   }
 
   // Handle specific roles profiles and related data

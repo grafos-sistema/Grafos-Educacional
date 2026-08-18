@@ -25,6 +25,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "bootstrap:global-admin": "ts-node scripts/bootstrap-global-admin.ts",
+    "reset:test-database": "ts-node scripts/reset-test-database.ts",
     "prisma:studio": "prisma studio",
     "push": "docker build --platform linux/amd64 -t luissantostsx/grafos-api:latest . && docker push luissantostsx/grafos-api:latest"
   },

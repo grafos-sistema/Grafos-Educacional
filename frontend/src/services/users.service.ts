@@ -28,6 +28,8 @@ export interface UsersFilterParams {
   search?: string;
   role?: UserRole;
   institutionId?: string;
+  includeAllInstitutions?: boolean;
+  includeGlobalAdmins?: boolean;
   isActive?: boolean;
   hasTeacherProfile?: boolean;
   hasStudentProfile?: boolean;
@@ -147,6 +149,8 @@ async function parseSupabaseFunctionError(error: { context: Response }) {
         return 'Informe a nova senha para concluir a redefinição.';
       case 'not_authorized':
         return 'Você não tem permissão para executar esta ação.';
+      case 'not_authorized_for_role':
+        return 'Somente um Super Admin Global pode criar outro Super Admin Global.';
       case 'failed_to_update_auth_user':
         return details;
       default:
@@ -511,7 +515,8 @@ export const usersService = {
   async findAll(params: UsersFilterParams = {}): Promise<PaginatedResponse<User>> {
     const viewer = useAuthStore.getState().user;
     const viewerRole = (viewer?.activeProfile ?? viewer?.role) as UserRole | undefined;
-    const excludeGlobalAdmins = viewerRole === UserRole.SUPER_ADMIN_GLOBAL;
+    const excludeGlobalAdmins =
+      viewerRole === UserRole.SUPER_ADMIN_GLOBAL && !params.includeGlobalAdmins;
     const useSupabaseAsPrimary = shouldUseSupabaseAsPrimarySource(viewerRole);
 
     const apiParams = new URLSearchParams();
@@ -535,7 +540,10 @@ export const usersService = {
 
     const { institutionFilterAll, institutionFilterIds, institutionUnitFilterId } =
       useAuthStore.getState();
-    const effectiveIds = institutionFilterAll ? [] : getValidInstitutionIds(institutionFilterIds);
+    const effectiveIds =
+      institutionFilterAll || params.includeAllInstitutions
+        ? []
+        : getValidInstitutionIds(institutionFilterIds);
 
     if (effectiveIds.length > 1) {
       apiParams.append('institutionIds', effectiveIds.join(','));
@@ -839,6 +847,58 @@ export const usersService = {
       const response = await api.post<User>('/users', data);
       return response as unknown as User;
     }
+  },
+
+  /**
+   * Cria um SUPER_ADMIN_GLOBAL sem vínculo obrigatório com instituição.
+   * A Edge Function valida que apenas outro SUPER_ADMIN_GLOBAL pode executar
+   * esta operação e cria o usuário no Auth e em public.users de forma atômica.
+   */
+  async createGlobalAdmin(data: {
+    email: string;
+    password?: string;
+    firstName: string;
+    lastName: string;
+    cpf?: string;
+  }): Promise<User> {
+    const sanitizedData = Object.entries(data).reduce((acc, [key, value]) => {
+      (acc as any)[key] =
+        key === 'cpf' && typeof value === 'string'
+          ? value.replace(/\D/g, '') || null
+          : normalizeOptionalString(value);
+      return acc;
+    }, {} as Record<string, unknown>);
+
+    const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
+      body: {
+        ...sanitizedData,
+        role: UserRole.SUPER_ADMIN_GLOBAL,
+        isActive: true,
+      },
+    });
+
+    if (error) {
+      if (isSupabaseFunctionHttpError(error)) {
+        throw new Error(await parseSupabaseFunctionError(error));
+      }
+      throw error;
+    }
+
+    const createdUser = (result as { user?: AppUserRow | null } | null)?.user;
+    if (!createdUser?.id) {
+      throw new Error('Resposta inválida ao criar o Super Admin Global.');
+    }
+
+    return mapUser({
+      ...createdUser,
+      firstName: createdUser.firstName ?? data.firstName,
+      lastName: createdUser.lastName ?? data.lastName,
+      isActive: createdUser.isActive ?? true,
+      emailVerified: createdUser.emailVerified ?? true,
+      requestedProfileType: null,
+      createdAt: createdUser.createdAt ?? new Date().toISOString(),
+      updatedAt: createdUser.updatedAt ?? new Date().toISOString(),
+    });
   },
 
   /**

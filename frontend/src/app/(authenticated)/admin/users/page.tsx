@@ -10,6 +10,7 @@ import {
   TrashIcon,
   EyeIcon,
   CheckCircleIcon,
+  ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 import { usersService, UsersFilterParams } from '@/services/users.service';
 import { User, UserRole } from '@/types/user.types';
@@ -430,6 +431,16 @@ export default function UsersPage() {
           )}
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
+          {user?.role === UserRole.SUPER_ADMIN_GLOBAL && (
+            <Button
+              variant="outline"
+              onClick={() => router.push('/admin/global-admins')}
+              leftIcon={<ShieldCheckIcon className="h-5 w-5" />}
+              className="flex-1 sm:flex-none"
+            >
+              Super Admins Globais
+            </Button>
+          )}
           {selectedUserIds.size > 0 && (
             <Button
               onClick={() => setBulkApproveModal(true)}
