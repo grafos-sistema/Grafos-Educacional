@@ -139,6 +139,29 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className="light" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                // Alguns instrumentos externos de métricas injetam web-vitals
+                // no navegador e podem lançar este erro fora do código da aplicação.
+                // Interceptamos somente essa assinatura conhecida para não ocultar
+                // erros reais do Grafos.
+                window.addEventListener('error', function(event) {
+                  var message = String(event.message || '');
+                  var stack = event.error && event.error.stack ? String(event.error.stack) : '';
+                  if (
+                    message.indexOf("reading 'startTime'") !== -1 &&
+                    stack.indexOf('reportAllChanges') !== -1
+                  ) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                  }
+                }, true);
+              })();
+            `,
+          }}
+        />
         {shouldPatchBrowserExtensions ? (
           <script
             dangerouslySetInnerHTML={{

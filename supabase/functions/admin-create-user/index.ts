@@ -78,7 +78,7 @@ function getJwt(req: Request) {
 }
 
 function isAdminRole(role: string) {
-  return role === "SUPER_ADMIN_GLOBAL" || role === "SUPER_ADMIN" || role === "INSTITUTION_ADMIN"
+  return role === "SUPER_ADMIN_GLOBAL" || role === "SUPER_ADMIN" || role === "INSTITUTION_ADMIN" || role === "DIRECTOR"
 }
 
 function isAllowedRole(role: string) {

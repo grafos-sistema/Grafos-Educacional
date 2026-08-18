@@ -442,9 +442,10 @@ const navigation: NavItem[] = [
     name: 'Cursos',
     baseRoute: '/courses',
     icon: AcademicCapIcon,
-    roles: [UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN],
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN],
     pathMapping: {
       [UserRole.SUPER_ADMIN]: '/admin/courses',
+      [UserRole.DIRECTOR]: '/admin/courses',
       [UserRole.INSTITUTION_ADMIN]: '/admin/courses',
     },
   },
