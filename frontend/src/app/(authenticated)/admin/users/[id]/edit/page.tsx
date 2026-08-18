@@ -57,11 +57,12 @@ interface EditUserPageContentProps {
   successRoute?: string;
 }
 
-type EditUserFormData = Omit<UpdateUserData, 'alergias' | 'medicamentos' | 'necessidadesEspeciais' | 'restricoesAlimentares'> & {
+type EditUserFormData = Omit<UpdateUserData, 'alergias' | 'medicamentos' | 'necessidadesEspeciais' | 'restricoesAlimentares' | 'convenioMedico'> & {
   alergias?: string[];
   medicamentos?: string[];
   necessidadesEspeciais?: string[];
   restricoesAlimentares?: string[];
+  convenioMedico?: string[];
   confirmPassword?: string;
 };
 
@@ -275,6 +276,7 @@ export function EditUserPageContent({
           medicamentos: parseStudentTagList(user.studentProfile.healthRecord?.medicamentos),
           necessidadesEspeciais: parseStudentTagList(user.studentProfile.healthRecord?.necessidadesEspeciais),
           restricoesAlimentares: parseStudentTagList(user.studentProfile.healthRecord?.restricoesAlimentares),
+          convenioMedico: parseStudentTagList(user.studentProfile.healthRecord?.convenioMedico),
           ...user.studentProfile.transportation,
           responsaveis: (user.studentProfile as any).parents?.length > 0 
             ? (user.studentProfile as any).parents.map((p: any, index: number) => ({
@@ -421,7 +423,7 @@ export function EditUserPageContent({
           medicamentos: serializeStudentTagList(data.medicamentos),
           restricoesAlimentares: serializeStudentTagList(data.restricoesAlimentares),
           necessidadesEspeciais: serializeStudentTagList(data.necessidadesEspeciais),
-          convenioMedico: data.convenioMedico,
+          convenioMedico: serializeStudentTagList(data.convenioMedico),
           contatoEmergencia: data.contatoEmergencia,
         } : undefined,
 
@@ -501,8 +503,15 @@ export function EditUserPageContent({
           user?.role === UserRole.INSTITUTION_ADMIN) &&
         photoFile
       ) {
-        const uploadResult = await usersService.uploadAvatar(userId, photoFile);
-        setValue('avatar', uploadResult.avatar, { shouldDirty: true });
+        try {
+          const uploadResult = await usersService.uploadAvatar(userId, photoFile);
+          setValue('avatar', uploadResult.avatar, { shouldDirty: true });
+        } catch (avatarError) {
+          // A atualização dos dados já foi concluída; a foto pode ser incluída
+          // posteriormente sem bloquear o restante do fluxo.
+          console.warn('Usuário atualizado, mas o avatar não pôde ser salvo:', avatarError);
+          toast.error('Dados atualizados, mas a foto não pôde ser salva. Tente adicioná-la novamente depois.');
+        }
       }
 
       // Link / unlink director unit when unitId is provided in the form

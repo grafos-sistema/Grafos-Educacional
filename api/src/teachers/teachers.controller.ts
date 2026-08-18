@@ -158,6 +158,7 @@ export class TeachersController {
     UserRole.SUPER_ADMIN,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
+    UserRole.DIRECTOR,
     UserRole.TEACHER,
   )
   @ApiOperation({
@@ -194,6 +195,7 @@ export class TeachersController {
     UserRole.SUPER_ADMIN,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
+    UserRole.DIRECTOR,
     UserRole.TEACHER,
   )
   @ApiOperation({

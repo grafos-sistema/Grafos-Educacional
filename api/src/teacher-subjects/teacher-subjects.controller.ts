@@ -48,7 +48,12 @@ export class TeacherSubjectsController {
   }
 
   @Get('teacher/:teacherId')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+    UserRole.DIRECTOR,
+  )
   @ApiOperation({ summary: 'Listar disciplinas de um professor' })
   @ApiResponse({
     status: 200,

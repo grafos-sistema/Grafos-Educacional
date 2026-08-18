@@ -275,7 +275,7 @@ export function NewUserPageContent({
         
         userData.healthInfo = {
            tipoSanguineo: data.tipoSanguineo,
-           convenioMedico: data.convenioMedico,
+           convenioMedico: serializeStudentTagList(data.convenioMedico),
            alergias: serializeStudentTagList(data.alergias),
            medicamentos: serializeStudentTagList(data.medicamentos),
            necessidadesEspeciais: serializeStudentTagList(data.necessidadesEspeciais),
@@ -319,7 +319,14 @@ export function NewUserPageContent({
           currentRole === UserRole.INSTITUTION_ADMIN) &&
         photoFile
       ) {
-        await usersService.uploadAvatar(createdUser.id, photoFile);
+        try {
+          await usersService.uploadAvatar(createdUser.id, photoFile);
+        } catch (avatarError) {
+          // O usuário e seus vínculos já foram criados. A foto é uma etapa
+          // complementar e não deve transformar um cadastro concluído em erro.
+          console.warn('Usuário criado, mas o avatar não pôde ser salvo:', avatarError);
+          toast.error('Usuário criado, mas a foto não pôde ser salva. Você poderá adicioná-la depois na edição.');
+        }
       }
 
       const targetUnitId =

@@ -1250,81 +1250,23 @@ export const usersService = {
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData.session?.access_token;
 
-    try {
-      const response = await api.post<{ message: string; avatar: string }>(
-        `/users/${id}/avatar`,
-        formData,
-        accessToken
-          ? {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                'x-skip-error-toast': '1',
-              },
-            }
-          : { headers: { 'x-skip-error-toast': '1' } }
-      );
+    const response = await api.post<{ message: string; avatar: string }>(
+      `/users/${id}/avatar`,
+      formData,
+      accessToken
+        ? {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'x-skip-error-toast': '1',
+            },
+          }
+        : { headers: { 'x-skip-error-toast': '1' } }
+    );
 
-      return response as unknown as { message: string; avatar: string };
-    } catch (error) {
-      const statusCode =
-        (error as any)?.statusCode ??
-        (error as any)?.response?.status ??
-        (error as any)?.response?.statusCode;
-      const prismaCode =
-        (error as any)?.prismaCode ??
-        (error as any)?.response?.data?.prismaCode ??
-        (error as any)?.response?.prismaCode;
-      const canFallback =
-        statusCode === undefined || statusCode === null || statusCode >= 500 || Boolean(prismaCode);
-
-      if (!canFallback) {
-        throw error;
-      }
-
-      const { data: targetUser, error: targetUserError } = await supabase
-        .from('users')
-        .select('institutionId')
-        .eq('id', id)
-        .maybeSingle();
-
-      if (targetUserError) {
-        throw targetUserError;
-      }
-
-      const safeFileName = sanitizeFileName(file.name || 'avatar.file');
-      const basePath = targetUser?.institutionId
-        ? `institutions/${targetUser.institutionId}`
-        : 'global';
-      const storagePath = `${basePath}/users/${id}/avatar-${Date.now()}-${safeFileName}`;
-
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(storagePath, file, {
-        cacheControl: '3600',
-        upsert: true,
-        contentType: file.type || undefined,
-      });
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const {
-        data: { publicUrl: avatarUrl },
-      } = supabase.storage.from('avatars').getPublicUrl(storagePath);
-
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({
-          avatar: avatarUrl,
-          updatedAt: new Date().toISOString(),
-        })
-        .eq('id', id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      return { message: 'Avatar atualizado com sucesso', avatar: avatarUrl };
-    }
+    // Avatares de terceiros precisam passar pelo backend, que usa a credencial
+    // administrativa do Storage. O cliente não pode fazer fallback para gravar
+    // diretamente no caminho de outro usuário, pois a política RLS bloqueia isso.
+    return response as unknown as { message: string; avatar: string };
   },
 
   async uploadStudentDocument(

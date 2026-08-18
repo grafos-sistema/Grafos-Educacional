@@ -5,6 +5,7 @@ export const STUDENT_TAG_FIELDS = [
   'medicamentos',
   'necessidadesEspeciais',
   'restricoesAlimentares',
+  'convenioMedico',
 ] as const;
 
 export function parseStudentTagList(value: unknown): string[] {

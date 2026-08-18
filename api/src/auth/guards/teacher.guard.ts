@@ -7,7 +7,7 @@ import {
 import { UserRole } from '@prisma/client';
 
 /**
- * Guard que permite acesso para SUPER_ADMIN, INSTITUTION_ADMIN, COORDINATOR e TEACHER
+ * Guard que permite leitura para gestores e professores.
  */
 @Injectable()
 export class TeacherGuard implements CanActivate {
@@ -23,6 +23,7 @@ export class TeacherGuard implements CanActivate {
       UserRole.SUPER_ADMIN,
       UserRole.INSTITUTION_ADMIN,
       UserRole.COORDINATOR,
+      UserRole.DIRECTOR,
       UserRole.TEACHER,
     ];
 

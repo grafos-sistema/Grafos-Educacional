@@ -1226,7 +1226,14 @@ export function StudentFormTabs({
                   setValue('tipoSanguineo', event.target.value, { shouldDirty: true, shouldValidate: true })
                 }
               />
-              <Input label="Convênio Médico" {...register('convenioMedico')} />
+              <div className="md:col-span-2">
+                <TagInput
+                  label="Convênio Médico"
+                  value={parseStudentTagList(watch('convenioMedico'))}
+                  onChange={(value) => setValue('convenioMedico', value, { shouldDirty: true, shouldValidate: true })}
+                  placeholder="Ex.: Unimed, SulAmérica..."
+                />
+              </div>
               <div className="md:col-span-2">
                 <TagInput
                   label="Alergias"
