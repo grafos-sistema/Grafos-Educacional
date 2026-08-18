@@ -260,6 +260,9 @@ export function RoleBasedUserWizard({
   const email = useWatch({ control, name: 'email' }) as string | undefined;
   const cpf = useWatch({ control, name: 'cpf' }) as string | undefined;
   const birthDate = useWatch({ control, name: 'birthDate' }) as string | undefined;
+  const state = useWatch({ control, name: 'state' }) as string | undefined;
+  const hireDate = useWatch({ control, name: 'hireDate' }) as string | undefined;
+  const unitId = useWatch({ control, name: 'unitId' }) as string | undefined;
   const isActive = useWatch({ control, name: 'isActive' }) as boolean | undefined;
   const avatar = useWatch({ control, name: 'avatar' }) as string | undefined;
   const photo = useWatch({ control, name: 'photo' }) as FileList | File[] | undefined;
@@ -803,6 +806,10 @@ export function RoleBasedUserWizard({
                           {...register('unitId', {
                             required: isAlsoDirector ? 'Selecione o anexo do diretor(a)' : false,
                           })}
+                          value={unitId ?? ''}
+                          onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                            setValue('unitId', e.target.value, { shouldDirty: true, shouldValidate: true })
+                          }
                           error={errors.unitId?.message as string}
                           required={isAlsoDirector}
                         />
@@ -831,6 +838,10 @@ export function RoleBasedUserWizard({
                         label="Perfil *"
                         options={roleOptions}
                         {...register('role', { required: 'Perfil é obrigatório' })}
+                        value={role ?? ''}
+                        onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                          setValue('role', e.target.value as UserRole, { shouldDirty: true, shouldValidate: true })
+                        }
                         error={errors.role?.message as string}
                         required
                       />
@@ -846,7 +857,15 @@ export function RoleBasedUserWizard({
                     <Input label="Nome Social" {...register('socialName')} />
                   </div>
                   <div className="md:col-span-3">
-                    <Input label="Data de Nascimento" type="date" {...register('birthDate')} />
+                    <Input
+                      label="Data de Nascimento"
+                      type="date"
+                      {...register('birthDate')}
+                      value={birthDate ?? ''}
+                      onChange={(e) =>
+                        setValue('birthDate', e.target.value, { shouldDirty: true, shouldValidate: true })
+                      }
+                    />
                   </div>
                   <div className="md:col-span-3">
                     <Select
@@ -941,6 +960,10 @@ export function RoleBasedUserWizard({
                       label="Estado"
                       options={[{ value: '', label: 'Selecione a UF' }, ...BRAZILIAN_UF_OPTIONS]}
                       {...register('state')}
+                      value={state ?? ''}
+                      onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                        setValue('state', e.target.value, { shouldDirty: true, shouldValidate: true })
+                      }
                     />
                   </div>
                 </div>
@@ -961,7 +984,15 @@ export function RoleBasedUserWizard({
                     <Input label="Registro profissional" {...register('registrationNumber')} placeholder="Ex.: Registro interno" />
                   </div>
                   <div className="md:col-span-4">
-                    <Input label="Data de admissão" type="date" {...register('hireDate')} />
+                    <Input
+                      label="Data de admissão"
+                      type="date"
+                      {...register('hireDate')}
+                      value={hireDate ?? ''}
+                      onChange={(e) =>
+                        setValue('hireDate', e.target.value, { shouldDirty: true, shouldValidate: true })
+                      }
+                    />
                   </div>
                 </div>
               </div>

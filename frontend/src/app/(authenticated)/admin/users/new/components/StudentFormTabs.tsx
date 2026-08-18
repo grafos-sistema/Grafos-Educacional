@@ -174,6 +174,11 @@ export function StudentFormTabs({
   const cpf = watch('cpf');
   const password = watch('password');
   const bloodType = watch('tipoSanguineo');
+  const birthDate = watch('birthDate') as string | undefined;
+  const state = watch('state') as string | undefined;
+  const dataMatricula = watch('dataMatricula') as string | undefined;
+  const situacao = watch('situacao') as string | undefined;
+  const tipoTransporte = watch('tipoTransporte') as string | undefined;
   const watchedDocuments = watch('documents') as PendingStudentDocumentUpload[] | undefined;
   const { fillAddressFromCep } = useCepAutofill({
     form,
@@ -741,7 +746,16 @@ export function StudentFormTabs({
               <div className="md:col-span-2">
                 <Input label="Nome Social" {...register('socialName')} />
               </div>
-              <Input label="Data de Nascimento *" type="date" {...register('birthDate', { required: 'Data obrigatória' })} error={errors.birthDate?.message as string} />
+              <Input
+                label="Data de Nascimento *"
+                type="date"
+                {...register('birthDate', { required: 'Data obrigatória' })}
+                value={birthDate ?? ''}
+                onChange={(event) =>
+                  setValue('birthDate', event.target.value, { shouldDirty: true, shouldValidate: true })
+                }
+                error={errors.birthDate?.message as string}
+              />
               <Select
                 label="Sexo *"
                 options={genderOptions}
@@ -769,7 +783,15 @@ export function StudentFormTabs({
             <TabHeader tab={tabs[1]} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input label="Matrícula" {...register('registrationNumber')} disabled placeholder="Gerada automaticamente" />
-              <Select label="Situação" options={situationOptions} {...register('situacao')} defaultValue="ATIVO" />
+              <Select
+                label="Situação"
+                options={situationOptions}
+                {...register('situacao')}
+                value={situacao ?? 'ATIVO'}
+                onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                  setValue('situacao', event.target.value, { shouldDirty: true, shouldValidate: true })
+                }
+              />
               <Select 
                 label="Escola *" 
                 value={selectedInstitutionId || ''}
@@ -799,7 +821,15 @@ export function StudentFormTabs({
               <Input label="Turma *" {...register('turma', { required: 'Obrigatório' })} />
               <Input label="Turno *" {...register('turno', { required: 'Obrigatório' })} />
               <Input label="Modalidade *" {...register('modalidade', { required: 'Obrigatório' })} />
-              <Input label="Data da Matrícula *" type="date" {...register('dataMatricula', { required: 'Obrigatório' })} defaultValue={new Date().toISOString().split('T')[0]} />
+              <Input
+                label="Data da Matrícula *"
+                type="date"
+                {...register('dataMatricula', { required: 'Obrigatório' })}
+                value={dataMatricula ?? new Date().toISOString().split('T')[0]}
+                onChange={(event) =>
+                  setValue('dataMatricula', event.target.value, { shouldDirty: true, shouldValidate: true })
+                }
+              />
             </div>
           </div>
         )}
@@ -832,6 +862,10 @@ export function StudentFormTabs({
                 label="Estado"
                 options={[{ value: '', label: 'Selecione a UF' }, ...BRAZILIAN_UF_OPTIONS]}
                 {...register('state')}
+                value={state ?? ''}
+                onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                  setValue('state', event.target.value, { shouldDirty: true, shouldValidate: true })
+                }
               />
             </div>
           </div>
@@ -953,7 +987,15 @@ export function StudentFormTabs({
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <TabHeader tab={tabs[5]} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Select label="Tipo Sanguíneo" options={[{value:'A+',label:'A+'},{value:'A-',label:'A-'},{value:'B+',label:'B+'},{value:'B-',label:'B-'},{value:'AB+',label:'AB+'},{value:'AB-',label:'AB-'},{value:'O+',label:'O+'},{value:'O-',label:'O-'},{value:'NAO_INFORMADO',label:'Não informado'}]} {...register('tipoSanguineo')} defaultValue="NAO_INFORMADO" />
+              <Select
+                label="Tipo Sanguíneo"
+                options={[{value:'A+',label:'A+'},{value:'A-',label:'A-'},{value:'B+',label:'B+'},{value:'B-',label:'B-'},{value:'AB+',label:'AB+'},{value:'AB-',label:'AB-'},{value:'O+',label:'O+'},{value:'O-',label:'O-'},{value:'NAO_INFORMADO',label:'Não informado'}]}
+                {...register('tipoSanguineo')}
+                value={bloodType ?? 'NAO_INFORMADO'}
+                onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                  setValue('tipoSanguineo', event.target.value, { shouldDirty: true, shouldValidate: true })
+                }
+              />
               <Input label="Convênio Médico" {...register('convenioMedico')} />
               <div className="md:col-span-2">
                 <Input label="Alergias" {...register('alergias')} placeholder="Especifique se houver" />
@@ -986,7 +1028,15 @@ export function StudentFormTabs({
 
             {usaTransporte && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in duration-300 p-4 border border-primary-100 bg-primary-50/50 dark:border-primary-900/30 dark:bg-primary-900/10 rounded-lg">
-                <Select label="Tipo de Transporte" options={[{value:'PRIVADO',label:'Van/Ônibus Privado'},{value:'PUBLICO',label:'Transporte Público'},{value:'PROPRIO',label:'Próprio'}]} {...register('tipoTransporte')} />
+                <Select
+                  label="Tipo de Transporte"
+                  options={[{value:'PRIVADO',label:'Van/Ônibus Privado'},{value:'PUBLICO',label:'Transporte Público'},{value:'PROPRIO',label:'Próprio'}]}
+                  {...register('tipoTransporte')}
+                  value={tipoTransporte ?? ''}
+                  onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                    setValue('tipoTransporte', event.target.value, { shouldDirty: true, shouldValidate: true })
+                  }
+                />
                 <Input label="Empresa/Viação" {...register('empresaTransporte')} />
                 <Input label="Nome do Motorista" {...register('motoristaTransporte')} />
                 <Input label="Rota/Linha" {...register('rotaTransporte')} />

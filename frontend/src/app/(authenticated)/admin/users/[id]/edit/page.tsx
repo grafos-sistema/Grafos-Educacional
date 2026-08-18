@@ -553,6 +553,7 @@ export function EditUserPageContent({
         'Nao foi possivel atualizar o usuario agora. Revise os dados e tente novamente.'
       );
       setError(info.description);
+      toast.error(info.description);
     } finally {
       setIsSubmitting(false);
     }
