@@ -60,6 +60,11 @@ export class UpdateUserDto extends PartialType(
   @IsString()
   phone?: string;
 
+  @ApiProperty({ required: false, example: '11987654321' })
+  @IsOptional()
+  @IsString()
+  whatsapp?: string;
+
   @ApiProperty({ required: false, example: '1133334444' })
   @IsOptional()
   @IsString()

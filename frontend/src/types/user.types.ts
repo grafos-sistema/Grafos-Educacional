@@ -109,6 +109,7 @@ export interface User {
   cpf?: string;
   socialName?: string;
   phone?: string;
+  whatsapp?: string;
   telefoneFixo?: string;
   birthDate?: string;
   gender?: Gender;

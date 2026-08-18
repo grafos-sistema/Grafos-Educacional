@@ -76,6 +76,15 @@ export class CreateUserDto {
   phone?: string;
 
   @ApiProperty({
+    description: 'WhatsApp (DDD + número)',
+    example: '11987654321',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  whatsapp?: string;
+
+  @ApiProperty({
     description: 'Data de nascimento (ISO 8601)',
     example: '1990-05-15',
     required: false,

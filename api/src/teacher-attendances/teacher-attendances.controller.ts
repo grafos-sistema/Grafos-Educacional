@@ -86,7 +86,12 @@ export class TeacherAttendancesController {
 
   @Get('teacher/:teacherId')
   @SkipOwnership()
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.COORDINATOR,
+  )
   @ApiOperation({
     summary: 'Buscar registros de um professor',
     description:
@@ -126,7 +131,12 @@ export class TeacherAttendancesController {
 
   @Get('schedules/:teacherId')
   @SkipOwnership()
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.COORDINATOR,
+  )
   @ApiOperation({
     summary: 'Buscar grade horária do professor',
     description: 'Retorna a grade horária completa do professor',
@@ -138,7 +148,12 @@ export class TeacherAttendancesController {
 
   @Get('stats/:teacherId')
   @SkipOwnership()
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.COORDINATOR,
+  )
   @ApiOperation({
     summary: 'Buscar estatísticas do professor',
     description: 'Retorna estatísticas de presença do professor',

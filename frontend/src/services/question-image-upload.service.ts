@@ -11,9 +11,12 @@ export const questionImageUploadService = {
         '/questions/upload-image',
         formData,
         {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
+          // Let the browser/Axios generate the multipart boundary. A manually
+          // forced Content-Type can make Railway reject the request before
+          // Multer receives the file.
+          timeout: 120000,
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity,
         }
       ) as any;
 

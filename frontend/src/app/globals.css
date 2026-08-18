@@ -112,6 +112,22 @@ input.app-date-input::-webkit-calendar-picker-indicator {
   cursor: pointer;
 }
 
+input.app-date-input[type='month'] {
+  appearance: none;
+  -webkit-appearance: none;
+  color-scheme: light;
+}
+
+.dark input.app-date-input[type='month'] {
+  color-scheme: dark;
+}
+
+input.app-date-input[type='month']::-webkit-datetime-edit-month-field,
+input.app-date-input[type='month']::-webkit-datetime-edit-year-field {
+  color: inherit;
+  font-weight: 500;
+}
+
 input.app-date-input::-webkit-inner-spin-button,
 input.app-date-input::-webkit-clear-button {
   display: none;

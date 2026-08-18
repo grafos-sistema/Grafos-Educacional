@@ -168,23 +168,23 @@ function AuthenticatedLayoutShell({
     <>
       <SkipLink />
       <AuthenticatedNavigationProvider>
-        <div className="flex h-screen overflow-hidden bg-secondary-50" suppressHydrationWarning>
+        <div className="flex h-screen min-h-0 overflow-hidden bg-secondary-50" suppressHydrationWarning>
           <Sidebar
             isDesktopCollapsed={isDesktopSidebarCollapsed}
             onDesktopCollapsedChange={handleDesktopSidebarCollapsedChange}
           />
 
-          <div className="flex flex-1 flex-col overflow-hidden" suppressHydrationWarning>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden" suppressHydrationWarning>
             <Header />
 
-            <main id="main-content" className="flex-1 overflow-y-auto" tabIndex={-1}>
-              <div className="py-6 px-4 sm:px-6 lg:px-8 pt-16 lg:pt-6" suppressHydrationWarning>
+            <main id="main-content" className="min-h-0 flex-1 overflow-y-auto overscroll-contain" tabIndex={-1}>
+              <div className="min-h-full py-6 px-4 sm:px-6 lg:px-8 pt-16 lg:pt-6" suppressHydrationWarning>
                 <Breadcrumbs />
                 <AuthenticatedContent>{children}</AuthenticatedContent>
               </div>
             </main>
 
-            <footer className="bg-white border-t border-secondary-200 py-3 px-4 sm:px-6 lg:px-8">
+            <footer className="shrink-0 bg-white border-t border-secondary-200 py-3 px-4 sm:px-6 lg:px-8">
               <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-center">
                 <p className="text-xs sm:text-sm text-secondary-500">
                   © 2025 Grafos - Plataforma Educacional.

@@ -1,5 +1,6 @@
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { mkdirSync } from 'fs';
+import { extname, resolve } from 'path';
 import { BadRequestException } from '@nestjs/common';
 import { Request } from 'express';
 
@@ -12,10 +13,19 @@ const ALLOWED_MIME_TYPES = [
   'image/gif',
 ];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB (maior que avatar para suportar imagens mais detalhadas)
+const QUESTION_IMAGES_DIRECTORY = resolve(
+  process.cwd(),
+  'public',
+  'question-images',
+);
+
+// Garante o diretório também em containers novos do Railway antes do
+// primeiro upload.
+mkdirSync(QUESTION_IMAGES_DIRECTORY, { recursive: true });
 
 export const questionImageMulterConfig = {
   storage: diskStorage({
-    destination: './public/question-images',
+    destination: QUESTION_IMAGES_DIRECTORY,
     filename: (req: Request, file: Express.Multer.File, callback) => {
       // Gera nome único: timestamp-random-extension
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);

@@ -43,6 +43,7 @@ type AppUserRow = {
   lastName: string;
   cpf?: string | null;
   phone?: string | null;
+  whatsapp?: string | null;
   telefoneFixo?: string | null;
   birthDate?: string | null;
   gender?: User['gender'] | null;
@@ -77,7 +78,7 @@ type StudentParentRow = {
 };
 
 const USER_BASE_COLUMNS =
-  'id, email, role, firstName, lastName, cpf, phone, telefoneFixo, birthDate, gender, avatar, address, numero, complemento, bairro, city, state, zipCode, isActive, emailVerified, requestedProfileType, institutionId, createdAt, updatedAt, socialName';
+  'id, email, role, firstName, lastName, cpf, phone, whatsapp, telefoneFixo, birthDate, gender, avatar, address, numero, complemento, bairro, city, state, zipCode, isActive, emailVerified, requestedProfileType, institutionId, createdAt, updatedAt, socialName';
 
 const TEACHER_LIST_PROFILE_COLUMNS = 'id, userId, specialization, registrationNumber, isActive';
 const STUDENT_LIST_PROFILE_COLUMNS = 'id, userId, registrationNumber, isActive';
@@ -166,6 +167,7 @@ function mapUser(row: AppUserRow, extras?: Partial<User>): User {
     lastName: row.lastName,
     cpf: row.cpf ?? undefined,
     phone: row.phone ?? undefined,
+    whatsapp: row.whatsapp ?? undefined,
     telefoneFixo: row.telefoneFixo ?? undefined,
     birthDate: row.birthDate ?? undefined,
     gender: row.gender ?? undefined,
@@ -296,7 +298,8 @@ async function loadUserProfiles(
               lastName,
               cpf,
               email,
-              phone
+              phone,
+              whatsapp
             )
           )
         `)
