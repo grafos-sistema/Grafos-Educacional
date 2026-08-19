@@ -21,6 +21,8 @@ ENV NODE_ENV=production \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
     PUPPETEER_SKIP_DOWNLOAD=true
 
+# O Railway pode sobrescrever o CMD com `npm run start:prod`. Mantemos o npm,
+# mas substituimos a versao da imagem-base pela arvore corrigida e auditada.
 RUN apk add --no-cache \
       chromium \
       dumb-init \
@@ -28,7 +30,9 @@ RUN apk add --no-cache \
       font-noto \
       font-noto-cjk \
       font-noto-emoji \
-  && rm -rf /tmp/*
+  && npm install --global npm@12.0.2 \
+  && npm cache clean --force \
+  && rm -rf /root/.npm /tmp/*
 
 WORKDIR /usr/src/app
 
@@ -38,16 +42,12 @@ COPY --from=builder --chown=node:node /usr/src/app/dist ./dist
 COPY --from=builder --chown=node:node /usr/src/app/public ./public
 COPY --chown=node:node docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-# O runtime executa somente `node dist/src/main.js`. Remover os gerenciadores de
-# pacotes reduz a superficie de ataque e evita carregar a arvore interna do npm
-# (incluindo utilitarios de arquivo que nao sao necessarios em producao).
+# Corepack, Yarn e pnpm nao sao usados em producao. O npm atualizado permanece
+# disponivel para comandos de inicializacao configurados pela plataforma.
 RUN chmod 0555 /usr/local/bin/docker-entrypoint.sh \
   && rm -rf \
-      /usr/local/lib/node_modules/npm \
       /usr/local/lib/node_modules/corepack \
   && rm -f \
-      /usr/local/bin/npm \
-      /usr/local/bin/npx \
       /usr/local/bin/corepack \
       /usr/local/bin/pnpm \
       /usr/local/bin/pnpx \
