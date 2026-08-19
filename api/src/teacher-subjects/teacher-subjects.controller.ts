@@ -66,7 +66,9 @@ export class TeacherSubjectsController {
 
   @Get('subject/:subjectId')
   @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
-  @ApiOperation({ summary: 'Listar professores habilitados para uma disciplina' })
+  @ApiOperation({
+    summary: 'Listar professores habilitados para uma disciplina',
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista de professores vinculados à disciplina',

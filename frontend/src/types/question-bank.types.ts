@@ -74,6 +74,7 @@ export interface Question {
   isPublic: boolean;
   options?: QuestionOption[];
   correctAnswer?: string;
+  images?: string[];
   createdAt: string;
   updatedAt: string;
   // Relations
@@ -102,6 +103,7 @@ export interface CreateQuestionDto {
   isPublic?: boolean;
   options?: Omit<QuestionOption, 'id'>[];
   correctAnswer?: string;
+  images?: string[];
 }
 
 export interface UpdateQuestionDto {
@@ -117,6 +119,7 @@ export interface UpdateQuestionDto {
   isPublic?: boolean;
   options?: Omit<QuestionOption, 'id'>[];
   correctAnswer?: string;
+  images?: string[];
 }
 
 export interface QuestionFilters {

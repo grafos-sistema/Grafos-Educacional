@@ -28,7 +28,7 @@ export default function TeacherRankingsPage() {
 
   const { data: profile } = useQuery({
     queryKey: ['current-user-profile'],
-    queryFn: fetchCurrentUserProfile,
+    queryFn: () => fetchCurrentUserProfile(),
   });
 
   const teacherId = profile?.teacherProfile?.id;

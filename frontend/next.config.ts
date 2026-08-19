@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import withPWA from "next-pwa";
 import { resolve } from "path";
 
 const nextConfig: NextConfig = {
@@ -17,15 +16,6 @@ const nextConfig: NextConfig = {
     ],
     qualities: [75, 85, 100],
   },
-  typescript: {
-    ignoreBuildErrors: true, // Temporário - para concluir deploy
-  },
 };
 
-export default withPWA({
-  dest: "public",
-  register: true,
-  skipWaiting: true,
-  disable: process.env.NODE_ENV === "development",
-  buildExcludes: [/middleware-manifest\.json$/],
-})(nextConfig);
+export default nextConfig;

@@ -525,30 +525,6 @@ export function Sidebar({
   const navigationRole =
     currentRole === UserRole.SUPER_ADMIN_GLOBAL ? UserRole.SUPER_ADMIN : currentRole;
 
-  // #region debug-point menu-nav-bounce-sidebar
-  const dbgEnabled =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).has('dbg');
-  const dbgUrl = process.env.NEXT_PUBLIC_DEBUG_SERVER_URL || '';
-  const dbgSession =
-    process.env.NEXT_PUBLIC_DEBUG_SESSION_ID || 'menu-nav-bounce';
-  const dbgEmit = (name: string, payload?: Record<string, unknown>) => {
-    if (!dbgUrl) return;
-    fetch(dbgUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ts: Date.now(),
-        sessionId: dbgSession,
-        source: 'frontend',
-        scope: 'Sidebar',
-        name,
-        payload: payload ?? {},
-      }),
-    }).catch(() => {});
-  };
-  // #endregion debug-point menu-nav-bounce-sidebar
-
   const filteredNavigation = useMemo(
     () =>
       navigation.filter((item) => {
@@ -798,26 +774,6 @@ export function Sidebar({
                   key={item.name}
                   href={href}
                   onClick={() => {
-                    dbgEmit('sidebar:click', {
-                      from: typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : null,
-                      to: href,
-                      role: navigationRole ?? null,
-                      item: item.name,
-                    });
-                    if (dbgEnabled) {
-                      window.setTimeout(() => {
-                        dbgEmit('sidebar:afterClick:1s', {
-                          location: `${window.location.pathname}${window.location.search}`,
-                          expected: href,
-                        });
-                      }, 1000);
-                      window.setTimeout(() => {
-                        dbgEmit('sidebar:afterClick:4s', {
-                          location: `${window.location.pathname}${window.location.search}`,
-                          expected: href,
-                        });
-                      }, 4000);
-                    }
                     startNavigation(href);
                     closeMobileMenu();
                   }}

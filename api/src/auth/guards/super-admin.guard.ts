@@ -19,7 +19,7 @@ export class SuperAdminGuard implements CanActivate {
       throw new ForbiddenException('Usuário não autenticado');
     }
 
-    const allowedRoles = [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN];
+    const allowedRoles = [UserRole.SUPER_ADMIN_GLOBAL];
 
     if (!allowedRoles.includes(user.role)) {
       throw new ForbiddenException('Acesso restrito a administradores globais');

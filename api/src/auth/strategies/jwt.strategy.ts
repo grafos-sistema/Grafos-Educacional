@@ -24,8 +24,7 @@ export class JwtStrategy {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
   ) {
-    const localJwtSecret =
-      configService.get<string>('jwt.secret') || 'default-secret';
+    const localJwtSecret = configService.getOrThrow<string>('jwt.secret');
     const supabaseUrl = configService.get<string>('jwt.supabaseUrl')?.trim();
     const normalizedSupabaseUrl = supabaseUrl?.replace(/\/+$/, '');
 
@@ -47,7 +46,7 @@ export class JwtStrategy {
   }
 
   private async resolvePayload(token: string): Promise<JwtPayload> {
-    let supabaseVerifyError: unknown | undefined;
+    let supabaseVerifyError: unknown;
 
     if (this.supabaseIssuer && this.supabaseJwks) {
       try {
@@ -66,7 +65,7 @@ export class JwtStrategy {
       return await this.jwtService.verifyAsync(token, {
         secret: this.localJwtSecret,
       });
-    } catch (error) {
+    } catch (_error) {
       if (supabaseVerifyError instanceof Error) {
         throw new UnauthorizedException(
           `Invalid Supabase token: ${supabaseVerifyError.message}`,

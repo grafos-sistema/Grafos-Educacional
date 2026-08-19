@@ -3,7 +3,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { join, resolve } from 'path';
+import { resolve } from 'path';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
@@ -13,6 +13,12 @@ async function bootstrap() {
 
   // Get ConfigService
   const configService = app.get(ConfigService);
+  const isProduction = process.env.NODE_ENV === 'production';
+  const corsOrigins = configService.get<string[]>('cors.origins') || [];
+
+  // Railway/Vercel encaminham o IP original por proxy. Isto é necessário para
+  // que o rate limiter agrupe requisições pelo cliente correto.
+  app.set('trust proxy', 1);
 
   // Serve static files from public folder (without authentication)
   // __dirname em código compilado aponta para 'api/dist/src'
@@ -25,17 +31,29 @@ async function bootstrap() {
 
   // Security: Helmet - Protege a aplicação de vulnerabilidades web conhecidas
   app.use(
-    helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: [`'self'`],
-          styleSrc: [`'self'`, `'unsafe-inline'`],
-          scriptSrc: [`'self'`, `'unsafe-inline'`, `'unsafe-eval'`],
-          imgSrc: [`'self'`, 'data:', 'https:'],
-        },
-      },
-      crossOriginEmbedderPolicy: false, // Necessário para Swagger funcionar
-    }),
+    helmet(
+      isProduction
+        ? {
+            contentSecurityPolicy: {
+              directives: {
+                defaultSrc: [`'none'`],
+                frameAncestors: [`'none'`],
+              },
+            },
+            crossOriginEmbedderPolicy: false,
+          }
+        : {
+            contentSecurityPolicy: {
+              directives: {
+                defaultSrc: [`'self'`],
+                styleSrc: [`'self'`, `'unsafe-inline'`],
+                scriptSrc: [`'self'`, `'unsafe-inline'`],
+                imgSrc: [`'self'`, 'data:', 'https:'],
+              },
+            },
+            crossOriginEmbedderPolicy: false,
+          },
+    ),
   );
 
   // Global Validation Pipe
@@ -51,23 +69,38 @@ async function bootstrap() {
     }),
   );
 
-  // CORS Configuration - Allow all origins
+  // CORS por allowlist: evita refletir origens arbitrárias com credenciais.
   app.enableCors({
-    origin: true, // Allow all origins
-    credentials: true,
+    origin: (origin, callback) => {
+      if (!origin || corsOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error('Origem não autorizada pelo CORS'));
+    },
+    credentials: false,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'x-skip-error-toast'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'x-skip-error-toast',
+    ],
+    maxAge: 86_400,
   });
 
   logger.log(
-    `[debug:cors] origin=true credentials=true methods=GET,POST,PUT,PATCH,DELETE,OPTIONS allowedHeaders=Content-Type,Authorization,Accept`,
+    `[security:cors] allowedOrigins=${corsOrigins.join(',') || 'none'} credentials=false`,
   );
 
   // Swagger Configuration
-  const config = new DocumentBuilder()
-    .setTitle('Sistema de Gestão Escolar - API')
-    .setDescription(
-      `API REST completa para gestão escolar com autenticação JWT e controle de acesso baseado em roles.
+  const swaggerEnabled =
+    configService.get<boolean>('swagger.enabled') ?? !isProduction;
+  if (swaggerEnabled) {
+    const config = new DocumentBuilder()
+      .setTitle('Sistema de Gestão Escolar - API')
+      .setDescription(
+        `API REST completa para gestão escolar com autenticação JWT e controle de acesso baseado em roles.
 
 ## Funcionalidades Principais
 
@@ -115,80 +148,80 @@ A API possui 6 níveis de acesso:
 - **TEACHER**: Professor
 - **STUDENT**: Aluno
 - **PARENT**: Responsável/Pai`,
-    )
-    .setVersion('1.0')
-    .setContact(
-      'Suporte Técnico',
-      'https://github.com/seu-repositorio',
-      'suporte@escola.com',
-    )
-    .setLicense('MIT', 'https://opensource.org/licenses/MIT')
-    .addBearerAuth(
-      {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        name: 'JWT',
-        description: 'Insira o token JWT obtido no endpoint de login',
-        in: 'header',
-      },
-      'JWT-auth', // Nome da security scheme
-    )
-    .addTag('Auth', 'Endpoints de autenticação e registro')
-    .addTag('Users', 'Gestão de usuários')
-    .addTag('Institutions', 'Gestão de instituições')
-    .addTag('Teachers', 'Gestão de professores')
-    .addTag('Students', 'Gestão de alunos')
-    .addTag('Parents', 'Gestão de pais/responsáveis')
-    .addTag('Academic Years', 'Gestão de anos letivos')
-    .addTag('Academic Periods', 'Gestão de períodos acadêmicos')
-    .addTag('Courses', 'Gestão de cursos')
-    .addTag('Subjects', 'Gestão de disciplinas')
-    .addTag('Classes', 'Gestão de turmas')
-    .addTag('Enrollments', 'Gestão de matrículas')
-    .addTag('Schedules', 'Gestão de grade horária')
-    .addTag('Attendances', 'Gestão de frequência')
-    .addTag('Lesson Contents', 'Conteúdo ministrado')
-    .addTag('Lesson Plans', 'Planos de ensino')
-    .addTag('Grades', 'Notas e avaliações')
-    .addTag('Assignments', 'Tarefas e atividades online')
-    .addTag('Observations', 'Observações sobre alunos')
-    .addTag('Question Categories', 'Categorias de questões')
-    .addTag('Questions', 'Banco de questões')
-    .addTag('Activities', 'Atividades impressas')
-    .addTag('Announcements', 'Comunicados escolares')
-    .addTag('Notifications', 'Notificações')
-    .addTag('Events', 'Calendário de eventos')
-    .addTag('Reports', 'Relatórios e exportações')
-    .addTag('Dashboard', 'Dashboards e estatísticas')
-    .build();
+      )
+      .setVersion('1.0')
+      .setContact(
+        'Suporte Técnico',
+        'https://github.com/seu-repositorio',
+        'suporte@escola.com',
+      )
+      .setLicense('MIT', 'https://opensource.org/licenses/MIT')
+      .addBearerAuth(
+        {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          name: 'JWT',
+          description: 'Insira o token JWT obtido no endpoint de login',
+          in: 'header',
+        },
+        'JWT-auth', // Nome da security scheme
+      )
+      .addTag('Auth', 'Endpoints de autenticação e registro')
+      .addTag('Users', 'Gestão de usuários')
+      .addTag('Institutions', 'Gestão de instituições')
+      .addTag('Teachers', 'Gestão de professores')
+      .addTag('Students', 'Gestão de alunos')
+      .addTag('Parents', 'Gestão de pais/responsáveis')
+      .addTag('Academic Years', 'Gestão de anos letivos')
+      .addTag('Academic Periods', 'Gestão de períodos acadêmicos')
+      .addTag('Courses', 'Gestão de cursos')
+      .addTag('Subjects', 'Gestão de disciplinas')
+      .addTag('Classes', 'Gestão de turmas')
+      .addTag('Enrollments', 'Gestão de matrículas')
+      .addTag('Schedules', 'Gestão de grade horária')
+      .addTag('Attendances', 'Gestão de frequência')
+      .addTag('Lesson Contents', 'Conteúdo ministrado')
+      .addTag('Lesson Plans', 'Planos de ensino')
+      .addTag('Grades', 'Notas e avaliações')
+      .addTag('Assignments', 'Tarefas e atividades online')
+      .addTag('Observations', 'Observações sobre alunos')
+      .addTag('Question Categories', 'Categorias de questões')
+      .addTag('Questions', 'Banco de questões')
+      .addTag('Activities', 'Atividades impressas')
+      .addTag('Announcements', 'Comunicados escolares')
+      .addTag('Notifications', 'Notificações')
+      .addTag('Events', 'Calendário de eventos')
+      .addTag('Reports', 'Relatórios e exportações')
+      .addTag('Dashboard', 'Dashboards e estatísticas')
+      .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document, {
-    swaggerOptions: {
-      persistAuthorization: true, // Mantém o token entre reloads
-      docExpansion: 'none', // Colapsa todas as seções por padrão
-      filter: true, // Habilita busca
-      showRequestDuration: true, // Mostra duração das requisições
-      syntaxHighlight: {
-        activate: true,
-        theme: 'monokai',
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document, {
+      swaggerOptions: {
+        persistAuthorization: true, // Mantém o token entre reloads
+        docExpansion: 'none', // Colapsa todas as seções por padrão
+        filter: true, // Habilita busca
+        showRequestDuration: true, // Mostra duração das requisições
+        syntaxHighlight: {
+          activate: true,
+          theme: 'monokai',
+        },
+        tryItOutEnabled: true,
       },
-      tryItOutEnabled: true,
-    },
-    customSiteTitle: 'API Docs - Sistema de Gestão Escolar',
-    customfavIcon: 'https://nestjs.com/img/logo-small.svg',
-    customCss: `
+      customSiteTitle: 'API Docs - Sistema de Gestão Escolar',
+      customfavIcon: 'https://nestjs.com/img/logo-small.svg',
+      customCss: `
       .swagger-ui .topbar { display: none }
       .swagger-ui .info { margin: 20px 0; }
       .swagger-ui .info .title { font-size: 36px; }
     `,
-  });
+    });
+  }
 
   const port =
     Number(process.env.PORT) || configService.get<number>('app.port') || 3333;
   const appName = configService.get<string>('app.name') || 'API';
-  const corsOrigins = configService.get<string[]>('cors.origins') || [];
 
   logger.log(
     `[debug:bootstrap] NODE_ENV=${process.env.NODE_ENV || 'undefined'} PORT_ENV=${process.env.PORT || 'undefined'} LISTEN_PORT=${port}`,
@@ -200,7 +233,11 @@ A API possui 6 níveis de acesso:
   await app.listen(port, '0.0.0.0');
 
   logger.log(`🚀 ${appName} running on: http://localhost:${port}`);
-  logger.log(`📚 Swagger Docs: http://localhost:${port}/api/docs`);
+  logger.log(
+    swaggerEnabled
+      ? `📚 Swagger Docs: http://localhost:${port}/api/docs`
+      : '🔒 Swagger desativado neste ambiente',
+  );
   logger.log(`📊 Environment: ${configService.get('app.env')}`);
 }
 

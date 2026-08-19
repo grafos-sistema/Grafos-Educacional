@@ -28,8 +28,8 @@ export function Pagination({ meta, onPageChange }: PaginationProps) {
       pages.push(1);
 
       // Calcula o range de páginas ao redor da página atual
-      let startPage = Math.max(2, page - 1);
-      let endPage = Math.min(totalPages - 1, page + 1);
+      const startPage = Math.max(2, page - 1);
+      const endPage = Math.min(totalPages - 1, page + 1);
 
       // Adiciona "..." se necessário
       if (startPage > 2) {

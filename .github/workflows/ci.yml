@@ -31,6 +31,9 @@ jobs:
       - name: Validate migration filenames and timestamps
         run: node scripts/validate-supabase-migrations.mjs
 
+      - name: Audit RLS coverage
+        run: node scripts/audit-supabase-rls.mjs
+
   api:
     name: Build API
     runs-on: ubuntu-latest
@@ -50,6 +53,18 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --omit=optional --audit-level=high
+
+      - name: Lint
+        run: npm run lint:check
+
+      - name: Unit tests
+        run: npm run test:ci
+
+      - name: HTTP smoke tests
+        run: npm run test:e2e -- --runInBand
 
       - name: Build
         run: npm run build
@@ -79,6 +94,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --omit=optional --audit-level=high
+
+      - name: Lint
+        run: npm run lint:check
+
+      - name: Unit tests
+        run: npm run test:ci
+
       - name: Build
         run: npm run build
 
@@ -102,5 +126,41 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --omit=optional --audit-level=high
+
+      - name: Lint
+        run: npm run lint:check
+
       - name: Build
         run: npm run build
+
+  security:
+    name: Security and container scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Scan repository for secrets and misconfigurations
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: secret,misconfig
+          severity: HIGH,CRITICAL
+          exit-code: 1
+
+      - name: Build API image
+        run: docker build --tag grafos-api:security-scan ./api
+
+      - name: Scan API image dependencies and operating system
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: grafos-api:security-scan
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: 1

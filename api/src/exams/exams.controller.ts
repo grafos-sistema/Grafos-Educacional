@@ -161,8 +161,8 @@ export class ExamsController {
       return this.examsService.getAttemptResult(attemptId, studentId);
     }
 
-    // Se não for aluno, buscar sem validação de ownership
-    const attempt = await this.examsService.getAttemptResult(attemptId, '');
+    // A proteção global de instituição já validou o escopo para a equipe.
+    const attempt = await this.examsService.getAttemptResult(attemptId);
     return attempt;
   }
 
@@ -196,8 +196,7 @@ export class ExamsController {
    */
   @Get(':id')
   async findOne(@Param('id') id: string) {
-    // Implementação básica - você pode adicionar mais lógica aqui
-    return this.examsService.findAll({ page: 1, limit: 1 });
+    return this.examsService.findOne(id);
   }
 
   /**

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { EditUserPageContent } from '../../../users/[id]/edit/page';
+import { EditUserPageContent } from '@/components/users/EditUserPageContent';
 
 export default function EditStudentPage() {
   const params = useParams();

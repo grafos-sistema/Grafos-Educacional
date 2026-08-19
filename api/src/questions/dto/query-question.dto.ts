@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID, IsEnum, IsArray } from 'class-validator';
+import { IsOptional, IsString, IsUUID, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
 import { QuestionType, QuestionDifficulty } from './create-question.dto';
 

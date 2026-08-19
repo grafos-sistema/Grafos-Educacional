@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -96,21 +96,16 @@ export default function SchedulesManagementPage() {
     enabled: !!selectedClassId,
   });
   const selectedClass = classes.find((item) => item.id === selectedClassId);
-  const selectedClassEffectiveRoom = useMemo(
-    () => selectedClass?.baseRoom?.trim() || selectedClass?.name?.trim() || '',
-    [selectedClass]
-  );
+  const selectedClassEffectiveRoom =
+    selectedClass?.baseRoom?.trim() || selectedClass?.name?.trim() || '';
 
-  const subjectOptions = useMemo(
-    () => [
-      { value: '', label: 'Todas as disciplinas' },
-      ...classSubjects.map((item: any) => ({
-        value: item.id,
-        label: item.subject.name,
-      })),
-    ],
-    [classSubjects]
-  );
+  const subjectOptions = [
+    { value: '', label: 'Todas as disciplinas' },
+    ...classSubjects.map((item: any) => ({
+      value: item.id,
+      label: item.subject.name,
+    })),
+  ];
 
   // Mutation para criar horário
   const createMutation = useMutation({
@@ -292,15 +287,11 @@ export default function SchedulesManagementPage() {
   };
 
   // Criar estrutura de grade para visualização em tabela
-  const filteredSchedules = useMemo(
-    () =>
-      schedules.filter((item) =>
-        selectedSubjectId ? item.classSubjectId === selectedSubjectId : true
-      ),
-    [schedules, selectedSubjectId]
+  const filteredSchedules = schedules.filter((item) =>
+    selectedSubjectId ? item.classSubjectId === selectedSubjectId : true
   );
 
-  const timeSlots = useMemo(() => getUniqueTimeSlots(filteredSchedules), [filteredSchedules]);
+  const timeSlots = getUniqueTimeSlots(filteredSchedules);
 
   const getScheduleForSlot = (dayOfWeek: string, startTime: string): Schedule | null => {
     return (
@@ -308,44 +299,28 @@ export default function SchedulesManagementPage() {
     );
   };
 
-  const groupedSchedules = useMemo(
-    () =>
-      DAYS_OF_WEEK.reduce<Record<string, Schedule[]>>((acc, day) => {
-        acc[day.value] = sortByTime(
-          filteredSchedules.filter((schedule) => schedule.dayOfWeek === day.value)
-        );
-        return acc;
-      }, {}),
-    [filteredSchedules]
-  );
+  const groupedSchedules = DAYS_OF_WEEK.reduce<Record<string, Schedule[]>>((acc, day) => {
+    acc[day.value] = sortByTime(
+      filteredSchedules.filter((schedule) => schedule.dayOfWeek === day.value)
+    );
+    return acc;
+  }, {});
   const hasClassSubjects = classSubjects.length > 0;
-  const subjectAssignmentsWithoutSchedule = useMemo(
-    () =>
-      classSubjects.filter(
-        (item: any) =>
-          !filteredSchedules.some((schedule) => schedule.classSubjectId === item.id) &&
-          (!selectedSubjectId || item.id === selectedSubjectId)
-      ),
-    [classSubjects, filteredSchedules, selectedSubjectId]
+  const subjectAssignmentsWithoutSchedule = classSubjects.filter(
+    (item: any) =>
+      !filteredSchedules.some((schedule) => schedule.classSubjectId === item.id) &&
+      (!selectedSubjectId || item.id === selectedSubjectId)
   );
-  const schedulesWithoutRoom = useMemo(
-    () =>
-      filteredSchedules.filter(
-        (item) => !(item.effectiveRoom || selectedClassEffectiveRoom)
-      ),
-    [filteredSchedules, selectedClassEffectiveRoom]
+  const schedulesWithoutRoom = filteredSchedules.filter(
+    (item) => !(item.effectiveRoom || selectedClassEffectiveRoom)
   );
-  const scheduleConflicts = useMemo(
-    () =>
-      findScheduleConflicts(
-        filteredSchedules.map((item) => ({
-          id: item.id,
-          dayOfWeek: item.dayOfWeek,
-          startTime: item.startTime,
-          endTime: item.endTime,
-        }))
-      ),
-    [filteredSchedules]
+  const scheduleConflicts = findScheduleConflicts(
+    filteredSchedules.map((item) => ({
+      id: item.id,
+      dayOfWeek: item.dayOfWeek,
+      startTime: item.startTime,
+      endTime: item.endTime,
+    }))
   );
   const summaryCards = [
     { label: 'Disciplinas vinculadas', value: classSubjects.length },

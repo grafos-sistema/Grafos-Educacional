@@ -670,7 +670,7 @@ export const usersService = {
         if (directorUserId) primaryUserIds.push(directorUserId);
       }
 
-      let unitUserIds = new Set<string>(primaryUserIds);
+      const unitUserIds = new Set<string>(primaryUserIds);
 
       try {
         const { data: unitRows } = await supabase

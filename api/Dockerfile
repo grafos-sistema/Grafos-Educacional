@@ -1,59 +1,50 @@
-# Base image
-FROM node:22
+FROM node:22-alpine AS dependencies
 
-# Install Chrome dependencies and netcat
-RUN apt-get update && apt-get install -y \
-    wget \
-    ca-certificates \
-    fonts-liberation \
-    libappindicator3-1 \
-    libasound2 \
-    libatk-bridge2.0-0 \
-    libatk1.0-0 \
-    libcups2 \
-    libdbus-1-3 \
-    libdrm2 \
-    libgbm1 \
-    libgtk-3-0 \
-    libnspr4 \
-    libnss3 \
-    libx11-xcb1 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxrandr2 \
-    xdg-utils \
-    libxss1 \
-    libxtst6 \
-    netcat-openbsd \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create app directory
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 WORKDIR /usr/src/app
 
-# A wildcard is used to ensure both package.json AND package-lock.json are copied
-COPY package*.json ./
+COPY package.json package-lock.json ./
+RUN npm ci
 
-# Install app dependencies
-RUN npm install
+FROM dependencies AS builder
 
-# Bundle app source
-COPY . .
-
-# Ensure upload directories exist in the container image
-RUN mkdir -p public/avatars public/question-images
-
-# Generate Prisma Client
+COPY prisma ./prisma
 RUN npx prisma generate
 
-# Creates a "dist" folder with the production build
-RUN npm run build
+COPY . .
+RUN npm run build \
+  && npm prune --omit=dev
 
+FROM node:22-alpine AS runner
+
+ENV NODE_ENV=production \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+    PUPPETEER_SKIP_DOWNLOAD=true
+
+RUN apk add --no-cache \
+      chromium \
+      dumb-init \
+      ca-certificates \
+      font-noto \
+      font-noto-cjk \
+      font-noto-emoji \
+  && rm -rf /tmp/*
+
+WORKDIR /usr/src/app
+
+COPY --from=builder --chown=node:node /usr/src/app/package.json ./package.json
+COPY --from=builder --chown=node:node /usr/src/app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /usr/src/app/dist ./dist
+COPY --from=builder --chown=node:node /usr/src/app/public ./public
+COPY --chown=node:node docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
+RUN chmod 0555 /usr/local/bin/docker-entrypoint.sh
+
+USER node
 EXPOSE 3333
 
-# Copy entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3333)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
-# Set entrypoint
-ENTRYPOINT ["docker-entrypoint.sh"]
+ENTRYPOINT ["dumb-init", "--", "/usr/local/bin/docker-entrypoint.sh"]
+CMD ["node", "dist/src/main.js"]

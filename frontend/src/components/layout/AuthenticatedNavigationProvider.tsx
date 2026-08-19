@@ -43,30 +43,6 @@ export function AuthenticatedNavigationProvider({
   const previousLocationRef = useRef(currentLocation);
   const fallbackTimeoutRef = useRef<number | null>(null);
 
-  // #region debug-point menu-nav-bounce-authenticated-navigation
-  const dbgEnabled =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).has('dbg');
-  const dbgUrl = process.env.NEXT_PUBLIC_DEBUG_SERVER_URL || '';
-  const dbgSession =
-    process.env.NEXT_PUBLIC_DEBUG_SESSION_ID || 'menu-nav-bounce';
-  const dbgEmit = (name: string, payload?: Record<string, unknown>) => {
-    if (!dbgUrl) return;
-    fetch(dbgUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ts: Date.now(),
-        sessionId: dbgSession,
-        source: 'frontend',
-        scope: 'AuthenticatedNavigationProvider',
-        name,
-        payload: payload ?? {},
-      }),
-    }).catch(() => {});
-  };
-  // #endregion debug-point menu-nav-bounce-authenticated-navigation
-
   const clearFallbackTimeout = useCallback(() => {
     if (fallbackTimeoutRef.current !== null) {
       window.clearTimeout(fallbackTimeoutRef.current);
@@ -76,25 +52,16 @@ export function AuthenticatedNavigationProvider({
 
   const startNavigation = useCallback((targetLocation?: string) => {
     if (targetLocation && targetLocation === currentLocation) {
-      dbgEmit('startNavigation:noop', { targetLocation, currentLocation });
       return;
     }
 
     clearFallbackTimeout();
     setPendingLocation(targetLocation ?? null);
     setIsNavigating(true);
-    dbgEmit('startNavigation:set', {
-      targetLocation: targetLocation ?? null,
-      currentLocation,
-    });
     fallbackTimeoutRef.current = window.setTimeout(() => {
       setIsNavigating(false);
       setPendingLocation(null);
       fallbackTimeoutRef.current = null;
-      dbgEmit('startNavigation:timeout', {
-        pendingLocation: targetLocation ?? null,
-        currentLocation: `${window.location.pathname}${window.location.search}`,
-      });
     }, 15000);
   }, [clearFallbackTimeout, currentLocation]);
 
@@ -102,18 +69,9 @@ export function AuthenticatedNavigationProvider({
     clearFallbackTimeout();
     setIsNavigating(false);
     setPendingLocation(null);
-    dbgEmit('stopNavigation', {
-      currentLocation: `${window.location.pathname}${window.location.search}`,
-    });
   }, [clearFallbackTimeout]);
 
   useEffect(() => {
-    dbgEmit('route:change', {
-      previous: previousLocationRef.current,
-      current: currentLocation,
-      isNavigating,
-      pendingLocation,
-    });
     if (!isNavigating) {
       previousLocationRef.current = currentLocation;
       return;
@@ -123,12 +81,6 @@ export function AuthenticatedNavigationProvider({
     const reachedTarget = pendingLocation ? currentLocation === pendingLocation : routeChanged;
 
     if (reachedTarget) {
-      dbgEmit('route:reachedTarget', {
-        previous: previousLocationRef.current,
-        current: currentLocation,
-        pendingLocation,
-        routeChanged,
-      });
       stopNavigation();
     }
 
@@ -165,11 +117,6 @@ export function AuthenticatedNavigationProvider({
 
       if (currentLocation === nextLocation) return;
 
-      dbgEmit('documentClick:navigate', {
-        currentLocation,
-        nextLocation,
-        href,
-      });
       startNavigation(nextLocation);
     };
 

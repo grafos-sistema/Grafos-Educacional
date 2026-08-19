@@ -49,7 +49,7 @@ export class InstitutionAdminGuard implements CanActivate {
 
     if (!allowedRoles.includes(user.role)) {
       throw new ForbiddenException(
-          'Acesso restrito a administradores da instituição',
+        'Acesso restrito a administradores da instituição',
       );
     }
 

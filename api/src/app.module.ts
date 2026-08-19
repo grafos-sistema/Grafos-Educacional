@@ -1,6 +1,7 @@
-import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD, APP_FILTER } from '@nestjs/core';
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -47,8 +48,9 @@ import { RolesGuard } from './auth/guards/roles.guard';
 import configuration from './config/configuration';
 import { validate } from './config/env.validation';
 import { AllExceptionsFilter } from './common/filters';
-import { SecurityHeadersMiddleware } from './common/middleware/security-headers.middleware';
 import { CommonModule } from './common/common.module';
+import { PerformanceInterceptor } from './common/interceptors/performance.interceptor';
+import { TenantScopeGuard } from './auth/guards/tenant-scope.guard';
 
 @Module({
   imports: [
@@ -59,6 +61,16 @@ import { CommonModule } from './common/common.module';
       validate,
       envFilePath: '.env',
       cache: true,
+    }),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => [
+        {
+          ttl: (configService.get<number>('throttle.ttl') ?? 60) * 1_000,
+          limit: configService.get<number>('throttle.limit') ?? 300,
+        },
+      ],
     }),
     PrismaModule,
     CacheModule,
@@ -105,6 +117,10 @@ import { CommonModule } from './common/common.module';
     AppService,
     {
       provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
       useClass: JwtAuthGuard, // Autenticação JWT global
     },
     {
@@ -112,13 +128,17 @@ import { CommonModule } from './common/common.module';
       useClass: RolesGuard, // Autorização por roles global
     },
     {
+      provide: APP_GUARD,
+      useClass: TenantScopeGuard,
+    },
+    {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
     },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: PerformanceInterceptor,
+    },
   ],
 })
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(SecurityHeadersMiddleware).forRoutes('*');
-  }
-}
+export class AppModule {}

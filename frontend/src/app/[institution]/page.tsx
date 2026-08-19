@@ -79,8 +79,8 @@ export async function generateMetadata({ params }: { params: Promise<{ instituti
       'gestão escolar',
       'portal educacional',
       'diário online',
-      institution.city,
-      institution.state,
+      institution.city ?? '',
+      institution.state ?? '',
     ],
     openGraph: {
       title,

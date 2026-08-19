@@ -89,9 +89,10 @@ export class UsersService {
 
     return Array.from(
       new Set(
-        [currentUser.institutionId, ...links.map((link) => link.institutionId)].filter(
-          (value): value is string => Boolean(value),
-        ),
+        [
+          currentUser.institutionId,
+          ...links.map((link) => link.institutionId),
+        ].filter((value): value is string => Boolean(value)),
       ),
     );
   }
@@ -108,21 +109,20 @@ export class UsersService {
       return;
     }
 
-    if (
-      currentUser.role === UserRole.SUPER_ADMIN_GLOBAL ||
-      currentUser.role === UserRole.SUPER_ADMIN
-    ) {
+    if (currentUser.role === UserRole.SUPER_ADMIN_GLOBAL) {
       return;
     }
 
     const institutionalViewerRoles: UserRole[] = [
+      UserRole.SUPER_ADMIN,
       UserRole.DIRECTOR,
       UserRole.INSTITUTION_ADMIN,
       UserRole.COORDINATOR,
     ];
 
     if (institutionalViewerRoles.includes(currentUser.role)) {
-      const allowedInstitutionIds = await this.getAllowedInstitutionIds(currentUser);
+      const allowedInstitutionIds =
+        await this.getAllowedInstitutionIds(currentUser);
 
       if (
         targetUser.institutionId &&
@@ -133,6 +133,26 @@ export class UsersService {
     }
 
     throw new ForbiddenException('Acesso negado a este usuário');
+  }
+
+  async assertCanAccessUser(
+    id: string,
+    currentUser: {
+      userId: string;
+      role: UserRole;
+      institutionId?: string | null;
+    },
+  ) {
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, institutionId: true },
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    await this.ensureCanAccessUser(currentUser, targetUser);
   }
 
   private buildAvatarStoragePath(
@@ -171,7 +191,14 @@ export class UsersService {
   /**
    * Cria um novo usuário
    */
-  async create(createUserDto: CreateUserDto) {
+  async create(
+    createUserDto: CreateUserDto,
+    currentUser: {
+      userId: string;
+      role: UserRole;
+      institutionId?: string | null;
+    },
+  ) {
     const {
       email,
       cpf,
@@ -182,6 +209,32 @@ export class UsersService {
       lastName,
       ...data
     } = createUserDto;
+
+    if (currentUser.role !== UserRole.SUPER_ADMIN_GLOBAL) {
+      const allowedInstitutionIds =
+        await this.getAllowedInstitutionIds(currentUser);
+      if (!allowedInstitutionIds.includes(institutionId)) {
+        throw new ForbiddenException(
+          'Você só pode cadastrar usuários nas suas instituições.',
+        );
+      }
+
+      const elevatedRoles: UserRole[] = [
+        UserRole.SUPER_ADMIN_GLOBAL,
+        UserRole.SUPER_ADMIN,
+        UserRole.DIRECTOR,
+        UserRole.INSTITUTION_ADMIN,
+      ];
+      if (
+        data.role &&
+        elevatedRoles.includes(data.role) &&
+        currentUser.role !== UserRole.SUPER_ADMIN
+      ) {
+        throw new ForbiddenException(
+          'Seu perfil não pode criar usuários com esse nível de acesso.',
+        );
+      }
+    }
     const resolvedPassword = password || this.buildInitialPassword(email);
 
     // Verifica se email já existe NESTA instituição
@@ -272,7 +325,11 @@ export class UsersService {
    * Lista todos os usuários com paginação e filtros
    */
   async findAll(
-    currentUser: { userId: string; role: UserRole; institutionId?: string | null },
+    currentUser: {
+      userId: string;
+      role: UserRole;
+      institutionId?: string | null;
+    },
     page = 1,
     limit = 20,
     search?: string,
@@ -301,9 +358,7 @@ export class UsersService {
       where.role = role;
     }
 
-    const isGlobalAdmin =
-      currentUser.role === UserRole.SUPER_ADMIN_GLOBAL ||
-      currentUser.role === UserRole.SUPER_ADMIN;
+    const isGlobalAdmin = currentUser.role === UserRole.SUPER_ADMIN_GLOBAL;
 
     if (!isGlobalAdmin) {
       const links = await this.prisma.userInstitution.findMany({
@@ -313,9 +368,10 @@ export class UsersService {
 
       const allowed = Array.from(
         new Set(
-          [currentUser.institutionId, ...links.map((link) => link.institutionId)].filter(
-            (value): value is string => Boolean(value),
-          ),
+          [
+            currentUser.institutionId,
+            ...links.map((link) => link.institutionId),
+          ].filter((value): value is string => Boolean(value)),
         ),
       );
 
@@ -328,11 +384,12 @@ export class UsersService {
         ),
       );
 
-      const effective = requested.length > 0
-        ? requested.filter((value) => allowed.includes(value))
-        : allowed.length > 0 && currentUser.institutionId
-          ? [currentUser.institutionId]
-          : allowed;
+      const effective =
+        requested.length > 0
+          ? requested.filter((value) => allowed.includes(value))
+          : allowed.length > 0 && currentUser.institutionId
+            ? [currentUser.institutionId]
+            : allowed;
 
       if (effective.length > 0) {
         where.institutionId = { in: effective };
@@ -463,9 +520,12 @@ export class UsersService {
           }),
         ]);
 
-        for (const profile of teachers) teacherProfiles.set(profile.userId, profile);
-        for (const profile of students) studentProfiles.set(profile.userId, profile);
-        for (const profile of parents) parentProfiles.set(profile.userId, profile);
+        for (const profile of teachers)
+          teacherProfiles.set(profile.userId, profile);
+        for (const profile of students)
+          studentProfiles.set(profile.userId, profile);
+        for (const profile of parents)
+          parentProfiles.set(profile.userId, profile);
       }
     } catch (error) {
       // A profile ausente ou uma coluna opcional incompatível não pode
@@ -672,11 +732,11 @@ export class UsersService {
       ...data
     } = updateUserDto;
 
-    const isGlobalAdmin =
-      currentUser.role === UserRole.SUPER_ADMIN_GLOBAL ||
-      currentUser.role === UserRole.SUPER_ADMIN;
+    const isGlobalAdmin = currentUser.role === UserRole.SUPER_ADMIN_GLOBAL;
+    const canManageRoles =
+      isGlobalAdmin || currentUser.role === UserRole.SUPER_ADMIN;
 
-    if (data.role && data.role !== existingUser.role && !isGlobalAdmin) {
+    if (data.role && data.role !== existingUser.role && !canManageRoles) {
       throw new ForbiddenException(
         'Somente administradores globais podem alterar o cargo de um usuário',
       );
@@ -686,9 +746,9 @@ export class UsersService {
       institutionId !== undefined || institutionIds !== undefined;
     const primaryInstitutionId = institutionId ?? existingUser.institutionId;
     const requestedInstitutionIds = shouldSyncInstitutionLinks
-      ? Array.from(new Set([primaryInstitutionId, ...(institutionIds ?? [])])).filter(
-          (value): value is string => Boolean(value),
-        )
+      ? Array.from(
+          new Set([primaryInstitutionId, ...(institutionIds ?? [])]),
+        ).filter((value): value is string => Boolean(value))
       : [];
 
     if (shouldSyncInstitutionLinks) {
@@ -699,9 +759,8 @@ export class UsersService {
       }
 
       if (!isGlobalAdmin) {
-        const allowedInstitutionIds = await this.getAllowedInstitutionIds(
-          currentUser,
-        );
+        const allowedInstitutionIds =
+          await this.getAllowedInstitutionIds(currentUser);
         const hasUnauthorizedInstitution = requestedInstitutionIds.some(
           (requestedId) => !allowedInstitutionIds.includes(requestedId),
         );
@@ -831,9 +890,16 @@ export class UsersService {
   /**
    * Remove um usuário (soft delete)
    */
-  async remove(id: string) {
+  async remove(
+    id: string,
+    currentUser: {
+      userId: string;
+      role: UserRole;
+      institutionId?: string | null;
+    },
+  ) {
     // Verifica se usuário existe
-    await this.findOne(id);
+    await this.assertCanAccessUser(id, currentUser);
 
     return this.prisma.user.update({
       where: { id },
@@ -859,7 +925,15 @@ export class UsersService {
   /**
    * Remove um usuário permanentemente
    */
-  async removePermanently(id: string) {
+  async removePermanently(
+    id: string,
+    currentUser: {
+      userId: string;
+      role: UserRole;
+      institutionId?: string | null;
+    },
+  ) {
+    await this.assertCanAccessUser(id, currentUser);
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {

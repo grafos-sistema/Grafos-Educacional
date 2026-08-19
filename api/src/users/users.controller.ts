@@ -72,8 +72,11 @@ export class UsersController {
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
   @ApiResponse({ status: 409, description: 'Email ou CPF já cadastrado' })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  create(
+    @Body() createUserDto: CreateUserDto,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ) {
+    return this.usersService.create(createUserDto, currentUser);
   }
 
   @Get()
@@ -277,7 +280,11 @@ export class UsersController {
 
   @Delete(':id')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+  )
   @ApiOperation({
     summary: 'Remover usuário (soft delete)',
     description:
@@ -290,13 +297,16 @@ export class UsersController {
   })
   @ApiResponse({ status: 404, description: 'Usuário não encontrado' })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(id);
+  remove(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ) {
+    return this.usersService.remove(id, currentUser);
   }
 
   @Delete(':id/permanent')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SUPER_ADMIN_GLOBAL)
   @ApiOperation({
     summary: 'Excluir usuário permanentemente',
     description:
@@ -317,8 +327,11 @@ export class UsersController {
   })
   @ApiResponse({ status: 404, description: 'Usuário não encontrado' })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
-  removePermanently(@Param('id') id: string) {
-    return this.usersService.removePermanently(id);
+  removePermanently(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ) {
+    return this.usersService.removePermanently(id, currentUser);
   }
 
   @Post(':id/change-password')
@@ -412,7 +425,11 @@ export class UsersController {
     description: 'Lista de filhos do responsável',
   })
   @ApiResponse({ status: 404, description: 'Responsável não encontrado' })
-  getChildren(@Param('id') id: string) {
+  async getChildren(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ) {
+    await this.usersService.assertCanAccessUser(id, currentUser);
     return this.parentStudentsService.findByParentUserId(id);
   }
 
@@ -426,14 +443,22 @@ export class UsersController {
     description: 'Lista de responsáveis do aluno',
   })
   @ApiResponse({ status: 404, description: 'Aluno não encontrado' })
-  getParents(@Param('id') id: string) {
+  async getParents(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ) {
+    await this.usersService.assertCanAccessUser(id, currentUser);
     return this.parentStudentsService.findByStudentUserId(id);
   }
 
   // ==================== GESTÃO DE PERFIS ====================
 
   @Post(':id/profiles/teacher')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+  )
   @ApiOperation({
     summary: 'Adicionar perfil de professor',
     description: 'Adiciona perfil de professor a um usuário existente',
@@ -443,8 +468,9 @@ export class UsersController {
     status: 409,
     description: 'Usuário já possui perfil de professor',
   })
-  addTeacherProfile(
+  async addTeacherProfile(
     @Param('id') userId: string,
+    @CurrentUser() currentUser: CurrentUserPayload,
     @Body()
     data?: {
       specialization?: string;
@@ -452,11 +478,16 @@ export class UsersController {
       registrationNumber?: string;
     },
   ) {
+    await this.usersService.assertCanAccessUser(userId, currentUser);
     return this.usersService.addTeacherProfile(userId, data);
   }
 
   @Post(':id/profiles/student')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+  )
   @ApiOperation({
     summary: 'Adicionar perfil de aluno',
     description: 'Adiciona perfil de aluno a um usuário existente',
@@ -466,8 +497,9 @@ export class UsersController {
     status: 409,
     description: 'Usuário já possui perfil de aluno',
   })
-  addStudentProfile(
+  async addStudentProfile(
     @Param('id') userId: string,
+    @CurrentUser() currentUser: CurrentUserPayload,
     @Body()
     data?: {
       registrationNumber?: string;
@@ -475,11 +507,16 @@ export class UsersController {
       enrollmentDate?: Date;
     },
   ) {
+    await this.usersService.assertCanAccessUser(userId, currentUser);
     return this.usersService.addStudentProfile(userId, data);
   }
 
   @Post(':id/profiles/parent')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+  )
   @ApiOperation({
     summary: 'Adicionar perfil de responsável',
     description: 'Adiciona perfil de responsável a um usuário existente',
@@ -489,15 +526,21 @@ export class UsersController {
     status: 409,
     description: 'Usuário já possui perfil de responsável',
   })
-  addParentProfile(
+  async addParentProfile(
     @Param('id') userId: string,
+    @CurrentUser() currentUser: CurrentUserPayload,
     @Body() data?: { occupation?: string },
   ) {
+    await this.usersService.assertCanAccessUser(userId, currentUser);
     return this.usersService.addParentProfile(userId, data);
   }
 
   @Delete(':id/profiles/teacher')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+  )
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Remover perfil de professor',
@@ -509,12 +552,20 @@ export class UsersController {
     description: 'Usuário não possui perfil de professor',
   })
   @ApiResponse({ status: 400, description: 'Professor tem turmas ativas' })
-  async removeTeacherProfile(@Param('id') userId: string) {
+  async removeTeacherProfile(
+    @Param('id') userId: string,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ) {
+    await this.usersService.assertCanAccessUser(userId, currentUser);
     await this.usersService.removeTeacherProfile(userId);
   }
 
   @Delete(':id/profiles/student')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+  )
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Remover perfil de aluno',
@@ -526,12 +577,20 @@ export class UsersController {
     description: 'Usuário não possui perfil de aluno',
   })
   @ApiResponse({ status: 400, description: 'Aluno tem matrículas ativas' })
-  async removeStudentProfile(@Param('id') userId: string) {
+  async removeStudentProfile(
+    @Param('id') userId: string,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ) {
+    await this.usersService.assertCanAccessUser(userId, currentUser);
     await this.usersService.removeStudentProfile(userId);
   }
 
   @Delete(':id/profiles/parent')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+  )
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Remover perfil de responsável',
@@ -546,14 +605,22 @@ export class UsersController {
     status: 400,
     description: 'Responsável tem alunos vinculados',
   })
-  async removeParentProfile(@Param('id') userId: string) {
+  async removeParentProfile(
+    @Param('id') userId: string,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ) {
+    await this.usersService.assertCanAccessUser(userId, currentUser);
     await this.usersService.removeParentProfile(userId);
   }
 
   // ==================== APROVAÇÃO RÁPIDA ====================
 
   @Post(':id/quick-approve')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+  )
   @ApiOperation({
     summary: 'Aprovação rápida de usuário pendente',
     description: 'Aprova usuário pendente adicionando o perfil solicitado',
@@ -570,22 +637,30 @@ export class UsersController {
     data: { profileType: 'TEACHER' | 'STUDENT' | 'PARENT'; profileData?: any },
     @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.usersService.quickApprove(
-      userId,
-      data.profileType,
-      data.profileData || {},
-      user.userId,
-    );
+    return this.usersService
+      .assertCanAccessUser(userId, user)
+      .then(() =>
+        this.usersService.quickApprove(
+          userId,
+          data.profileType,
+          data.profileData || {},
+          user.userId,
+        ),
+      );
   }
 
   @Post('bulk-approve')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+  )
   @ApiOperation({
     summary: 'Aprovação em massa de usuários pendentes',
     description: 'Aprova múltiplos usuários de uma vez',
   })
   @ApiResponse({ status: 201, description: 'Aprovações processadas' })
-  bulkApprove(
+  async bulkApprove(
     @Body()
     data: {
       approvals: Array<{
@@ -596,6 +671,9 @@ export class UsersController {
     },
     @CurrentUser() user: CurrentUserPayload,
   ) {
+    for (const approval of data.approvals) {
+      await this.usersService.assertCanAccessUser(approval.userId, user);
+    }
     return this.usersService.bulkApprove(data.approvals, user.userId);
   }
 }

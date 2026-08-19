@@ -584,8 +584,13 @@ export class GradesService {
    * Busca notas do aluno com cálculo de médias
    */
   async findByStudent(studentId: string, currentUser?: CurrentUserPayload) {
-    if (currentUser?.role === UserRole.STUDENT && currentUser.studentId !== studentId) {
-      throw new BadRequestException('Você só pode consultar suas próprias notas');
+    if (
+      currentUser?.role === UserRole.STUDENT &&
+      currentUser.studentId !== studentId
+    ) {
+      throw new BadRequestException(
+        'Você só pode consultar suas próprias notas',
+      );
     }
 
     const student = await this.prisma.student.findUnique({
@@ -609,7 +614,8 @@ export class GradesService {
     const grades = await this.prisma.grade.findMany({
       where: {
         studentId,
-        ...(currentUser?.role === UserRole.STUDENT || currentUser?.role === UserRole.PARENT
+        ...(currentUser?.role === UserRole.STUDENT ||
+        currentUser?.role === UserRole.PARENT
           ? { isVisibleToStudents: true }
           : {}),
       },

@@ -25,7 +25,6 @@ export class DashboardService {
       totalStudents,
       totalTeachers,
       totalClasses,
-      totalSubjects,
       activeEnrollments,
       totalSubjectsCount,
     ] = await Promise.all([
@@ -57,7 +56,6 @@ export class DashboardService {
               : institutionId,
         },
       }),
-      this.prisma.subject.count(),
       this.prisma.classEnrollment.count({
         where: {
           isActive: true,

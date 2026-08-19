@@ -37,7 +37,13 @@ export class EnrollmentsController {
 
   @Post()
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+  )
   @ApiOperation({
     summary: 'Matricular aluno em turma',
     description:
@@ -167,7 +173,13 @@ export class EnrollmentsController {
 
   @Patch(':id/transfer')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+  )
   @ApiOperation({
     summary: 'Transferir aluno para outra turma',
     description:
@@ -194,7 +206,13 @@ export class EnrollmentsController {
 
   @Delete(':id')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+  )
   @ApiOperation({
     summary: 'Cancelar matrícula (soft delete)',
     description:

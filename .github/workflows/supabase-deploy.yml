@@ -43,7 +43,7 @@ jobs:
       - name: Deploy Edge Functions
         shell: bash
         run: |
-          for function_name in admin-reset-user-password admin-create-user; do
+          for function_name in admin-reset-user-password admin-create-user public-create-support-ticket; do
             supabase functions deploy "$function_name" --project-ref "$SUPABASE_PROJECT_REF" --use-api
           done
 

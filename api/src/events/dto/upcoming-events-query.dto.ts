@@ -1,6 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsOptional, IsString, IsUUID, IsNumber, Min, Max } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsUUID,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 
 export class UpcomingEventsQueryDto {
   @ApiPropertyOptional({

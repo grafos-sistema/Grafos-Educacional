@@ -93,53 +93,17 @@ function AuthenticatedLayoutShell({
   const router = useRouter();
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
 
-  // #region debug-point infinite-loading-local-auth-layout
-  const dbgUrl = process.env.NEXT_PUBLIC_DEBUG_SERVER_URL || '';
-  const dbgSession = process.env.NEXT_PUBLIC_DEBUG_SESSION_ID || 'infinite-loading-local';
-  const dbgEmit = (name: string, payload?: Record<string, unknown>) => {
-    if (!dbgUrl) return;
-    fetch(dbgUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ts: Date.now(),
-        sessionId: dbgSession,
-        source: 'frontend',
-        scope: 'AuthenticatedLayout',
-        name,
-        payload: payload ?? {},
-      }),
-    }).catch(() => {});
-  };
-  // #endregion debug-point infinite-loading-local-auth-layout
-
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      dbgEmit('authGate:redirectUnauthed', {
-        path: typeof window !== 'undefined' ? window.location.pathname : 'ssr',
-      });
       router.replace('/');
     }
   }, [isAuthenticated, isLoading, router]);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated && user?.mustChangePassword) {
-      dbgEmit('authGate:redirectMustChangePassword', {
-        path: typeof window !== 'undefined' ? window.location.pathname : 'ssr',
-      });
       router.replace('/reset-password');
     }
   }, [isAuthenticated, isLoading, router, user?.mustChangePassword]);
-
-  useEffect(() => {
-    dbgEmit('state', {
-      isLoading,
-      isAuthenticated,
-      role: user?.activeProfile || user?.role,
-      hasInstitutionId: Boolean((user as any)?.institutionId),
-      path: typeof window !== 'undefined' ? window.location.pathname : 'ssr',
-    });
-  }, [isAuthenticated, isLoading, user?.role, user?.activeProfile, (user as any)?.institutionId]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

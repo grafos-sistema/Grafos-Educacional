@@ -3,13 +3,48 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInstitutionDto, UpdateInstitutionDto } from './dto';
+import { UserRole } from '@prisma/client';
+
+type InstitutionCaller = {
+  userId: string;
+  role: UserRole;
+  institutionId?: string | null;
+};
 
 @Injectable()
 export class InstitutionsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private async getAllowedInstitutionIds(currentUser: InstitutionCaller) {
+    if (currentUser.role === UserRole.SUPER_ADMIN_GLOBAL) {
+      return null;
+    }
+
+    const links = await this.prisma.userInstitution.findMany({
+      where: { userId: currentUser.userId, isActive: true },
+      select: { institutionId: true },
+    });
+
+    return Array.from(
+      new Set(
+        [
+          currentUser.institutionId,
+          ...links.map((link) => link.institutionId),
+        ].filter((value): value is string => Boolean(value)),
+      ),
+    );
+  }
+
+  private async assertCanAccess(id: string, currentUser: InstitutionCaller) {
+    const allowedIds = await this.getAllowedInstitutionIds(currentUser);
+    if (allowedIds !== null && !allowedIds.includes(id)) {
+      throw new ForbiddenException('Acesso negado a esta instituição');
+    }
+  }
 
   /**
    * Cria uma nova instituição
@@ -80,9 +115,33 @@ export class InstitutionsService {
   /**
    * Lista todas as instituições com paginação e filtros
    */
-  async findAll(page = 1, limit = 20, search?: string, isActive?: boolean) {
+  async findAll(
+    currentUser: InstitutionCaller,
+    page = 1,
+    limit = 20,
+    search?: string,
+    isActive?: boolean,
+  ) {
     const skip = (page - 1) * limit;
     const where: any = {};
+    const allowedIds = await this.getAllowedInstitutionIds(currentUser);
+
+    if (allowedIds !== null) {
+      if (allowedIds.length === 0) {
+        return {
+          data: [],
+          meta: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: page > 1,
+          },
+        };
+      }
+      where.id = { in: allowedIds };
+    }
 
     if (search) {
       where.OR = [
@@ -157,7 +216,10 @@ export class InstitutionsService {
   /**
    * Busca uma instituição por ID
    */
-  async findOne(id: string) {
+  async findOne(id: string, currentUser?: InstitutionCaller) {
+    if (currentUser) {
+      await this.assertCanAccess(id, currentUser);
+    }
     const institution = await this.prisma.institution.findUnique({
       where: { id },
       include: {
@@ -183,9 +245,13 @@ export class InstitutionsService {
   /**
    * Atualiza uma instituição
    */
-  async update(id: string, updateInstitutionDto: UpdateInstitutionDto) {
+  async update(
+    id: string,
+    updateInstitutionDto: UpdateInstitutionDto,
+    currentUser: InstitutionCaller,
+  ) {
     // Verifica se instituição existe
-    await this.findOne(id);
+    await this.findOne(id, currentUser);
 
     const { slug, cnpj, ...data } = updateInstitutionDto;
 
@@ -229,9 +295,9 @@ export class InstitutionsService {
   /**
    * Remove uma instituição (soft delete)
    */
-  async remove(id: string) {
+  async remove(id: string, currentUser: InstitutionCaller) {
     // Verifica se instituição existe
-    await this.findOne(id);
+    await this.findOne(id, currentUser);
 
     // Verifica se há usuários ativos
     const activeUsers = await this.prisma.user.count({

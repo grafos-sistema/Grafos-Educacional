@@ -4,7 +4,7 @@ import {
   OnModuleDestroy,
   Logger,
 } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 
 @Injectable()
 export class PrismaService
@@ -16,19 +16,46 @@ export class PrismaService
   constructor() {
     super({
       log: [
+        { level: 'query', emit: 'event' },
         { level: 'warn', emit: 'event' },
         { level: 'error', emit: 'event' },
       ],
     });
+
+    const slowQueryMs = Number(process.env.SLOW_QUERY_MS || 200);
+    const onQuery = this.$on.bind(this) as unknown as (
+      event: 'query',
+      callback: (event: Prisma.QueryEvent) => void,
+    ) => void;
+    onQuery('query', (event: Prisma.QueryEvent) => {
+      if (event.duration >= slowQueryMs) {
+        this.logger.warn(
+          `Slow database query: ${event.duration}ms (${event.query.slice(0, 300)})`,
+        );
+      }
+    });
   }
 
   async onModuleInit() {
-    try {
-      await this.$connect();
-      this.logger.log('Successfully connected to database');
-    } catch (error) {
-      this.logger.error('Failed to connect to database', error);
-      throw error;
+    const maxAttempts = 5;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        await this.$connect();
+        this.logger.log('Successfully connected to database');
+        return;
+      } catch (error) {
+        if (attempt === maxAttempts) {
+          this.logger.error('Failed to connect to database', error);
+          throw error;
+        }
+
+        const delayMs = Math.min(1_000 * 2 ** (attempt - 1), 8_000);
+        this.logger.warn(
+          `Database unavailable (attempt ${attempt}/${maxAttempts}); retrying in ${delayMs}ms`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
     }
   }
 

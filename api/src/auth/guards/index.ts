@@ -5,5 +5,6 @@ export * from './institution.guard';
 export * from './super-admin.guard';
 export * from './institution-admin.guard';
 export * from './teacher.guard';
+export * from './tenant-scope.guard';
 export * from './student.guard';
 export * from './parent.guard';

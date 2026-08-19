@@ -82,6 +82,7 @@ export class ExamsService {
     const questions = await this.prisma.question.findMany({
       where: {
         id: { in: questionIds },
+        OR: [{ institutionId: exam.institutionId }, { institutionId: null }],
       },
     });
 
@@ -166,6 +167,41 @@ export class ExamsService {
       );
     }
 
+    if (!data.classId && !data.studentIds?.length) {
+      throw new BadRequestException(
+        'Selecione ao menos uma turma ou um aluno para o simulado',
+      );
+    }
+
+    if (data.classId) {
+      const targetClass = await this.prisma.class.findUnique({
+        where: { id: data.classId },
+        select: { institutionId: true },
+      });
+      if (!targetClass || targetClass.institutionId !== exam.institutionId) {
+        throw new BadRequestException(
+          'A turma selecionada não pertence à instituição do simulado',
+        );
+      }
+    }
+
+    if (data.studentIds?.length) {
+      const students = await this.prisma.student.findMany({
+        where: { id: { in: data.studentIds } },
+        select: { id: true, user: { select: { institutionId: true } } },
+      });
+      if (
+        students.length !== new Set(data.studentIds).size ||
+        students.some(
+          (student) => student.user.institutionId !== exam.institutionId,
+        )
+      ) {
+        throw new BadRequestException(
+          'Um ou mais alunos não pertencem à instituição do simulado',
+        );
+      }
+    }
+
     const assignments: any[] = [];
 
     // Atribuir para turma
@@ -216,12 +252,14 @@ export class ExamsService {
       return [];
     }
 
-    const classId = student.classEnrollments[0].classId;
+    const classIds = student.classEnrollments.map(
+      (enrollment) => enrollment.classId,
+    );
 
     // Buscar assignments para a turma ou para o aluno
     const assignments = await this.prisma.examAssignment.findMany({
       where: {
-        OR: [{ classId }, { studentId }],
+        OR: [{ classId: { in: classIds } }, { studentId }],
       },
       include: {
         exam: {
@@ -257,6 +295,35 @@ export class ExamsService {
 
     if (!exam) {
       throw new NotFoundException('Simulado não encontrado');
+    }
+
+    if (exam.status !== ExamStatus.PUBLISHED) {
+      throw new ForbiddenException('Este simulado ainda não está disponível');
+    }
+
+    const assignment = await this.prisma.examAssignment.findFirst({
+      where: {
+        examId,
+        OR: [
+          { studentId },
+          {
+            class: {
+              enrollments: {
+                some: { studentId, isActive: true },
+              },
+            },
+          },
+        ],
+      },
+      select: { id: true, dueDate: true },
+    });
+    if (!assignment) {
+      throw new ForbiddenException(
+        'Este simulado não foi atribuído a este aluno',
+      );
+    }
+    if (assignment.dueDate && assignment.dueDate < new Date()) {
+      throw new ForbiddenException('O prazo deste simulado terminou');
     }
 
     // Verificar se já existe tentativa em andamento
@@ -319,6 +386,12 @@ export class ExamsService {
 
     if (!examQuestion) {
       throw new NotFoundException('Questão não encontrada');
+    }
+
+    if (examQuestion.examId !== attempt.examId) {
+      throw new BadRequestException(
+        'A questão informada não pertence a este simulado',
+      );
     }
 
     // Verificar se a resposta está correta
@@ -436,7 +509,7 @@ export class ExamsService {
   /**
    * Obter resultado detalhado de uma tentativa
    */
-  async getAttemptResult(attemptId: string, studentId: string) {
+  async getAttemptResult(attemptId: string, studentId?: string) {
     const attempt = await this.prisma.examAttempt.findUnique({
       where: { id: attemptId },
       include: {
@@ -466,7 +539,7 @@ export class ExamsService {
       throw new NotFoundException('Tentativa não encontrada');
     }
 
-    if (attempt.studentId !== studentId) {
+    if (studentId && attempt.studentId !== studentId) {
       throw new ForbiddenException(
         'Você não tem permissão para ver este resultado',
       );
@@ -561,6 +634,37 @@ export class ExamsService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  async findOne(id: string) {
+    const exam = await this.prisma.exam.findUnique({
+      where: { id },
+      include: {
+        subject: true,
+        createdBy: {
+          include: {
+            user: {
+              select: { firstName: true, lastName: true },
+            },
+          },
+        },
+        questions: {
+          include: {
+            question: {
+              include: { options: true, saebDescriptor: true },
+            },
+          },
+          orderBy: { orderNumber: 'asc' },
+        },
+        _count: { select: { attempts: true, assignments: true } },
+      },
+    });
+
+    if (!exam) {
+      throw new NotFoundException('Simulado não encontrado');
+    }
+
+    return exam;
   }
 
   /**

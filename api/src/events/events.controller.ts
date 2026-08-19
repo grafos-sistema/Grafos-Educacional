@@ -50,8 +50,8 @@ export class EventsController {
     status: 400,
     description: 'Invalid dates or data',
   })
-  create(@Body() createEventDto: CreateEventDto, @CurrentUser() user: any) {
-    return this.eventsService.create(createEventDto, user.userId);
+  create(@Body() createEventDto: CreateEventDto) {
+    return this.eventsService.create(createEventDto);
   }
 
   @Get()
@@ -86,11 +86,17 @@ export class EventsController {
     status: 200,
     description: 'List of upcoming events',
   })
-  findUpcoming(@Query() query: UpcomingEventsQueryDto, @CurrentUser() user: any) {
+  findUpcoming(
+    @Query() query: UpcomingEventsQueryDto,
+    @CurrentUser() user: any,
+  ) {
     return this.eventsService.findUpcoming(query.days || 30, user, {
       institutionId: query.institutionId,
       institutionIds: query.institutionIds
-        ? query.institutionIds.split(',').map((value) => value.trim()).filter(Boolean)
+        ? query.institutionIds
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean)
         : undefined,
     });
   }

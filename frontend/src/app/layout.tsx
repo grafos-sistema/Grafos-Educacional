@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import "@/styles/accessibility.css";
 import { SkipNav } from "@/components/a11y/SkipNav";
+import { LegacyServiceWorkerCleanup } from "@/components/pwa/LegacyServiceWorkerCleanup";
 import { getMunicipalityConfig, getMunicipalityCSSVariables } from "@/config/municipality.config";
 
 const inter = Inter({
@@ -251,6 +252,7 @@ export default function RootLayout({
         style={cssVariables}
         suppressHydrationWarning
       >
+        <LegacyServiceWorkerCleanup />
         <SkipNav />
         {children}
       </body>

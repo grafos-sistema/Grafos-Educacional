@@ -59,6 +59,15 @@ export interface StudentProfile {
   healthRecord?: Record<string, any>; // Tipo mais específico pode ser criado depois
   transportation?: Record<string, any>;
   documents?: PendingStudentDocumentUpload[];
+  classEnrollments?: Array<{
+    id: string;
+    classId: string;
+    status?: string;
+    class?: {
+      id: string;
+      name: string;
+    };
+  }>;
 }
 
 export interface ParentProfile {
@@ -125,6 +134,8 @@ export interface User {
   emailVerified: boolean;
   requestedProfileType?: string; // Profile type requested during self-registration
   institutionId?: string;
+  /** Compatibilidade com respostas antigas; prefira teacherProfile.id. */
+  teacherId?: string;
   createdAt: string;
   updatedAt: string;
 

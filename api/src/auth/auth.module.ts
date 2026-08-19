@@ -1,6 +1,5 @@
 import { Global, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -15,17 +14,17 @@ import {
   TeacherGuard,
   StudentGuard,
   ParentGuard,
+  TenantScopeGuard,
 } from './guards';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Global()
 @Module({
   imports: [
-    PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('jwt.secret') || 'default-secret',
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.getOrThrow<string>('jwt.secret'),
         signOptions: {
           expiresIn: (configService.get<string>('jwt.expiresIn') ||
             '1d') as any,
@@ -47,6 +46,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     TeacherGuard,
     StudentGuard,
     ParentGuard,
+    TenantScopeGuard,
   ],
   exports: [
     AuthService,
@@ -61,6 +61,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     TeacherGuard,
     StudentGuard,
     ParentGuard,
+    TenantScopeGuard,
   ],
 })
 export class AuthModule {}

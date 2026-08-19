@@ -3,6 +3,10 @@
 enabled = true
 verify_jwt = true
 
+[functions.public-create-support-ticket]
+enabled = true
+verify_jwt = false
+
 [functions.admin-sync-student-parents]
 enabled = true
 verify_jwt = false

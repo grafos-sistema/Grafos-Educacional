@@ -23,11 +23,26 @@ export default () => ({
     bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || '10', 10),
   },
   cors: {
-    origins: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3333'],
+    origins: (
+      process.env.CORS_ORIGINS ||
+      'https://grafoseducacional.com.br,https://www.grafoseducacional.com.br,http://localhost:3000'
+    )
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean),
   },
   throttle: {
     ttl: parseInt(process.env.THROTTLE_TTL || '60', 10),
-    limit: parseInt(process.env.THROTTLE_LIMIT || '10', 10),
+    limit: parseInt(process.env.THROTTLE_LIMIT || '300', 10),
+  },
+  swagger: {
+    enabled:
+      process.env.ENABLE_SWAGGER === 'true' ||
+      process.env.NODE_ENV !== 'production',
+  },
+  observability: {
+    slowRequestMs: parseInt(process.env.SLOW_REQUEST_MS || '200', 10),
+    slowQueryMs: parseInt(process.env.SLOW_QUERY_MS || '200', 10),
   },
   upload: {
     maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '5242880', 10),

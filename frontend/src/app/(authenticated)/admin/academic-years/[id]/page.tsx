@@ -290,6 +290,11 @@ export default function AcademicYearDetailPage() {
   });
 
   const onSubmitPeriod = (data: CreateAcademicPeriodFormValues) => {
+    if (!academicYear) {
+      toast.error('Ano letivo não encontrado. Atualize a página e tente novamente.');
+      return;
+    }
+
     if (!selectedPeriodPreset) {
       setError('periodPreset', {
         type: 'manual',

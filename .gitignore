@@ -2,6 +2,7 @@
 # ENVIRONMENT VARIABLES
 # ==========================================
 .env
+.env.*
 .env.local
 .env.*.local
 .env.development.local
@@ -16,7 +17,6 @@
 
 # Manter apenas os exemplos
 !.env.example
-!.env.prod
 !**/.env.example
 
 # ==========================================
@@ -208,12 +208,10 @@ certificates/
 *.bak
 *.orig
 
-# Lock files (exceto package-lock.json e yarn.lock que devem ser versionados)
-# package-lock.json e yarn.lock SÃO versionados para garantir dependências
-# Mas se preferir não versionar, descomente:
-# package-lock.json
-# yarn.lock
-# pnpm-lock.yaml
+# O projeto usa npm/package-lock.json como fonte única de dependências.
+**/yarn.lock
+**/pnpm-lock.yaml
+**/pnpm-workspace.yaml
 
 # Next.js
 .next/

@@ -112,7 +112,9 @@ describe('useFormWithToast', () => {
     await result.current.onSubmit(mockEvent);
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Network error');
+      expect(toast.error).toHaveBeenCalledWith(
+        'Nao conseguimos concluir a acao agora. Verifique sua conexao e tente novamente.'
+      );
       expect(onSubmitError).toHaveBeenCalledWith(error);
     });
   });
@@ -144,10 +146,8 @@ describe('useFormWithToast', () => {
     await result.current.onSubmit(mockEvent);
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledTimes(3);
-      expect(toast.error).toHaveBeenCalledWith('Erro 1');
-      expect(toast.error).toHaveBeenCalledWith('Erro 2');
-      expect(toast.error).toHaveBeenCalledWith('Erro 3');
+      expect(toast.error).toHaveBeenCalledTimes(1);
+      expect(toast.error).toHaveBeenCalledWith('Erro ao processar formulário');
     });
   });
 
@@ -178,7 +178,7 @@ describe('useFormWithToast', () => {
     await result.current.onSubmit(mockEvent);
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Credenciais inválidas');
+      expect(toast.error).toHaveBeenCalledWith('Erro ao processar formulário');
     });
   });
 });

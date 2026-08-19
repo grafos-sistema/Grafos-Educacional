@@ -10,7 +10,6 @@ import {
   UseGuards,
   ParseIntPipe,
   DefaultValuePipe,
-  ParseBoolPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -19,7 +18,7 @@ import {
   ApiQuery,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { SkipThrottle } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import { InstitutionsService } from './institutions.service';
 import { CreateInstitutionDto, UpdateInstitutionDto } from './dto';
 import { InstitutionResponseDto } from './dto/institution-response.dto';
@@ -28,6 +27,8 @@ import { InstitutionAdminGuard } from '../auth/guards/institution-admin.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Public } from '../common/decorators';
 import { UserRole } from '@prisma/client';
+import { CurrentUser } from '../common/decorators';
+import type { CurrentUserPayload } from '../common/decorators';
 
 @ApiTags('institutions')
 @ApiBearerAuth()
@@ -37,7 +38,7 @@ export class InstitutionsController {
 
   @Get('public')
   @Public()
-  @SkipThrottle()
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Listar instituições ativas (público)',
     description: `
@@ -75,7 +76,7 @@ Endpoint público para listar apenas instituições ativas.
 
   @Post()
   @UseGuards(SuperAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SUPER_ADMIN_GLOBAL)
   @ApiOperation({
     summary: 'Criar nova instituição',
     description: 'Apenas SUPER_ADMIN pode criar novas instituições',
@@ -93,6 +94,12 @@ Endpoint público para listar apenas instituições ativas.
   }
 
   @Get()
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+  )
   @ApiOperation({
     summary: 'Listar todas as instituições',
     description: 'Lista instituições com paginação e filtros',
@@ -150,17 +157,24 @@ Endpoint público para listar apenas instituições ativas.
     },
   })
   findAll(
+    @CurrentUser() currentUser: CurrentUserPayload,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('search') search?: string,
     @Query('isActive') isActive?: boolean,
   ) {
-    return this.institutionsService.findAll(page, limit, search, isActive);
+    return this.institutionsService.findAll(
+      currentUser,
+      page,
+      limit,
+      search,
+      isActive,
+    );
   }
 
   @Get('slug/:slug')
   @Public()
-  @SkipThrottle()
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Buscar instituição por slug (público)',
     description:
@@ -178,7 +192,11 @@ Endpoint público para listar apenas instituições ativas.
 
   @Get(':id')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+  )
   @ApiOperation({
     summary: 'Buscar instituição por ID',
     description:
@@ -191,13 +209,20 @@ Endpoint público para listar apenas instituições ativas.
   })
   @ApiResponse({ status: 404, description: 'Instituição não encontrada' })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
-  findOne(@Param('id') id: string) {
-    return this.institutionsService.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ) {
+    return this.institutionsService.findOne(id, currentUser);
   }
 
   @Patch(':id')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.INSTITUTION_ADMIN,
+  )
   @ApiOperation({
     summary: 'Atualizar instituição',
     description: 'SUPER_ADMIN e INSTITUTION_ADMIN podem atualizar instituições',
@@ -214,13 +239,18 @@ Endpoint público para listar apenas instituições ativas.
   update(
     @Param('id') id: string,
     @Body() updateInstitutionDto: UpdateInstitutionDto,
+    @CurrentUser() currentUser: CurrentUserPayload,
   ) {
-    return this.institutionsService.update(id, updateInstitutionDto);
+    return this.institutionsService.update(
+      id,
+      updateInstitutionDto,
+      currentUser,
+    );
   }
 
   @Delete(':id')
   @UseGuards(SuperAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SUPER_ADMIN_GLOBAL)
   @ApiOperation({
     summary: 'Remover instituição (soft delete)',
     description:
@@ -237,7 +267,10 @@ Endpoint público para listar apenas instituições ativas.
     description: 'Não é possível remover instituição com usuários ativos',
   })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
-  remove(@Param('id') id: string) {
-    return this.institutionsService.remove(id);
+  remove(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ) {
+    return this.institutionsService.remove(id, currentUser);
   }
 }

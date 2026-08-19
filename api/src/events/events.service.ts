@@ -32,9 +32,10 @@ export class EventsService {
 
     return Array.from(
       new Set(
-        [currentUser.institutionId, ...links.map((link) => link.institutionId)].filter(
-          (value): value is string => Boolean(value),
-        ),
+        [
+          currentUser.institutionId,
+          ...links.map((link) => link.institutionId),
+        ].filter((value): value is string => Boolean(value)),
       ),
     );
   }
@@ -66,13 +67,15 @@ export class EventsService {
           : allowed;
 
     if (effective.length === 0) {
-      throw new ForbiddenException('You do not have access to this institution');
+      throw new ForbiddenException(
+        'You do not have access to this institution',
+      );
     }
 
     return effective;
   }
 
-  async create(createEventDto: CreateEventDto, userId: string) {
+  async create(createEventDto: CreateEventDto) {
     // Verify academic year exists
     const academicYear = await this.prisma.academicYear.findUnique({
       where: { id: createEventDto.academicYearId },

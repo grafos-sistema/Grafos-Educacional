@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { examsService, AttemptStatus } from '@/services/exams.service';
 import { useRouter } from 'next/navigation';
@@ -137,24 +137,19 @@ export default function TakeExamPage({ params }: PageProps) {
   }, [timeRemaining, attemptId]);
 
   // Auto-save quando responder
-  const handleSelectOption = useCallback(
-    (examQuestionId: string, optionIndex: number) => {
-      // Atualizar estado local imediatamente
-      setAnswers((prev) => ({
-        ...prev,
-        [examQuestionId]: optionIndex,
-      }));
+  const handleSelectOption = (examQuestionId: string, optionIndex: number) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [examQuestionId]: optionIndex,
+    }));
 
-      // Auto-save
-      if (attemptId) {
-        answerMutation.mutate({
-          examQuestionId,
-          selectedOption: optionIndex,
-        });
-      }
-    },
-    [attemptId],
-  );
+    if (attemptId) {
+      answerMutation.mutate({
+        examQuestionId,
+        selectedOption: optionIndex,
+      });
+    }
+  };
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {

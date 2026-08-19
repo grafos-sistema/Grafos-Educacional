@@ -75,7 +75,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
       ]
         .filter(Boolean)
         .join(' | ');
-      return details ? `Dados inconsistentes no banco de dados (${details})` : errorMessages[code];
+      return details
+        ? `Dados inconsistentes no banco de dados (${details})`
+        : errorMessages[code];
     }
 
     return (
@@ -124,7 +126,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       error = 'Erro no Banco de Dados';
 
       switch (exception.code) {
-        case 'P2002':
+        case 'P2002': {
           // Unique constraint violation
           status = HttpStatus.CONFLICT;
           const target = (exception.meta?.target as string[]) || [];
@@ -133,6 +135,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
             ? `Já existe um registro com este(s) valor(es) para: ${fieldName}`
             : 'Registro duplicado';
           break;
+        }
 
         case 'P2025':
           // Record not found
@@ -140,13 +143,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
           message = 'Registro não encontrado ou já foi removido';
           break;
 
-        case 'P2003':
+        case 'P2003': {
           // Foreign key constraint violation
           status = HttpStatus.BAD_REQUEST;
           const fieldName2 =
             (exception.meta?.field_name as string) || 'relacionado';
           message = `Operação inválida. O registro ${fieldName2} não existe`;
           break;
+        }
 
         case 'P2014':
           // Required relation violation
@@ -154,13 +158,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
           message = 'Operação inválida. Relação obrigatória não foi preenchida';
           break;
 
-        case 'P2011':
+        case 'P2011': {
           // NULL constraint violation
           status = HttpStatus.BAD_REQUEST;
           const nullField =
             (exception.meta?.column_name as string) || 'obrigatório';
           message = `O campo ${nullField} é obrigatório e não pode ser vazio`;
           break;
+        }
 
         case 'P2024':
           // Connection timeout

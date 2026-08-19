@@ -320,7 +320,11 @@ export class TeacherSubjectsService {
         );
       }
 
-      if (teachers.some((teacher) => teacher.user.institutionId !== subject.institutionId)) {
+      if (
+        teachers.some(
+          (teacher) => teacher.user.institutionId !== subject.institutionId,
+        )
+      ) {
         throw new ForbiddenException(
           'Professor não pertence à mesma instituição da disciplina',
         );

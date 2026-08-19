@@ -158,12 +158,16 @@ export const worksheetsService = {
    */
   async findOne(id: string): Promise<Worksheet> {
     const profile = await fetchCurrentUserProfile();
+    if (!profile.institutionId) {
+      throw new Error('Instituição ativa não encontrada. Selecione uma instituição e tente novamente.');
+    }
+    const institutionId = profile.institutionId;
 
     const { data: activity, error: activityError } = await supabase
       .from('activities')
       .select('*')
       .eq('id', id)
-      .eq('institutionId', profile.institutionId)
+      .eq('institutionId', institutionId)
       .single();
 
     if (activityError || !activity) throw activityError ?? new Error('Atividade não encontrada');
@@ -219,7 +223,7 @@ export const worksheetsService = {
         categoryId: question.categoryId ?? undefined,
         subjectId: question.subjectId ?? undefined,
         authorId: question.createdById,
-        institutionId: question.institutionId ?? profile.institutionId,
+        institutionId: question.institutionId ?? institutionId,
         isPublic: question.isPublic,
         options: qOptions,
         correctAnswer: question.correctAnswer ?? undefined,
@@ -247,6 +251,9 @@ export const worksheetsService = {
    */
   async create(data: CreateWorksheetDto): Promise<Worksheet> {
     const profile = await fetchCurrentUserProfile();
+    if (!profile.institutionId) {
+      throw new Error('Instituição ativa não encontrada. Selecione uma instituição e tente novamente.');
+    }
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
 

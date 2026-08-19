@@ -201,11 +201,11 @@ export const authService = {
    */
   async switchInstitution(institutionId: string): Promise<{ accessToken: string; refreshToken: string }> {
     const {
-      data: { session, user },
+      data: { session },
       error: sessionError,
     } = await supabase.auth.getSession();
 
-    if (sessionError || !session || !user) {
+    if (sessionError || !session?.user) {
       throw new Error('Sessão do Supabase não encontrada');
     }
 

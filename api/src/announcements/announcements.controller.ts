@@ -119,7 +119,10 @@ export class AnnouncementsController {
     return this.announcementsService.findActiveForUser(user, {
       institutionId,
       institutionIds: institutionIds
-        ? institutionIds.split(',').map((value) => value.trim()).filter(Boolean)
+        ? institutionIds
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean)
         : undefined,
     });
   }

@@ -1,2 +1,0 @@
-ALTER TABLE "classes"
-ADD COLUMN IF NOT EXISTS "baseRoom" TEXT;

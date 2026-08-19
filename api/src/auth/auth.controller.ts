@@ -29,6 +29,7 @@ import {
 } from '../common/decorators';
 import type { CurrentUserPayload } from '../common/decorators';
 import { UserRole } from '@prisma/client';
+import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -37,6 +38,7 @@ export class AuthController {
 
   @Post('public-register')
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Auto-registro público de usuário',
     description: `
@@ -69,7 +71,13 @@ Permite que usuários se auto-registrem no sistema de forma pública.
   }
 
   @Post('register')
-  @Public()
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+  )
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Registrar novo usuário (Admin)',
     description: `
@@ -96,12 +104,16 @@ Cria um novo usuário no sistema (apenas para administradores).
     type: AuthResponseDto,
   })
   @ApiStandardResponses()
-  async register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
+  async register(
+    @CurrentUser() caller: CurrentUserPayload,
+    @Body() registerDto: RegisterDto,
+  ) {
+    return this.authService.register(registerDto, caller);
   }
 
   @Post('login')
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Realizar login',
@@ -132,6 +144,7 @@ Autentica um usuário e retorna os tokens JWT.
 
   @Post('refresh')
   @Public()
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Atualizar access token',
@@ -207,7 +220,7 @@ Retorna os dados do usuário autenticado baseado no token JWT.
     },
   })
   @ApiStandardResponses()
-  async getMe(@CurrentUser() user: CurrentUserPayload) {
+  getMe(@CurrentUser() user: CurrentUserPayload) {
     return user;
   }
 
@@ -330,7 +343,7 @@ Endpoint de exemplo que demonstra o uso de autorização por roles.
     },
   })
   @ApiStandardResponses()
-  async adminOnly(@CurrentUser() user: CurrentUserPayload) {
+  adminOnly(@CurrentUser() user: CurrentUserPayload) {
     return {
       message: 'Acesso permitido para administradores',
       user: {

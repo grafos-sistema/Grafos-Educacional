@@ -2,7 +2,7 @@
 
 import { useEffect, type ReactNode } from 'react';
 
-type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | 'full';
 
 interface ModalProps {
   isOpen: boolean;
@@ -26,6 +26,9 @@ const sizeClasses: Record<ModalSize, string> = {
   lg: 'max-w-2xl',
   xl: 'max-w-4xl',
   '2xl': 'max-w-6xl',
+  '3xl': 'max-w-7xl',
+  '4xl': 'max-w-[90rem]',
+  full: 'max-w-[calc(100vw-2rem)]',
 };
 
 function joinClasses(...values: Array<string | false | null | undefined>) {

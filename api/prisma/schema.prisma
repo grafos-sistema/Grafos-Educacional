@@ -8,7 +8,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 // ==========================================
@@ -517,6 +516,7 @@ model StudentParent {
   createdAt     DateTime @default(now())
 
   @@unique([studentId, parentId])
+  @@index([parentId])
   @@map("student_parents")
 }
 
@@ -737,6 +737,7 @@ model ClassSubjectRequest {
   @@index([classId])
   @@index([subjectId])
   @@index([teacherId])
+  @@index([reviewedById])
   @@index([status])
   @@map("class_subject_requests")
 }
@@ -764,6 +765,7 @@ model ClassSchedule {
 
   @@index([classId])
   @@index([classSubjectId])
+  @@index([classSubjectId, dayOfWeek, startTime, endTime])
   @@map("class_schedules")
 }
 
@@ -857,6 +859,8 @@ model LessonPlan {
   @@index([classSubjectId])
   @@index([academicPeriodId])
   @@index([teacherId])
+  @@index([createdById])
+  @@index([approvedById])
   @@index([status])
   @@map("lesson_plans")
 }
@@ -873,7 +877,7 @@ model Grade {
   examDate        DateTime?
   description     String?
   status          GradeStatus @default(PENDING)
-  isVisibleToStudents Boolean  @default(true)
+  isVisibleToStudents Boolean  @default(false)
   publishedAt     DateTime?
   observations    String?
   createdAt       DateTime    @default(now())
@@ -894,6 +898,7 @@ model Grade {
   @@index([academicPeriodId])
   @@index([teacherId])
   @@index([studentId, classSubjectId]) // Composite index for dashboard queries
+  @@index([classSubjectId, academicPeriodId, studentId])
   @@index([classSubjectId, status]) // Composite index for filtering by subject and status
   @@map("grades")
 }
@@ -1001,8 +1006,10 @@ model Announcement {
   createdBy       User @relation(fields: [createdById], references: [id])
 
   @@index([institutionId])
+  @@index([createdById])
   @@index([isPublished])
   @@index([publishedAt])
+  @@index([institutionId, isPublished, publishedAt])
   @@map("announcements")
 }
 
@@ -1030,9 +1037,11 @@ model Notification {
 
   @@index([userId])
   @@index([parentId])
+  @@index([sentById])
   @@index([status])
   @@index([type])
   @@index([sentAt])
+  @@index([userId, status, sentAt])
   @@map("notifications")
 }
 
@@ -1055,6 +1064,7 @@ model Event {
 
   @@index([academicYearId])
   @@index([startDate])
+  @@index([academicYearId, startDate, endDate])
   @@map("events")
 }
 

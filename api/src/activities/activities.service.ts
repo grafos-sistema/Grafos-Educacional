@@ -800,7 +800,7 @@ export class ActivitiesService {
               typeof question.images === 'string'
                 ? JSON.parse(question.images)
                 : question.images;
-          } catch (e) {
+          } catch (_error) {
             // Se falhar ao parsear, tentar como array direto
             questionImages = [];
           }
@@ -935,7 +935,7 @@ export class ActivitiesService {
               typeof question.images === 'string'
                 ? JSON.parse(question.images)
                 : question.images;
-          } catch (e) {
+          } catch (_error) {
             questionImages = [];
           }
         }

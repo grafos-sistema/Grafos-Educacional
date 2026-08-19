@@ -80,7 +80,8 @@ export class CreateClassDto {
   shift?: string;
 
   @ApiProperty({
-    description: 'Sala base operacional da turma. Quando omitida, o sistema usa o próprio nome da turma',
+    description:
+      'Sala base operacional da turma. Quando omitida, o sistema usa o próprio nome da turma',
     example: '7º Ano A',
     maxLength: 50,
     required: false,

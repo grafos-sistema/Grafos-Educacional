@@ -7,26 +7,6 @@ let cachedProfile: User | null = null;
 let cachedProfileAt = 0;
 let inflightProfilePromise: Promise<User> | null = null;
 
-// #region debug-point infinite-loading-local-auth-profile
-const dbgUrl = process.env.NEXT_PUBLIC_DEBUG_SERVER_URL || '';
-const dbgSession = process.env.NEXT_PUBLIC_DEBUG_SESSION_ID || 'infinite-loading-local';
-const dbgEmit = (name: string, payload?: Record<string, unknown>) => {
-  if (!dbgUrl) return;
-  fetch(dbgUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      ts: Date.now(),
-      sessionId: dbgSession,
-      source: 'frontend',
-      scope: 'auth-profile',
-      name,
-      payload: payload ?? {},
-    }),
-  }).catch(() => {});
-};
-// #endregion debug-point infinite-loading-local-auth-profile
-
 type AppUserRow = {
   id: string;
   email: string;
@@ -122,18 +102,14 @@ export async function fetchCurrentUserProfile(options?: {
   forceRefresh?: boolean;
 }): Promise<User> {
   if (!options?.forceRefresh && isProfileCacheFresh()) {
-    dbgEmit('fetchCurrentUserProfile:cacheHit');
     return cachedProfile as User;
   }
 
   if (!options?.forceRefresh && inflightProfilePromise) {
-    dbgEmit('fetchCurrentUserProfile:inflightReuse');
     return inflightProfilePromise;
   }
 
   inflightProfilePromise = (async () => {
-    const startedAt = Date.now();
-    dbgEmit('fetchCurrentUserProfile:start');
     const {
       data: { user: authUser },
       error: authError,
@@ -141,15 +117,8 @@ export async function fetchCurrentUserProfile(options?: {
 
     if (authError || !authUser) {
       clearCurrentUserProfileCache();
-      dbgEmit('fetchCurrentUserProfile:authUser:failed', {
-        hasAuthUser: Boolean(authUser),
-        hasError: Boolean(authError),
-        elapsedMs: Date.now() - startedAt,
-      });
       throw authError ?? new Error('Usuário não autenticado');
     }
-
-    dbgEmit('fetchCurrentUserProfile:authUser:ok', { elapsedMs: Date.now() - startedAt });
 
     const { data: appUser, error: appUserError } = await supabase
       .from('users')
@@ -159,19 +128,8 @@ export async function fetchCurrentUserProfile(options?: {
 
     if (appUserError || !appUser) {
       clearCurrentUserProfileCache();
-      dbgEmit('fetchCurrentUserProfile:appUser:failed', {
-        hasAppUser: Boolean(appUser),
-        hasError: Boolean(appUserError),
-        elapsedMs: Date.now() - startedAt,
-      });
       throw appUserError ?? new Error('Perfil do usuário não encontrado ou sem permissão de leitura.');
     }
-
-    dbgEmit('fetchCurrentUserProfile:appUser:ok', {
-      role: (appUser as any)?.role,
-      hasInstitutionId: Boolean((appUser as any)?.institutionId),
-      elapsedMs: Date.now() - startedAt,
-    });
 
     if (appUser.role === UserRole.SUPER_ADMIN_GLOBAL) {
       const profile = mapAppUser(appUser as AppUserRow, {
@@ -181,9 +139,6 @@ export async function fetchCurrentUserProfile(options?: {
       cachedProfile = profile;
       cachedProfileAt = Date.now();
 
-      dbgEmit('fetchCurrentUserProfile:done:superAdminGlobal', {
-        elapsedMs: Date.now() - startedAt,
-      });
       return profile;
     }
 
@@ -213,12 +168,6 @@ export async function fetchCurrentUserProfile(options?: {
     if (studentResult.error && !ignoreStudentError) throw studentResult.error;
     if (parentResult.error && !ignoreParentError) throw parentResult.error;
 
-    dbgEmit('fetchCurrentUserProfile:profiles:ok', {
-      elapsedMs: Date.now() - startedAt,
-      ignoreTeacherError,
-      ignoreStudentError,
-      ignoreParentError,
-    });
 
     const profile = mapAppUser(appUser as AppUserRow, {
       teacherProfile: ignoreTeacherError ? undefined : teacherResult.data ?? undefined,
@@ -230,7 +179,6 @@ export async function fetchCurrentUserProfile(options?: {
     cachedProfile = profile;
     cachedProfileAt = Date.now();
 
-    dbgEmit('fetchCurrentUserProfile:done', { elapsedMs: Date.now() - startedAt });
     return profile;
   })();
 

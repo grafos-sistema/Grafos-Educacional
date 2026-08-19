@@ -256,7 +256,7 @@ export function NewUserPageContent({
       const pendingStudentDocuments = Array.isArray((data as any).documents)
         ? (data as any).documents
         : [];
-      let userData: any = {
+      const userData: any = {
         ...data,
         name: `${data.firstName} ${data.lastName}`,
         institutionId: primaryInstitutionId,

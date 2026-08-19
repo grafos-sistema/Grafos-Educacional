@@ -10,7 +10,6 @@ import {
   IsString,
   IsUUID,
   Matches,
-  MaxLength,
 } from 'class-validator';
 
 // Remove password do update (não pode ser atualizado por este endpoint)

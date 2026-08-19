@@ -1,5 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import {
+  IsBoolean,
   IsEnum,
   IsNumber,
   IsString,
@@ -74,7 +75,21 @@ class EnvironmentVariables {
 
   @IsNumber()
   @IsOptional()
-  THROTTLE_LIMIT: number = 10;
+  THROTTLE_LIMIT: number = 300;
+
+  @IsBoolean()
+  @IsOptional()
+  ENABLE_SWAGGER: boolean = false;
+
+  @IsNumber()
+  @Min(50)
+  @IsOptional()
+  SLOW_REQUEST_MS: number = 200;
+
+  @IsNumber()
+  @Min(50)
+  @IsOptional()
+  SLOW_QUERY_MS: number = 200;
 
   @IsNumber()
   @IsOptional()

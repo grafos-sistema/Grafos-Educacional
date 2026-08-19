@@ -4,6 +4,7 @@ import {
   ConflictException,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -14,9 +15,11 @@ import {
   RegisterDto,
   RefreshTokenDto,
   PublicRegisterDto,
+  RequestedProfileType,
 } from './dto';
 import { UserRole } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
+import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
 
 @Injectable()
 export class AuthService {
@@ -88,13 +91,13 @@ export class AuthService {
     // Admin precisa aprovar e adicionar o perfil depois
     let defaultRole: UserRole;
     switch (requestedProfileType) {
-      case 'TEACHER':
+      case RequestedProfileType.TEACHER:
         defaultRole = UserRole.TEACHER;
         break;
-      case 'STUDENT':
+      case RequestedProfileType.STUDENT:
         defaultRole = UserRole.STUDENT;
         break;
-      case 'PARENT':
+      case RequestedProfileType.PARENT:
         defaultRole = UserRole.PARENT;
         break;
       default:
@@ -154,8 +157,10 @@ export class AuthService {
   /**
    * Registra um novo usuário (admin cria)
    */
-  async register(registerDto: RegisterDto) {
+  async register(registerDto: RegisterDto, caller: CurrentUserPayload) {
     const { email, password, institutionId, role, ...userData } = registerDto;
+
+    this.assertCanRegisterUser(caller, institutionId, role);
 
     // Verifica se email já existe NESTA instituição
     const existingUser = await this.prisma.user.findFirst({
@@ -216,6 +221,47 @@ export class AuthService {
     };
   }
 
+  private assertCanRegisterUser(
+    caller: CurrentUserPayload,
+    institutionId: string,
+    targetRole: UserRole,
+  ) {
+    if (caller.role === UserRole.SUPER_ADMIN_GLOBAL) {
+      return;
+    }
+
+    if (!caller.institutionId || caller.institutionId !== institutionId) {
+      throw new ForbiddenException(
+        'Você só pode cadastrar usuários na sua instituição atual.',
+      );
+    }
+
+    if (targetRole === UserRole.SUPER_ADMIN_GLOBAL) {
+      throw new ForbiddenException(
+        'Somente um Super Admin Global pode criar outro Super Admin Global.',
+      );
+    }
+
+    const institutionManagers: UserRole[] = [
+      UserRole.DIRECTOR,
+      UserRole.INSTITUTION_ADMIN,
+    ];
+    const elevatedTargetRoles: UserRole[] = [
+      UserRole.SUPER_ADMIN,
+      UserRole.DIRECTOR,
+      UserRole.INSTITUTION_ADMIN,
+    ];
+
+    if (
+      institutionManagers.includes(caller.role) &&
+      elevatedTargetRoles.includes(targetRole)
+    ) {
+      throw new ForbiddenException(
+        'Seu perfil não pode criar usuários com esse nível de acesso.',
+      );
+    }
+  }
+
   /**
    * Realiza login do usuário
    */
@@ -248,7 +294,9 @@ export class AuthService {
 
     if (user.role !== UserRole.SUPER_ADMIN_GLOBAL) {
       if (!user.institutionId) {
-        throw new UnauthorizedException('Instituição do usuário não configurada');
+        throw new UnauthorizedException(
+          'Instituição do usuário não configurada',
+        );
       }
 
       const institution = await this.prisma.institution.findUnique({
@@ -333,7 +381,7 @@ export class AuthService {
       );
 
       return tokens;
-    } catch (error) {
+    } catch (_error) {
       throw new UnauthorizedException('Refresh token inválido ou expirado');
     }
   }
@@ -356,15 +404,12 @@ export class AuthService {
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
-        secret:
-          this.configService.get<string>('jwt.secret') || 'default-secret',
+        secret: this.configService.getOrThrow<string>('jwt.secret'),
         expiresIn: (this.configService.get<string>('jwt.expiresIn') ||
           '1d') as any,
       }),
       this.jwtService.signAsync(payload, {
-        secret:
-          this.configService.get<string>('jwt.refreshSecret') ||
-          'default-refresh-secret',
+        secret: this.configService.getOrThrow<string>('jwt.refreshSecret'),
         expiresIn: (this.configService.get<string>('jwt.refreshExpiresIn') ||
           '7d') as any,
       }),
@@ -401,10 +446,10 @@ export class AuthService {
   async validateToken(token: string) {
     try {
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: this.configService.get<string>('jwt.secret'),
+        secret: this.configService.getOrThrow<string>('jwt.secret'),
       });
       return payload;
-    } catch (error) {
+    } catch (_error) {
       throw new UnauthorizedException('Token inválido');
     }
   }

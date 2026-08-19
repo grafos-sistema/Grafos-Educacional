@@ -35,10 +35,7 @@ export class InstitutionGuard implements CanActivate {
     }
 
     // SUPER_ADMIN e SUPER_ADMIN_GLOBAL podem acessar qualquer instituição
-    if (
-      user.role === 'SUPER_ADMIN' ||
-      user.role === 'SUPER_ADMIN_GLOBAL'
-    ) {
+    if (user.role === 'SUPER_ADMIN' || user.role === 'SUPER_ADMIN_GLOBAL') {
       return true;
     }
 

@@ -60,7 +60,7 @@ export const lessonPlansService = {
         teacherId: params.teacherId,
         academicPeriodId: params.academicPeriodId,
       },
-    })) as PaginatedResponse<any>;
+    })) as unknown as PaginatedResponse<any>;
 
     const normalizedPlans = (response.data ?? []).map(normalizeLessonPlan);
     const filteredPlans = applyLocalFilters(normalizedPlans, params);

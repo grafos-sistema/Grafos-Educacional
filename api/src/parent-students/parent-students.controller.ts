@@ -6,7 +6,6 @@ import {
   Patch,
   Param,
   Delete,
-  UseGuards,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';

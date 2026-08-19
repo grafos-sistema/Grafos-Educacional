@@ -22,6 +22,13 @@ export interface ClassSchedule {
       code?: string;
       color?: string;
     };
+    teacher?: {
+      id: string;
+      user: {
+        firstName: string;
+        lastName: string;
+      };
+    };
   };
 }
 
@@ -39,6 +46,10 @@ type DbClassSchedule = {
   classSubject?: MaybeArray<{
     id: string;
     subject?: MaybeArray<{ id: string; name: string; code: string | null; color: string | null }>;
+    teacher?: MaybeArray<{
+      id: string;
+      user?: MaybeArray<{ firstName: string; lastName: string }>;
+    }>;
   }>;
 };
 
@@ -51,6 +62,8 @@ function mapSchedule(row: DbClassSchedule): ClassSchedule {
   const classItem = firstRelation(row.class);
   const classSubject = firstRelation(row.classSubject);
   const subject = firstRelation(classSubject?.subject);
+  const teacher = firstRelation(classSubject?.teacher);
+  const teacherUser = firstRelation(teacher?.user);
 
   return {
     id: row.id,
@@ -76,6 +89,12 @@ function mapSchedule(row: DbClassSchedule): ClassSchedule {
             code: subject.code ?? undefined,
             color: subject.color ?? undefined,
           },
+          teacher: teacher && teacherUser
+            ? {
+                id: teacher.id,
+                user: teacherUser,
+              }
+            : undefined,
         }
       : undefined,
   };
@@ -89,7 +108,7 @@ export const classSchedulesService = {
     const { data, error } = await supabase
       .from('class_schedules')
       .select(
-        'id, dayOfWeek, startTime, endTime, room, classId, classSubjectId, class:classes(id, name, baseRoom), classSubject:class_subjects(id, subject:subjects(id, name, code, color))'
+        'id, dayOfWeek, startTime, endTime, room, classId, classSubjectId, class:classes(id, name, baseRoom), classSubject:class_subjects(id, subject:subjects(id, name, code, color), teacher:teachers(id, user:users(firstName, lastName)))'
       )
       .eq('classId', classId)
       .order('dayOfWeek', { ascending: true })
@@ -106,7 +125,7 @@ export const classSchedulesService = {
     const { data, error } = await supabase
       .from('class_schedules')
       .select(
-        'id, dayOfWeek, startTime, endTime, room, classId, classSubjectId, class:classes(id, name, baseRoom), classSubject:class_subjects(id, subject:subjects(id, name, code, color))'
+        'id, dayOfWeek, startTime, endTime, room, classId, classSubjectId, class:classes(id, name, baseRoom), classSubject:class_subjects(id, subject:subjects(id, name, code, color), teacher:teachers(id, user:users(firstName, lastName)))'
       )
       .eq('classSubjectId', classSubjectId)
       .order('dayOfWeek', { ascending: true })

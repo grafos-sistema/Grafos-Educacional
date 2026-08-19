@@ -551,7 +551,7 @@ export function RoleBasedUserWizard({
         unitId: director.unitId ?? current.unitId,
       });
       setIsAlsoDirector(true);
-      toast.message('Dados do diretor carregados. Confira e salve para finalizar a promoção.');
+      toast('Dados do diretor carregados. Confira e salve para finalizar a promoção.');
       return;
     }
     try {
@@ -780,7 +780,7 @@ export function RoleBasedUserWizard({
                         ]}
                         value={selectedDirectorId}
                         onChange={(e) => setSelectedDirectorId(e.target.value)}
-                        wrapperClassName="sm:w-72"
+                        className="sm:w-72"
                       />
                       <Button
                         variant="secondary"

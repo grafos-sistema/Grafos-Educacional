@@ -23,6 +23,8 @@ export default function SelectProfilePage() {
       return;
     }
 
+    if (!user) return;
+
     // Build list of available profiles
     const profiles = [];
 
@@ -107,7 +109,7 @@ export default function SelectProfilePage() {
     if (profiles.length === 0) {
       router.push('/pending-approval');
     }
-  }, [user, router]);
+  }, [isAuthenticated, isLoading, user, router]);
 
   const handleProfileSelect = (href: string) => {
     router.push(href);

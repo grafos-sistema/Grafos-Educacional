@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-  ConflictException,
-} from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTeacherAttendanceDto } from './dto';
 

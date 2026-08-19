@@ -233,7 +233,7 @@ export default function MyClassesPage() {
               {/* Disciplinas da Turma */}
               <div className="space-y-2">
                 {(item.subjects || []).map((subject: any) => {
-                  const isAssignedToMe = subject.teacherId === user?.teacherId;
+                  const isAssignedToMe = subject.teacherId === user?.teacherProfile?.id;
                   return (
                     <button
                       key={subject.id}

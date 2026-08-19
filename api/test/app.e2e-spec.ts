@@ -1,25 +1,55 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
-import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
+import { AppController } from './../src/app.controller';
+import { AppService } from './../src/app.service';
 
 describe('AppController (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: INestApplication;
+  let baseUrl: string;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      controllers: [AppController],
+      providers: [AppService],
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    await app.init();
+    await app.listen(0, '127.0.0.1');
+
+    const address = app.getHttpServer().address();
+    if (!address || typeof address === 'string') {
+      throw new Error('Não foi possível iniciar o servidor HTTP de teste.');
+    }
+    baseUrl = `http://127.0.0.1:${address.port}`;
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World  ');
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('/ (GET)', async () => {
+    const response = await fetch(`${baseUrl}/`);
+    const body = (await response.json()) as Record<string, unknown>;
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      message: 'Sistema de Gestão Escolar - API is running!',
+      version: '1.0.0',
+      timestamp: expect.any(String),
+    });
+  });
+
+  it('/health (GET)', async () => {
+    const response = await fetch(`${baseUrl}/health`);
+    const body = (await response.json()) as Record<string, unknown>;
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual(
+      expect.objectContaining({
+        status: 'ok',
+        uptime: expect.any(Number),
+        timestamp: expect.any(String),
+      }),
+    );
   });
 });

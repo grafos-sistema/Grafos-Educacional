@@ -9,22 +9,42 @@ import { redisStore } from 'cache-manager-redis-yet';
     NestCacheModule.registerAsync({
       isGlobal: true,
       useFactory: async () => {
-        // Tenta conectar ao Redis
+        const redisUrl = process.env.REDIS_URL?.trim();
+        const redisHost = process.env.REDIS_HOST?.trim();
+
+        // Do not attempt localhost in production when Redis was not configured.
+        // That unnecessary connection used to delay every cold start.
+        if (!redisUrl && !redisHost) {
+          return {
+            ttl: 300 * 1000,
+            max: 100,
+          };
+        }
+
         try {
+          const connection = redisUrl
+            ? { url: redisUrl }
+            : {
+                socket: {
+                  host: redisHost,
+                  port: parseInt(process.env.REDIS_PORT || '6379', 10),
+                  connectTimeout: 2_000,
+                },
+                password: process.env.REDIS_PASSWORD,
+              };
           const store = await redisStore({
-            socket: {
-              host: process.env.REDIS_HOST || 'localhost',
-              port: parseInt(process.env.REDIS_PORT || '6379'),
-            },
+            ...connection,
             password: process.env.REDIS_PASSWORD,
             ttl: 300 * 1000, // 5 minutos em ms
           });
 
-          console.log('✅ Redis cache conectado com sucesso');
           return { store };
         } catch (error) {
-          console.warn('⚠️  Redis não disponível, usando cache em memória');
-          console.warn('   Erro:', error.message);
+          const reason =
+            error instanceof Error ? error.message : 'erro desconhecido';
+          console.warn(
+            `Redis indisponível; usando cache em memória (${reason})`,
+          );
 
           // Fallback para cache em memória
           return {

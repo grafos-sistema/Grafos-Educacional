@@ -6,7 +6,6 @@ import {
   MinLength,
   IsEnum,
   IsOptional,
-  Matches,
 } from 'class-validator';
 import { UserRole } from '@prisma/client';
 import { IsCPF, IsBrazilianPhone } from '../../common/validators';

@@ -422,7 +422,7 @@ export class RankingsService {
         end.setHours(23, 59, 59, 999);
         break;
 
-      case RankingPeriod.QUARTERLY:
+      case RankingPeriod.QUARTERLY: {
         // Primeiro dia do trimestre
         const quarter = Math.floor(now.getMonth() / 3);
         start = new Date(now.getFullYear(), quarter * 3, 1);
@@ -431,6 +431,7 @@ export class RankingsService {
         end = new Date(now.getFullYear(), quarter * 3 + 3, 0);
         end.setHours(23, 59, 59, 999);
         break;
+      }
 
       case RankingPeriod.YEARLY:
         // Primeiro dia do ano

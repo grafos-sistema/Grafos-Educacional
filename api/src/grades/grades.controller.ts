@@ -7,7 +7,6 @@ import {
   Param,
   Delete,
   Query,
-  UseGuards,
   ParseIntPipe,
   DefaultValuePipe,
   UseInterceptors,
@@ -313,15 +312,24 @@ export class GradesController {
   @Roles(UserRole.TEACHER)
   @ApiOperation({
     summary: 'Alterar visibilidade da nota',
-    description: 'O professor responsável decide se alunos e responsáveis podem ver a nota',
+    description:
+      'O professor responsável decide se alunos e responsáveis podem ver a nota',
   })
-  @ApiResponse({ status: 200, description: 'Visibilidade atualizada', type: GradeResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Visibilidade atualizada',
+    type: GradeResponseDto,
+  })
   updateStudentVisibility(
     @Param('id') id: string,
     @Body() data: UpdateGradeVisibilityDto,
     @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.gradesService.updateStudentVisibility(id, data.isVisibleToStudents, user);
+    return this.gradesService.updateStudentVisibility(
+      id,
+      data.isVisibleToStudents,
+      user,
+    );
   }
 
   @Patch(':id/publish')

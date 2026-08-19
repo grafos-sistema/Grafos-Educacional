@@ -251,7 +251,9 @@ export class QuestionsService {
       updateData.images = JSON.stringify(images);
     } else if (imageUrl) {
       updateData.images = JSON.stringify([imageUrl]);
-    } else if (updateQuestionDto.hasOwnProperty('images')) {
+    } else if (
+      Object.prototype.hasOwnProperty.call(updateQuestionDto, 'images')
+    ) {
       // Se images foi explicitamente passado como vazio/null, limpar
       updateData.images = null;
     }

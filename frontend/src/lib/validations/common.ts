@@ -22,7 +22,7 @@ export const cpfSchema = z.string().refine(
       sum += parseInt(cleaned.charAt(i)) * (10 - i);
     }
     let remainder = 11 - (sum % 11);
-    let digit1 = remainder >= 10 ? 0 : remainder;
+    const digit1 = remainder >= 10 ? 0 : remainder;
 
     if (parseInt(cleaned.charAt(9)) !== digit1) return false;
 
@@ -31,7 +31,7 @@ export const cpfSchema = z.string().refine(
       sum += parseInt(cleaned.charAt(i)) * (11 - i);
     }
     remainder = 11 - (sum % 11);
-    let digit2 = remainder >= 10 ? 0 : remainder;
+    const digit2 = remainder >= 10 ? 0 : remainder;
 
     if (parseInt(cleaned.charAt(10)) !== digit2) return false;
 

@@ -203,10 +203,21 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
+      version: 2,
+      migrate: (persistedState) => {
+        if (!persistedState || typeof persistedState !== 'object') {
+          return persistedState as AuthState;
+        }
+
+        const sanitizedState = {
+          ...(persistedState as Record<string, unknown>),
+        };
+        delete sanitizedState.accessToken;
+        delete sanitizedState.refreshToken;
+        return sanitizedState as unknown as AuthState;
+      },
       partialize: (state) => ({
         user: state.user,
-        accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
         activeProfile: state.activeProfile,
         institutionFilterAll: state.institutionFilterAll,

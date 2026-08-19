@@ -37,7 +37,9 @@ export class AnnouncementsService {
   }
 
   private isGlobalAdmin(role: UserRole) {
-    return role === UserRole.SUPER_ADMIN_GLOBAL || role === UserRole.SUPER_ADMIN;
+    return (
+      role === UserRole.SUPER_ADMIN_GLOBAL || role === UserRole.SUPER_ADMIN
+    );
   }
 
   private normalizeTargetRoles(
@@ -46,7 +48,8 @@ export class AnnouncementsService {
     targetStudentIds: string[],
     targetParentIds: string[],
   ) {
-    const isGlobal = role === UserRole.SUPER_ADMIN_GLOBAL || role === UserRole.SUPER_ADMIN;
+    const isGlobal =
+      role === UserRole.SUPER_ADMIN_GLOBAL || role === UserRole.SUPER_ADMIN;
     const allowedRoles = isGlobal
       ? Object.values(UserRole)
       : role === UserRole.TEACHER
@@ -67,11 +70,23 @@ export class AnnouncementsService {
             UserRole.PARENT,
           ];
 
-    const defaults = role === UserRole.TEACHER
-      ? [UserRole.STUDENT, UserRole.PARENT]
-      : [UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER];
-    const roles = Array.from(new Set((requestedRoles?.length ? requestedRoles : defaults)
-      .filter((value): value is UserRole => allowedRoles.includes(value as UserRole))));
+    const defaults =
+      role === UserRole.TEACHER
+        ? [UserRole.STUDENT, UserRole.PARENT]
+        : [
+            UserRole.DIRECTOR,
+            UserRole.INSTITUTION_ADMIN,
+            UserRole.COORDINATOR,
+            UserRole.TEACHER,
+          ];
+    const roles = Array.from(
+      new Set(
+        (requestedRoles?.length ? requestedRoles : defaults).filter(
+          (value): value is UserRole =>
+            allowedRoles.includes(value as UserRole),
+        ),
+      ),
+    );
 
     if (targetStudentIds.length > 0 && !roles.includes(UserRole.STUDENT)) {
       roles.push(UserRole.STUDENT);
@@ -94,10 +109,7 @@ export class AnnouncementsService {
   ) {
     const normalizedStudentIds = this.normalizeUserIds(targetStudentIds);
     const normalizedParentIds = this.normalizeUserIds(targetParentIds);
-    const requestedIds = [
-      ...normalizedStudentIds,
-      ...normalizedParentIds,
-    ];
+    const requestedIds = [...normalizedStudentIds, ...normalizedParentIds];
 
     if (requestedIds.length === 0) {
       return {
@@ -118,7 +130,9 @@ export class AnnouncementsService {
     });
 
     if (users.length !== requestedIds.length) {
-      throw new NotFoundException('One or more specific recipients were not found');
+      throw new NotFoundException(
+        'One or more specific recipients were not found',
+      );
     }
 
     const userMap = new Map(users.map((user) => [user.id, user]));
@@ -126,7 +140,9 @@ export class AnnouncementsService {
     normalizedStudentIds.forEach((id) => {
       const user = userMap.get(id);
       if (!user || user.role !== UserRole.STUDENT) {
-        throw new BadRequestException('Specific student recipients must be student users');
+        throw new BadRequestException(
+          'Specific student recipients must be student users',
+        );
       }
       if (user.institutionId !== institutionId) {
         throw new ForbiddenException(
@@ -138,7 +154,9 @@ export class AnnouncementsService {
     normalizedParentIds.forEach((id) => {
       const user = userMap.get(id);
       if (!user || user.role !== UserRole.PARENT) {
-        throw new BadRequestException('Specific parent recipients must be parent users');
+        throw new BadRequestException(
+          'Specific parent recipients must be parent users',
+        );
       }
       if (user.institutionId !== institutionId) {
         throw new ForbiddenException(
@@ -312,7 +330,9 @@ export class AnnouncementsService {
     );
 
     if (targetRoles.length === 0) {
-      throw new BadRequestException('Selecione pelo menos um público para o comunicado');
+      throw new BadRequestException(
+        'Selecione pelo menos um público para o comunicado',
+      );
     }
 
     const publishDate = this.getPublishDate(createAnnouncementDto.scheduledFor);
@@ -428,7 +448,10 @@ export class AnnouncementsService {
 
     if (!this.isGlobalAdmin(currentUser.role)) {
       where.AND.push({
-        OR: [{ institutionId: currentUser.institutionId }, { institutionId: null }],
+        OR: [
+          { institutionId: currentUser.institutionId },
+          { institutionId: null },
+        ],
       });
     } else if (institutionId) {
       where.AND.push({ institutionId });
@@ -442,7 +465,8 @@ export class AnnouncementsService {
       });
     }
 
-    const recipientWhere = await this.buildRecipientVisibilityWhere(currentUser);
+    const recipientWhere =
+      await this.buildRecipientVisibilityWhere(currentUser);
     if (recipientWhere) {
       where.AND.push(recipientWhere);
     }
@@ -762,15 +786,20 @@ export class AnnouncementsService {
 
     // INSTITUTION_ADMIN and COORDINATOR can edit announcements in their institution
     if (
-      [UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER].includes(
-        currentUser.role,
-      )
+      [
+        UserRole.DIRECTOR,
+        UserRole.INSTITUTION_ADMIN,
+        UserRole.COORDINATOR,
+        UserRole.TEACHER,
+      ].includes(currentUser.role)
     ) {
       if (
         currentUser.role === UserRole.TEACHER &&
         announcement.createdById !== currentUser.userId
       ) {
-        throw new ForbiddenException('Você só pode editar comunicados criados por você');
+        throw new ForbiddenException(
+          'Você só pode editar comunicados criados por você',
+        );
       }
       // Check if announcement is for user's institution
       if (
@@ -809,9 +838,10 @@ export class AnnouncementsService {
 
       const allowed = Array.from(
         new Set(
-          [currentUser.institutionId, ...links.map((link) => link.institutionId)].filter(
-            (value): value is string => Boolean(value),
-          ),
+          [
+            currentUser.institutionId,
+            ...links.map((link) => link.institutionId),
+          ].filter((value): value is string => Boolean(value)),
         ),
       );
 
@@ -824,11 +854,12 @@ export class AnnouncementsService {
         ),
       );
 
-      const effective = requested.length > 0
-        ? requested.filter((value) => allowed.includes(value))
-        : allowed.length > 0 && currentUser.institutionId
-          ? [currentUser.institutionId]
-          : allowed;
+      const effective =
+        requested.length > 0
+          ? requested.filter((value) => allowed.includes(value))
+          : allowed.length > 0 && currentUser.institutionId
+            ? [currentUser.institutionId]
+            : allowed;
 
       where.AND = [
         {
@@ -845,7 +876,8 @@ export class AnnouncementsService {
       ];
     }
 
-    const recipientWhere = await this.buildRecipientVisibilityWhere(currentUser);
+    const recipientWhere =
+      await this.buildRecipientVisibilityWhere(currentUser);
     if (recipientWhere) {
       where.AND = [...(where.AND ?? []), recipientWhere];
     }

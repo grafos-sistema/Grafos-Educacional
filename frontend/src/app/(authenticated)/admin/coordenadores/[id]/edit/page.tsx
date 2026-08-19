@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { EditUserPageContent } from '../../../users/[id]/edit/page';
+import { EditUserPageContent } from '@/components/users/EditUserPageContent';
 
 export default function EditCoordinatorPage() {
   const params = useParams();
