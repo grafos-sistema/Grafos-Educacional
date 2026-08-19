@@ -83,20 +83,29 @@ export default function GradesPage() {
 
   const { data: teacherSubjects = [], isLoading: loadingSubjects } = useTeacherClassSubjects();
 
+  // A turma define qual ano letivo deve fornecer os períodos acadêmicos.
+  const selectedSubject = teacherSubjects.find((s) => s.id === selectedClassSubjectId);
+  const selectedAcademicYearId = selectedSubject?.class?.academicYear?.id;
+
   // Buscar períodos acadêmicos
-  const { data: periods } = useQuery({
-    queryKey: ['academic-periods', user?.institutionId],
+  const {
+    data: periods = [],
+    isLoading: loadingPeriods,
+    isError: periodsError,
+  } = useQuery({
+    queryKey: ['academic-periods', user?.id, selectedAcademicYearId ?? 'all'],
     queryFn: async () => {
       const response = await academicPeriodsService.findAll({
+        academicYearId: selectedAcademicYearId,
+        isActive: true,
         limit: 100,
       });
       return response.data;
     },
-    enabled: !!user?.institutionId,
+    enabled: Boolean(user?.id),
   });
 
   // Buscar alunos da turma selecionada
-  const selectedSubject = teacherSubjects?.find((s) => s.id === selectedClassSubjectId);
   const { data: enrollments, isLoading: loadingEnrollments } = useQuery({
     queryKey: ['class-enrollments-grades', selectedSubject?.classId],
     queryFn: async () => {
@@ -444,6 +453,7 @@ export default function GradesPage() {
             value={selectedClassSubjectId}
             onChange={(e) => {
               setSelectedClassSubjectId(e.target.value);
+              setSelectedPeriodId('');
               setGradesData({});
             }}
             required
@@ -460,13 +470,23 @@ export default function GradesPage() {
             label="Período Acadêmico"
             value={selectedPeriodId}
             onChange={(e) => setSelectedPeriodId(e.target.value)}
+            disabled={loadingPeriods || Boolean(periodsError)}
             required
             options={[
-              { value: '', label: 'Selecione...' },
-              ...(periods?.map((period) => ({
+              {
+                value: '',
+                label: loadingPeriods
+                  ? 'Carregando períodos...'
+                  : periodsError
+                    ? 'Não foi possível carregar os períodos'
+                    : periods.length === 0
+                      ? 'Nenhum período cadastrado'
+                      : 'Selecione...',
+              },
+              ...periods.map((period) => ({
                 value: period.id,
                 label: period.name,
-              })) || []),
+              })),
             ]}
           />
 
