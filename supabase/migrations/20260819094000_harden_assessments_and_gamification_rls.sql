@@ -89,8 +89,7 @@ USING (
       AND (
         (public.is_staff() AND public.can_access_institution(c."institutionId"))
         OR (
-          assignments."isPublished" = true
-          AND EXISTS (
+          EXISTS (
             SELECT 1
             FROM public.class_enrollments ce
             WHERE ce."classId" = c.id
@@ -122,7 +121,6 @@ WITH CHECK (
     JOIN public.class_subjects cs ON cs.id = a."classSubjectId"
     JOIN public.class_enrollments ce ON ce."classId" = cs."classId"
     WHERE a.id = assignment_submissions."assignmentId"
-      AND a."isPublished" = true
       AND ce."studentId" = assignment_submissions."studentId"
       AND ce.status = 'ACTIVE'
   )
