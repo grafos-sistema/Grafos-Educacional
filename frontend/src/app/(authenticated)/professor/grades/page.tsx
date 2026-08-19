@@ -14,6 +14,7 @@ import {
   ExclamationTriangleIcon,
   ClipboardDocumentListIcon,
   EyeIcon,
+  EyeSlashIcon,
   PencilIcon,
   TrashIcon,
   CheckCircleIcon,
@@ -63,6 +64,22 @@ export default function GradesPage() {
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [gradeToDelete, setGradeToDelete] = useState<string | null>(null);
   const [gradeToPublish, setGradeToPublish] = useState<string | null>(null);
+  const visibilityMutation = useMutation({
+    mutationFn: async ({ gradeIds, visible }: { gradeIds: string[]; visible: boolean }) => {
+      await Promise.all(
+        gradeIds.map((id) => gradesService.updateStudentVisibility(id, visible)),
+      );
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['launched-grades'] });
+      toast.success(
+        variables.visible
+          ? 'Lançamento visível para alunos e responsáveis.'
+          : 'Lançamento ocultado de alunos e responsáveis.',
+      );
+    },
+    onError: () => toast.error('Não foi possível alterar a visibilidade deste lançamento.'),
+  });
 
   const { data: teacherSubjects = [], isLoading: loadingSubjects } = useTeacherClassSubjects();
 
@@ -758,6 +775,9 @@ export default function GradesPage() {
                 const isPending = evaluation.status === GradeStatus.PENDING;
                 const isPublished = evaluation.status === GradeStatus.PUBLISHED;
                 const isFinal = evaluation.status === GradeStatus.FINAL;
+                const isVisibleToStudents = evaluation.grades.every(
+                  (grade: any) => grade.isVisibleToStudents !== false,
+                );
 
                 return (
                   <div
@@ -867,6 +887,26 @@ export default function GradesPage() {
                     </div>
 
                     <div className="flex justify-end gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        leftIcon={
+                          isVisibleToStudents ? (
+                            <EyeSlashIcon className="h-4 w-4" />
+                          ) : (
+                            <EyeIcon className="h-4 w-4" />
+                          )
+                        }
+                        onClick={() =>
+                          visibilityMutation.mutate({
+                            gradeIds: evaluation.grades.map((grade: any) => grade.id),
+                            visible: !isVisibleToStudents,
+                          })
+                        }
+                        disabled={visibilityMutation.isPending}
+                      >
+                        {isVisibleToStudents ? 'Ocultar para alunos' : 'Mostrar para alunos'}
+                      </Button>
                       {isPending && (
                         <>
                           <Button

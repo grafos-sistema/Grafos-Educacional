@@ -10,6 +10,9 @@ import {
 } from '@/types/grade.types';
 import { PaginatedResponse } from '@/types/common.types';
 import { supabase } from '@/lib/supabase';
+import api from '@/lib/api';
+import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/user.types';
 
 export const gradesService = {
   mapGrade(row: any): Grade {
@@ -27,6 +30,7 @@ export const gradesService = {
       examDate: row.examDate ?? undefined,
       description: row.description ?? undefined,
       status: row.status,
+      isVisibleToStudents: row.isVisibleToStudents ?? true,
       publishedAt: row.publishedAt ?? undefined,
       observations: row.observations ?? undefined,
       createdAt: row.createdAt,
@@ -97,7 +101,7 @@ export const gradesService = {
     let query = supabase
       .from('grades')
       .select(
-        'id, value, weight, examType, examDate, description, status, publishedAt, observations, createdAt, updatedAt, studentId, classSubjectId, academicPeriodId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), classSubject:class_subjects(id, subject:subjects(id, name, code, color), class:classes(id, name, grade)), academicPeriod:academic_periods(id, name, type, orderNumber), teacher:teachers(id, user:users(id, firstName, lastName, name))',
+        'id, value, weight, examType, examDate, description, status, isVisibleToStudents, publishedAt, observations, createdAt, updatedAt, studentId, classSubjectId, academicPeriodId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), classSubject:class_subjects(id, subject:subjects(id, name, code, color), class:classes(id, name, grade)), academicPeriod:academic_periods(id, name, type, orderNumber), teacher:teachers(id, user:users(id, firstName, lastName, name))',
         { count: 'exact' }
       )
       .order('examDate', { ascending: false })
@@ -110,6 +114,11 @@ export const gradesService = {
     if (filters?.teacherId) query = query.eq('teacherId', filters.teacherId);
     if (filters?.status) query = query.eq('status', filters.status);
     if (filters?.examType) query = query.eq('examType', filters.examType);
+
+    const currentRole = useAuthStore.getState().user?.activeProfile || useAuthStore.getState().user?.role;
+    if (filters?.visibleToStudentsOnly || currentRole === UserRole.STUDENT || currentRole === UserRole.PARENT) {
+      query = query.eq('isVisibleToStudents', true);
+    }
 
     const { data, error, count } = await query;
     if (error) throw error;
@@ -137,7 +146,7 @@ export const gradesService = {
     const { data, error } = await supabase
       .from('grades')
       .select(
-        'id, value, weight, examType, examDate, description, status, publishedAt, observations, createdAt, updatedAt, studentId, classSubjectId, academicPeriodId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), classSubject:class_subjects(id, subject:subjects(id, name, code, color), class:classes(id, name, grade)), academicPeriod:academic_periods(id, name, type, orderNumber), teacher:teachers(id, user:users(id, firstName, lastName, name))'
+        'id, value, weight, examType, examDate, description, status, isVisibleToStudents, publishedAt, observations, createdAt, updatedAt, studentId, classSubjectId, academicPeriodId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), classSubject:class_subjects(id, subject:subjects(id, name, code, color), class:classes(id, name, grade)), academicPeriod:academic_periods(id, name, type, orderNumber), teacher:teachers(id, user:users(id, firstName, lastName, name))'
       )
       .eq('id', id)
       .single();
@@ -173,7 +182,7 @@ export const gradesService = {
       .from('grades')
       .insert(payload)
       .select(
-        'id, value, weight, examType, examDate, description, status, publishedAt, observations, createdAt, updatedAt, studentId, classSubjectId, academicPeriodId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), classSubject:class_subjects(id, subject:subjects(id, name, code, color), class:classes(id, name, grade)), academicPeriod:academic_periods(id, name, type, orderNumber), teacher:teachers(id, user:users(id, firstName, lastName, name))'
+        'id, value, weight, examType, examDate, description, status, isVisibleToStudents, publishedAt, observations, createdAt, updatedAt, studentId, classSubjectId, academicPeriodId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), classSubject:class_subjects(id, subject:subjects(id, name, code, color), class:classes(id, name, grade)), academicPeriod:academic_periods(id, name, type, orderNumber), teacher:teachers(id, user:users(id, firstName, lastName, name))'
       )
       .single();
 
@@ -208,7 +217,7 @@ export const gradesService = {
       .from('grades')
       .insert(payload)
       .select(
-        'id, value, weight, examType, examDate, description, status, publishedAt, observations, createdAt, updatedAt, studentId, classSubjectId, academicPeriodId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), classSubject:class_subjects(id, subject:subjects(id, name, code, color), class:classes(id, name, grade)), academicPeriod:academic_periods(id, name, type, orderNumber), teacher:teachers(id, user:users(id, firstName, lastName, name))'
+        'id, value, weight, examType, examDate, description, status, isVisibleToStudents, publishedAt, observations, createdAt, updatedAt, studentId, classSubjectId, academicPeriodId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), classSubject:class_subjects(id, subject:subjects(id, name, code, color), class:classes(id, name, grade)), academicPeriod:academic_periods(id, name, type, orderNumber), teacher:teachers(id, user:users(id, firstName, lastName, name))'
       );
 
     if (error) throw error;
@@ -226,12 +235,19 @@ export const gradesService = {
       .update({ ...dto, updatedAt: now })
       .eq('id', id)
       .select(
-        'id, value, weight, examType, examDate, description, status, publishedAt, observations, createdAt, updatedAt, studentId, classSubjectId, academicPeriodId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), classSubject:class_subjects(id, subject:subjects(id, name, code, color), class:classes(id, name, grade)), academicPeriod:academic_periods(id, name, type, orderNumber), teacher:teachers(id, user:users(id, firstName, lastName, name))'
+        'id, value, weight, examType, examDate, description, status, isVisibleToStudents, publishedAt, observations, createdAt, updatedAt, studentId, classSubjectId, academicPeriodId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), classSubject:class_subjects(id, subject:subjects(id, name, code, color), class:classes(id, name, grade)), academicPeriod:academic_periods(id, name, type, orderNumber), teacher:teachers(id, user:users(id, firstName, lastName, name))'
       )
       .single();
 
     if (error) throw error;
     return gradesService.mapGrade(data);
+  },
+
+  async updateStudentVisibility(id: string, isVisibleToStudents: boolean): Promise<Grade> {
+    const data = await api.patch<Grade>(`/grades/${id}/student-visibility`, {
+      isVisibleToStudents,
+    });
+    return data as unknown as Grade;
   },
 
   /**
@@ -245,7 +261,7 @@ export const gradesService = {
       .update({ status: GradeStatus.PUBLISHED, publishedAt: now, updatedAt: now })
       .eq('id', id)
       .select(
-        'id, value, weight, examType, examDate, description, status, publishedAt, observations, createdAt, updatedAt, studentId, classSubjectId, academicPeriodId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), classSubject:class_subjects(id, subject:subjects(id, name, code, color), class:classes(id, name, grade)), academicPeriod:academic_periods(id, name, type, orderNumber), teacher:teachers(id, user:users(id, firstName, lastName, name))'
+        'id, value, weight, examType, examDate, description, status, isVisibleToStudents, publishedAt, observations, createdAt, updatedAt, studentId, classSubjectId, academicPeriodId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), classSubject:class_subjects(id, subject:subjects(id, name, code, color), class:classes(id, name, grade)), academicPeriod:academic_periods(id, name, type, orderNumber), teacher:teachers(id, user:users(id, firstName, lastName, name))'
       )
       .single();
 
@@ -296,9 +312,14 @@ export const gradesService = {
     let query = supabase
       .from('grades')
       .select(
-        'id, value, weight, examType, examDate, description, status, publishedAt, observations, createdAt, updatedAt, studentId, classSubjectId, academicPeriodId, teacherId, student:students(id, registrationNumber, user:users(id, firstName, lastName, name)), classSubject:class_subjects(id, subject:subjects(id, name, color)), academicPeriod:academic_periods(id, name)',
+        'id, value, weight, examType, examDate, description, status, isVisibleToStudents, publishedAt, observations, createdAt, updatedAt, studentId, classSubjectId, academicPeriodId, teacherId, student:students(id, registrationNumber, user:users(id, firstName, lastName, name)), classSubject:class_subjects(id, subject:subjects(id, name, color)), academicPeriod:academic_periods(id, name)',
       )
       .eq('studentId', studentId);
+
+    const reportRole = useAuthStore.getState().user?.activeProfile || useAuthStore.getState().user?.role;
+    if (reportRole === UserRole.STUDENT || reportRole === UserRole.PARENT) {
+      query = query.eq('isVisibleToStudents', true);
+    }
 
     if (academicPeriodIds && academicPeriodIds.length > 0) {
       query = query.in('academicPeriodId', academicPeriodIds);
@@ -329,6 +350,7 @@ export const gradesService = {
         examDate: row.examDate ?? undefined,
         description: row.description ?? undefined,
         status: row.status,
+        isVisibleToStudents: row.isVisibleToStudents ?? true,
         publishedAt: row.publishedAt ?? undefined,
         observations: row.observations ?? undefined,
         createdAt: row.createdAt,

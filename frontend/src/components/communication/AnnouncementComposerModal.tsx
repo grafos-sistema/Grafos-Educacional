@@ -99,7 +99,7 @@ function getDefaultScheduledDateTime() {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
-function getInitialForm(institutionId = ''): AnnouncementFormState {
+function getInitialForm(institutionId = '', targetRoles: UserRole[] = []): AnnouncementFormState {
   return {
     title: '',
     content: '',
@@ -107,7 +107,7 @@ function getInitialForm(institutionId = ''): AnnouncementFormState {
     institutionId,
     scheduledFor: '',
     expiresAt: '',
-    targetRoles: [],
+    targetRoles,
   };
 }
 
@@ -132,12 +132,24 @@ export function AnnouncementComposerModal({
 
   const allowedRoleOptions = useMemo(() => {
     if (currentRole === UserRole.COORDINATOR) {
-      return [UserRole.COORDINATOR, UserRole.TEACHER, UserRole.STUDENT];
+      return [UserRole.DIRECTOR, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT];
+    }
+
+    if (currentRole === UserRole.TEACHER) {
+      return [
+        UserRole.DIRECTOR,
+        UserRole.INSTITUTION_ADMIN,
+        UserRole.COORDINATOR,
+        UserRole.TEACHER,
+        UserRole.STUDENT,
+        UserRole.PARENT,
+      ];
     }
 
     if (isGlobalAdmin) {
       return [
         UserRole.INSTITUTION_ADMIN,
+        UserRole.DIRECTOR,
         UserRole.COORDINATOR,
         UserRole.TEACHER,
         UserRole.STUDENT,
@@ -147,6 +159,7 @@ export function AnnouncementComposerModal({
     }
 
     return [
+      UserRole.DIRECTOR,
       UserRole.INSTITUTION_ADMIN,
       UserRole.COORDINATOR,
       UserRole.TEACHER,
@@ -154,6 +167,19 @@ export function AnnouncementComposerModal({
       UserRole.PARENT,
     ];
   }, [currentRole, isGlobalAdmin]);
+
+  const defaultTargetRoles = useMemo(() => {
+    if (currentRole === UserRole.TEACHER) {
+      return [UserRole.STUDENT, UserRole.PARENT];
+    }
+
+    return [
+      UserRole.DIRECTOR,
+      UserRole.INSTITUTION_ADMIN,
+      UserRole.COORDINATOR,
+      UserRole.TEACHER,
+    ];
+  }, [currentRole]);
 
   const defaultInstitutionId = useMemo(() => {
     const filteredIds = institutionFilterAll ? [] : getValidInstitutionIds(institutionFilterIds);
@@ -175,18 +201,20 @@ export function AnnouncementComposerModal({
     return institutions.find((institution) => isUuid(institution.id))?.id ?? '';
   }, [institutionFilterAll, institutionFilterIds, institutions, user?.institutionId]);
 
-  const [form, setForm] = useState<AnnouncementFormState>(() => getInitialForm(defaultInstitutionId));
+  const [form, setForm] = useState<AnnouncementFormState>(() =>
+    getInitialForm(defaultInstitutionId, defaultTargetRoles),
+  );
   const [errors, setErrors] = useState<Partial<Record<keyof AnnouncementFormState, string>>>({});
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
     setForm({
-      ...getInitialForm(defaultInstitutionId),
+      ...getInitialForm(defaultInstitutionId, defaultTargetRoles),
       scheduledFor: mode === 'scheduled' ? getDefaultScheduledDateTime() : '',
     });
     setErrors({});
-  }, [defaultInstitutionId, isOpen, mode]);
+  }, [defaultInstitutionId, defaultTargetRoles, isOpen, mode]);
 
   const selectedInstitution = institutions.find(
     (institution: UserInstitutionOption) => institution.id === form.institutionId

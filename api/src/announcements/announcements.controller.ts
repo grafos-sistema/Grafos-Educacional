@@ -35,7 +35,14 @@ export class AnnouncementsController {
   constructor(private readonly announcementsService: AnnouncementsService) {}
 
   @Post()
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+    UserRole.TEACHER,
+  )
   @ApiOperation({ summary: 'Create a new announcement' })
   @ApiResponse({
     status: 201,
@@ -53,12 +60,14 @@ export class AnnouncementsController {
     @Body() createAnnouncementDto: CreateAnnouncementDto,
     @CurrentUser() user: any,
   ) {
-    return this.announcementsService.create(createAnnouncementDto, user.userId);
+    return this.announcementsService.create(createAnnouncementDto, user);
   }
 
   @Get()
   @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
     UserRole.TEACHER,
@@ -76,7 +85,9 @@ export class AnnouncementsController {
 
   @Get('active')
   @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
     UserRole.TEACHER,
@@ -115,7 +126,9 @@ export class AnnouncementsController {
 
   @Get(':id')
   @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
     UserRole.TEACHER,
@@ -145,7 +158,14 @@ export class AnnouncementsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+    UserRole.TEACHER,
+  )
   @ApiOperation({ summary: 'Update an announcement' })
   @ApiParam({
     name: 'id',
@@ -173,7 +193,14 @@ export class AnnouncementsController {
   }
 
   @Patch(':id/publish')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+    UserRole.TEACHER,
+  )
   @ApiOperation({ summary: 'Publish an announcement' })
   @ApiParam({
     name: 'id',
@@ -197,7 +224,14 @@ export class AnnouncementsController {
   }
 
   @Patch(':id/unpublish')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+    UserRole.TEACHER,
+  )
   @ApiOperation({ summary: 'Unpublish an announcement' })
   @ApiParam({
     name: 'id',
@@ -221,7 +255,14 @@ export class AnnouncementsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+    UserRole.TEACHER,
+  )
   @ApiOperation({ summary: 'Delete an announcement' })
   @ApiParam({
     name: 'id',

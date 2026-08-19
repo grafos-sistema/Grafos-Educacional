@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   MegaphoneIcon,
@@ -36,11 +36,35 @@ const roleLabels: Record<string, string> = {
   SUPER_ADMIN_GLOBAL: 'Super Admin Global',
   SUPER_ADMIN: 'Super Admin',
   INSTITUTION_ADMIN: 'Secretário(a)',
+  DIRECTOR: 'Direção',
   COORDINATOR: 'Coordenador',
   TEACHER: 'Professor',
   STUDENT: 'Aluno',
   PARENT: 'Responsável',
 };
+
+type AudienceTab = 'general' | 'coordination' | 'teachers' | 'students' | 'parents';
+
+const audienceLabels: Record<AudienceTab, string> = {
+  general: 'Geral',
+  coordination: 'Coordenação',
+  teachers: 'Professores',
+  students: 'Alunos',
+  parents: 'Responsáveis',
+};
+
+function announcementBelongsToAudience(announcement: { targetRoles?: string[] }, audience: AudienceTab) {
+  const roles = announcement.targetRoles ?? [];
+  const hasStudent = roles.includes(UserRole.STUDENT);
+  const hasParent = roles.includes(UserRole.PARENT);
+  const staffRoles = [UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER];
+
+  if (audience === 'students') return hasStudent;
+  if (audience === 'parents') return hasParent && !hasStudent;
+  if (audience === 'coordination') return roles.includes(UserRole.COORDINATOR) && !hasStudent && !hasParent;
+  if (audience === 'teachers') return roles.includes(UserRole.TEACHER) && !hasStudent && !hasParent;
+  return staffRoles.filter((role) => roles.includes(role)).length >= 2 && !hasStudent && !hasParent;
+}
 
 const typeLabels: Record<string, string> = {
   MEETING: 'Reunião',
@@ -69,25 +93,44 @@ export default function CommunicationPage() {
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [composerMode, setComposerMode] = useState<'immediate' | 'scheduled'>('immediate');
   const [isComposerMenuOpen, setIsComposerMenuOpen] = useState(false);
+  const [activeAudience, setActiveAudience] = useState<AudienceTab>('general');
   const composerMenuRef = useRef<HTMLDivElement | null>(null);
   const user = useAuthStore((state) => state.user);
   const currentRole = user?.activeProfile || user?.role;
   const canManageAnnouncements = [
+    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
+    UserRole.TEACHER,
   ].includes((currentRole ?? user?.role) as UserRole);
 
+  const audienceTabs = useMemo(() => {
+    if (currentRole === UserRole.TEACHER) return ['teachers', 'students', 'parents'] as AudienceTab[];
+    if (currentRole === UserRole.STUDENT) return ['students'] as AudienceTab[];
+    if (currentRole === UserRole.PARENT) return ['students', 'parents'] as AudienceTab[];
+    return ['general', 'coordination', 'teachers', 'students', 'parents'] as AudienceTab[];
+  }, [currentRole]);
+
+  useEffect(() => {
+    if (!audienceTabs.includes(activeAudience)) setActiveAudience(audienceTabs[0] ?? 'students');
+  }, [activeAudience, audienceTabs]);
+
   // Buscar comunicados ativos
-  const { data: announcements, isLoading: loadingAnnouncements } = useQuery({
-    queryKey: ['announcements-active'],
+  const { data: announcements, isLoading: loadingAnnouncements, isError: announcementsError, refetch: refetchAnnouncements } = useQuery({
+    queryKey: ['announcements-active', user?.id, currentRole],
     queryFn: () => announcementsService.findActiveForUser(),
+    enabled: Boolean(user),
+    retry: 1,
   });
 
   // Buscar próximos eventos (próximos 60 dias)
-  const { data: upcomingEvents, isLoading: loadingEvents } = useQuery({
-    queryKey: ['events-upcoming'],
+  const { data: upcomingEvents, isLoading: loadingEvents, isError: eventsError } = useQuery({
+    queryKey: ['events-upcoming', user?.id],
     queryFn: () => eventsService.findUpcoming(60),
+    enabled: Boolean(user),
+    retry: 1,
   });
 
   // Sort by priority (urgent first)
@@ -95,6 +138,9 @@ export default function CommunicationPage() {
     const priorityOrder: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
     return (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3);
   });
+  const visibleAnnouncements = sortedAnnouncements.filter((announcement) =>
+    announcementBelongsToAudience(announcement, activeAudience),
+  );
 
   useEffect(() => {
     if (!isComposerMenuOpen) return;
@@ -236,6 +282,23 @@ export default function CommunicationPage() {
             <div className="flex justify-center py-12">
               <LoadingSpinner size="lg" text="Carregando comunicados..." />
             </div>
+          ) : announcementsError ? (
+            <div className="rounded-lg bg-white p-12 text-center shadow-sm dark:bg-gray-800">
+              <MegaphoneIcon className="mx-auto mb-4 h-16 w-16 text-amber-500" />
+              <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
+                Não foi possível carregar os comunicados
+              </h3>
+              <p className="mb-5 text-gray-500 dark:text-gray-400">
+                Tente atualizar esta área em alguns instantes.
+              </p>
+              <button
+                type="button"
+                onClick={() => refetchAnnouncements()}
+                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+              >
+                Tentar novamente
+              </button>
+            </div>
           ) : !announcements || announcements.length === 0 ? (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
               <MegaphoneIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -248,7 +311,30 @@ export default function CommunicationPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {sortedAnnouncements.map((announcement) => (
+              <div className="flex flex-wrap gap-2 rounded-lg bg-white p-2 shadow-sm dark:bg-gray-800">
+                {audienceTabs.map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveAudience(tab)}
+                    className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                      activeAudience === tab
+                        ? 'bg-primary-600 text-white'
+                        : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {audienceLabels[tab]}
+                  </button>
+                ))}
+              </div>
+              {visibleAnnouncements.length === 0 ? (
+                <div className="rounded-lg bg-white p-12 text-center shadow-sm dark:bg-gray-800">
+                  <MegaphoneIcon className="mx-auto mb-4 h-16 w-16 text-gray-400" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Nenhum comunicado nesta categoria
+                  </h3>
+                </div>
+              ) : visibleAnnouncements.map((announcement) => (
                 <div
                   key={announcement.id}
                   className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow ${

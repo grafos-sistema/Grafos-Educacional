@@ -14,6 +14,7 @@ export interface Grade {
   examDate?: string;
   description?: string;
   status: GradeStatus;
+  isVisibleToStudents: boolean;
   publishedAt?: string;
   observations?: string;
   createdAt: string;
@@ -117,6 +118,7 @@ export interface GradeFilters {
   examType?: string;
   page?: number;
   limit?: number;
+  visibleToStudentsOnly?: boolean;
 }
 
 export interface StudentGradeReport {

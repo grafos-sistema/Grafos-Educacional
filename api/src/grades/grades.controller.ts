@@ -27,10 +27,13 @@ import {
   BulkGradeDto,
   UpdateGradeDto,
   GradeResponseDto,
+  UpdateGradeVisibilityDto,
 } from './dto';
 import { UserRole, GradeStatus } from '@prisma/client';
 import { Roles } from '../common/decorators/roles.decorator';
 import { SkipOwnership } from '../common/decorators/skip-ownership.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
 
 @ApiTags('grades')
 @ApiBearerAuth()
@@ -85,7 +88,9 @@ export class GradesController {
   @Get()
   @SkipOwnership()
   @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
     UserRole.TEACHER,
@@ -175,6 +180,7 @@ export class GradesController {
     @Query('academicPeriodId') academicPeriodId?: string,
     @Query('teacherId') teacherId?: string,
     @Query('status') status?: GradeStatus,
+    @CurrentUser() user?: CurrentUserPayload,
   ) {
     return this.gradesService.findAll(
       page,
@@ -184,13 +190,16 @@ export class GradesController {
       academicPeriodId,
       teacherId,
       status,
+      user,
     );
   }
 
   @Get('student/:studentId')
   @SkipOwnership()
   @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
     UserRole.TEACHER,
@@ -231,14 +240,19 @@ export class GradesController {
     },
   })
   @ApiResponse({ status: 404, description: 'Aluno não encontrado' })
-  findByStudent(@Param('studentId') studentId: string) {
-    return this.gradesService.findByStudent(studentId);
+  findByStudent(
+    @Param('studentId') studentId: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.gradesService.findByStudent(studentId, user);
   }
 
   @Get(':id')
   @SkipOwnership()
   @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
     UserRole.TEACHER,
@@ -283,6 +297,21 @@ export class GradesController {
   @ApiResponse({ status: 403, description: 'Acesso negado' })
   update(@Param('id') id: string, @Body() updateGradeDto: UpdateGradeDto) {
     return this.gradesService.update(id, updateGradeDto);
+  }
+
+  @Patch(':id/student-visibility')
+  @Roles(UserRole.TEACHER)
+  @ApiOperation({
+    summary: 'Alterar visibilidade da nota',
+    description: 'O professor responsável decide se alunos e responsáveis podem ver a nota',
+  })
+  @ApiResponse({ status: 200, description: 'Visibilidade atualizada', type: GradeResponseDto })
+  updateStudentVisibility(
+    @Param('id') id: string,
+    @Body() data: UpdateGradeVisibilityDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.gradesService.updateStudentVisibility(id, data.isVisibleToStudents, user);
   }
 
   @Patch(':id/publish')
@@ -334,7 +363,14 @@ export class GradesController {
   @Get('class-subject/:classSubjectId')
   @UseInterceptors(CacheInterceptor)
   @CacheTTL(333300) // 5 minutos em milissegundos
-  @Roles(UserRole.TEACHER, UserRole.COORDINATOR, UserRole.INSTITUTION_ADMIN)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.TEACHER,
+    UserRole.COORDINATOR,
+    UserRole.INSTITUTION_ADMIN,
+  )
   @SkipOwnership()
   @ApiParam({
     name: 'classSubjectId',
@@ -361,6 +397,7 @@ export class GradesController {
       undefined, // academicPeriodId
       undefined, // teacherId
       undefined, // status
+      undefined, // user
     );
   }
 }

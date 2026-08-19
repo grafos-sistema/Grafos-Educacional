@@ -190,7 +190,9 @@ api.interceptors.response.use(
               { message: data?.message || 'Registro duplicado' },
               'Ja existe um cadastro com uma dessas informacoes.'
             );
-            console.error('Conflict:', conflictInfo.rawMessage);
+            // Conflitos de agenda/cadastro são retornos de negócio esperados;
+            // a tela responsável apresenta a mensagem ao usuário em um modal.
+            console.warn('Conflito informado pela API:', conflictInfo.rawMessage);
           }
           break;
 

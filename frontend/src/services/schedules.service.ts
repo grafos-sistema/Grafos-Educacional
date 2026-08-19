@@ -56,7 +56,9 @@ export const schedulesService = {
    */
   async create(dto: CreateScheduleDto): Promise<Schedule> {
     // api interceptor já retorna response.data
-    const data = await api.post<Schedule>(`/classes/${dto.classId}/schedules`, dto);
+    const data = await api.post<Schedule>(`/classes/${dto.classId}/schedules`, dto, {
+      skipFriendlyError: true,
+    } as any);
     return data as unknown as Schedule;
   },
 
@@ -83,7 +85,9 @@ export const schedulesService = {
    */
   async update(id: string, dto: UpdateScheduleDto): Promise<Schedule> {
     // api interceptor já retorna response.data
-    const data = await api.patch<Schedule>(`/schedules/${id}`, dto);
+    const data = await api.patch<Schedule>(`/schedules/${id}`, dto, {
+      skipFriendlyError: true,
+    } as any);
     return data as unknown as Schedule;
   },
 

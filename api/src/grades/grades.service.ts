@@ -5,9 +5,10 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGradeDto, BulkGradeDto, UpdateGradeDto } from './dto';
-import { GradeStatus } from '@prisma/client';
+import { GradeStatus, UserRole } from '@prisma/client';
 import { RankingsService } from '../rankings/rankings.service';
 import { AchievementsService } from '../achievements/achievements.service';
+import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
 
 @Injectable()
 export class GradesService {
@@ -343,6 +344,7 @@ export class GradesService {
     academicPeriodId?: string,
     teacherId?: string,
     status?: GradeStatus,
+    currentUser?: CurrentUserPayload,
   ) {
     const skip = (page - 1) * limit;
     const where: any = {};
@@ -365,6 +367,13 @@ export class GradesService {
 
     if (status) {
       where.status = status;
+    }
+
+    if (
+      currentUser?.role === UserRole.STUDENT ||
+      currentUser?.role === UserRole.PARENT
+    ) {
+      where.isVisibleToStudents = true;
     }
 
     const [data, total] = await Promise.all([
@@ -514,7 +523,11 @@ export class GradesService {
   /**
    * Busca notas do aluno com cálculo de médias
    */
-  async findByStudent(studentId: string) {
+  async findByStudent(studentId: string, currentUser?: CurrentUserPayload) {
+    if (currentUser?.role === UserRole.STUDENT && currentUser.studentId !== studentId) {
+      throw new BadRequestException('Você só pode consultar suas próprias notas');
+    }
+
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
       include: {
@@ -534,7 +547,12 @@ export class GradesService {
 
     // Busca todas as notas do aluno
     const grades = await this.prisma.grade.findMany({
-      where: { studentId },
+      where: {
+        studentId,
+        ...(currentUser?.role === UserRole.STUDENT || currentUser?.role === UserRole.PARENT
+          ? { isVisibleToStudents: true }
+          : {}),
+      },
       include: {
         classSubject: {
           include: {
@@ -653,6 +671,32 @@ export class GradesService {
           },
         },
       },
+    });
+  }
+
+  async updateStudentVisibility(
+    id: string,
+    isVisibleToStudents: boolean,
+    currentUser: CurrentUserPayload,
+  ) {
+    const grade = await this.prisma.grade.findUnique({
+      where: { id },
+      select: { id: true, teacherId: true },
+    });
+
+    if (!grade) {
+      throw new NotFoundException('Nota não encontrada');
+    }
+
+    if (currentUser.teacherId !== grade.teacherId) {
+      throw new BadRequestException(
+        'Você só pode alterar a visibilidade das suas próprias notas',
+      );
+    }
+
+    return this.prisma.grade.update({
+      where: { id },
+      data: { isVisibleToStudents },
     });
   }
 

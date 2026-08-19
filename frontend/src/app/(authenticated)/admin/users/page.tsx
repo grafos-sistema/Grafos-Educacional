@@ -11,6 +11,7 @@ import {
   EyeIcon,
   CheckCircleIcon,
   ShieldCheckIcon,
+  ArrowUpTrayIcon,
 } from '@heroicons/react/24/outline';
 import { usersService, UsersFilterParams } from '@/services/users.service';
 import { User, UserRole } from '@/types/user.types';
@@ -26,6 +27,7 @@ import { Modal } from '@/components/ui/Modal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { QuickApproveModal } from '@/components/users/QuickApproveModal';
 import { BulkApproveModal } from '@/components/users/BulkApproveModal';
+import { BulkUserImportModal } from '@/components/users/BulkUserImportModal';
 import { GlobalAdminInstitutionUnitFilter } from '@/components/users/GlobalAdminInstitutionUnitFilter';
 import { OptimizedImage } from '@/components/performance/OptimizedImage';
 import { getUserEditRouteByRole } from '@/lib/user-route-utils';
@@ -79,6 +81,7 @@ export default function UsersPage() {
 
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
   const [bulkApproveModal, setBulkApproveModal] = useState(false);
+  const [bulkImportModal, setBulkImportModal] = useState(false);
 
   // Aplicar filtros da URL na montagem do componente
   useEffect(() => {
@@ -433,6 +436,16 @@ export default function UsersPage() {
         <div className="flex gap-2 w-full sm:w-auto">
           {user?.role === UserRole.SUPER_ADMIN_GLOBAL && (
             <Button
+              variant="secondary"
+              onClick={() => setBulkImportModal(true)}
+              leftIcon={<ArrowUpTrayIcon className="h-5 w-5" />}
+              className="flex-1 sm:flex-none"
+            >
+              Importar em massa
+            </Button>
+          )}
+          {user?.role === UserRole.SUPER_ADMIN_GLOBAL && (
+            <Button
               variant="outline"
               onClick={() => router.push('/admin/global-admins')}
               leftIcon={<ShieldCheckIcon className="h-5 w-5" />}
@@ -548,6 +561,12 @@ export default function UsersPage() {
           users={selectedUsers}
         />
       )}
+
+      <BulkUserImportModal
+        isOpen={bulkImportModal}
+        onClose={() => setBulkImportModal(false)}
+        onComplete={() => refetch()}
+      />
     </div>
   );
 }

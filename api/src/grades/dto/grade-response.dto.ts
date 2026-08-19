@@ -35,6 +35,12 @@ export class GradeResponseDto {
   @ApiProperty({ enum: GradeStatus, example: GradeStatus.PENDING })
   status: GradeStatus;
 
+  @ApiProperty({
+    example: true,
+    description: 'Indica se a nota está visível para alunos e responsáveis',
+  })
+  isVisibleToStudents: boolean;
+
   @ApiProperty({ example: '2024-03-20T10:30:00.000Z', nullable: true })
   publishedAt: Date | null;
 

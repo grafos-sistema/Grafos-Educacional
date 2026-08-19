@@ -55,6 +55,7 @@ export default function SchedulesManagementPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [scheduleConflictMessage, setScheduleConflictMessage] = useState<string | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [deletingSchedule, setDeletingSchedule] = useState<Schedule | null>(null);
 
@@ -121,6 +122,13 @@ export default function SchedulesManagementPage() {
       resetForm();
     },
     onError: (error: any) => {
+      const message = typeof error?.message === 'string' ? error.message : '';
+      if (error?.statusCode === 409 || /já tem aula|conflito de horário/i.test(message)) {
+        setScheduleConflictMessage(
+          message || 'Este professor já possui uma aula neste dia e horário. Escolha outro horário.',
+        );
+        return;
+      }
       presentFriendlyError(
         error,
         'Não foi possível cadastrar este horário. Revise a turma, a disciplina e os horários informados.',
@@ -140,6 +148,13 @@ export default function SchedulesManagementPage() {
       resetForm();
     },
     onError: (error: any) => {
+      const message = typeof error?.message === 'string' ? error.message : '';
+      if (error?.statusCode === 409 || /já tem aula|conflito de horário/i.test(message)) {
+        setScheduleConflictMessage(
+          message || 'Este professor já possui uma aula neste dia e horário. Escolha outro horário.',
+        );
+        return;
+      }
       presentFriendlyError(
         error,
         'Não foi possível atualizar este horário. Revise a turma, a disciplina e os horários informados.',
@@ -838,6 +853,22 @@ export default function SchedulesManagementPage() {
           </>
         )}
       </div>
+
+      <Modal
+        isOpen={Boolean(scheduleConflictMessage)}
+        onClose={() => setScheduleConflictMessage(null)}
+        title="Conflito de horário"
+        size="md"
+      >
+        <div className="space-y-5">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+            {scheduleConflictMessage}
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={() => setScheduleConflictMessage(null)}>Entendi</Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={showSubjectsManagerModal}

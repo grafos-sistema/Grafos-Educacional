@@ -873,6 +873,7 @@ model Grade {
   examDate        DateTime?
   description     String?
   status          GradeStatus @default(PENDING)
+  isVisibleToStudents Boolean  @default(true)
   publishedAt     DateTime?
   observations    String?
   createdAt       DateTime    @default(now())

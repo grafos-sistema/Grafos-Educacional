@@ -28,10 +28,63 @@ export class AnnouncementsService {
 
   private isManagementRole(role: UserRole) {
     return (
+      role === UserRole.SUPER_ADMIN_GLOBAL ||
       role === UserRole.SUPER_ADMIN ||
+      role === UserRole.DIRECTOR ||
       role === UserRole.INSTITUTION_ADMIN ||
       role === UserRole.COORDINATOR
     );
+  }
+
+  private isGlobalAdmin(role: UserRole) {
+    return role === UserRole.SUPER_ADMIN_GLOBAL || role === UserRole.SUPER_ADMIN;
+  }
+
+  private normalizeTargetRoles(
+    role: UserRole,
+    requestedRoles: string[] | undefined,
+    targetStudentIds: string[],
+    targetParentIds: string[],
+  ) {
+    const isGlobal = role === UserRole.SUPER_ADMIN_GLOBAL || role === UserRole.SUPER_ADMIN;
+    const allowedRoles = isGlobal
+      ? Object.values(UserRole)
+      : role === UserRole.TEACHER
+        ? [
+            UserRole.DIRECTOR,
+            UserRole.INSTITUTION_ADMIN,
+            UserRole.COORDINATOR,
+            UserRole.TEACHER,
+            UserRole.STUDENT,
+            UserRole.PARENT,
+          ]
+        : [
+            UserRole.DIRECTOR,
+            UserRole.INSTITUTION_ADMIN,
+            UserRole.COORDINATOR,
+            UserRole.TEACHER,
+            UserRole.STUDENT,
+            UserRole.PARENT,
+          ];
+
+    const defaults = role === UserRole.TEACHER
+      ? [UserRole.STUDENT, UserRole.PARENT]
+      : [UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER];
+    const roles = Array.from(new Set((requestedRoles?.length ? requestedRoles : defaults)
+      .filter((value): value is UserRole => allowedRoles.includes(value as UserRole))));
+
+    if (targetStudentIds.length > 0 && !roles.includes(UserRole.STUDENT)) {
+      roles.push(UserRole.STUDENT);
+    }
+    if (targetParentIds.length > 0 && !roles.includes(UserRole.PARENT)) {
+      roles.push(UserRole.PARENT);
+    }
+    // Todo aviso enviado para alunos também fica disponível para seus responsáveis.
+    if (roles.includes(UserRole.STUDENT) && !roles.includes(UserRole.PARENT)) {
+      roles.push(UserRole.PARENT);
+    }
+
+    return roles;
   }
 
   private async validateSpecificRecipients(
@@ -156,6 +209,7 @@ export class AnnouncementsService {
           AND: [
             { targetRoles: { has: UserRole.PARENT } },
             { targetParentIds: { isEmpty: true } },
+            { targetStudentIds: { isEmpty: true } },
           ],
         },
         {
@@ -222,14 +276,15 @@ export class AnnouncementsService {
 
       return (
         announcement.targetRoles.includes(UserRole.PARENT) &&
-        targetParentIds.length === 0
+        targetParentIds.length === 0 &&
+        targetStudentIds.length === 0
       );
     }
 
     return announcement.targetRoles.includes(currentUser.role);
   }
 
-  async create(createAnnouncementDto: CreateAnnouncementDto, userId: string) {
+  async create(createAnnouncementDto: CreateAnnouncementDto, currentUser: any) {
     // Require institutionId
     if (!createAnnouncementDto.institutionId) {
       throw new BadRequestException('Institution ID is required');
@@ -249,6 +304,16 @@ export class AnnouncementsService {
       createAnnouncementDto.targetStudentIds,
       createAnnouncementDto.targetParentIds,
     );
+    const targetRoles = this.normalizeTargetRoles(
+      currentUser.role,
+      createAnnouncementDto.targetRoles,
+      specificRecipients.targetStudentIds,
+      specificRecipients.targetParentIds,
+    );
+
+    if (targetRoles.length === 0) {
+      throw new BadRequestException('Selecione pelo menos um público para o comunicado');
+    }
 
     const publishDate = this.getPublishDate(createAnnouncementDto.scheduledFor);
     const now = new Date();
@@ -279,7 +344,7 @@ export class AnnouncementsService {
         title: createAnnouncementDto.title,
         content: createAnnouncementDto.content,
         priority: createAnnouncementDto.priority,
-        targetRoles: createAnnouncementDto.targetRoles,
+        targetRoles,
         targetStudentIds: specificRecipients.targetStudentIds,
         targetParentIds: specificRecipients.targetParentIds,
         institutionId: createAnnouncementDto.institutionId,
@@ -289,7 +354,7 @@ export class AnnouncementsService {
         attachments: createAnnouncementDto.attachments
           ? JSON.stringify(createAnnouncementDto.attachments)
           : null,
-        createdById: userId,
+        createdById: currentUser.userId,
         isPublished: true,
         publishedAt: publishDate,
       },
@@ -361,7 +426,7 @@ export class AnnouncementsService {
       });
     }
 
-    if (currentUser.role !== UserRole.SUPER_ADMIN) {
+    if (!this.isGlobalAdmin(currentUser.role)) {
       where.AND.push({
         OR: [{ institutionId: currentUser.institutionId }, { institutionId: null }],
       });
@@ -375,11 +440,11 @@ export class AnnouncementsService {
           has: targetRole,
         },
       });
-    } else {
-      const recipientWhere = await this.buildRecipientVisibilityWhere(currentUser);
-      if (recipientWhere) {
-        where.AND.push(recipientWhere);
-      }
+    }
+
+    const recipientWhere = await this.buildRecipientVisibilityWhere(currentUser);
+    if (recipientWhere) {
+      where.AND.push(recipientWhere);
     }
 
     const [announcements, total] = await Promise.all([
@@ -503,6 +568,12 @@ export class AnnouncementsService {
     const updateData: any = { ...updateAnnouncementDto };
     updateData.targetStudentIds = specificRecipients.targetStudentIds;
     updateData.targetParentIds = specificRecipients.targetParentIds;
+    updateData.targetRoles = this.normalizeTargetRoles(
+      currentUser.role,
+      updateAnnouncementDto.targetRoles ?? announcement.targetRoles,
+      specificRecipients.targetStudentIds,
+      specificRecipients.targetParentIds,
+    );
     if (updateAnnouncementDto.scheduledFor) {
       const scheduledPublishDate = this.getPublishDate(
         updateAnnouncementDto.scheduledFor,
@@ -657,7 +728,7 @@ export class AnnouncementsService {
 
   private async checkAccessPermission(announcement: any, currentUser: any) {
     // SUPER_ADMIN can access everything
-    if (currentUser.role === UserRole.SUPER_ADMIN) {
+    if (this.isGlobalAdmin(currentUser.role)) {
       return;
     }
 
@@ -685,16 +756,22 @@ export class AnnouncementsService {
 
   private checkEditPermission(announcement: any, currentUser: any) {
     // SUPER_ADMIN can edit everything
-    if (currentUser.role === UserRole.SUPER_ADMIN) {
+    if (this.isGlobalAdmin(currentUser.role)) {
       return;
     }
 
     // INSTITUTION_ADMIN and COORDINATOR can edit announcements in their institution
     if (
-      [UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR].includes(
+      [UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER].includes(
         currentUser.role,
       )
     ) {
+      if (
+        currentUser.role === UserRole.TEACHER &&
+        announcement.createdById !== currentUser.userId
+      ) {
+        throw new ForbiddenException('Você só pode editar comunicados criados por você');
+      }
       // Check if announcement is for user's institution
       if (
         announcement.institutionId &&
@@ -724,7 +801,7 @@ export class AnnouncementsService {
     };
 
     // Filter by institution
-    if (currentUser.role !== UserRole.SUPER_ADMIN) {
+    if (!this.isGlobalAdmin(currentUser.role)) {
       const links = await this.prisma.userInstitution.findMany({
         where: { userId: currentUser.userId, isActive: true },
         select: { institutionId: true },
