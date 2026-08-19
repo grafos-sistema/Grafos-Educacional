@@ -50,12 +50,18 @@ export class PdfService {
   }
 
   private loadTemplate(): void {
-    const templatePath = path.join(
-      process.cwd(),
-      'src',
-      'templates',
-      'worksheet.hbs',
+    const templateCandidates = [
+      path.join(__dirname, '..', '..', 'templates', 'worksheet.hbs'),
+      path.join(process.cwd(), 'src', 'templates', 'worksheet.hbs'),
+    ];
+    const templatePath = templateCandidates.find((candidate) =>
+      fs.existsSync(candidate),
     );
+
+    if (!templatePath) {
+      throw new Error('Worksheet PDF template was not included in the build');
+    }
+
     const templateContent = fs.readFileSync(templatePath, 'utf-8');
     this.template = Handlebars.compile(templateContent);
   }
