@@ -31,9 +31,17 @@ RUN apk add --no-cache \
       font-noto-cjk \
       font-noto-emoji \
   && npm install --global npm@12.0.2 \
-  && npm install --prefix /usr/local/lib/node_modules/npm --omit=dev --no-save \
+  && mkdir -p /tmp/npm-security \
+  && npm install --prefix /tmp/npm-security --omit=dev --no-save \
       brace-expansion@5.0.9 \
       ip-address@10.3.1 \
+  && rm -rf \
+      /usr/local/lib/node_modules/npm/node_modules/brace-expansion \
+      /usr/local/lib/node_modules/npm/node_modules/ip-address \
+  && cp -R /tmp/npm-security/node_modules/brace-expansion \
+      /usr/local/lib/node_modules/npm/node_modules/brace-expansion \
+  && cp -R /tmp/npm-security/node_modules/ip-address \
+      /usr/local/lib/node_modules/npm/node_modules/ip-address \
   && npm cache clean --force \
   && rm -rf /root/.npm /tmp/*
 
