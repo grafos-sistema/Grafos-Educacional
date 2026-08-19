@@ -33,7 +33,10 @@ export default function EditCoursePage() {
     handleSubmit,
     formState: { errors },
     reset,
+    watch,
   } = useForm<UpdateCourseDto>();
+
+  const selectedLevel = watch('level') ?? '';
 
   // Preencher formulário quando curso carregar
   useEffect(() => {
@@ -142,6 +145,7 @@ export default function EditCoursePage() {
                 label="Nível"
                 options={courseLevelOptions}
                 {...register('level')}
+                value={selectedLevel}
                 error={errors.level?.message}
               />
               <Input

@@ -580,8 +580,29 @@ export default function AttendancePage() {
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
-                                  {enrollment.student?.firstName?.[0]}
-                                  {enrollment.student?.lastName?.[0]}
+                                  {enrollment.student?.avatar ? (
+                                    <>
+                                      <img
+                                        src={enrollment.student.avatar}
+                                        alt={`Foto de ${enrollment.student.firstName} ${enrollment.student.lastName}`}
+                                        loading="lazy"
+                                        className="h-full w-full rounded-full object-cover"
+                                        onError={(event) => {
+                                          event.currentTarget.style.display = 'none';
+                                          event.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                        }}
+                                      />
+                                      <span className="hidden">
+                                        {enrollment.student?.firstName?.[0]}
+                                        {enrollment.student?.lastName?.[0]}
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <span>
+                                      {enrollment.student?.firstName?.[0]}
+                                      {enrollment.student?.lastName?.[0]}
+                                    </span>
+                                  )}
                                 </div>
                                 <div>
                                   <div className="font-medium text-gray-900 dark:text-white">

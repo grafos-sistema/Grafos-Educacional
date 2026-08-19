@@ -35,6 +35,7 @@ export default function EditAcademicYearPage() {
   } = useForm<UpdateAcademicYearDto>();
 
   const startDate = watch('startDate');
+  const endDate = watch('endDate');
 
   // Preencher formulário quando ano letivo carregar
   useEffect(() => {
@@ -170,6 +171,7 @@ export default function EditAcademicYearPage() {
                 label="Data de Início"
                 type="date"
                 {...register('startDate')}
+                value={startDate ?? ''}
                 error={errors.startDate?.message}
               />
               <Input
@@ -187,6 +189,7 @@ export default function EditAcademicYearPage() {
                     return true;
                   },
                 })}
+                value={endDate ?? ''}
                 error={errors.endDate?.message}
               />
             </div>
