@@ -16,9 +16,10 @@ async function bootstrap() {
   const isProduction = process.env.NODE_ENV === 'production';
   const corsOrigins = configService.get<string[]>('cors.origins') || [];
 
-  // Railway/Vercel encaminham o IP original por proxy. Isto é necessário para
-  // que o rate limiter agrupe requisições pelo cliente correto.
-  app.set('trust proxy', 1);
+  // A Railway pode encaminhar a mesma requisicao por mais de um proxy de borda.
+  // Confiar na cadeia controlada pela plataforma preserva o IP original e evita
+  // que o rate limiter crie um contador diferente para cada edge.
+  app.set('trust proxy', true);
 
   // Serve static files from public folder (without authentication)
   // __dirname em código compilado aponta para 'api/dist/src'
@@ -76,7 +77,9 @@ async function bootstrap() {
         callback(null, true);
         return;
       }
-      callback(new Error('Origem não autorizada pelo CORS'));
+      // A ausencia do header CORS faz o navegador bloquear a resposta sem
+      // transformar uma origem desconhecida em erro interno 500.
+      callback(null, false);
     },
     credentials: false,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

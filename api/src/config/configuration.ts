@@ -1,3 +1,19 @@
+const REQUIRED_CORS_ORIGINS = [
+  'https://grafoseducacional.com.br',
+  'https://www.grafoseducacional.com.br',
+];
+
+const getCorsOrigins = () => {
+  const configuredOrigins = (
+    process.env.CORS_ORIGINS || 'http://localhost:3000'
+  )
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  return [...new Set([...REQUIRED_CORS_ORIGINS, ...configuredOrigins])];
+};
+
 export default () => ({
   app: {
     env: process.env.NODE_ENV || 'development',
@@ -23,13 +39,7 @@ export default () => ({
     bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || '10', 10),
   },
   cors: {
-    origins: (
-      process.env.CORS_ORIGINS ||
-      'https://grafoseducacional.com.br,https://www.grafoseducacional.com.br,http://localhost:3000'
-    )
-      .split(',')
-      .map((origin) => origin.trim())
-      .filter(Boolean),
+    origins: getCorsOrigins(),
   },
   throttle: {
     ttl: parseInt(process.env.THROTTLE_TTL || '60', 10),
