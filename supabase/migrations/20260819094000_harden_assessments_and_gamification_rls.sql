@@ -93,7 +93,7 @@ USING (
             SELECT 1
             FROM public.class_enrollments ce
             WHERE ce."classId" = c.id
-              AND ce.status = 'ACTIVE'
+              AND ce.status = 'ENROLLED'
               AND (
                 ce."studentId" = public.current_student_id()
                 OR EXISTS (
@@ -122,7 +122,7 @@ WITH CHECK (
     JOIN public.class_enrollments ce ON ce."classId" = cs."classId"
     WHERE a.id = assignment_submissions."assignmentId"
       AND ce."studentId" = assignment_submissions."studentId"
-      AND ce.status = 'ACTIVE'
+      AND ce.status = 'ENROLLED'
   )
 );
 
@@ -144,7 +144,7 @@ AS $$
           FROM public.class_enrollments ce
           WHERE ce."classId" = ea."classId"
             AND ce."studentId" = public.current_student_id()
-            AND ce.status = 'ACTIVE'
+            AND ce.status = 'ENROLLED'
         )
       )
   )
