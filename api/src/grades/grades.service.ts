@@ -60,6 +60,7 @@ export class GradesService {
         examDate: examDate ? new Date(examDate) : null,
         description,
         observations,
+        isVisibleToStudents: false,
       },
       include: {
         student: {
@@ -68,8 +69,12 @@ export class GradesService {
             enrollmentNumber: true,
             user: {
               select: {
+                id: true,
+                name: true,
                 firstName: true,
                 lastName: true,
+                avatar: true,
+                email: true,
               },
             },
           },
@@ -106,6 +111,8 @@ export class GradesService {
             id: true,
             user: {
               select: {
+                id: true,
+                name: true,
                 firstName: true,
                 lastName: true,
               },
@@ -251,6 +258,7 @@ export class GradesService {
             examDate: parsedExamDate,
             description,
             observations: grade.observations,
+            isVisibleToStudents: false,
           },
           include: {
             student: {
@@ -669,8 +677,13 @@ export class GradesService {
   /**
    * Atualiza nota
    */
-  async update(id: string, updateGradeDto: UpdateGradeDto) {
-    await this.findOne(id);
+  async update(
+    id: string,
+    updateGradeDto: UpdateGradeDto,
+    currentUser: CurrentUserPayload,
+  ) {
+    const existingGrade = await this.findOne(id);
+    this.ensureTeacherCanManage(existingGrade.teacherId, currentUser);
 
     const { examDate, ...data } = updateGradeDto;
 
@@ -752,14 +765,21 @@ export class GradesService {
   /**
    * Publica nota (torna visível para aluno)
    */
-  async publish(id: string) {
+  async publish(id: string, currentUser: CurrentUserPayload) {
     const grade = await this.findOne(id);
+    this.ensureTeacherCanManage(grade.teacherId, currentUser);
 
     if (
       grade.status === GradeStatus.PUBLISHED ||
       grade.status === GradeStatus.FINAL
     ) {
       throw new BadRequestException('Nota já foi publicada');
+    }
+
+    if (!grade.isVisibleToStudents) {
+      throw new BadRequestException(
+        'Ative a opção “Mostrar para alunos” antes de publicar esta nota',
+      );
     }
 
     return this.prisma.grade.update({
@@ -788,11 +808,26 @@ export class GradesService {
   /**
    * Remove nota
    */
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, currentUser: CurrentUserPayload) {
+    const grade = await this.findOne(id);
+    this.ensureTeacherCanManage(grade.teacherId, currentUser);
 
     return this.prisma.grade.delete({
       where: { id },
     });
+  }
+
+  private ensureTeacherCanManage(
+    teacherId: string,
+    currentUser: CurrentUserPayload,
+  ) {
+    if (
+      currentUser.role === UserRole.TEACHER &&
+      currentUser.teacherId !== teacherId
+    ) {
+      throw new ForbiddenException(
+        'Você só pode gerenciar as notas das suas próprias turmas',
+      );
+    }
   }
 }

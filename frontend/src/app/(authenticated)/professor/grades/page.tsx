@@ -30,6 +30,7 @@ import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/hooks/useToast';
 import { Tabs } from '@/components/ui/Tabs';
 import { useTeacherClassSubjects } from '@/hooks/useTeacherClassSubjects';
@@ -61,11 +62,10 @@ export default function GradesPage() {
   const [listFilterClassSubjectId, setListFilterClassSubjectId] = useState('');
   const [listFilterPeriodId, setListFilterPeriodId] = useState('');
   const [listFilterStatus, setListFilterStatus] = useState<GradeStatus | ''>('');
-  const [selectedGradeId, setSelectedGradeId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [gradeToDelete, setGradeToDelete] = useState<string | null>(null);
-  const [gradeToPublish, setGradeToPublish] = useState<string | null>(null);
+  const [reviewEvaluationId, setReviewEvaluationId] = useState<string | null>(null);
+  const [reviewMode, setReviewMode] = useState<'view' | 'publish'>('view');
   const visibilityMutation = useMutation({
     mutationFn: async ({ gradeIds, visible }: { gradeIds: string[]; visible: boolean }) => {
       await Promise.all(
@@ -221,6 +221,12 @@ export default function GradesPage() {
   });
 
   const evaluations = Object.values(groupedGrades);
+  const reviewEvaluation = evaluations.find(
+    (evaluation: any) => evaluation.id === reviewEvaluationId,
+  ) as any;
+  const reviewIsVisibleToStudents = reviewEvaluation?.grades?.every(
+    (grade: any) => grade.isVisibleToStudents !== false,
+  ) ?? false;
 
   // Mutation para salvar notas
   const saveMutation = useMutation({
@@ -257,6 +263,9 @@ export default function GradesPage() {
     },
     onSuccess: () => {
       setShowConfirmDialog(false);
+      setListFilterClassId(selectedClassId);
+      setListFilterClassSubjectId(selectedClassSubjectId);
+      setListFilterPeriodId(selectedPeriodId);
       queryClient.invalidateQueries({ queryKey: ['grades'] });
       queryClient.invalidateQueries({ queryKey: ['launched-grades'] });
       toast.success('Notas salvas com sucesso');
@@ -277,13 +286,12 @@ export default function GradesPage() {
       await Promise.all(gradeIds.map((id) => gradesService.publish(id)));
     },
     onSuccess: () => {
-      setShowPublishDialog(false);
-      setGradeToPublish(null);
+      setReviewEvaluationId(null);
+      setReviewMode('view');
       queryClient.invalidateQueries({ queryKey: ['launched-grades'] });
       toast.success('Notas publicadas com sucesso');
     },
     onError: (error: any) => {
-      setShowPublishDialog(false);
       const message = error?.response?.data?.message || error.message || 'Erro ao publicar notas';
       toast.error(message);
     },
@@ -341,9 +349,17 @@ export default function GradesPage() {
     setShowConfirmDialog(true);
   };
 
+  const openReview = (evaluation: any, mode: 'view' | 'publish' = 'view') => {
+    setReviewEvaluationId(evaluation.id);
+    setReviewMode(mode);
+  };
+
   const handlePublishClick = (evaluation: any) => {
-    setGradeToPublish(evaluation.id);
-    setShowPublishDialog(true);
+    openReview(evaluation, 'publish');
+  };
+
+  const handleReviewClick = (evaluation: any) => {
+    openReview(evaluation, 'view');
   };
 
   const handleDeleteClick = (evaluation: any) => {
@@ -352,11 +368,19 @@ export default function GradesPage() {
   };
 
   const confirmPublish = () => {
-    const evaluation = evaluations.find((e: any) => e.id === gradeToPublish);
-    if (evaluation) {
-      const gradeIds = evaluation.grades.map((g: any) => g.id);
-      publishMutation.mutate(gradeIds);
+    const evaluation = evaluations.find((e: any) => e.id === reviewEvaluationId);
+    if (!evaluation) return;
+
+    const isVisibleToStudents = evaluation.grades.every(
+      (grade: any) => grade.isVisibleToStudents !== false,
+    );
+
+    if (!isVisibleToStudents) {
+      toast.warning('Ative “Mostrar para alunos” antes de publicar as notas.');
+      return;
     }
+
+    publishMutation.mutate(evaluation.grades.map((grade: any) => grade.id));
   };
 
   const confirmDelete = () => {
@@ -407,19 +431,6 @@ export default function GradesPage() {
       />
 
       <ConfirmDialog
-        isOpen={showPublishDialog}
-        onClose={() => {
-          setShowPublishDialog(false);
-          setGradeToPublish(null);
-        }}
-        onConfirm={confirmPublish}
-        title="Publicar notas"
-        message="Ao publicar, as notas ficarão visíveis para os alunos. Deseja continuar?"
-        confirmText="Sim, publicar"
-        cancelText="Cancelar"
-      />
-
-      <ConfirmDialog
         isOpen={showDeleteDialog}
         onClose={() => {
           setShowDeleteDialog(false);
@@ -431,6 +442,134 @@ export default function GradesPage() {
         confirmText="Sim, excluir"
         cancelText="Cancelar"
       />
+
+      <Modal
+        isOpen={Boolean(reviewEvaluation)}
+        onClose={() => {
+          setReviewEvaluationId(null);
+          setReviewMode('view');
+        }}
+        title={reviewMode === 'publish' ? 'Revisar notas antes de publicar' : 'Visualizar notas lançadas'}
+        description={
+          reviewMode === 'publish'
+            ? 'Confira os alunos e os valores abaixo. A publicação só ficará disponível quando o lançamento estiver marcado para aparecer aos alunos.'
+            : 'Consulte as notas já lançadas para esta avaliação, inclusive quando apenas parte da turma tiver sido preenchida.'
+        }
+        size="xl"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setReviewEvaluationId(null);
+                setReviewMode('view');
+              }}
+            >
+              Fechar
+            </Button>
+            {reviewMode === 'publish' && (
+              <Button
+                onClick={confirmPublish}
+                disabled={!reviewIsVisibleToStudents || publishMutation.isPending}
+                isLoading={publishMutation.isPending}
+                leftIcon={<CheckCircleIcon className="h-4 w-4" />}
+              >
+                Confirmar publicação
+              </Button>
+            )}
+          </div>
+        }
+      >
+        {reviewEvaluation && (
+          <div className="space-y-5">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/50">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+                    {reviewEvaluation.classSubject?.class?.name} ·{' '}
+                    {reviewEvaluation.classSubject?.subject?.name}
+                  </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {reviewEvaluation.academicPeriod?.name} · {reviewEvaluation.examType}
+                    {reviewEvaluation.examDate
+                      ? ` · ${new Date(reviewEvaluation.examDate).toLocaleDateString('pt-BR')}`
+                      : ''}
+                  </p>
+                </div>
+                <div className="text-right text-sm text-slate-600 dark:text-slate-300">
+                  <div>{reviewEvaluation.grades.length} aluno(s) com nota lançada</div>
+                  <div>Média: {reviewEvaluation.average}</div>
+                </div>
+              </div>
+            </div>
+
+            {!reviewIsVisibleToStudents && reviewMode === 'publish' && (
+              <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                <EyeSlashIcon className="mt-0.5 h-5 w-5 shrink-0" />
+                <p>
+                  Este lançamento está oculto para alunos e responsáveis. Ative o botão
+                  “Mostrar para alunos” na avaliação e abra esta revisão novamente para publicar.
+                </p>
+              </div>
+            )}
+
+            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="grid grid-cols-[minmax(0,1fr)_120px_minmax(0,1.5fr)] gap-4 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/50 dark:text-slate-400">
+                <span>Aluno</span>
+                <span>Nota</span>
+                <span>Observações</span>
+              </div>
+              <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                {reviewEvaluation.grades.map((grade: any) => {
+                  const studentName = grade.student?.user?.name ||
+                    `${grade.student?.user?.firstName || ''} ${grade.student?.user?.lastName || ''}`.trim() ||
+                    'Aluno';
+                  const initials = studentName
+                    .split(' ')
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((part: string) => part[0])
+                    .join('')
+                    .toUpperCase();
+
+                  return (
+                    <div
+                      key={grade.id}
+                      className="grid grid-cols-[minmax(0,1fr)_120px_minmax(0,1.5fr)] items-center gap-4 px-4 py-3"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        {grade.student?.user?.avatar ? (
+                          <img
+                            src={grade.student.user.avatar}
+                            alt={`Foto de ${studentName}`}
+                            className="h-9 w-9 shrink-0 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-xs font-semibold text-white">
+                            {initials}
+                          </div>
+                        )}
+                        <span className="truncate font-medium text-slate-900 dark:text-slate-100">
+                          {studentName}
+                        </span>
+                      </div>
+                      <span className="font-semibold text-slate-900 dark:text-slate-100">
+                        {Number(grade.value).toLocaleString('pt-BR', {
+                          minimumFractionDigits: 1,
+                          maximumFractionDigits: 2,
+                        })}
+                      </span>
+                      <span className="truncate text-sm text-slate-500 dark:text-slate-400">
+                        {grade.observations || '—'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Header */}
       <div className="mb-6">
@@ -1021,13 +1160,16 @@ export default function GradesPage() {
                       <Button
                         variant="secondary"
                         size="sm"
-                        leftIcon={
-                          isVisibleToStudents ? (
-                            <EyeSlashIcon className="h-4 w-4" />
-                          ) : (
-                            <EyeIcon className="h-4 w-4" />
-                          )
-                        }
+                        leftIcon={<EyeIcon className="h-4 w-4" />}
+                        onClick={() => handleReviewClick(evaluation)}
+                      >
+                        Visualizar notas
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="gap-2"
                         onClick={() =>
                           visibilityMutation.mutate({
                             gradeIds: evaluation.grades.map((grade: any) => grade.id),
@@ -1036,7 +1178,20 @@ export default function GradesPage() {
                         }
                         disabled={visibilityMutation.isPending}
                       >
-                        {isVisibleToStudents ? 'Ocultar para alunos' : 'Mostrar para alunos'}
+                        <span
+                          role="switch"
+                          aria-checked={isVisibleToStudents}
+                          className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
+                            isVisibleToStudents ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-600'
+                          }`}
+                        >
+                          <span
+                            className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                              isVisibleToStudents ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </span>
+                        <span>{isVisibleToStudents ? 'Mostrar para alunos' : 'Oculto para alunos'}</span>
                       </Button>
                       {isPending && (
                         <>

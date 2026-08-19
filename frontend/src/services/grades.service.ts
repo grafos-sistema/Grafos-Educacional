@@ -159,35 +159,8 @@ export const gradesService = {
    * Criar nota individual
    */
   async create(dto: CreateGradeDto): Promise<Grade> {
-    const now = new Date().toISOString();
-    const payload = {
-      id: crypto.randomUUID(),
-      value: dto.value,
-      weight: dto.weight ?? 1,
-      examType: dto.examType,
-      examDate: dto.examDate ?? null,
-      description: dto.description ?? null,
-      status: dto.status ?? GradeStatus.PENDING,
-      publishedAt: null,
-      observations: dto.observations ?? null,
-      studentId: dto.studentId,
-      classSubjectId: dto.classSubjectId,
-      academicPeriodId: dto.academicPeriodId,
-      teacherId: dto.teacherId,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    const { data, error } = await supabase
-      .from('grades')
-      .insert(payload)
-      .select(
-        'id, value, weight, examType, examDate, description, status, isVisibleToStudents, publishedAt, observations, createdAt, updatedAt, studentId, classSubjectId, academicPeriodId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), classSubject:class_subjects(id, subject:subjects(id, name, code, color), class:classes(id, name, grade)), academicPeriod:academic_periods(id, name, type, orderNumber), teacher:teachers(id, user:users(id, firstName, lastName, name))'
-      )
-      .single();
-
-    if (error) throw error;
-    return gradesService.mapGrade(data);
+    const response = await api.post<any>('/grades', dto);
+    return gradesService.mapGrade(response);
   },
 
   /**
@@ -228,53 +201,30 @@ export const gradesService = {
    * Atualizar nota
    */
   async update(id: string, dto: UpdateGradeDto): Promise<Grade> {
-    const now = new Date().toISOString();
-
-    const { data, error } = await supabase
-      .from('grades')
-      .update({ ...dto, updatedAt: now })
-      .eq('id', id)
-      .select(
-        'id, value, weight, examType, examDate, description, status, isVisibleToStudents, publishedAt, observations, createdAt, updatedAt, studentId, classSubjectId, academicPeriodId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), classSubject:class_subjects(id, subject:subjects(id, name, code, color), class:classes(id, name, grade)), academicPeriod:academic_periods(id, name, type, orderNumber), teacher:teachers(id, user:users(id, firstName, lastName, name))'
-      )
-      .single();
-
-    if (error) throw error;
-    return gradesService.mapGrade(data);
+    const response = await api.patch<any>(`/grades/${id}`, dto);
+    return gradesService.mapGrade(response);
   },
 
   async updateStudentVisibility(id: string, isVisibleToStudents: boolean): Promise<Grade> {
-    const data = await api.patch<Grade>(`/grades/${id}/student-visibility`, {
+    const data = await api.patch<any>(`/grades/${id}/student-visibility`, {
       isVisibleToStudents,
     });
-    return data as unknown as Grade;
+    return gradesService.mapGrade(data);
   },
 
   /**
    * Publicar nota (tornar visÃ­vel para aluno)
    */
   async publish(id: string): Promise<Grade> {
-    const now = new Date().toISOString();
-
-    const { data, error } = await supabase
-      .from('grades')
-      .update({ status: GradeStatus.PUBLISHED, publishedAt: now, updatedAt: now })
-      .eq('id', id)
-      .select(
-        'id, value, weight, examType, examDate, description, status, isVisibleToStudents, publishedAt, observations, createdAt, updatedAt, studentId, classSubjectId, academicPeriodId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), classSubject:class_subjects(id, subject:subjects(id, name, code, color), class:classes(id, name, grade)), academicPeriod:academic_periods(id, name, type, orderNumber), teacher:teachers(id, user:users(id, firstName, lastName, name))'
-      )
-      .single();
-
-    if (error) throw error;
-    return gradesService.mapGrade(data);
+    const response = await api.patch<any>(`/grades/${id}/publish`, {});
+    return gradesService.mapGrade(response);
   },
 
   /**
    * Deletar nota
    */
   async remove(id: string): Promise<void> {
-    const { error } = await supabase.from('grades').delete().eq('id', id);
-    if (error) throw error;
+    await api.delete(`/grades/${id}`);
   },
 
   /**

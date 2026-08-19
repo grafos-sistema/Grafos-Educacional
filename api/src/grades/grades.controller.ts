@@ -301,8 +301,12 @@ export class GradesController {
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
   @ApiResponse({ status: 404, description: 'Nota não encontrada' })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
-  update(@Param('id') id: string, @Body() updateGradeDto: UpdateGradeDto) {
-    return this.gradesService.update(id, updateGradeDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateGradeDto: UpdateGradeDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.gradesService.update(id, updateGradeDto, user);
   }
 
   @Patch(':id/student-visibility')
@@ -340,8 +344,8 @@ export class GradesController {
   @ApiResponse({ status: 400, description: 'Nota já foi publicada' })
   @ApiResponse({ status: 404, description: 'Nota não encontrada' })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
-  publish(@Param('id') id: string) {
-    return this.gradesService.publish(id);
+  publish(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.gradesService.publish(id, user);
   }
 
   @Delete(':id')
@@ -362,8 +366,8 @@ export class GradesController {
   })
   @ApiResponse({ status: 404, description: 'Nota não encontrada' })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
-  remove(@Param('id') id: string) {
-    return this.gradesService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.gradesService.remove(id, user);
   }
 
   @Get('class-subject/:classSubjectId')
