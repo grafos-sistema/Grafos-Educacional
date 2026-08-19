@@ -437,6 +437,11 @@ export const gradesService = {
     if (filters.academicPeriodId) query = query.eq('academicPeriodId', filters.academicPeriodId);
     if (filters.teacherId) query = query.eq('teacherId', filters.teacherId);
 
+    const statsRole = useAuthStore.getState().user?.activeProfile || useAuthStore.getState().user?.role;
+    if (statsRole === UserRole.STUDENT || statsRole === UserRole.PARENT) {
+      query = query.eq('isVisibleToStudents', true);
+    }
+
     const { data, error } = await query.range(0, 9999);
     if (error) throw error;
 
