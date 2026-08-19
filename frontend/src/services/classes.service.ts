@@ -74,6 +74,25 @@ type DbEnrollment = {
   }>;
 };
 
+type ApiEnrollment = {
+  id: string;
+  enrollmentDate: string;
+  isActive: boolean;
+  studentId: string;
+  student?: {
+    id: string;
+    userId: string;
+    registrationNumber: string;
+    enrollmentNumber?: string | null;
+    isActive: boolean;
+    firstName: string;
+    lastName: string;
+    email: string;
+    cpf?: string | null;
+    avatar?: string | null;
+  };
+};
+
 function firstRelation<T>(value?: MaybeArray<T>): T | null {
   if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
@@ -143,6 +162,30 @@ function mapEnrollment(row: DbEnrollment): ClassEnrollment {
           email: user?.email ?? '',
           cpf: user?.cpf ?? undefined,
           avatar: user?.avatar ?? undefined,
+        }
+      : undefined,
+  };
+}
+
+function mapApiEnrollment(row: ApiEnrollment, classId: string): ClassEnrollment {
+  return {
+    id: row.id,
+    enrollmentDate: row.enrollmentDate,
+    isActive: row.isActive,
+    classId,
+    studentId: row.studentId,
+    student: row.student
+      ? {
+          id: row.student.id,
+          userId: row.student.userId,
+          registrationNumber: row.student.registrationNumber,
+          enrollmentNumber: row.student.enrollmentNumber ?? undefined,
+          isActive: row.student.isActive,
+          firstName: row.student.firstName ?? '',
+          lastName: row.student.lastName ?? '',
+          email: row.student.email ?? '',
+          cpf: row.student.cpf ?? undefined,
+          avatar: row.student.avatar ?? undefined,
         }
       : undefined,
   };
@@ -261,6 +304,18 @@ export const classesService = {
 
     if (error) throw error;
     return (((data ?? []) as unknown) as DbEnrollment[]).map(mapEnrollment);
+  },
+
+  /**
+   * Lista matrículas pela API autenticada, com os dados completos do aluno.
+   * Usado nos fluxos pedagógicos em que o professor precisa visualizar nome,
+   * e-mail e foto sem depender de uma relação aninhada bloqueada por RLS.
+   */
+  async getEnrollmentsFromApi(classId: string): Promise<ClassEnrollment[]> {
+    const response = await api.get<ApiEnrollment[]>(`/classes/${classId}/enrollments`);
+    return ((response as unknown as ApiEnrollment[]) ?? []).map((row) =>
+      mapApiEnrollment(row, classId),
+    );
   },
 
   /**

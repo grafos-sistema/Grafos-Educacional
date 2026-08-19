@@ -87,7 +87,7 @@ export default function AttendancePage() {
     queryKey: ['class-enrollments-attendance', selectedSubject?.classId],
     queryFn: async () => {
       if (!selectedSubject?.classId) return [];
-      return await classesService.getEnrollments(selectedSubject.classId);
+      return await classesService.getEnrollmentsFromApi(selectedSubject.classId);
     },
     enabled: !!selectedSubject?.classId,
   });
