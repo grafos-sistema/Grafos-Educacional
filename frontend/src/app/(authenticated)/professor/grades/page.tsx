@@ -172,7 +172,7 @@ export default function GradesPage() {
     queryFn: async () => {
       if (!teacherId) return { data: [], meta: { total: 0 } };
 
-      return await gradesService.findAll({
+      return await gradesService.findAllFromApi({
         teacherId,
         classSubjectId: listFilterClassSubjectId || undefined,
         academicPeriodId: listFilterPeriodId || undefined,

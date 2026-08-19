@@ -194,34 +194,34 @@ export const gradesService = {
    * Criar notas em lote (mÃºltiplos alunos de uma vez)
    */
   async createBulk(dto: BulkGradeDto): Promise<Grade[]> {
-    const now = new Date().toISOString();
-    const payload = dto.grades.map((g) => ({
-      id: crypto.randomUUID(),
-      value: g.value,
-      weight: dto.weight ?? 1,
-      examType: dto.examType,
-      examDate: dto.examDate ?? null,
-      description: dto.description ?? null,
-      status: GradeStatus.PENDING,
-      publishedAt: null,
-      observations: g.observations ?? null,
-      studentId: g.studentId,
-      classSubjectId: dto.classSubjectId,
-      academicPeriodId: dto.academicPeriodId,
-      teacherId: dto.teacherId,
-      createdAt: now,
-      updatedAt: now,
-    }));
+    const response = await api.post<{ total: number; grades: any[] }>('/grades/bulk', dto);
+    const result = response as unknown as { total: number; grades: any[] };
+    return (result.grades ?? []).map((row) => gradesService.mapGrade(row));
+  },
 
-    const { data, error } = await supabase
-      .from('grades')
-      .insert(payload)
-      .select(
-        'id, value, weight, examType, examDate, description, status, isVisibleToStudents, publishedAt, observations, createdAt, updatedAt, studentId, classSubjectId, academicPeriodId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), classSubject:class_subjects(id, subject:subjects(id, name, code, color), class:classes(id, name, grade)), academicPeriod:academic_periods(id, name, type, orderNumber), teacher:teachers(id, user:users(id, firstName, lastName, name))'
-      );
+  /**
+   * Lista notas pela API autenticada.
+   * O professor precisa consultar as mesmas notas que lançou sem depender
+   * de relações aninhadas sujeitas a uma política RLS diferente.
+   */
+  async findAllFromApi(filters?: GradeFilters): Promise<PaginatedResponse<Grade>> {
+    const response = await api.get<PaginatedResponse<any>>('/grades', {
+      params: {
+        page: filters?.page ?? 1,
+        limit: filters?.limit ?? 10,
+        studentId: filters?.studentId,
+        classSubjectId: filters?.classSubjectId,
+        academicPeriodId: filters?.academicPeriodId,
+        teacherId: filters?.teacherId,
+        status: filters?.status,
+      },
+    });
+    const result = response as unknown as PaginatedResponse<any>;
 
-    if (error) throw error;
-    return (data ?? []).map((row) => gradesService.mapGrade(row));
+    return {
+      ...result,
+      data: (result.data ?? []).map((row) => gradesService.mapGrade(row)),
+    };
   },
 
   /**

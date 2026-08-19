@@ -54,8 +54,11 @@ export class GradesController {
   })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
-  create(@Body() createGradeDto: CreateGradeDto) {
-    return this.gradesService.create(createGradeDto);
+  create(
+    @Body() createGradeDto: CreateGradeDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.gradesService.create(createGradeDto, user);
   }
 
   @Post('bulk')
@@ -81,8 +84,11 @@ export class GradesController {
   })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
-  createBulk(@Body() bulkGradeDto: BulkGradeDto) {
-    return this.gradesService.createBulk(bulkGradeDto);
+  createBulk(
+    @Body() bulkGradeDto: BulkGradeDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.gradesService.createBulk(bulkGradeDto, user);
   }
 
   @Get()

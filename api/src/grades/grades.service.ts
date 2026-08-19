@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGradeDto, BulkGradeDto, UpdateGradeDto } from './dto';
@@ -21,7 +22,10 @@ export class GradesService {
   /**
    * Cria nota individual
    */
-  async create(createGradeDto: CreateGradeDto) {
+  async create(
+    createGradeDto: CreateGradeDto,
+    currentUser?: CurrentUserPayload,
+  ) {
     const {
       studentId,
       classSubjectId,
@@ -41,6 +45,7 @@ export class GradesService {
       classSubjectId,
       academicPeriodId,
       teacherId,
+      currentUser,
     );
 
     const grade = await this.prisma.grade.create({
@@ -145,7 +150,10 @@ export class GradesService {
   /**
    * Cria notas em lote
    */
-  async createBulk(bulkGradeDto: BulkGradeDto) {
+  async createBulk(
+    bulkGradeDto: BulkGradeDto,
+    currentUser?: CurrentUserPayload,
+  ) {
     const {
       classSubjectId,
       academicPeriodId,
@@ -160,6 +168,16 @@ export class GradesService {
     // Valida disciplina e professor
     const classSubject = await this.prisma.classSubject.findUnique({
       where: { id: classSubjectId },
+      select: {
+        id: true,
+        classId: true,
+        teacherId: true,
+        class: {
+          select: {
+            academicYearId: true,
+          },
+        },
+      },
     });
 
     if (!classSubject) {
@@ -174,6 +192,18 @@ export class GradesService {
       throw new NotFoundException('Professor não encontrado');
     }
 
+    if (!currentUser?.teacherId || currentUser.teacherId !== teacherId) {
+      throw new ForbiddenException(
+        'Você só pode lançar notas usando o seu próprio perfil de professor',
+      );
+    }
+
+    if (classSubject.teacherId !== teacherId) {
+      throw new ForbiddenException(
+        'Você não está vinculado à disciplina selecionada nesta turma',
+      );
+    }
+
     // Valida período letivo
     const academicPeriod = await this.prisma.academicPeriod.findUnique({
       where: { id: academicPeriodId },
@@ -181,6 +211,12 @@ export class GradesService {
 
     if (!academicPeriod) {
       throw new NotFoundException('Período letivo não encontrado');
+    }
+
+    if (academicPeriod.academicYearId !== classSubject.class.academicYearId) {
+      throw new BadRequestException(
+        'O período acadêmico não pertence ao ano letivo da turma',
+      );
     }
 
     // Valida que todos os alunos estão matriculados
@@ -286,6 +322,7 @@ export class GradesService {
     classSubjectId: string,
     academicPeriodId: string,
     teacherId: string,
+    currentUser?: CurrentUserPayload,
   ): Promise<void> {
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
@@ -317,6 +354,18 @@ export class GradesService {
 
     if (!teacher) {
       throw new NotFoundException('Professor não encontrado');
+    }
+
+    if (!currentUser?.teacherId || currentUser.teacherId !== teacherId) {
+      throw new ForbiddenException(
+        'Você só pode lançar notas usando o seu próprio perfil de professor',
+      );
+    }
+
+    if (classSubject.teacherId !== teacherId) {
+      throw new ForbiddenException(
+        'Você não está vinculado à disciplina selecionada nesta turma',
+      );
     }
 
     // Valida se aluno está matriculado na turma
