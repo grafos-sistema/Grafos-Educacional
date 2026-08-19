@@ -491,7 +491,7 @@ const navigation: NavItem[] = [
       [UserRole.INSTITUTION_ADMIN]: '/configuracoes',
       [UserRole.COORDINATOR]: '/configuracoes',
       [UserRole.TEACHER]: '/configuracoes',
-      [UserRole.STUDENT]: '/configuracoes',
+      [UserRole.STUDENT]: '/aluno/configuracoes',
       [UserRole.PARENT]: '/configuracoes',
     },
   },

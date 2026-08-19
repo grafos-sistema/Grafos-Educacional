@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import api from '@/lib/api';
 
 export interface ClassSchedule {
   id: string;
@@ -116,6 +117,16 @@ export const classSchedulesService = {
 
     if (error) throw error;
     return ((data ?? []) as DbClassSchedule[]).map(mapSchedule);
+  },
+
+  /**
+   * Busca a grade pela API autenticada. É o caminho usado pelo portal do
+   * aluno, pois a consulta direta ao Supabase depende de políticas RLS de
+   * relações aninhadas e pode ocultar horários válidos.
+   */
+  async getClassSchedulesFromApi(classId: string): Promise<ClassSchedule[]> {
+    const response = await api.get<DbClassSchedule[]>(`/schedules/classes/${classId}/schedules`);
+    return ((response as unknown as DbClassSchedule[]) ?? []).map(mapSchedule);
   },
 
   /**

@@ -11,6 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
 import { classSchedulesService } from '@/services/class-schedules.service';
+import { enrollmentsService } from '@/services/enrollments.service';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 
@@ -20,9 +21,24 @@ export default function StudentSchedulePage() {
   const router = useRouter();
   const { user } = useAuthStore();
 
-  // Buscar a turma do aluno através do perfil
-  const classId = user?.studentProfile?.classEnrollments?.[0]?.classId;
-  const className = user?.studentProfile?.classEnrollments?.[0]?.class?.name;
+  const { data: enrollments, isLoading: loadingEnrollments } = useQuery({
+    queryKey: ['student-schedule-enrollments', user?.studentProfile?.id],
+    queryFn: async () => {
+      if (!user?.studentProfile?.id) return [];
+      const response = await enrollmentsService.findAll({
+        studentId: user.studentProfile.id,
+        isActive: true,
+        limit: 1000,
+      });
+      return response.data.filter((enrollment) => enrollment.class);
+    },
+    enabled: Boolean(user?.studentProfile?.id),
+  });
+
+  // A matrícula é a fonte oficial do vínculo do aluno com a turma.
+  const enrollment = enrollments?.[0];
+  const classId = enrollment?.classId;
+  const className = enrollment?.class?.name;
 
   // Buscar grade de horários da turma
   const { data: schedules = [], isLoading } = useQuery({
@@ -30,7 +46,7 @@ export default function StudentSchedulePage() {
     queryFn: async () => {
       if (!classId) return [];
       try {
-        return await classSchedulesService.getClassSchedules(classId);
+        return await classSchedulesService.getClassSchedulesFromApi(classId);
       } catch {
         return [];
       }
@@ -68,7 +84,7 @@ export default function StudentSchedulePage() {
         </p>
       </div>
 
-      {isLoading ? (
+      {isLoading || loadingEnrollments ? (
         <div className="flex justify-center py-12">
           <LoadingSpinner size="lg" text="Carregando grade..." />
         </div>

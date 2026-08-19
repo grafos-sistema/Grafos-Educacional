@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
 import { classesService } from '@/services/classes.service';
+import { enrollmentsService } from '@/services/enrollments.service';
 import { gradesService } from '@/services/grades.service';
 import { academicPeriodsService } from '@/services/academic-periods.service';
 import { GradeStatus } from '@/types/grade.types';
@@ -24,37 +25,24 @@ import { Select } from '@/components/ui/Select';
 export default function StudentGradesPage() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const activeRole = user?.activeProfile || user?.role;
   const [selectedPeriodId, setSelectedPeriodId] = useState<string>('all');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all');
 
-  // Buscar matrículas do aluno
+  // Buscar matrículas do aluno pelo ID do perfil de aluno (e não pelo ID do
+  // usuário de autenticação). São IDs diferentes no modelo de dados.
   const { data: enrollments, isLoading: loadingEnrollments } = useQuery({
     queryKey: ['student-enrollments-grades', user?.id],
     queryFn: async () => {
-      const response = await classesService.findAll({
-        institutionId: user?.institutionId,
-        limit: 100,
+      if (!user?.studentProfile?.id) return [];
+      const response = await enrollmentsService.findAll({
+        studentId: user.studentProfile.id,
+        isActive: true,
+        limit: 1000,
       });
-
-      const allEnrollments = await Promise.all(
-        response.data.map(async (classItem) => {
-          try {
-            const enrollments = await classesService.getEnrollments(classItem.id);
-            return enrollments
-              .filter((e) => e.studentId === user?.id)
-              .map((e) => ({
-                ...e,
-                class: classItem,
-              }));
-          } catch {
-            return [];
-          }
-        })
-      );
-
-      return allEnrollments.flat();
+      return response.data.filter((enrollment) => enrollment.class);
     },
-    enabled: !!user?.id && user?.role === UserRole.STUDENT,
+    enabled: !!user?.studentProfile?.id && activeRole === UserRole.STUDENT,
   });
 
   // Buscar disciplinas das turmas matriculadas
@@ -66,7 +54,7 @@ export default function StudentGradesPage() {
       const allSubjects = await Promise.all(
         enrollments.map(async (enrollment) => {
           try {
-            const subjects = await classesService.getClassSubjects(enrollment.class.id);
+            const subjects = await classesService.getClassSubjects(enrollment.class!.id);
             return subjects.map((s) => ({
               ...s,
               class: enrollment.class,
@@ -115,10 +103,13 @@ export default function StudentGradesPage() {
     const periodId = grade.academicPeriodId;
     const key = `${subjectId}-${periodId}`;
 
+    const fallbackSubject = classSubjects?.find((item) => item.id === grade.classSubjectId)?.subject;
+    const fallbackPeriod = periods?.find((item) => item.id === grade.academicPeriodId);
+
     if (!acc[key]) {
       acc[key] = {
-        subject: grade.classSubject?.subject,
-        period: grade.academicPeriod,
+        subject: grade.classSubject?.subject || fallbackSubject,
+        period: grade.academicPeriod || fallbackPeriod,
         grades: [],
         average: 0,
         totalWeight: 0,
@@ -281,7 +272,7 @@ export default function StudentGradesPage() {
         <div className="space-y-6">
           {Object.values(groupedGrades).map((group: any) => (
             <div
-              key={`${group.subject.id}-${group.period.id}`}
+              key={`${group.subject?.id || 'disciplina'}-${group.period?.id || 'periodo'}`}
               className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden"
             >
               {/* Subject Header */}

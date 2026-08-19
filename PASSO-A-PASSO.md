@@ -48,70 +48,69 @@ Obs: *É necessário que a equipe de Desenvolvimento (Eric Victor, Jonhy Moreno 
     - Coordenador e Diretor precisam ver os Lançamentos de notas;
     - Professor faz o lançamento da nota e ele irá ter um botão que ele poderá ocultar para todo os alunos e responsáveis mas ficará disponivel para coordenadores e diretores e quando ele quiser ele pode simplismente desocultar a nota e ela ficará disponivel para os alunos e responsáveis.
 
-
---------------------------------
-
 # Resetar o banco para teste:
 
 - Etapa 01:
 
+```sql
 select id, email, role, "institutionId"
 from public.users
 where role = 'SUPER_ADMIN_GLOBAL';
 
 select id, name, "isActive"
 from public.institutions;
-
------------
+```
 
 - Etapa 02:
 
-Guarde o id da instituição: df0a49d1-9dd8-4131-ac6a-71f3ce281240
-
------------
+Guarde o ID da instituição antes de remover os dados de teste.
 
 - Etapa 03:
 
+Use o procedimento de limpeza documentado pela equipe de desenvolvimento e preserve os Super Admin Globais. Nunca execute uma exclusão ampla sem confirmar o ID da instituição e ter um backup.
 
+## Exemplo de Sequência Real Recomendada
 
+Se você estiver implantando uma escola do zero, siga esta ordem:
 
-
-
-
-
-
-
-## Exemplo de Sequencia Real Recomendada
-
-Se voce estiver implantando uma escola do zero, siga esta ordem:
-
-1. Criar a instituicao.
+1. Criar a instituição.
 2. Criar o primeiro `INSTITUTION_ADMIN`.
 3. Entrar com esse administrador.
-4. Criar o ano letivo.
+4. Criar o ano letivo e os períodos acadêmicos.
 5. Criar os cursos.
 6. Criar as disciplinas.
 7. Criar coordenadores.
 8. Criar professores.
 9. Criar as turmas.
 10. Vincular professores, disciplinas e turmas.
-11. Criar os horarios.
+11. Criar os horários.
 12. Criar os alunos.
 13. Matricular os alunos.
-14. Vincular os responsaveis.
-15. Validar acesso de cada perfil.
-16. Iniciar frequencia, notas, atividades e demais fluxos pedagogicos.
+14. Vincular os responsáveis.
+15. Validar o acesso de cada perfil.
+16. Iniciar frequência, notas, atividades e demais fluxos pedagógicos.
 
-## Conclusao
+## Conclusão
 
-O melhor fluxo para deixar a Grafos funcional e com todos os cadastros corretos e preparar primeiro a estrutura institucional e academica, depois a equipe, depois os alunos e por fim a operacao diaria.
+O melhor fluxo para deixar a Grafos funcional é preparar primeiro a estrutura institucional e acadêmica, depois a equipe, depois as turmas e vínculos, depois os alunos e, por fim, a operação diária.
 
 Em resumo:
 
 1. Estrutura
 2. Equipe
-3. Turmas e vinculos
-4. Alunos e matriculas
-5. Operacao
+3. Turmas e vínculos
+4. Alunos e matrículas
+5. Operação
 
-Seguir essa ordem deixa o sistema consistente, reduz retrabalho e evita que usuarios entrem em telas sem contexto academico completo.
+Seguir essa ordem deixa o sistema consistente, reduz retrabalho e evita que usuários entrem em telas sem contexto acadêmico completo.
+
+# Tarefas futuras
+
+- [ ] Avaliar a migração do frontend, API e banco para regiões geograficamente próximas, reduzindo a latência entre Vercel, Railway e Supabase.
+- [ ] Adicionar Redis para rate limiting compartilhado quando a API passar a executar com mais de uma réplica.
+- [ ] Rotacionar a senha antiga do banco e revisar o histórico do repositório para garantir que nenhum segredo permaneça reutilizável.
+- [ ] Criar testes E2E autenticados para os fluxos de Super Admin, Diretor, Coordenador, Professor, Aluno e Responsável, incluindo testes de IDOR.
+- [ ] Monitorar consultas e rotas acima de 200 ms em produção e criar índices ou cache somente com base nos dados observados.
+- [ ] Adicionar testes automatizados de navegador para login, matrícula, horários, notas, comunicados e upload de arquivos.
+- [ ] Executar periodicamente um teste documentado de backup e restauração do banco de produção.
+- [ ] Planejar a importação em massa de alunos e professores com validação, pré-visualização, relatório de erros e reprocessamento seguro.

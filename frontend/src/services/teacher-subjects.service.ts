@@ -76,21 +76,11 @@ function mapTeacherSubject(row: DbTeacherSubject): TeacherSubject {
 export const teacherSubjectsService = {
   // Listar minhas disciplinas configuradas
   getMySubjects: async (): Promise<TeacherSubject[]> => {
-    const profile = await fetchCurrentUserProfile();
-    const teacherId = profile.teacherProfile?.id;
-
-    if (!teacherId) {
-      return [];
-    }
-
-    const { data, error } = await supabase
-      .from('teacher_subjects')
-      .select('id, teacherId, subjectId, createdAt, updatedAt, subject:subjects(id, name, code, color, description)')
-      .eq('teacherId', teacherId)
-      .order('createdAt', { ascending: true });
-
-    if (error) throw error;
-    return ((data ?? []) as unknown as DbTeacherSubject[]).map(mapTeacherSubject);
+    // A tela do professor deve consultar a API autenticada. Além de manter a
+    // regra de autorização no backend, isso evita que a listagem dependa de
+    // uma política RLS diferente da usada nas demais telas do professor.
+    const response = await api.get<DbTeacherSubject[]>('/teacher-subjects/my-subjects');
+    return ((response as unknown as DbTeacherSubject[]) ?? []).map(mapTeacherSubject);
   },
 
   // Adicionar disciplina às minhas disciplinas

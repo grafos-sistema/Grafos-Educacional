@@ -15,7 +15,11 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
 import { lessonContentsService } from '@/services/lesson-contents.service';
-import { LessonContent, CreateLessonContentDto } from '@/types/lesson.types';
+import {
+  LessonContent,
+  CreateLessonContentDto,
+  UpdateLessonContentDto,
+} from '@/types/lesson.types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -39,10 +43,9 @@ export default function LessonContentsPage() {
   const [formData, setFormData] = useState<CreateLessonContentDto>({
     date: new Date().toISOString().split('T')[0],
     title: '',
-    content: '',
+    description: '',
     objectives: '',
-    methodology: '',
-    resources: '',
+    activities: '',
     homework: '',
     observations: '',
     classSubjectId: '',
@@ -91,7 +94,7 @@ export default function LessonContentsPage() {
 
   // Mutation para atualizar
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: CreateLessonContentDto }) =>
+    mutationFn: ({ id, data }: { id: string; data: UpdateLessonContentDto }) =>
       lessonContentsService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lesson-contents'] });
@@ -125,10 +128,9 @@ export default function LessonContentsPage() {
     setFormData({
       date: new Date().toISOString().split('T')[0],
       title: '',
-      content: '',
+      description: '',
       objectives: '',
-      methodology: '',
-      resources: '',
+      activities: '',
       homework: '',
       observations: '',
       classSubjectId: selectedClassSubjectId,
@@ -150,10 +152,9 @@ export default function LessonContentsPage() {
     setFormData({
       date: content.date.split('T')[0],
       title: content.title,
-      content: content.content,
+      description: content.description,
       objectives: content.objectives || '',
-      methodology: content.methodology || '',
-      resources: content.resources || '',
+      activities: content.activities || '',
       homework: content.homework || '',
       observations: content.observations || '',
       classSubjectId: content.classSubjectId,
@@ -220,7 +221,11 @@ export default function LessonContentsPage() {
         <Select
           label="Turma e Disciplina"
           value={selectedClassSubjectId}
-          onChange={(e) => setSelectedClassSubjectId(e.target.value)}
+          onChange={(e) => {
+            const classSubjectId = e.target.value;
+            setSelectedClassSubjectId(classSubjectId);
+            setFormData((prev) => ({ ...prev, classSubjectId }));
+          }}
           required
           options={[
             { value: '', label: 'Selecione...' },
@@ -268,7 +273,7 @@ export default function LessonContentsPage() {
                       {content.title}
                     </h3>
                     <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                      {content.content}
+                       {content.description}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -294,8 +299,7 @@ export default function LessonContentsPage() {
 
                 {/* Detalhes expandidos */}
                 {(content.objectives ||
-                  content.methodology ||
-                  content.resources ||
+                  content.activities ||
                   content.homework ||
                   content.observations) && (
                   <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-3 text-sm">
@@ -307,20 +311,14 @@ export default function LessonContentsPage() {
                         </p>
                       </div>
                     )}
-                    {content.methodology && (
+                    {content.activities && (
                       <div>
                         <strong className="text-gray-700 dark:text-gray-300">
-                          Metodologia:
+                          Atividades realizadas:
                         </strong>
                         <p className="text-gray-600 dark:text-gray-400 mt-1">
-                          {content.methodology}
+                          {content.activities}
                         </p>
-                      </div>
-                    )}
-                    {content.resources && (
-                      <div>
-                        <strong className="text-gray-700 dark:text-gray-300">Recursos:</strong>
-                        <p className="text-gray-600 dark:text-gray-400 mt-1">{content.resources}</p>
                       </div>
                     )}
                     {content.homework && (
@@ -391,8 +389,8 @@ export default function LessonContentsPage() {
               Conteúdo Ministrado *
             </label>
             <textarea
-              value={formData.content}
-              onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               required
               rows={4}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -415,23 +413,16 @@ export default function LessonContentsPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Metodologia Utilizada
+              Atividades Realizadas
             </label>
             <textarea
-              value={formData.methodology}
-              onChange={(e) => setFormData({ ...formData, methodology: e.target.value })}
+              value={formData.activities}
+              onChange={(e) => setFormData({ ...formData, activities: e.target.value })}
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Métodos e estratégias de ensino utilizadas..."
+              placeholder="Descreva as atividades realizadas em aula..."
             />
           </div>
-
-          <Input
-            label="Recursos Utilizados"
-            value={formData.resources}
-            onChange={(e) => setFormData({ ...formData, resources: e.target.value })}
-            placeholder="Ex: Quadro, slides, vídeos..."
-          />
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

@@ -3,10 +3,9 @@ export interface LessonContent {
   id: string;
   date: string;
   title: string;
-  content: string;
+  description: string;
   objectives?: string;
-  methodology?: string;
-  resources?: string;
+  activities?: string;
   homework?: string;
   observations?: string;
   classSubjectId: string;
@@ -38,10 +37,9 @@ export interface LessonContent {
 export interface CreateLessonContentDto {
   date: string;
   title: string;
-  content: string;
+  description: string;
   objectives?: string;
-  methodology?: string;
-  resources?: string;
+  activities?: string;
   homework?: string;
   observations?: string;
   classSubjectId: string;
@@ -51,10 +49,9 @@ export interface CreateLessonContentDto {
 export interface UpdateLessonContentDto {
   date?: string;
   title?: string;
-  content?: string;
+  description?: string;
   objectives?: string;
-  methodology?: string;
-  resources?: string;
+  activities?: string;
   homework?: string;
   observations?: string;
 }

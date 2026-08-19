@@ -144,35 +144,36 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
-                // Alguns instrumentos externos de métricas injetam web-vitals
-                // no navegador e podem lançar este erro fora do código da aplicação.
-                // Interceptamos somente essa assinatura conhecida para não ocultar
-                // erros reais do Grafos.
+                // O coletor de Web Vitals do navegador pode ser injetado pelo
+                // provedor de hospedagem. Algumas versões lançam uma exceção
+                // interna ao encerrar o observador de CLS, sem relação com a
+                // aplicação. Trate somente essa assinatura específica antes
+                // que o navegador a registre como erro não tratado.
                 function isKnownWebVitalsError(message, stack) {
+                  var normalizedMessage = String(message || '').toLowerCase();
+                  var normalizedStack = String(stack || '').toLowerCase();
                   return (
-                    message.indexOf("reading 'startTime'") !== -1 &&
-                    (stack.indexOf('reportAllChanges') !== -1 || stack === '')
+                    normalizedMessage.indexOf("reading 'starttime'") !== -1 &&
+                    normalizedStack.indexOf('reportallchanges') !== -1
                   );
                 }
 
-                window.addEventListener('error', function(event) {
-                  var message = String(event.message || '');
-                  var stack = event.error && event.error.stack ? String(event.error.stack) : '';
-                  if (isKnownWebVitalsError(message, stack)) {
-                    event.preventDefault();
-                    event.stopImmediatePropagation();
-                  }
-                }, true);
+                function suppressKnownWebVitalsError(event) {
+                  var reason = event && event.reason ? event.reason : event && event.error;
+                  var message = event && event.message ? event.message : reason && reason.message;
+                  var stack = reason && reason.stack ? reason.stack : '';
+                  if (!isKnownWebVitalsError(message, stack)) return false;
+                  event.preventDefault();
+                  event.stopImmediatePropagation();
+                  return true;
+                }
 
-                window.addEventListener('unhandledrejection', function(event) {
-                  var reason = event.reason || {};
-                  var message = String(reason.message || reason || '');
-                  var stack = reason.stack ? String(reason.stack) : '';
-                  if (isKnownWebVitalsError(message, stack)) {
-                    event.preventDefault();
-                    event.stopImmediatePropagation();
-                  }
-                }, true);
+                window.addEventListener('error', suppressKnownWebVitalsError, true);
+                window.addEventListener('unhandledrejection', suppressKnownWebVitalsError, true);
+                window.onerror = function(message, source, lineno, colno, error) {
+                  if (isKnownWebVitalsError(message, error && error.stack)) return true;
+                  return false;
+                };
               })();
             `,
           }}

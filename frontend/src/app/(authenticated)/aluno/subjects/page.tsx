@@ -16,11 +16,11 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { usersService } from '@/services/users.service';
 import { classesService } from '@/services/classes.service';
+import { enrollmentsService } from '@/services/enrollments.service';
 import { gradesService } from '@/services/grades.service';
 import { attendancesService } from '@/services/attendances.service';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
-import { Class } from '@/types/class.types';
 
 interface SubjectStats {
   subjectId: string;
@@ -36,22 +36,31 @@ export default function SubjectsPage() {
   const router = useRouter();
   const { user } = useAuthStore();
 
-  // Fetch student's classes
-  // TODO: Need proper API endpoint to fetch student's enrolled classes
-  const { data: classes, isLoading: loadingClasses } = useQuery<Class[]>({
+  // Buscar as matrículas reais do aluno. O perfil de aluno não carrega
+  // classEnrollments no bootstrap de autenticação.
+  const { data: enrollments, isLoading: loadingClasses } = useQuery({
     queryKey: ['student-classes', user?.id],
-    queryFn: async (): Promise<Class[]> => {
-      // Temporary: Return empty until proper endpoint is available
-      return [];
+    queryFn: async () => {
+      if (!user?.studentProfile?.id) return [];
+      const response = await enrollmentsService.findAll({
+        studentId: user.studentProfile.id,
+        isActive: true,
+        limit: 1000,
+      });
+      return response.data.filter((enrollment) => enrollment.class);
     },
-    enabled: !!user?.id,
+    enabled: !!user?.studentProfile?.id,
   });
+
+  const classes = (enrollments ?? []).flatMap((enrollment) =>
+    enrollment.class ? [enrollment.class] : []
+  );
 
   // Fetch subjects for each class
   const { data: allSubjects, isLoading: loadingSubjects } = useQuery({
-    queryKey: ['student-all-subjects', classes?.map((c) => c.id)],
+    queryKey: ['student-all-subjects', classes.map((c) => c.id)],
     queryFn: async () => {
-      if (!classes || classes.length === 0) return [];
+      if (classes.length === 0) return [];
 
       const subjectsPromises = classes.map(async (classItem) => {
         try {
@@ -68,7 +77,7 @@ export default function SubjectsPage() {
       const subjectsArrays = await Promise.all(subjectsPromises);
       return subjectsArrays.flat();
     },
-    enabled: !!classes && classes.length > 0,
+    enabled: classes.length > 0,
   });
 
   // Fetch grades for statistics

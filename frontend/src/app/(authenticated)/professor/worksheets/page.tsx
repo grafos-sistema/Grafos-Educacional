@@ -18,8 +18,6 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
 import { worksheetsService } from '@/services/worksheets.service';
-import { subjectsService } from '@/services/subjects.service';
-import { classesService } from '@/services/classes.service';
 import { questionsService } from '@/services/questions.service';
 import { Worksheet, CreateWorksheetDto, WorksheetFilters, Question } from '@/types/question-bank.types';
 import { Badge } from '@/components/ui/Badge';
@@ -30,6 +28,7 @@ import { Modal } from '@/components/ui/Modal';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/hooks/useToast';
+import { useTeacherClassSubjects } from '@/hooks/useTeacherClassSubjects';
 
 export default function WorksheetsPage() {
   const queryClient = useQueryClient();
@@ -44,6 +43,7 @@ export default function WorksheetsPage() {
   const [previewHtml, setPreviewHtml] = useState<string>('');
   const [selectedWorksheet, setSelectedWorksheet] = useState<Worksheet | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCourseId, setSelectedCourseId] = useState('');
 
   const [filters, setFilters] = useState<WorksheetFilters>({
     limit: 50,
@@ -73,23 +73,40 @@ export default function WorksheetsPage() {
   const [showQuestionSelector, setShowQuestionSelector] = useState(false);
   const [searchQuestions, setSearchQuestions] = useState('');
 
-  // Buscar disciplinas
-  const { data: subjectsData } = useQuery({
-    queryKey: ['subjects-worksheets'],
-    queryFn: async () => {
-      const response = await subjectsService.findAll({ limit: 100 });
-      return response;
-    },
-  });
+  // O professor só pode criar atividades nas disciplinas e turmas atribuídas a ele.
+  const { data: teacherAssignments = [] } = useTeacherClassSubjects();
+  const assignedSubjects = Array.from(
+    new Map(
+      teacherAssignments.map((assignment) => [assignment.subjectId, assignment.subject])
+    ).entries()
+  )
+    .map(([id, subject]) => ({ id, name: subject?.name || 'Disciplina' }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const assignmentsForSubject = teacherAssignments.filter(
+    (assignment) => assignment.subjectId === formData.subjectId
+  );
+  const assignedCourses = Array.from(
+    new Map(
+      assignmentsForSubject
+        .filter((assignment) => assignment.class?.course?.id)
+        .map((assignment) => [assignment.class.course!.id, assignment.class.course!.name])
+    ).entries()
+  ).sort((a, b) => a[1].localeCompare(b[1]));
+  const assignmentsForCourse = assignmentsForSubject.filter(
+    (assignment) => !selectedCourseId || assignment.class?.course?.id === selectedCourseId
+  );
 
-  // Buscar turmas
-  const { data: classesData } = useQuery({
-    queryKey: ['classes-worksheets'],
-    queryFn: async () => {
-      const response = await classesService.findAll({ limit: 100 });
-      return response;
-    },
-  });
+  useEffect(() => {
+    if (!formData.classId) {
+      setSelectedCourseId('');
+      return;
+    }
+
+    const assignment = teacherAssignments.find(
+      (item) => item.classId === formData.classId && item.subjectId === formData.subjectId
+    );
+    setSelectedCourseId(assignment?.class?.course?.id || '');
+  }, [formData.classId, formData.subjectId, teacherAssignments]);
 
   // Buscar questões públicas para seleção
   const { data: availableQuestionsData, refetch: refetchQuestions } = useQuery({
@@ -314,6 +331,7 @@ export default function WorksheetsPage() {
     });
     setSelectedQuestions([]);
     setOriginalQuestions([]);
+    setSelectedCourseId('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -672,13 +690,21 @@ export default function WorksheetsPage() {
         >
           {/* Coluna Esquerda - Formulário */}
           <div className="min-w-0 overflow-y-auto pr-2 xl:pr-4 space-y-4">
-            <Input
-              label="Título *"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              required
-              placeholder="Ex: Atividade de Matemática - Geometria"
-            />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,4fr)_minmax(9rem,1fr)]">
+              <Input
+                label="Título *"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                required
+                placeholder="Ex: Atividade de Matemática - Geometria"
+              />
+              <Input
+                label="Data da aplicação"
+                type="date"
+                value={formData.activityDate || ''}
+                onChange={(e) => setFormData({ ...formData, activityDate: e.target.value || undefined })}
+              />
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -693,43 +719,57 @@ export default function WorksheetsPage() {
               />
             </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <Select
               label="Disciplina *"
               value={formData.subjectId || ''}
-              onChange={(e) => setFormData({ ...formData, subjectId: e.target.value || undefined })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  subjectId: e.target.value || undefined,
+                  classId: undefined,
+                })
+              }
               required
               options={[
                 { value: '', label: 'Selecione uma disciplina...' },
-                ...(subjectsData?.data.map((subject) => ({
+                ...assignedSubjects.map((subject) => ({
                   value: subject.id,
                   label: subject.name,
-                })) || []),
+                })),
               ]}
             />
 
             <Select
-              label="Turma *"
+              label="Etapa / Curso *"
+              value={selectedCourseId}
+              onChange={(e) => {
+                setSelectedCourseId(e.target.value);
+                setFormData({ ...formData, classId: undefined });
+              }}
+              required
+              disabled={!formData.subjectId}
+              options={[
+                { value: '', label: 'Selecione o curso...' },
+                ...assignedCourses.map(([id, name]) => ({ value: id, label: name })),
+              ]}
+            />
+
+            <Select
+              label="Turma / Turno *"
               value={formData.classId || ''}
               onChange={(e) => setFormData({ ...formData, classId: e.target.value || undefined })}
               required
+              disabled={!formData.subjectId || !selectedCourseId}
               options={[
-                { value: '', label: 'Selecione uma turma...' },
-                ...(classesData?.data.map((cls) => ({
-                  value: cls.id,
-                  label: cls.name,
-                })) || []),
+                { value: '', label: selectedCourseId ? 'Selecione a turma...' : 'Selecione o curso primeiro' },
+                ...assignmentsForCourse.map((assignment) => ({
+                  value: assignment.classId,
+                  label: `${assignment.class?.name || 'Turma'}${assignment.class?.shift ? ` • ${assignment.class.shift}` : ''}`,
+                })),
               ]}
             />
           </div>
-
-          <Input
-            label="Data da Aplicação (Opcional)"
-            type="date"
-            value={formData.activityDate || ''}
-            onChange={(e) => setFormData({ ...formData, activityDate: e.target.value || undefined })}
-            placeholder="Data em que a atividade será aplicada aos alunos"
-          />
 
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
             <div className="flex items-center justify-between">

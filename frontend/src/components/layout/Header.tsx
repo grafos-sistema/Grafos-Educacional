@@ -23,6 +23,9 @@ interface HeaderProps {
 export function Header({ title }: HeaderProps) {
   const { user, logout } = useAuth();
   const municipalityConfig = useMunicipalityConfig();
+  const settingsHref = user?.activeProfile === UserRole.STUDENT
+    ? '/aluno/configuracoes'
+    : '/configuracoes';
 
   return (
     <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-secondary-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
@@ -132,7 +135,7 @@ export function Header({ title }: HeaderProps) {
                 <Menu.Item>
                   {({ active }) => (
                     <Link
-                      href="/configuracoes"
+                      href={settingsHref}
                       className={cn(
                         active ? 'bg-secondary-50' : '',
                         'flex items-center gap-3 px-4 py-2 text-sm text-secondary-700'
