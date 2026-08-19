@@ -6,6 +6,7 @@ import {
   IsString,
   validateSync,
   IsOptional,
+  IsNotEmpty,
   Min,
   Max,
 } from 'class-validator';
@@ -28,12 +29,15 @@ class EnvironmentVariables {
   PORT: number = 3333;
 
   @IsString()
+  @IsOptional()
   APP_NAME: string;
 
   @IsString()
+  @IsNotEmpty()
   DATABASE_URL: string;
 
   @IsString()
+  @IsNotEmpty()
   JWT_SECRET: string;
 
   @IsString()
@@ -53,6 +57,7 @@ class EnvironmentVariables {
   JWT_EXPIRES_IN: string = '1d';
 
   @IsString()
+  @IsNotEmpty()
   JWT_REFRESH_SECRET: string;
 
   @IsString()

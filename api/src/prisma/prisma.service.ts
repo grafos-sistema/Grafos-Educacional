@@ -5,6 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Prisma, PrismaClient } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class PrismaService
@@ -13,8 +14,15 @@ export class PrismaService
 {
   private readonly logger = new Logger(PrismaService.name);
 
-  constructor() {
+  constructor(configService: ConfigService) {
+    const databaseUrl = configService.getOrThrow<string>('database.url').trim();
+
+    if (!databaseUrl) {
+      throw new Error('DATABASE_URL must not be empty');
+    }
+
     super({
+      datasourceUrl: databaseUrl,
       log: [
         { level: 'query', emit: 'event' },
         { level: 'warn', emit: 'event' },
