@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { UserRole } from '@/types/user.types';
@@ -43,6 +43,7 @@ export default function GradesPage() {
   // Tab state
   const [activeTab, setActiveTab] = useState('launch');
 
+  const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedClassSubjectId, setSelectedClassSubjectId] = useState('');
   const [selectedPeriodId, setSelectedPeriodId] = useState('');
   const [examType, setExamType] = useState('Prova');
@@ -56,6 +57,7 @@ export default function GradesPage() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   // States for listing tab
+  const [listFilterClassId, setListFilterClassId] = useState('');
   const [listFilterClassSubjectId, setListFilterClassSubjectId] = useState('');
   const [listFilterPeriodId, setListFilterPeriodId] = useState('');
   const [listFilterStatus, setListFilterStatus] = useState<GradeStatus | ''>('');
@@ -83,9 +85,34 @@ export default function GradesPage() {
 
   const { data: teacherSubjects = [], isLoading: loadingSubjects } = useTeacherClassSubjects();
 
+  const teacherClasses = useMemo(() => {
+    const uniqueClasses = new Map<string, (typeof teacherSubjects)[number]['class']>();
+
+    teacherSubjects.forEach((assignment) => {
+      if (assignment.class?.id && !uniqueClasses.has(assignment.class.id)) {
+        uniqueClasses.set(assignment.class.id, assignment.class);
+      }
+    });
+
+    return Array.from(uniqueClasses.values());
+  }, [teacherSubjects]);
+
+  const subjectsForSelectedClass = useMemo(
+    () => teacherSubjects.filter((assignment) => assignment.classId === selectedClassId),
+    [teacherSubjects, selectedClassId],
+  );
+
+  const subjectsForListClass = useMemo(
+    () => teacherSubjects.filter((assignment) => assignment.classId === listFilterClassId),
+    [teacherSubjects, listFilterClassId],
+  );
+
   // A turma define qual ano letivo deve fornecer os períodos acadêmicos.
   const selectedSubject = teacherSubjects.find((s) => s.id === selectedClassSubjectId);
   const selectedAcademicYearId = selectedSubject?.class?.academicYear?.id;
+
+  const listSelectedSubject = teacherSubjects.find((s) => s.id === listFilterClassSubjectId);
+  const listAcademicYearId = listSelectedSubject?.class?.academicYear?.id;
 
   // Buscar períodos acadêmicos
   const {
@@ -93,16 +120,33 @@ export default function GradesPage() {
     isLoading: loadingPeriods,
     isError: periodsError,
   } = useQuery({
-    queryKey: ['academic-periods', user?.id, selectedAcademicYearId ?? 'all'],
+    queryKey: ['academic-periods', user?.id, selectedAcademicYearId ?? 'none'],
     queryFn: async () => {
-      const response = await academicPeriodsService.findAll({
+      const response = await academicPeriodsService.findAllFromApi({
         academicYearId: selectedAcademicYearId,
         isActive: true,
         limit: 100,
       });
       return response.data;
     },
-    enabled: Boolean(user?.id),
+    enabled: Boolean(user?.id && selectedClassSubjectId && selectedAcademicYearId),
+  });
+
+  const {
+    data: listPeriods = [],
+    isLoading: loadingListPeriods,
+    isError: listPeriodsError,
+  } = useQuery({
+    queryKey: ['academic-periods-list', user?.id, listAcademicYearId ?? 'none'],
+    queryFn: async () => {
+      const response = await academicPeriodsService.findAllFromApi({
+        academicYearId: listAcademicYearId,
+        isActive: true,
+        limit: 100,
+      });
+      return response.data;
+    },
+    enabled: Boolean(user?.id && listFilterClassSubjectId && listAcademicYearId),
   });
 
   // Buscar alunos da turma selecionada
@@ -447,22 +491,45 @@ export default function GradesPage() {
           Configuração da Avaliação
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <Select
-            label="Turma e Disciplina"
+            label="Turma"
+            value={selectedClassId}
+            onChange={(e) => {
+              setSelectedClassId(e.target.value);
+              setSelectedClassSubjectId('');
+              setSelectedPeriodId('');
+              setGradesData({});
+            }}
+            required
+            options={[
+              { value: '', label: loadingSubjects ? 'Carregando turmas...' : 'Selecione...' },
+              ...teacherClasses.map((classItem) => ({
+                value: classItem.id,
+                label: `${classItem.name}${classItem.shift ? ` • ${classItem.shift}` : ''}`,
+              })),
+            ]}
+          />
+
+          <Select
+            label="Disciplina"
             value={selectedClassSubjectId}
             onChange={(e) => {
               setSelectedClassSubjectId(e.target.value);
               setSelectedPeriodId('');
               setGradesData({});
             }}
+            disabled={!selectedClassId || loadingSubjects}
             required
             options={[
-              { value: '', label: 'Selecione...' },
-              ...(teacherSubjects?.map((subject) => ({
-                value: subject.id,
-                label: `${subject.class?.name} - ${subject.subject?.name}`,
-              })) || []),
+              {
+                value: '',
+                label: !selectedClassId ? 'Selecione a turma primeiro' : 'Selecione...',
+              },
+              ...subjectsForSelectedClass.map((assignment) => ({
+                value: assignment.id,
+                label: assignment.subject?.name || 'Disciplina sem nome',
+              })),
             ]}
           />
 
@@ -470,18 +537,20 @@ export default function GradesPage() {
             label="Período Acadêmico"
             value={selectedPeriodId}
             onChange={(e) => setSelectedPeriodId(e.target.value)}
-            disabled={loadingPeriods || Boolean(periodsError)}
+            disabled={!selectedClassSubjectId || loadingPeriods || Boolean(periodsError)}
             required
             options={[
               {
                 value: '',
-                label: loadingPeriods
-                  ? 'Carregando períodos...'
-                  : periodsError
-                    ? 'Não foi possível carregar os períodos'
-                    : periods.length === 0
-                      ? 'Nenhum período cadastrado'
-                      : 'Selecione...',
+                label: !selectedClassSubjectId
+                  ? 'Selecione a disciplina primeiro'
+                  : loadingPeriods
+                    ? 'Carregando períodos...'
+                    : periodsError
+                      ? 'Não foi possível carregar os períodos'
+                      : periods.length === 0
+                        ? 'Nenhum período cadastrado'
+                        : 'Selecione...',
               },
               ...periods.map((period) => ({
                 value: period.id,
@@ -743,17 +812,41 @@ export default function GradesPage() {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Filtros
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Select
-                label="Turma e Disciplina"
-                value={listFilterClassSubjectId}
-                onChange={(e) => setListFilterClassSubjectId(e.target.value)}
+                label="Turma"
+                value={listFilterClassId}
+                onChange={(e) => {
+                  setListFilterClassId(e.target.value);
+                  setListFilterClassSubjectId('');
+                  setListFilterPeriodId('');
+                }}
                 options={[
                   { value: '', label: 'Todas' },
-                  ...(teacherSubjects?.map((subject) => ({
+                  ...teacherClasses.map((classItem) => ({
+                    value: classItem.id,
+                    label: `${classItem.name}${classItem.shift ? ` • ${classItem.shift}` : ''}`,
+                  })),
+                ]}
+              />
+
+              <Select
+                label="Disciplina"
+                value={listFilterClassSubjectId}
+                onChange={(e) => {
+                  setListFilterClassSubjectId(e.target.value);
+                  setListFilterPeriodId('');
+                }}
+                disabled={!listFilterClassId}
+                options={[
+                  {
+                    value: '',
+                    label: !listFilterClassId ? 'Selecione a turma primeiro' : 'Todas',
+                  },
+                  ...subjectsForListClass.map((subject) => ({
                     value: subject.id,
-                    label: `${subject.class?.name} - ${subject.subject?.name}`,
-                  })) || []),
+                    label: subject.subject?.name || 'Disciplina sem nome',
+                  })),
                 ]}
               />
 
@@ -761,12 +854,22 @@ export default function GradesPage() {
                 label="Período Acadêmico"
                 value={listFilterPeriodId}
                 onChange={(e) => setListFilterPeriodId(e.target.value)}
+                disabled={!listFilterClassSubjectId || loadingListPeriods || Boolean(listPeriodsError)}
                 options={[
-                  { value: '', label: 'Todos' },
-                  ...(periods?.map((period) => ({
+                  {
+                    value: '',
+                    label: !listFilterClassSubjectId
+                      ? 'Selecione a disciplina primeiro'
+                      : loadingListPeriods
+                        ? 'Carregando períodos...'
+                        : listPeriodsError
+                          ? 'Não foi possível carregar os períodos'
+                          : 'Todos',
+                  },
+                  ...listPeriods.map((period) => ({
                     value: period.id,
                     label: period.name,
-                  })) || []),
+                  })),
                 ]}
               />
 

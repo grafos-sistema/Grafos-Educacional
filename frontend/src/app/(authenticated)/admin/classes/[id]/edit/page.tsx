@@ -37,7 +37,10 @@ export default function EditClassPage() {
     handleSubmit,
     formState: { errors },
     reset,
+    watch,
   } = useForm<UpdateClassDto>();
+
+  const selectedShift = watch('shift') ?? '';
 
   // Preencher formulário quando turma carregar
   useEffect(() => {
@@ -164,6 +167,7 @@ export default function EditClassPage() {
               <Select
                 label="Turno"
                 {...register('shift')}
+                value={selectedShift}
                 options={classShiftOptions}
                 error={errors.shift?.message}
               />

@@ -5,6 +5,7 @@ import {
   PaginatedAcademicPeriods,
 } from '@/types/academic.types';
 import { supabase } from '@/lib/supabase';
+import api from '@/lib/api';
 
 export interface AcademicPeriodsFilterParams {
   page?: number;
@@ -54,6 +55,27 @@ export const academicPeriodsService = {
         hasPreviousPage: page > 1,
       },
     };
+  },
+
+  /**
+   * Lista períodos pela API autenticada.
+   *
+   * As telas operacionais de professores e alunos podem chegar aos dados
+   * acadêmicos por relacionamentos da API. Nesses fluxos, usar a API para
+   * buscar os períodos evita que uma consulta direta ao Supabase seja
+   * filtrada por uma regra de RLS diferente da usada para carregar a turma.
+   */
+  async findAllFromApi(
+    params: AcademicPeriodsFilterParams = {},
+  ): Promise<PaginatedAcademicPeriods> {
+    return (await api.get<PaginatedAcademicPeriods>('/academic-periods', {
+      params: {
+        page: params.page ?? 1,
+        limit: params.limit ?? 20,
+        academicYearId: params.academicYearId,
+        isActive: params.isActive,
+      },
+    })) as unknown as PaginatedAcademicPeriods;
   },
 
   /**
