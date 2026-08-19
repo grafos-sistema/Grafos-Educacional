@@ -66,6 +66,8 @@ export default function GradesPage() {
   const [gradeToDelete, setGradeToDelete] = useState<string | null>(null);
   const [reviewEvaluationId, setReviewEvaluationId] = useState<string | null>(null);
   const [reviewMode, setReviewMode] = useState<'view' | 'publish'>('view');
+  const [showReviewSearch, setShowReviewSearch] = useState(false);
+  const [reviewStudentSearch, setReviewStudentSearch] = useState('');
   const visibilityMutation = useMutation({
     mutationFn: async ({ gradeIds, visible }: { gradeIds: string[]; visible: boolean }) => {
       await Promise.all(
@@ -227,6 +229,13 @@ export default function GradesPage() {
   const reviewIsVisibleToStudents = reviewEvaluation?.grades?.every(
     (grade: any) => grade.isVisibleToStudents !== false,
   ) ?? false;
+  const normalizedReviewStudentSearch = reviewStudentSearch.trim().toLowerCase();
+  const reviewGrades = reviewEvaluation?.grades?.filter((grade: any) => {
+    if (!normalizedReviewStudentSearch) return true;
+    const studentName = grade.student?.user?.name ||
+      `${grade.student?.user?.firstName || ''} ${grade.student?.user?.lastName || ''}`.trim();
+    return studentName.toLowerCase().includes(normalizedReviewStudentSearch);
+  }) ?? [];
 
   // Mutation para salvar notas
   const saveMutation = useMutation({
@@ -352,6 +361,8 @@ export default function GradesPage() {
   const openReview = (evaluation: any, mode: 'view' | 'publish' = 'view') => {
     setReviewEvaluationId(evaluation.id);
     setReviewMode(mode);
+    setShowReviewSearch(false);
+    setReviewStudentSearch('');
   };
 
   const handlePublishClick = (evaluation: any) => {
@@ -514,13 +525,39 @@ export default function GradesPage() {
             )}
 
             <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
-              <div className="grid grid-cols-[minmax(0,1fr)_120px_minmax(0,1.5fr)] gap-4 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-900/50 dark:text-slate-400">
-                <span>Aluno</span>
-                <span>Nota</span>
-                <span>Observações</span>
+              <div className="flex items-center gap-3 bg-slate-50 px-4 py-3 dark:bg-slate-900/50">
+                <div className="grid flex-1 grid-cols-[minmax(0,1fr)_120px_minmax(0,1.5fr)] gap-4 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  <span>Aluno</span>
+                  <span>Nota</span>
+                  <span>Observações</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowReviewSearch((current) => !current)}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-white hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                  aria-label="Pesquisar aluno nas notas"
+                  aria-expanded={showReviewSearch}
+                >
+                  <MagnifyingGlassIcon className="h-5 w-5" />
+                </button>
               </div>
+              {showReviewSearch && (
+                <div className="border-t border-slate-200 bg-slate-50 px-4 pb-3 dark:border-slate-700 dark:bg-slate-900/50">
+                  <div className="relative">
+                    <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="search"
+                      autoFocus
+                      value={reviewStudentSearch}
+                      onChange={(event) => setReviewStudentSearch(event.target.value)}
+                      placeholder="Pesquisar aluno..."
+                      className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
+                    />
+                  </div>
+                </div>
+              )}
               <div className="divide-y divide-slate-200 dark:divide-slate-700">
-                {reviewEvaluation.grades.map((grade: any) => {
+                {reviewGrades.length > 0 ? reviewGrades.map((grade: any) => {
                   const studentName = grade.student?.user?.name ||
                     `${grade.student?.user?.firstName || ''} ${grade.student?.user?.lastName || ''}`.trim() ||
                     'Aluno';
@@ -564,7 +601,11 @@ export default function GradesPage() {
                       </span>
                     </div>
                   );
-                })}
+                }) : (
+                  <div className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                    Nenhum aluno encontrado para esta pesquisa.
+                  </div>
+                )}
               </div>
             </div>
           </div>

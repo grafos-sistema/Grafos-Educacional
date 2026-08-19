@@ -446,8 +446,11 @@ export class GradesService {
               enrollmentNumber: true,
               user: {
                 select: {
+                  id: true,
+                  name: true,
                   firstName: true,
                   lastName: true,
+                  avatar: true,
                 },
               },
             },
