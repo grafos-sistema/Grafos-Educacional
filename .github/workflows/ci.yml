@@ -138,6 +138,7 @@ jobs:
   security:
     name: Security and container scan
     runs-on: ubuntu-latest
+    environment: production
     permissions:
       contents: read
     steps:
