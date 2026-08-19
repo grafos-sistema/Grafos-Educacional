@@ -38,7 +38,21 @@ COPY --from=builder --chown=node:node /usr/src/app/dist ./dist
 COPY --from=builder --chown=node:node /usr/src/app/public ./public
 COPY --chown=node:node docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-RUN chmod 0555 /usr/local/bin/docker-entrypoint.sh
+# O runtime executa somente `node dist/src/main.js`. Remover os gerenciadores de
+# pacotes reduz a superficie de ataque e evita carregar a arvore interna do npm
+# (incluindo utilitarios de arquivo que nao sao necessarios em producao).
+RUN chmod 0555 /usr/local/bin/docker-entrypoint.sh \
+  && rm -rf \
+      /usr/local/lib/node_modules/npm \
+      /usr/local/lib/node_modules/corepack \
+  && rm -f \
+      /usr/local/bin/npm \
+      /usr/local/bin/npx \
+      /usr/local/bin/corepack \
+      /usr/local/bin/pnpm \
+      /usr/local/bin/pnpx \
+      /usr/local/bin/yarn \
+      /usr/local/bin/yarnpkg
 
 USER node
 EXPOSE 3333
