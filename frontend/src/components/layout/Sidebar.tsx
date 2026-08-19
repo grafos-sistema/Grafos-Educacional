@@ -470,10 +470,11 @@ const navigation: NavItem[] = [
     name: 'Comunicados',
     baseRoute: '/communication',
     icon: BellIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT],
+    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT],
     pathMapping: {
       [UserRole.SUPER_ADMIN_GLOBAL]: '/communication',
       [UserRole.SUPER_ADMIN]: '/communication',
+      [UserRole.DIRECTOR]: '/communication',
       [UserRole.INSTITUTION_ADMIN]: '/communication',
       [UserRole.COORDINATOR]: '/communication',
       [UserRole.TEACHER]: '/communication',
