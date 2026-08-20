@@ -16,6 +16,7 @@ type CreateUserBody = {
   cpf?: string | null
   socialName?: string | null
   phone?: string | null
+  whatsapp?: string | null
   telefoneFixo?: string | null
   birthDate?: string | null
   gender?: string | null
@@ -311,6 +312,7 @@ Deno.serve(async (req: Request) => {
       cpf: body?.cpf ?? null,
       socialName: body?.socialName ?? null,
       phone: body?.phone ?? null,
+      whatsapp: body?.whatsapp ?? null,
       telefoneFixo: body?.telefoneFixo ?? null,
       birthDate: body?.birthDate ?? null,
       gender: body?.gender ?? null,
@@ -535,6 +537,7 @@ Deno.serve(async (req: Request) => {
                 cpf: resp.cpf ?? null,
                 phone: resp.celular ?? null,
                 whatsapp: resp.whatsapp ?? null,
+                telefoneFixo: resp.telefoneFixo ?? null,
                 institutionId,
                 isActive: true,
                 // Email verificado somente se o responsável tem email real

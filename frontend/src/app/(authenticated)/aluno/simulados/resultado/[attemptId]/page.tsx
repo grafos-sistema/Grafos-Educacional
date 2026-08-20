@@ -249,7 +249,7 @@ export default function ExamResultPage({ params }: PageProps) {
                     fillOpacity={0.6}
                   />
                   <Tooltip
-                    formatter={(value: number) => `${value.toFixed(1)}%`}
+                    formatter={(value) => `${Number(value ?? 0).toFixed(1)}%`}
                   />
                   <Legend />
                 </RadarChart>
@@ -393,7 +393,7 @@ export default function ExamResultPage({ params }: PageProps) {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis domain={[0, 100]} />
-                  <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
+                  <Tooltip formatter={(value) => `${Number(value ?? 0).toFixed(1)}%`} />
                   <Legend />
                   <Bar dataKey="percentage" name="Taxa de Acerto (%)">
                     {descriptorAnalysis.map((analysis, index) => {

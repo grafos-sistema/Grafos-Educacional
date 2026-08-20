@@ -372,6 +372,15 @@ export default function SchedulesManagementPage() {
               >
                 Imprimir grade
               </Button>
+              {canManageSchedules ? (
+                <Button
+                  onClick={handleOpenCreateModal}
+                  leftIcon={<PlusIcon className="h-5 w-5" />}
+                  disabled={!selectedClassId || !hasClassSubjects}
+                >
+                  Novo Horário
+                </Button>
+              ) : null}
             </div>
           </div>
         </div>
@@ -430,13 +439,6 @@ export default function SchedulesManagementPage() {
                     disabled={!selectedClassId}
                   >
                     Gerenciar vínculos
-                  </Button>
-                  <Button
-                    onClick={handleOpenCreateModal}
-                    leftIcon={<PlusIcon className="h-5 w-5" />}
-                    disabled={!selectedClassId || !hasClassSubjects}
-                  >
-                    Novo Horário
                   </Button>
                 </>
               )}

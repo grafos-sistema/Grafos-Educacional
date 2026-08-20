@@ -6,11 +6,9 @@ import {
   Max,
   IsOptional,
   IsUUID,
-  IsEnum,
   IsString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { EventType } from './create-event.dto';
 
 export class CalendarQueryDto {
   @ApiProperty({
@@ -58,10 +56,9 @@ export class CalendarQueryDto {
 
   @ApiPropertyOptional({
     description: 'Filter by event type',
-    enum: EventType,
-    example: EventType.HOLIDAY,
+    example: 'HOLIDAY',
   })
   @IsOptional()
-  @IsEnum(EventType)
-  type?: EventType;
+  @IsString()
+  type?: string;
 }

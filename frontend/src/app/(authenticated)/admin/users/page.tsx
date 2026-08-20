@@ -57,6 +57,7 @@ export default function UsersPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuthStore();
+  const activeRole = user?.activeProfile ?? user?.role;
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 300);
 
@@ -434,7 +435,7 @@ export default function UsersPage() {
           )}
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          {user?.role === UserRole.SUPER_ADMIN_GLOBAL && (
+          {activeRole === UserRole.SUPER_ADMIN_GLOBAL && (
             <Button
               variant="secondary"
               onClick={() => setBulkImportModal(true)}
@@ -444,7 +445,7 @@ export default function UsersPage() {
               Importar em massa
             </Button>
           )}
-          {user?.role === UserRole.SUPER_ADMIN_GLOBAL && (
+          {activeRole === UserRole.SUPER_ADMIN_GLOBAL && (
             <Button
               variant="outline"
               onClick={() => router.push('/admin/global-admins')}

@@ -13,7 +13,183 @@ import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class EventsService {
+  private readonly defaultAudienceRoles = [
+    'STUDENTS',
+    'PARENTS',
+    'TEACHERS',
+    'COLLABORATORS',
+  ];
+
   constructor(private prisma: PrismaService) {}
+
+  private jsonStringArray(value: unknown): string[] {
+    return Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === 'string')
+      : [];
+  }
+
+  private isEventManager(currentUser: any) {
+    return [
+      UserRole.SUPER_ADMIN_GLOBAL,
+      UserRole.SUPER_ADMIN,
+      UserRole.INSTITUTION_ADMIN,
+      UserRole.DIRECTOR,
+      UserRole.COORDINATOR,
+    ].includes(currentUser.role);
+  }
+
+  private roleAudience(currentUser: any): string[] {
+    switch (currentUser.role) {
+      case UserRole.STUDENT:
+        return ['STUDENTS'];
+      case UserRole.PARENT:
+        return ['PARENTS'];
+      case UserRole.TEACHER:
+        return ['TEACHERS', 'COLLABORATORS'];
+      default:
+        return ['COLLABORATORS'];
+    }
+  }
+
+  private async getAudienceContext(currentUser: any) {
+    const classIds = new Set<string>();
+    const courseIds = new Set<string>();
+
+    if (currentUser.role === UserRole.TEACHER) {
+      const teacher = await this.prisma.teacher.findUnique({
+        where: { userId: currentUser.userId },
+        select: {
+          classSubjects: {
+            select: { classId: true, class: { select: { courseId: true } } },
+          },
+          mainClasses: { select: { id: true, courseId: true } },
+        },
+      });
+
+      teacher?.classSubjects.forEach((item) => {
+        classIds.add(item.classId);
+        courseIds.add(item.class.courseId);
+      });
+      teacher?.mainClasses.forEach((item) => {
+        classIds.add(item.id);
+        courseIds.add(item.courseId);
+      });
+    }
+
+    if (currentUser.role === UserRole.STUDENT) {
+      const student = await this.prisma.student.findUnique({
+        where: { userId: currentUser.userId },
+        select: {
+          classEnrollments: {
+            where: { isActive: true },
+            select: { classId: true, class: { select: { courseId: true } } },
+          },
+        },
+      });
+
+      student?.classEnrollments.forEach((item) => {
+        classIds.add(item.classId);
+        courseIds.add(item.class.courseId);
+      });
+    }
+
+    if (currentUser.role === UserRole.PARENT) {
+      const parent = await this.prisma.parent.findUnique({
+        where: { userId: currentUser.userId },
+        select: {
+          children: {
+            select: {
+              student: {
+                select: {
+                  classEnrollments: {
+                    where: { isActive: true },
+                    select: { classId: true, class: { select: { courseId: true } } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      parent?.children.forEach((child) => {
+        child.student.classEnrollments.forEach((item) => {
+          classIds.add(item.classId);
+          courseIds.add(item.class.courseId);
+        });
+      });
+    }
+
+    return { classIds, courseIds };
+  }
+
+  private isVisibleToAudience(
+    event: any,
+    currentUser: any,
+    context: { classIds: Set<string>; courseIds: Set<string> },
+  ) {
+    if (this.isEventManager(currentUser) || event.isGeneral !== false) {
+      return true;
+    }
+
+    const roles = this.jsonStringArray(event.audienceRoles);
+    if (!this.roleAudience(currentUser).some((role) => roles.includes(role))) {
+      return false;
+    }
+
+    const targetClassIds = this.jsonStringArray(event.classIds);
+    const targetCourseIds = this.jsonStringArray(event.courseIds);
+    if (targetClassIds.length === 0 && targetCourseIds.length === 0) {
+      return true;
+    }
+
+    return (
+      targetClassIds.some((id) => context.classIds.has(id)) ||
+      targetCourseIds.some((id) => context.courseIds.has(id))
+    );
+  }
+
+  private async filterVisibleEvents(events: any[], currentUser: any) {
+    if (this.isEventManager(currentUser)) return events;
+
+    const context = await this.getAudienceContext(currentUser);
+    return events.filter((event) =>
+      this.isVisibleToAudience(event, currentUser, context),
+    );
+  }
+
+  private async validateEventTargets(
+    institutionId: string,
+    academicYearId: string,
+    courseIds: string[],
+    classIds: string[],
+  ) {
+    const uniqueCourseIds = Array.from(new Set(courseIds));
+    const uniqueClassIds = Array.from(new Set(classIds));
+
+    if (uniqueCourseIds.length > 0) {
+      const courseCount = await this.prisma.course.count({
+        where: { id: { in: uniqueCourseIds }, institutionId, isActive: true },
+      });
+      if (courseCount !== uniqueCourseIds.length) {
+        throw new BadRequestException('One or more selected courses are invalid');
+      }
+    }
+
+    if (uniqueClassIds.length > 0) {
+      const classCount = await this.prisma.class.count({
+        where: {
+          id: { in: uniqueClassIds },
+          institutionId,
+          academicYearId,
+          isActive: true,
+        },
+      });
+      if (classCount !== uniqueClassIds.length) {
+        throw new BadRequestException('One or more selected classes are invalid');
+      }
+    }
+  }
 
   private parseCsv(value?: string) {
     return value
@@ -53,7 +229,10 @@ export class EventsService {
       ),
     );
 
-    if (currentUser.role === UserRole.SUPER_ADMIN) {
+    if (
+      currentUser.role === UserRole.SUPER_ADMIN ||
+      currentUser.role === UserRole.SUPER_ADMIN_GLOBAL
+    ) {
       return requested.length > 0 ? requested : null;
     }
 
@@ -95,6 +274,26 @@ export class EventsService {
       throw new BadRequestException('End date must be after start date');
     }
 
+    if (!createEventDto.location?.trim()) {
+      throw new BadRequestException('Event location is required');
+    }
+
+    const isGeneral = createEventDto.isGeneral ?? true;
+    const audienceRoles = createEventDto.audienceRoles?.length
+      ? createEventDto.audienceRoles
+      : this.defaultAudienceRoles;
+
+    if (!isGeneral && audienceRoles.length === 0) {
+      throw new BadRequestException('Select at least one audience');
+    }
+
+    await this.validateEventTargets(
+      academicYear.institutionId,
+      academicYear.id,
+      isGeneral ? [] : createEventDto.courseIds ?? [],
+      isGeneral ? [] : createEventDto.classIds ?? [],
+    );
+
     return this.prisma.event.create({
       data: {
         title: createEventDto.title,
@@ -103,9 +302,16 @@ export class EventsService {
         startDate,
         endDate,
         academicYearId: createEventDto.academicYearId,
-        location: createEventDto.location,
+        location: createEventDto.location.trim(),
+        locationType: createEventDto.locationType,
         isAllDay: createEventDto.isAllDay || false,
         color: createEventDto.color,
+        isGeneral,
+        audienceRoles,
+        courseIds: isGeneral ? [] : createEventDto.courseIds ?? [],
+        classIds: isGeneral ? [] : createEventDto.classIds ?? [],
+        requiresRsvp: createEventDto.requiresRsvp ?? false,
+        attachments: createEventDto.attachments?.map((attachment) => ({ ...attachment })) ?? [],
       },
       include: {
         academicYear: {
@@ -202,22 +408,20 @@ export class EventsService {
       };
     }
 
-    const [events, total] = await Promise.all([
-      this.prisma.event.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { startDate: 'asc' },
-        include: {
-          academicYear: {
-            include: {
-              institution: true,
-            },
+    const allEvents = await this.prisma.event.findMany({
+      where,
+      orderBy: { startDate: 'asc' },
+      include: {
+        academicYear: {
+          include: {
+            institution: true,
           },
         },
-      }),
-      this.prisma.event.count({ where }),
-    ]);
+      },
+    });
+    const visibleEvents = await this.filterVisibleEvents(allEvents, currentUser);
+    const total = visibleEvents.length;
+    const events = visibleEvents.slice(skip, skip + limit);
 
     return {
       data: events,
@@ -248,6 +452,10 @@ export class EventsService {
 
     // Check access permissions
     await this.ensureAccessPermission(event, currentUser);
+    const visible = await this.filterVisibleEvents([event], currentUser);
+    if (visible.length === 0) {
+      throw new ForbiddenException('You do not have access to this event');
+    }
 
     return event;
   }
@@ -305,7 +513,7 @@ export class EventsService {
       };
     }
 
-    const events = await this.prisma.event.findMany({
+    const allEvents = await this.prisma.event.findMany({
       where,
       orderBy: { startDate: 'asc' },
       include: {
@@ -316,6 +524,8 @@ export class EventsService {
         },
       },
     });
+
+    const events = await this.filterVisibleEvents(allEvents, currentUser);
 
     // Group events by day
     const calendar: Record<string, any[]> = {};
@@ -377,6 +587,7 @@ export class EventsService {
     await this.ensureEditPermission(event, currentUser);
 
     // Verify academic year if being updated
+    let targetAcademicYear: { id: string; institutionId: string } = event.academicYear;
     if (updateEventDto.academicYearId) {
       const academicYear = await this.prisma.academicYear.findUnique({
         where: { id: updateEventDto.academicYearId },
@@ -385,6 +596,8 @@ export class EventsService {
       if (!academicYear) {
         throw new NotFoundException('Academic year not found');
       }
+      await this.ensureInstitutionAccess(academicYear.institutionId, currentUser);
+      targetAcademicYear = academicYear;
     }
 
     // Validate dates if being updated
@@ -397,17 +610,48 @@ export class EventsService {
       }
     }
 
+    if (updateEventDto.location !== undefined && !updateEventDto.location.trim()) {
+      throw new BadRequestException('Event location is required');
+    }
+
+    const nextIsGeneral = updateEventDto.isGeneral ?? event.isGeneral;
+    await this.validateEventTargets(
+      targetAcademicYear.institutionId,
+      targetAcademicYear.id,
+      nextIsGeneral ? [] : updateEventDto.courseIds ?? this.jsonStringArray(event.courseIds),
+      nextIsGeneral ? [] : updateEventDto.classIds ?? this.jsonStringArray(event.classIds),
+    );
+
+    const updateData: any = {
+      title: updateEventDto.title,
+      description: updateEventDto.description,
+      type: updateEventDto.type,
+      academicYearId: updateEventDto.academicYearId,
+      location: updateEventDto.location?.trim(),
+      locationType: updateEventDto.locationType,
+      isAllDay: updateEventDto.isAllDay,
+      color: updateEventDto.color,
+      isGeneral: updateEventDto.isGeneral,
+      audienceRoles: updateEventDto.audienceRoles,
+      courseIds: updateEventDto.isGeneral === true ? [] : updateEventDto.courseIds,
+      classIds: updateEventDto.isGeneral === true ? [] : updateEventDto.classIds,
+      requiresRsvp: updateEventDto.requiresRsvp,
+      attachments: updateEventDto.attachments?.map((attachment) => ({ ...attachment })),
+      startDate: updateEventDto.startDate
+        ? new Date(updateEventDto.startDate)
+        : undefined,
+      endDate: updateEventDto.endDate
+        ? new Date(updateEventDto.endDate)
+        : undefined,
+    };
+
+    Object.keys(updateData).forEach((key) => {
+      if (updateData[key] === undefined) delete updateData[key];
+    });
+
     return this.prisma.event.update({
       where: { id },
-      data: {
-        ...updateEventDto,
-        startDate: updateEventDto.startDate
-          ? new Date(updateEventDto.startDate)
-          : undefined,
-        endDate: updateEventDto.endDate
-          ? new Date(updateEventDto.endDate)
-          : undefined,
-      },
+      data: updateData,
       include: {
         academicYear: {
           include: {
@@ -518,7 +762,7 @@ export class EventsService {
       };
     }
 
-    const events = await this.prisma.event.findMany({
+    const allEvents = await this.prisma.event.findMany({
       where,
       orderBy: { startDate: 'asc' },
       include: {
@@ -530,7 +774,7 @@ export class EventsService {
       },
     });
 
-    return events;
+    return this.filterVisibleEvents(allEvents, currentUser);
   }
 
   private groupByType(events: any[]): Record<string, number> {

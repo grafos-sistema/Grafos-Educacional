@@ -105,8 +105,15 @@ export interface Event {
   startDate: string;
   endDate?: string;
   location?: string;
+  locationType?: 'SCHOOL' | 'EXTERNAL' | 'ONLINE' | string;
   isAllDay: boolean;
   color?: string;
+  isGeneral?: boolean;
+  audienceRoles?: string[];
+  courseIds?: string[];
+  classIds?: string[];
+  requiresRsvp?: boolean;
+  attachments?: EventAttachment[];
   academicYearId: string;
   createdAt: string;
   updatedAt: string;
@@ -121,6 +128,14 @@ export interface Event {
   };
 }
 
+export interface EventAttachment {
+  path: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  signedUrl?: string;
+}
+
 export interface CreateEventDto {
   title: string;
   description: string;
@@ -129,8 +144,15 @@ export interface CreateEventDto {
   endDate: string;
   academicYearId: string;
   location?: string;
+  locationType?: 'SCHOOL' | 'EXTERNAL' | 'ONLINE' | string;
   isAllDay?: boolean;
   color?: string;
+  isGeneral?: boolean;
+  audienceRoles?: string[];
+  courseIds?: string[];
+  classIds?: string[];
+  requiresRsvp?: boolean;
+  attachments?: EventAttachment[];
 }
 
 export interface UpdateEventDto {
@@ -141,8 +163,15 @@ export interface UpdateEventDto {
   endDate?: string;
   academicYearId?: string;
   location?: string;
+  locationType?: 'SCHOOL' | 'EXTERNAL' | 'ONLINE' | string;
   isAllDay?: boolean;
   color?: string;
+  isGeneral?: boolean;
+  audienceRoles?: string[];
+  courseIds?: string[];
+  classIds?: string[];
+  requiresRsvp?: boolean;
+  attachments?: EventAttachment[];
 }
 
 export interface EventFilters {

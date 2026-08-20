@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import {
   PlusIcon,
+  ArrowUpTrayIcon,
   MagnifyingGlassIcon,
   PencilIcon,
   TrashIcon,
@@ -24,10 +25,12 @@ import { Modal } from '@/components/ui/Modal';
 import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
 import { presentFriendlyError } from '@/lib/friendly-error';
 import { GlobalAdminInstitutionUnitFilter } from '@/components/users/GlobalAdminInstitutionUnitFilter';
+import { BulkUserImportModal } from '@/components/users/BulkUserImportModal';
 
 export default function AlunosPage() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const activeRole = user?.activeProfile ?? user?.role;
   const [filters, setFilters] = useState<UsersFilterParams>({
     page: 1,
     limit: 20,
@@ -40,6 +43,7 @@ export default function AlunosPage() {
     isOpen: boolean;
     user: User | null;
   }>({ isOpen: false, user: null });
+  const [bulkImportModal, setBulkImportModal] = useState(false);
 
   // Buscar alunos
   const { data, isLoading, refetch } = useQuery({
@@ -229,13 +233,23 @@ export default function AlunosPage() {
             </p>
           )}
         </div>
-        <Button
-          onClick={() => router.push('/admin/alunos/new')}
-          leftIcon={<PlusIcon className="h-5 w-5" />}
-          className="w-full sm:w-auto"
-        >
-          Novo Aluno
-        </Button>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          {activeRole === UserRole.SUPER_ADMIN_GLOBAL ? (
+            <Button
+              variant="secondary"
+              onClick={() => setBulkImportModal(true)}
+              leftIcon={<ArrowUpTrayIcon className="h-5 w-5" />}
+            >
+              Importar em massa
+            </Button>
+          ) : null}
+          <Button
+            onClick={() => router.push('/admin/alunos/new')}
+            leftIcon={<PlusIcon className="h-5 w-5" />}
+          >
+            Novo Aluno
+          </Button>
+        </div>
       </div>
 
       {/* Tabela */}
@@ -258,6 +272,14 @@ export default function AlunosPage() {
           />
         </div>
       )}
+
+      <BulkUserImportModal
+        isOpen={bulkImportModal}
+        onClose={() => setBulkImportModal(false)}
+        onComplete={() => refetch()}
+        defaultMode="STUDENTS"
+        lockMode
+      />
 
       {/* Modal de confirmação de exclusão */}
       <Modal

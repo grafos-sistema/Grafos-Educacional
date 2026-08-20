@@ -8,7 +8,12 @@ import {
   IsUUID,
   IsBoolean,
   MaxLength,
+  IsArray,
+  ValidateNested,
+  IsInt,
+  Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export enum EventType {
   HOLIDAY = 'HOLIDAY',
@@ -22,6 +27,33 @@ export enum EventType {
   ENROLLMENT_PERIOD = 'ENROLLMENT_PERIOD',
   REPORT_CARD = 'REPORT_CARD',
   OTHER = 'OTHER',
+}
+
+export enum EventLocationType {
+  SCHOOL = 'SCHOOL',
+  EXTERNAL = 'EXTERNAL',
+  ONLINE = 'ONLINE',
+}
+
+export class EventAttachmentDto {
+  @IsNotEmpty()
+  @IsString()
+  @MaxLength(500)
+  path: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @MaxLength(255)
+  name: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @MaxLength(100)
+  mimeType: string;
+
+  @IsInt()
+  @Min(1)
+  size: number;
 }
 
 export class CreateEventDto {
@@ -44,13 +76,13 @@ export class CreateEventDto {
   description?: string;
 
   @ApiProperty({
-    description: 'Type of event',
-    enum: EventType,
-    example: EventType.HOLIDAY,
+    description: 'Type of event. Predefined or custom text.',
+    example: 'HOLIDAY',
   })
   @IsNotEmpty()
-  @IsEnum(EventType)
-  type: EventType;
+  @IsString()
+  @MaxLength(100)
+  type: string;
 
   @ApiProperty({
     description: 'Start date and time of the event (ISO 8601)',
@@ -76,13 +108,18 @@ export class CreateEventDto {
   @IsUUID()
   academicYearId: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: 'Location of the event',
     example: 'Auditório Principal',
   })
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
   location?: string;
+
+  @ApiProperty({ enum: EventLocationType, default: EventLocationType.SCHOOL })
+  @IsNotEmpty()
+  @IsEnum(EventLocationType)
+  locationType: EventLocationType = EventLocationType.SCHOOL;
 
   @ApiPropertyOptional({
     description: 'Whether the event is all day',
@@ -100,4 +137,39 @@ export class CreateEventDto {
   @IsOptional()
   @IsString()
   color?: string;
+
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  isGeneral?: boolean;
+
+  @ApiPropertyOptional({ type: [String], default: ['STUDENTS', 'PARENTS', 'TEACHERS', 'COLLABORATORS'] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  audienceRoles?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  courseIds?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  classIds?: string[];
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  requiresRsvp?: boolean;
+
+  @ApiPropertyOptional({ type: [EventAttachmentDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => EventAttachmentDto)
+  attachments?: EventAttachmentDto[];
 }

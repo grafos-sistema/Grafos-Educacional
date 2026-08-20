@@ -81,6 +81,10 @@ function formatEventTime(event: Event) {
   return endTime && endTime !== startTime ? `${startTime}–${endTime}` : startTime;
 }
 
+function readableDescription(description?: string) {
+  return description?.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 interface EventCalendarProps {
   year: number;
   events: Event[];
@@ -273,7 +277,7 @@ export function EventCalendar({
                       {typeLabels[event.type] ?? event.type}
                     </Badge>
                   </div>
-                  {event.description ? <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{event.description}</p> : null}
+                  {readableDescription(event.description) ? <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{readableDescription(event.description)}</p> : null}
                   <div className="mt-3 space-y-1 text-sm text-slate-500 dark:text-slate-400">
                     <p>{formatEventTime(event)}</p>
                     {event.location ? (
@@ -281,6 +285,19 @@ export function EventCalendar({
                         <MapPinIcon className="h-4 w-4" />
                         {event.location}
                       </p>
+                    ) : null}
+                    {event.requiresRsvp ? <p className="font-medium text-primary-700 dark:text-primary-300">Confirmação de presença solicitada</p> : null}
+                    {event.attachments?.length ? (
+                      <div className="pt-2">
+                        <p className="mb-1 font-medium text-slate-700 dark:text-slate-200">Anexos</p>
+                        <div className="flex flex-wrap gap-2">
+                          {event.attachments.map((attachment) => attachment.signedUrl ? (
+                            <a key={attachment.path} href={attachment.signedUrl} target="_blank" rel="noreferrer" className="text-primary-700 underline hover:no-underline dark:text-primary-300">
+                              {attachment.name}
+                            </a>
+                          ) : <span key={attachment.path}>{attachment.name}</span>)}
+                        </div>
+                      </div>
                     ) : null}
                   </div>
                 </article>

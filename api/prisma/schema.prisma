@@ -1053,8 +1053,15 @@ model Event {
   startDate       DateTime
   endDate         DateTime?
   location        String?
+  locationType    String   @default("SCHOOL")
   isAllDay        Boolean  @default(false)
   color           String?
+  isGeneral       Boolean  @default(true)
+  audienceRoles   Json     @default("[\"STUDENTS\",\"PARENTS\",\"TEACHERS\",\"COLLABORATORS\"]")
+  courseIds       Json     @default("[]")
+  classIds        Json     @default("[]")
+  requiresRsvp    Boolean  @default(false)
+  attachments     Json     @default("[]")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

@@ -21,10 +21,21 @@ type ImportMode = 'ALL' | 'TEACHERS' | 'STUDENTS';
 const COMMON_HEADERS = [
   'nome',
   'sobrenome',
+  'nome_social',
   'email',
   'cpf',
   'telefone',
+  'whatsapp',
+  'telefone_fixo',
   'data_nascimento',
+  'genero',
+  'endereco',
+  'numero',
+  'complemento',
+  'bairro',
+  'cidade',
+  'estado',
+  'cep',
   'senha',
 ];
 
@@ -33,6 +44,8 @@ const TEACHER_HEADERS = [
   'especializacao',
   'formacao',
   'registro_profissional',
+  'data_admissao',
+  'ocupacao',
 ];
 
 const STUDENT_HEADERS = [
@@ -44,6 +57,9 @@ const STUDENT_HEADERS = [
   'turma',
   'turno',
   'data_matricula',
+  'modalidade',
+  'observacoes',
+  'tipo_sanguineo',
   'alergias',
   'medicamentos',
   'necessidades_especiais',
@@ -53,7 +69,11 @@ const STUDENT_HEADERS = [
   'responsavel_cpf',
   'responsavel_email',
   'responsavel_celular',
+  'responsavel_whatsapp',
+  'responsavel_telefone_fixo',
   'parentesco',
+  'responsavel_notificacoes',
+  'responsavel_pode_retirar',
 ];
 
 const ALL_HEADERS = [
@@ -75,59 +95,83 @@ const MODE_LABELS: Record<ImportMode, string> = {
   STUDENTS: 'alunos',
 };
 
+const PROFESSOR_SAMPLE: ImportRow = {
+  tipo: 'PROFESSOR',
+  nome: 'Maria',
+  sobrenome: 'Oliveira',
+  nome_social: 'Maria Oliveira',
+  email: 'maria.oliveira@escola.com.br',
+  cpf: '12345678901',
+  telefone: '11999999999',
+  whatsapp: '11999999999',
+  telefone_fixo: '1133334444',
+  data_nascimento: '1988-04-12',
+  genero: 'FEMALE',
+  endereco: 'Rua das Flores',
+  numero: '120',
+  complemento: 'Sala 3',
+  bairro: 'Centro',
+  cidade: 'São Paulo',
+  estado: 'SP',
+  cep: '01001000',
+  senha: 'Maria@Grafos2026',
+  especializacao: 'Matemática',
+  formacao: 'Licenciatura em Matemática',
+  registro_profissional: 'REG-2026-001',
+  data_admissao: '2026-01-20',
+  ocupacao: 'Professora de Matemática',
+};
+
+const STUDENT_SAMPLE: ImportRow = {
+  tipo: 'ALUNO',
+  nome: 'Lucas',
+  sobrenome: 'Ferreira',
+  nome_social: 'Lucas Ferreira',
+  email: 'lucas.ferreira@escola.com.br',
+  cpf: '98765432100',
+  telefone: '11977776666',
+  whatsapp: '11977776666',
+  telefone_fixo: '1132221111',
+  data_nascimento: '2014-08-20',
+  genero: 'MALE',
+  endereco: 'Avenida Brasil',
+  numero: '450',
+  complemento: 'Casa 2',
+  bairro: 'Jardim América',
+  cidade: 'São Paulo',
+  estado: 'SP',
+  cep: '01430000',
+  senha: 'Lucas@Grafos2026',
+  situacao: 'ATIVO',
+  ano_letivo: '2026',
+  curso: 'Ensino Fundamental I',
+  serie: '1º Ano',
+  turma: '1º Ano A',
+  turno: 'MATUTINO',
+  data_matricula: '2026-01-15',
+  modalidade: 'Presencial',
+  observacoes: 'Aluno fictício utilizado no modelo de importação.',
+  tipo_sanguineo: 'O+',
+  alergias: 'Poeira',
+  medicamentos: 'Nenhum',
+  necessidades_especiais: 'Nenhuma',
+  restricoes_alimentares: 'Nenhuma',
+  convenio_medico: 'Saúde Escolar Exemplo',
+  responsavel_nome: 'Fernanda Ferreira',
+  responsavel_cpf: '11122233344',
+  responsavel_email: 'fernanda@email.com',
+  responsavel_celular: '11988888888',
+  responsavel_whatsapp: '11988888888',
+  responsavel_telefone_fixo: '1131112222',
+  parentesco: 'Mãe',
+  responsavel_notificacoes: 'SIM',
+  responsavel_pode_retirar: 'SIM',
+};
+
 const TEMPLATE_SAMPLES: Record<ImportMode, ImportRow[]> = {
-  ALL: [
-    {
-      tipo: 'PROFESSOR',
-      nome: 'Maria',
-      sobrenome: 'Oliveira',
-      email: 'maria.oliveira@escola.com.br',
-      telefone: '11999999999',
-      data_nascimento: '1988-04-12',
-      especializacao: 'Matemática',
-      formacao: 'Licenciatura',
-    },
-    {
-      tipo: 'ALUNO',
-      nome: 'Lucas',
-      sobrenome: 'Ferreira',
-      email: 'lucas.ferreira@escola.com.br',
-      data_nascimento: '2014-08-20',
-      ano_letivo: '2026',
-      curso: 'Ensino Fundamental I',
-      serie: '1º Ano',
-      responsavel_nome: 'Fernanda Ferreira',
-      responsavel_email: 'fernanda@email.com',
-      responsavel_celular: '11988888888',
-      parentesco: 'Mãe',
-    },
-  ],
-  TEACHERS: [
-    {
-      nome: 'Maria',
-      sobrenome: 'Oliveira',
-      email: 'maria.oliveira@escola.com.br',
-      telefone: '11999999999',
-      data_nascimento: '1988-04-12',
-      especializacao: 'Matemática',
-      formacao: 'Licenciatura',
-    },
-  ],
-  STUDENTS: [
-    {
-      nome: 'Lucas',
-      sobrenome: 'Ferreira',
-      email: 'lucas.ferreira@escola.com.br',
-      data_nascimento: '2014-08-20',
-      ano_letivo: '2026',
-      curso: 'Ensino Fundamental I',
-      serie: '1º Ano',
-      responsavel_nome: 'Fernanda Ferreira',
-      responsavel_email: 'fernanda@email.com',
-      responsavel_celular: '11988888888',
-      parentesco: 'Mãe',
-    },
-  ],
+  ALL: [PROFESSOR_SAMPLE, STUDENT_SAMPLE],
+  TEACHERS: [PROFESSOR_SAMPLE],
+  STUDENTS: [STUDENT_SAMPLE],
 };
 
 function headersForMode(mode: ImportMode) {
@@ -209,10 +253,14 @@ export function BulkUserImportModal({
   isOpen,
   onClose,
   onComplete,
+  defaultMode = '',
+  lockMode = false,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onComplete: () => void;
+  defaultMode?: ImportMode | '';
+  lockMode?: boolean;
 }) {
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [fileName, setFileName] = useState('');
@@ -220,7 +268,7 @@ export function BulkUserImportModal({
   const [institutionSearch, setInstitutionSearch] = useState('');
   const [institutionId, setInstitutionId] = useState('');
   const [unitId, setUnitId] = useState('');
-  const [mode, setMode] = useState<ImportMode | ''>('');
+  const [mode, setMode] = useState<ImportMode | ''>(defaultMode);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingInstitutions, setLoadingInstitutions] = useState(false);
   const [result, setResult] = useState<{ imported: number; errors: string[] } | null>(null);
@@ -271,6 +319,12 @@ export function BulkUserImportModal({
       setLoadingInstitutions(false);
     }
   };
+
+  useEffect(() => {
+    if (isOpen && defaultMode && mode !== defaultMode) {
+      setMode(defaultMode);
+    }
+  }, [defaultMode, isOpen, mode]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -369,14 +423,27 @@ export function BulkUserImportModal({
         role,
         firstName: row.nome,
         lastName: row.sobrenome,
+        socialName: row.nome_social || undefined,
         cpf: row.cpf || undefined,
         phone: row.telefone || undefined,
+        whatsapp: row.whatsapp || undefined,
+        telefoneFixo: row.telefone_fixo || undefined,
         birthDate: row.data_nascimento || undefined,
+        gender: (row.genero || undefined) as CreateUserDto['gender'],
+        address: row.endereco || undefined,
+        numero: row.numero || undefined,
+        complemento: row.complemento || undefined,
+        bairro: row.bairro || undefined,
+        city: row.cidade || undefined,
+        state: row.estado || undefined,
+        zipCode: row.cep || undefined,
         institutionId,
         unitId,
         specialization: row.especializacao || undefined,
         degree: row.formacao || undefined,
         registrationNumber: row.registro_profissional || undefined,
+        hireDate: row.data_admissao || undefined,
+        occupation: row.ocupacao || undefined,
         unidade: selectedUnit?.name,
         situacao: row.situacao || undefined,
         anoLetivo: row.ano_letivo || undefined,
@@ -385,7 +452,10 @@ export function BulkUserImportModal({
         turma: row.turma || undefined,
         turno: row.turno || undefined,
         dataMatricula: row.data_matricula || undefined,
+        modalidade: row.modalidade || undefined,
+        observacoes: row.observacoes || undefined,
         healthInfo: role === UserRole.STUDENT ? {
+          tipoSanguineo: row.tipo_sanguineo || null,
           alergias: row.alergias || null,
           medicamentos: row.medicamentos || null,
           necessidadesEspeciais: row.necessidades_especiais || null,
@@ -398,7 +468,11 @@ export function BulkUserImportModal({
               cpf: row.responsavel_cpf || undefined,
               email: row.responsavel_email || undefined,
               celular: row.responsavel_celular || undefined,
+              whatsapp: row.responsavel_whatsapp || undefined,
+              telefoneFixo: row.responsavel_telefone_fixo || undefined,
               parentesco: row.parentesco || 'Responsável',
+              notificacoes: ['SIM', 'S', 'TRUE', '1'].includes(row.responsavel_notificacoes?.trim().toUpperCase() || '') || undefined,
+              podeRetirar: ['SIM', 'S', 'TRUE', '1'].includes(row.responsavel_pode_retirar?.trim().toUpperCase() || '') || undefined,
             }]
           : undefined,
       };
@@ -489,14 +563,22 @@ export function BulkUserImportModal({
               helpText={availableUnits.length === 0 ? 'Esta instituição ainda não possui anexos ativos.' : 'Os usuários serão vinculados a este anexo.'}
             />
             {unitId ? (
-              <Select
-                label="O que deseja importar?"
-                value={mode}
-                onChange={(event) => handleModeChange(event.target.value as ImportMode | '')}
-                options={[{ value: '', label: 'Selecione...' }, ...MODE_OPTIONS]}
-                disabled={isLoading}
-                required
-              />
+              lockMode ? (
+                <div className="rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 dark:border-primary-900/50 dark:bg-primary-950/30">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary-700 dark:text-primary-300">Tipo da importação</p>
+                  <p className="mt-1 text-sm font-medium text-primary-900 dark:text-primary-100">{MODE_LABELS[mode || defaultMode as ImportMode]}</p>
+                  <p className="mt-1 text-xs text-primary-700/80 dark:text-primary-300/80">Este modelo foi definido pelo menu que você acessou.</p>
+                </div>
+              ) : (
+                <Select
+                  label="O que deseja importar?"
+                  value={mode}
+                  onChange={(event) => handleModeChange(event.target.value as ImportMode | '')}
+                  options={[{ value: '', label: 'Selecione...' }, ...MODE_OPTIONS]}
+                  disabled={isLoading}
+                  required
+                />
+              )
             ) : (
               <div className="flex items-center rounded-xl border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
                 Selecione o anexo para liberar o tipo de importação.

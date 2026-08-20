@@ -3,11 +3,9 @@ import {
   IsOptional,
   IsString,
   IsUUID,
-  IsEnum,
   IsDateString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { EventType } from './create-event.dto';
 
 export class QueryEventDto {
   @ApiPropertyOptional({
@@ -20,12 +18,11 @@ export class QueryEventDto {
 
   @ApiPropertyOptional({
     description: 'Filter by event type',
-    enum: EventType,
-    example: EventType.HOLIDAY,
+    example: 'HOLIDAY',
   })
   @IsOptional()
-  @IsEnum(EventType)
-  type?: EventType;
+  @IsString()
+  type?: string;
 
   @ApiPropertyOptional({
     description: 'Filter by institution ID',

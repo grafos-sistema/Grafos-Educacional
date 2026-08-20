@@ -7,6 +7,7 @@ import {
   CreateEventDto,
   UpdateEventDto,
   EventFilters,
+  EventAttachment,
 } from '@/types/communication.types';
 import { PaginatedResponse } from '@/types/common.types';
 import { UserRole } from '@/types/user.types';
@@ -18,6 +19,47 @@ type AcademicYearRow = {
 };
 
 type EventRow = Omit<Event, 'academicYear'>;
+
+const EVENT_ATTACHMENT_BUCKET = 'event-attachments';
+const MAX_EVENT_ATTACHMENT_SIZE = 10 * 1024 * 1024;
+const ALLOWED_EVENT_ATTACHMENT_TYPES = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+]);
+
+function safeFileName(name: string) {
+  return name
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 120) || 'anexo';
+}
+
+async function withSignedAttachmentUrls(events: Event[]) {
+  return Promise.all(
+    events.map(async (event) => {
+      const attachments = event.attachments ?? [];
+      if (attachments.length === 0) return event;
+
+      const signedAttachments = await Promise.all(
+        attachments.map(async (attachment) => {
+          const { data, error } = await supabase.storage
+            .from(EVENT_ATTACHMENT_BUCKET)
+            .createSignedUrl(attachment.path, 60 * 60);
+
+          return {
+            ...attachment,
+            signedUrl: error ? undefined : data?.signedUrl,
+          };
+        }),
+      );
+
+      return { ...event, attachments: signedAttachments };
+    }),
+  );
+}
 
 async function findEventsForGlobalAdmins(startDate: Date, endDate: Date): Promise<Event[]> {
   const { institutionFilterAll, institutionFilterIds, user } = useAuthStore.getState();
@@ -60,7 +102,7 @@ async function findEventsForGlobalAdmins(startDate: Date, endDate: Date): Promis
 
   const { data: events, error: eventsError } = await supabase
     .from('events')
-    .select('id, title, description, type, startDate, endDate, location, isAllDay, color, academicYearId, createdAt, updatedAt')
+    .select('id, title, description, type, startDate, endDate, location, locationType, isAllDay, color, isGeneral, audienceRoles, courseIds, classIds, requiresRsvp, attachments, academicYearId, createdAt, updatedAt')
     .in('academicYearId', academicYearIds)
     .gte('startDate', startDate.toISOString())
     .lte('startDate', endDate.toISOString())
@@ -73,7 +115,7 @@ async function findEventsForGlobalAdmins(startDate: Date, endDate: Date): Promis
   );
   const academicYearsById = new Map(academicYearRows.map((academicYear) => [academicYear.id, academicYear]));
 
-  return ((events ?? []) as EventRow[]).map((event) => {
+  const mappedEvents = ((events ?? []) as EventRow[]).map((event) => {
     const academicYear = academicYearsById.get(event.academicYearId);
 
     return {
@@ -87,6 +129,8 @@ async function findEventsForGlobalAdmins(startDate: Date, endDate: Date): Promis
         : undefined,
     };
   });
+
+  return withSignedAttachmentUrls(mappedEvents);
 }
 
 async function findUpcomingEventsForGlobalAdmins(days: number): Promise<Event[]> {
@@ -154,6 +198,41 @@ export const eventsService = {
     await api.delete(`/events/${id}`);
   },
 
+  async uploadAttachment(file: File, institutionId: string): Promise<EventAttachment> {
+    if (!ALLOWED_EVENT_ATTACHMENT_TYPES.has(file.type)) {
+      throw new Error('Anexe apenas arquivos PDF, JPG ou PNG.');
+    }
+
+    if (file.size > MAX_EVENT_ATTACHMENT_SIZE) {
+      throw new Error('Cada anexo pode ter no máximo 10 MB.');
+    }
+
+    const path = `${institutionId}/${crypto.randomUUID()}/${safeFileName(file.name)}`;
+    const { error } = await supabase.storage
+      .from(EVENT_ATTACHMENT_BUCKET)
+      .upload(path, file, {
+        upsert: false,
+        contentType: file.type,
+        cacheControl: '3600',
+      });
+
+    if (error) throw error;
+
+    return {
+      path,
+      name: file.name,
+      mimeType: file.type,
+      size: file.size,
+    };
+  },
+
+  async removeAttachment(path: string): Promise<void> {
+    const { error } = await supabase.storage
+      .from(EVENT_ATTACHMENT_BUCKET)
+      .remove([path]);
+    if (error) throw error;
+  },
+
   /**
    * Buscar eventos próximos
    */
@@ -178,7 +257,7 @@ export const eventsService = {
     }
 
     const response = await api.get<Event[]>(`/events/upcoming?${params.toString()}`);
-    return response as unknown as Event[];
+    return withSignedAttachmentUrls((response as unknown as Event[]) ?? []);
   },
 
   /**
@@ -201,7 +280,7 @@ export const eventsService = {
       limit: 500,
     });
 
-    return response.data;
+    return withSignedAttachmentUrls(response.data);
   },
 
   /**
@@ -231,6 +310,6 @@ export const eventsService = {
     const response = await api.get<Event[]>(
       queryString ? `/events/calendar/${year}/${month}?${queryString}` : `/events/calendar/${year}/${month}`
     );
-    return response as unknown as Event[];
+    return withSignedAttachmentUrls((response as unknown as Event[]) ?? []);
   },
 };
