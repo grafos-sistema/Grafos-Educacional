@@ -125,7 +125,9 @@ export const classSchedulesService = {
    * relações aninhadas e pode ocultar horários válidos.
    */
   async getClassSchedulesFromApi(classId: string): Promise<ClassSchedule[]> {
-    const response = await api.get<DbClassSchedule[]>(`/schedules/classes/${classId}/schedules`);
+    // A API registra essa rota como /classes/:classId/schedules. O prefixo
+    // /schedules é reservado para buscar, editar ou remover um horário por ID.
+    const response = await api.get<DbClassSchedule[]>(`/classes/${classId}/schedules`);
     return ((response as unknown as DbClassSchedule[]) ?? []).map(mapSchedule);
   },
 
