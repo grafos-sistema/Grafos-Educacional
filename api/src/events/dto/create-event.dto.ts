@@ -12,6 +12,7 @@ import {
   ValidateNested,
   IsInt,
   Min,
+  IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -48,6 +49,7 @@ export class EventAttachmentDto {
 
   @IsNotEmpty()
   @IsString()
+  @IsIn(['application/pdf'])
   @MaxLength(100)
   mimeType: string;
 
