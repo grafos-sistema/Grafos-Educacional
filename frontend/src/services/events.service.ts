@@ -19,7 +19,7 @@ type AcademicYearRow = {
 
 type EventRow = Omit<Event, 'academicYear'>;
 
-async function findUpcomingEventsForGlobalAdmins(days: number): Promise<Event[]> {
+async function findEventsForGlobalAdmins(startDate: Date, endDate: Date): Promise<Event[]> {
   const { institutionFilterAll, institutionFilterIds, user } = useAuthStore.getState();
   const currentRole = user?.activeProfile || user?.role;
 
@@ -28,9 +28,6 @@ async function findUpcomingEventsForGlobalAdmins(days: number): Promise<Event[]>
   }
 
   const effectiveIds = institutionFilterAll ? [] : getValidInstitutionIds(institutionFilterIds);
-  const now = new Date();
-  const futureDate = new Date();
-  futureDate.setDate(futureDate.getDate() + days);
 
   let academicYearsQuery = supabase
     .from('academic_years')
@@ -65,8 +62,8 @@ async function findUpcomingEventsForGlobalAdmins(days: number): Promise<Event[]>
     .from('events')
     .select('id, title, description, type, startDate, endDate, location, isAllDay, color, academicYearId, createdAt, updatedAt')
     .in('academicYearId', academicYearIds)
-    .gte('startDate', now.toISOString())
-    .lte('startDate', futureDate.toISOString())
+    .gte('startDate', startDate.toISOString())
+    .lte('startDate', endDate.toISOString())
     .order('startDate', { ascending: true });
 
   if (eventsError) throw eventsError;
@@ -90,6 +87,14 @@ async function findUpcomingEventsForGlobalAdmins(days: number): Promise<Event[]>
         : undefined,
     };
   });
+}
+
+async function findUpcomingEventsForGlobalAdmins(days: number): Promise<Event[]> {
+  const now = new Date();
+  const futureDate = new Date();
+  futureDate.setDate(futureDate.getDate() + days);
+
+  return findEventsForGlobalAdmins(now, futureDate);
 }
 
 export const eventsService = {
@@ -174,6 +179,29 @@ export const eventsService = {
 
     const response = await api.get<Event[]>(`/events/upcoming?${params.toString()}`);
     return response as unknown as Event[];
+  },
+
+  /**
+   * Buscar todos os eventos de um ano para a visualização anual do calendário.
+   */
+  async findForYear(year: number): Promise<Event[]> {
+    const currentUser = useAuthStore.getState().user;
+    const currentRole = currentUser?.activeProfile || currentUser?.role;
+    const start = new Date(year, 0, 1, 0, 0, 0, 0);
+    const end = new Date(year, 11, 31, 23, 59, 59, 999);
+
+    if (currentRole === UserRole.SUPER_ADMIN_GLOBAL) {
+      return findEventsForGlobalAdmins(start, end);
+    }
+
+    const response = await this.findAll({
+      fromDate: start.toISOString(),
+      toDate: end.toISOString(),
+      page: 1,
+      limit: 500,
+    });
+
+    return response.data;
   },
 
   /**

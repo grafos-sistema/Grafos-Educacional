@@ -36,7 +36,7 @@ export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
   @Post()
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(UserRole.DIRECTOR, UserRole.COORDINATOR)
   @ApiOperation({ summary: 'Create a new event' })
   @ApiResponse({
     status: 201,
@@ -50,13 +50,14 @@ export class EventsController {
     status: 400,
     description: 'Invalid dates or data',
   })
-  create(@Body() createEventDto: CreateEventDto) {
-    return this.eventsService.create(createEventDto);
+  create(@Body() createEventDto: CreateEventDto, @CurrentUser() user: any) {
+    return this.eventsService.create(createEventDto, user);
   }
 
   @Get()
   @Roles(
     UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
     UserRole.TEACHER,
@@ -75,6 +76,7 @@ export class EventsController {
   @Get('upcoming')
   @Roles(
     UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
     UserRole.TEACHER,
@@ -104,6 +106,7 @@ export class EventsController {
   @Get('calendar/:year/:month')
   @Roles(
     UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
     UserRole.TEACHER,
@@ -127,13 +130,22 @@ export class EventsController {
     status: 200,
     description: 'Calendar with events grouped by day',
   })
-  getCalendar(@Query() query: CalendarQueryDto, @CurrentUser() user: any) {
-    return this.eventsService.getCalendar(query, user);
+  getCalendar(
+    @Param('year') year: string,
+    @Param('month') month: string,
+    @Query() query: CalendarQueryDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.eventsService.getCalendar(
+      { ...query, year: Number(year), month: Number(month) },
+      user,
+    );
   }
 
   @Get(':id')
   @Roles(
     UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
     UserRole.TEACHER,
@@ -163,7 +175,12 @@ export class EventsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+  )
   @ApiOperation({ summary: 'Update an event' })
   @ApiParam({
     name: 'id',
@@ -191,7 +208,12 @@ export class EventsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+  )
   @ApiOperation({ summary: 'Delete an event' })
   @ApiParam({
     name: 'id',

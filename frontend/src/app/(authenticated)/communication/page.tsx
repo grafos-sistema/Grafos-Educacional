@@ -5,8 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import {
   MegaphoneIcon,
   CalendarDaysIcon,
-  ClockIcon,
-  MapPinIcon,
   ChevronDownIcon,
   PlusIcon,
 } from '@heroicons/react/24/outline';
@@ -17,6 +15,8 @@ import { UserRole } from '@/types/user.types';
 import { Badge } from '@/components/ui/Badge';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { AnnouncementComposerModal } from '@/components/communication/AnnouncementComposerModal';
+import { EventCalendar } from '@/components/communication/EventCalendar';
+import { EventComposerModal } from '@/components/communication/EventComposerModal';
 
 const priorityLabels: Record<string, string> = {
   low: 'Baixa',
@@ -66,34 +66,14 @@ function announcementBelongsToAudience(announcement: { targetRoles?: string[] },
   return staffRoles.filter((role) => roles.includes(role)).length >= 2 && !hasStudent && !hasParent;
 }
 
-const typeLabels: Record<string, string> = {
-  MEETING: 'Reunião',
-  EXAM: 'Prova',
-  HOLIDAY: 'Feriado',
-  SCHOOL_EVENT: 'Evento Escolar',
-  PARENT_MEETING: 'Reunião de Pais',
-  SPORTS: 'Esportivo',
-  CULTURAL: 'Cultural',
-  OTHER: 'Outro',
-};
-
-const typeColors: Record<string, 'default' | 'success' | 'error' | 'warning' | 'info'> = {
-  MEETING: 'info',
-  EXAM: 'error',
-  HOLIDAY: 'success',
-  SCHOOL_EVENT: 'warning',
-  PARENT_MEETING: 'info',
-  SPORTS: 'success',
-  CULTURAL: 'warning',
-  OTHER: 'default',
-};
-
 export default function CommunicationPage() {
   const [activeTab, setActiveTab] = useState<'announcements' | 'events'>('announcements');
   const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const [isEventComposerOpen, setIsEventComposerOpen] = useState(false);
   const [composerMode, setComposerMode] = useState<'immediate' | 'scheduled'>('immediate');
   const [isComposerMenuOpen, setIsComposerMenuOpen] = useState(false);
   const [activeAudience, setActiveAudience] = useState<AudienceTab>('general');
+  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
   const composerMenuRef = useRef<HTMLDivElement | null>(null);
   const user = useAuthStore((state) => state.user);
   const currentRole = user?.activeProfile || user?.role;
@@ -104,6 +84,10 @@ export default function CommunicationPage() {
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
     UserRole.TEACHER,
+  ].includes((currentRole ?? user?.role) as UserRole);
+  const canManageEvents = [
+    UserRole.DIRECTOR,
+    UserRole.COORDINATOR,
   ].includes((currentRole ?? user?.role) as UserRole);
 
   const audienceTabs = useMemo(() => {
@@ -126,9 +110,20 @@ export default function CommunicationPage() {
   });
 
   // Buscar próximos eventos (próximos 60 dias)
-  const { data: upcomingEvents, isLoading: loadingEvents, isError: eventsError } = useQuery({
+  const { data: upcomingEvents } = useQuery({
     queryKey: ['events-upcoming', user?.id],
     queryFn: () => eventsService.findUpcoming(60),
+    enabled: Boolean(user),
+    retry: 1,
+  });
+
+  const {
+    data: calendarEvents,
+    isLoading: loadingCalendar,
+    isError: calendarError,
+  } = useQuery({
+    queryKey: ['events-calendar', user?.id, calendarYear],
+    queryFn: () => eventsService.findForYear(calendarYear),
     enabled: Boolean(user),
     retry: 1,
   });
@@ -178,61 +173,74 @@ export default function CommunicationPage() {
             Acompanhe os comunicados enviados pela gestão e os próximos eventos da instituição.
           </p>
         </div>
-        {canManageAnnouncements ? (
-          <div ref={composerMenuRef} className="relative">
+        <div className="flex flex-wrap items-center gap-3">
+          {canManageEvents ? (
             <button
               type="button"
-              onClick={() => setIsComposerMenuOpen((current) => !current)}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+              onClick={() => setIsEventComposerOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg border border-primary-600 bg-white px-4 py-2.5 text-sm font-semibold text-primary-700 shadow-sm transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 dark:bg-gray-900 dark:text-primary-300 dark:hover:bg-primary-900/20 dark:focus:ring-offset-gray-900"
             >
-              <PlusIcon className="h-5 w-5" />
-              <span>Criar comunicado</span>
-              <ChevronDownIcon className="h-4 w-4" />
+              <CalendarDaysIcon className="h-5 w-5" />
+              <span>Cadastrar evento</span>
             </button>
+          ) : null}
 
-            {isComposerMenuOpen ? (
-              <div className="absolute right-0 z-20 mt-2 w-72 origin-top-right rounded-lg border border-gray-200 bg-white p-2 shadow-lg focus:outline-none dark:border-gray-700 dark:bg-gray-900">
-                <div className="px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
-                  Tipo de envio
+          {canManageAnnouncements ? (
+            <div ref={composerMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setIsComposerMenuOpen((current) => !current)}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+              >
+                <PlusIcon className="h-5 w-5" />
+                <span>Criar comunicado</span>
+                <ChevronDownIcon className="h-4 w-4" />
+              </button>
+
+              {isComposerMenuOpen ? (
+                <div className="absolute right-0 z-20 mt-2 w-72 origin-top-right rounded-lg border border-gray-200 bg-white p-2 shadow-lg focus:outline-none dark:border-gray-700 dark:bg-gray-900">
+                  <div className="px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
+                    Tipo de envio
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setComposerMode('immediate');
+                      setIsComposerMenuOpen(false);
+                      setIsComposerOpen(true);
+                    }}
+                    className="flex w-full flex-col rounded-lg px-3 py-3 text-left transition-colors hover:bg-primary-50 dark:hover:bg-primary-900/20"
+                  >
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                      Enviar agora
+                    </span>
+                    <span className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Abre o modal já preparado para publicação imediata.
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setComposerMode('scheduled');
+                      setIsComposerMenuOpen(false);
+                      setIsComposerOpen(true);
+                    }}
+                    className="mt-1 flex w-full flex-col rounded-lg px-3 py-3 text-left transition-colors hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                  >
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                      Programar comunicado
+                    </span>
+                    <span className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Abre o modal com data e hora futura já habilitadas.
+                    </span>
+                  </button>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setComposerMode('immediate');
-                    setIsComposerMenuOpen(false);
-                    setIsComposerOpen(true);
-                  }}
-                  className="flex w-full flex-col rounded-lg px-3 py-3 text-left transition-colors hover:bg-primary-50 dark:hover:bg-primary-900/20"
-                >
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                    Enviar agora
-                  </span>
-                  <span className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    Abre o modal já preparado para publicação imediata.
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setComposerMode('scheduled');
-                    setIsComposerMenuOpen(false);
-                    setIsComposerOpen(true);
-                  }}
-                  className="mt-1 flex w-full flex-col rounded-lg px-3 py-3 text-left transition-colors hover:bg-amber-50 dark:hover:bg-amber-900/20"
-                >
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                    Programar comunicado
-                  </span>
-                  <span className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    Abre o modal com data e hora futura já habilitadas.
-                  </span>
-                </button>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -381,96 +389,26 @@ export default function CommunicationPage() {
         </div>
       ) : (
         <div>
-          {loadingEvents ? (
+          {loadingCalendar ? (
             <div className="flex justify-center py-12">
               <LoadingSpinner size="lg" text="Carregando eventos..." />
             </div>
-          ) : !upcomingEvents || upcomingEvents.length === 0 ? (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
-              <CalendarDaysIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                Nenhum evento próximo
+          ) : calendarError ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-center dark:border-red-900/50 dark:bg-red-950/20">
+              <CalendarDaysIcon className="mx-auto mb-3 h-12 w-12 text-red-500" />
+              <h3 className="text-lg font-semibold text-red-900 dark:text-red-200">
+                Não foi possível carregar os eventos
               </h3>
-              <p className="text-gray-500 dark:text-gray-400">
-                Novos eventos aparecerão aqui quando forem agendados
+              <p className="mt-2 text-sm text-red-700 dark:text-red-300">
+                Tente atualizar esta área novamente em alguns instantes.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {upcomingEvents
-                .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
-                .map((event) => {
-                  const isToday =
-                    new Date(event.startDate).toDateString() === new Date().toDateString();
-                  const daysUntil = Math.ceil(
-                    (new Date(event.startDate).getTime() - new Date().getTime()) /
-                      (1000 * 60 * 60 * 24)
-                  );
-
-                  return (
-                    <div
-                      key={event.id}
-                      className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow border-l-4 ${
-                        isToday
-                          ? 'border-red-500'
-                          : daysUntil <= 7
-                          ? 'border-yellow-500'
-                          : 'border-blue-500'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-3">
-                        <Badge variant={typeColors[event.type]} size="sm">
-                          {typeLabels[event.type]}
-                        </Badge>
-                        {isToday && (
-                          <Badge variant="error" size="sm">
-                            Hoje
-                          </Badge>
-                        )}
-                        {!isToday && daysUntil <= 7 && daysUntil > 0 && (
-                          <Badge variant="warning" size="sm">
-                            Em {daysUntil} {daysUntil === 1 ? 'dia' : 'dias'}
-                          </Badge>
-                        )}
-                      </div>
-
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                        {event.title}
-                      </h3>
-
-                      <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 line-clamp-2">
-                        {event.description}
-                      </p>
-
-                      <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                        <div className="flex items-center gap-2">
-                          <CalendarDaysIcon className="h-4 w-4" />
-                          <span>
-                            {new Date(event.startDate).toLocaleDateString('pt-BR')}
-                            {event.endDate && event.startDate !== event.endDate && (
-                              <> até {new Date(event.endDate).toLocaleDateString('pt-BR')}</>
-                            )}
-                          </span>
-                        </div>
-
-                        {event.isAllDay && (
-                          <div className="flex items-center gap-2">
-                            <ClockIcon className="h-4 w-4" />
-                            <span>Dia inteiro</span>
-                          </div>
-                        )}
-
-                        {event.location && (
-                          <div className="flex items-center gap-2">
-                            <MapPinIcon className="h-4 w-4" />
-                            <span>{event.location}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
+            <EventCalendar
+              year={calendarYear}
+              events={calendarEvents ?? []}
+              onYearChange={setCalendarYear}
+            />
           )}
         </div>
       )}
@@ -479,6 +417,11 @@ export default function CommunicationPage() {
         isOpen={isComposerOpen}
         onClose={() => setIsComposerOpen(false)}
         mode={composerMode}
+      />
+      <EventComposerModal
+        isOpen={isEventComposerOpen}
+        onClose={() => setIsEventComposerOpen(false)}
+        user={user}
       />
     </div>
   );

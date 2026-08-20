@@ -77,7 +77,6 @@ const institutionAdminSectionConfig: Array<{
     itemNames: [
       'Grade de Horários',
       'Comunicados',
-      'Eventos',
       'Comunicação',
       'Rankings',
       'Banco de Questões',
@@ -453,17 +452,6 @@ const navigation: NavItem[] = [
       [UserRole.SUPER_ADMIN]: '/admin/courses',
       [UserRole.DIRECTOR]: '/admin/courses',
       [UserRole.INSTITUTION_ADMIN]: '/admin/courses',
-    },
-  },
-  {
-    name: 'Eventos',
-    baseRoute: '/events',
-    icon: CalendarIcon,
-    roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN],
-    pathMapping: {
-      [UserRole.SUPER_ADMIN_GLOBAL]: '/admin/events',
-      [UserRole.SUPER_ADMIN]: '/admin/events',
-      [UserRole.INSTITUTION_ADMIN]: '/admin/events',
     },
   },
   {

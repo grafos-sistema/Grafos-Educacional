@@ -75,7 +75,7 @@ export class EventsService {
     return effective;
   }
 
-  async create(createEventDto: CreateEventDto) {
+  async create(createEventDto: CreateEventDto, currentUser: any) {
     // Verify academic year exists
     const academicYear = await this.prisma.academicYear.findUnique({
       where: { id: createEventDto.academicYearId },
@@ -84,6 +84,8 @@ export class EventsService {
     if (!academicYear) {
       throw new NotFoundException('Academic year not found');
     }
+
+    await this.ensureInstitutionAccess(academicYear.institutionId, currentUser);
 
     // Validate dates
     const startDate = new Date(createEventDto.startDate);
@@ -443,13 +445,23 @@ export class EventsService {
   }
 
   private async ensureAccessPermission(event: any, currentUser: any) {
-    if (currentUser.role === UserRole.SUPER_ADMIN) {
-      return;
-    }
-
     const institutionId = event.academicYear?.institutionId;
     if (!institutionId) {
       throw new ForbiddenException('You do not have access to this event');
+    }
+
+    await this.ensureInstitutionAccess(institutionId, currentUser);
+  }
+
+  private async ensureInstitutionAccess(
+    institutionId: string,
+    currentUser: any,
+  ) {
+    if (
+      currentUser.role === UserRole.SUPER_ADMIN ||
+      currentUser.role === UserRole.SUPER_ADMIN_GLOBAL
+    ) {
+      return;
     }
 
     const allowed = await this.getAllowedInstitutionIds(currentUser);
@@ -464,9 +476,11 @@ export class EventsService {
     }
 
     if (
-      [UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR].includes(
-        currentUser.role,
-      )
+      [
+        UserRole.DIRECTOR,
+        UserRole.INSTITUTION_ADMIN,
+        UserRole.COORDINATOR,
+      ].includes(currentUser.role)
     ) {
       await this.ensureAccessPermission(event, currentUser);
       return;
