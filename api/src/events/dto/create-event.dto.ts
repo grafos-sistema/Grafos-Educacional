@@ -143,7 +143,10 @@ export class CreateEventDto {
   @IsBoolean()
   isGeneral?: boolean;
 
-  @ApiPropertyOptional({ type: [String], default: ['STUDENTS', 'PARENTS', 'TEACHERS', 'COLLABORATORS'] })
+  @ApiPropertyOptional({
+    type: [String],
+    default: ['STUDENTS', 'PARENTS', 'TEACHERS', 'COLLABORATORS'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

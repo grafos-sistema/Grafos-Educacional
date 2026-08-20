@@ -86,9 +86,12 @@ export class PrismaService
 
     return Promise.all(
       models.map((modelKey) => {
-        const model = this[modelKey as keyof PrismaService];
+        const model = Reflect.get(this, modelKey);
         if (model && typeof model === 'object' && 'deleteMany' in model) {
-          return (model as any).deleteMany();
+          const deleteMany = Reflect.get(model, 'deleteMany');
+          return typeof deleteMany === 'function'
+            ? deleteMany.call(model)
+            : undefined;
         }
       }),
     );

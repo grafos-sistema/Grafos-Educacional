@@ -88,7 +88,7 @@ export class AchievementsService {
     // Notificar usuário
     await this.notificationsService.create(
       userId,
-      'SYSTEM' as any,
+      'SYSTEM',
       `Conquista desbloqueada: ${badge.name}!`,
       badge.description,
       {

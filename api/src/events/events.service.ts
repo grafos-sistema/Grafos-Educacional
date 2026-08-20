@@ -103,7 +103,10 @@ export class EventsService {
                 select: {
                   classEnrollments: {
                     where: { isActive: true },
-                    select: { classId: true, class: { select: { courseId: true } } },
+                    select: {
+                      classId: true,
+                      class: { select: { courseId: true } },
+                    },
                   },
                 },
               },
@@ -172,7 +175,9 @@ export class EventsService {
         where: { id: { in: uniqueCourseIds }, institutionId, isActive: true },
       });
       if (courseCount !== uniqueCourseIds.length) {
-        throw new BadRequestException('One or more selected courses are invalid');
+        throw new BadRequestException(
+          'One or more selected courses are invalid',
+        );
       }
     }
 
@@ -186,7 +191,9 @@ export class EventsService {
         },
       });
       if (classCount !== uniqueClassIds.length) {
-        throw new BadRequestException('One or more selected classes are invalid');
+        throw new BadRequestException(
+          'One or more selected classes are invalid',
+        );
       }
     }
   }
@@ -290,8 +297,8 @@ export class EventsService {
     await this.validateEventTargets(
       academicYear.institutionId,
       academicYear.id,
-      isGeneral ? [] : createEventDto.courseIds ?? [],
-      isGeneral ? [] : createEventDto.classIds ?? [],
+      isGeneral ? [] : (createEventDto.courseIds ?? []),
+      isGeneral ? [] : (createEventDto.classIds ?? []),
     );
 
     return this.prisma.event.create({
@@ -308,10 +315,13 @@ export class EventsService {
         color: createEventDto.color,
         isGeneral,
         audienceRoles,
-        courseIds: isGeneral ? [] : createEventDto.courseIds ?? [],
-        classIds: isGeneral ? [] : createEventDto.classIds ?? [],
+        courseIds: isGeneral ? [] : (createEventDto.courseIds ?? []),
+        classIds: isGeneral ? [] : (createEventDto.classIds ?? []),
         requiresRsvp: createEventDto.requiresRsvp ?? false,
-        attachments: createEventDto.attachments?.map((attachment) => ({ ...attachment })) ?? [],
+        attachments:
+          createEventDto.attachments?.map((attachment) => ({
+            ...attachment,
+          })) ?? [],
       },
       include: {
         academicYear: {
@@ -419,7 +429,10 @@ export class EventsService {
         },
       },
     });
-    const visibleEvents = await this.filterVisibleEvents(allEvents, currentUser);
+    const visibleEvents = await this.filterVisibleEvents(
+      allEvents,
+      currentUser,
+    );
     const total = visibleEvents.length;
     const events = visibleEvents.slice(skip, skip + limit);
 
@@ -587,7 +600,8 @@ export class EventsService {
     await this.ensureEditPermission(event, currentUser);
 
     // Verify academic year if being updated
-    let targetAcademicYear: { id: string; institutionId: string } = event.academicYear;
+    let targetAcademicYear: { id: string; institutionId: string } =
+      event.academicYear;
     if (updateEventDto.academicYearId) {
       const academicYear = await this.prisma.academicYear.findUnique({
         where: { id: updateEventDto.academicYearId },
@@ -596,7 +610,10 @@ export class EventsService {
       if (!academicYear) {
         throw new NotFoundException('Academic year not found');
       }
-      await this.ensureInstitutionAccess(academicYear.institutionId, currentUser);
+      await this.ensureInstitutionAccess(
+        academicYear.institutionId,
+        currentUser,
+      );
       targetAcademicYear = academicYear;
     }
 
@@ -610,7 +627,10 @@ export class EventsService {
       }
     }
 
-    if (updateEventDto.location !== undefined && !updateEventDto.location.trim()) {
+    if (
+      updateEventDto.location !== undefined &&
+      !updateEventDto.location.trim()
+    ) {
       throw new BadRequestException('Event location is required');
     }
 
@@ -618,8 +638,12 @@ export class EventsService {
     await this.validateEventTargets(
       targetAcademicYear.institutionId,
       targetAcademicYear.id,
-      nextIsGeneral ? [] : updateEventDto.courseIds ?? this.jsonStringArray(event.courseIds),
-      nextIsGeneral ? [] : updateEventDto.classIds ?? this.jsonStringArray(event.classIds),
+      nextIsGeneral
+        ? []
+        : (updateEventDto.courseIds ?? this.jsonStringArray(event.courseIds)),
+      nextIsGeneral
+        ? []
+        : (updateEventDto.classIds ?? this.jsonStringArray(event.classIds)),
     );
 
     const updateData: any = {
@@ -633,10 +657,14 @@ export class EventsService {
       color: updateEventDto.color,
       isGeneral: updateEventDto.isGeneral,
       audienceRoles: updateEventDto.audienceRoles,
-      courseIds: updateEventDto.isGeneral === true ? [] : updateEventDto.courseIds,
-      classIds: updateEventDto.isGeneral === true ? [] : updateEventDto.classIds,
+      courseIds:
+        updateEventDto.isGeneral === true ? [] : updateEventDto.courseIds,
+      classIds:
+        updateEventDto.isGeneral === true ? [] : updateEventDto.classIds,
       requiresRsvp: updateEventDto.requiresRsvp,
-      attachments: updateEventDto.attachments?.map((attachment) => ({ ...attachment })),
+      attachments: updateEventDto.attachments?.map((attachment) => ({
+        ...attachment,
+      })),
       startDate: updateEventDto.startDate
         ? new Date(updateEventDto.startDate)
         : undefined,
