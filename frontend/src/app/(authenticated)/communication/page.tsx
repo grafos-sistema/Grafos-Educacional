@@ -70,6 +70,7 @@ export default function CommunicationPage() {
   const [activeTab, setActiveTab] = useState<'announcements' | 'events'>('announcements');
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [isEventComposerOpen, setIsEventComposerOpen] = useState(false);
+  const [eventDraftDate, setEventDraftDate] = useState<Date | null>(null);
   const [composerMode, setComposerMode] = useState<'immediate' | 'scheduled'>('immediate');
   const [isComposerMenuOpen, setIsComposerMenuOpen] = useState(false);
   const [activeAudience, setActiveAudience] = useState<AudienceTab>('general');
@@ -174,18 +175,21 @@ export default function CommunicationPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {canManageEvents ? (
+          {activeTab === 'events' && canManageEvents ? (
             <button
               type="button"
-              onClick={() => setIsEventComposerOpen(true)}
+              onClick={() => {
+                setEventDraftDate(null);
+                setIsEventComposerOpen(true);
+              }}
               className="inline-flex items-center gap-2 rounded-lg border border-primary-600 bg-white px-4 py-2.5 text-sm font-semibold text-primary-700 shadow-sm transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 dark:bg-gray-900 dark:text-primary-300 dark:hover:bg-primary-900/20 dark:focus:ring-offset-gray-900"
             >
               <CalendarDaysIcon className="h-5 w-5" />
-              <span>Cadastrar evento</span>
+              <span>Criar Evento</span>
             </button>
           ) : null}
 
-          {canManageAnnouncements ? (
+          {activeTab === 'announcements' && canManageAnnouncements ? (
             <div ref={composerMenuRef} className="relative">
               <button
                 type="button"
@@ -408,6 +412,11 @@ export default function CommunicationPage() {
               year={calendarYear}
               events={calendarEvents ?? []}
               onYearChange={setCalendarYear}
+              canManageEvents={canManageEvents}
+              onCreateEvent={(date) => {
+                setEventDraftDate(date);
+                setIsEventComposerOpen(true);
+              }}
             />
           )}
         </div>
@@ -420,7 +429,11 @@ export default function CommunicationPage() {
       />
       <EventComposerModal
         isOpen={isEventComposerOpen}
-        onClose={() => setIsEventComposerOpen(false)}
+        initialDate={eventDraftDate}
+        onClose={() => {
+          setIsEventComposerOpen(false);
+          setEventDraftDate(null);
+        }}
         user={user}
       />
     </div>

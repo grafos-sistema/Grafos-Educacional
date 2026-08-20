@@ -69,10 +69,11 @@ interface EventComposerModalProps {
   isOpen: boolean;
   onClose: () => void;
   user: User | null;
+  initialDate?: Date | null;
   onCreated?: (event: Event) => void;
 }
 
-export function EventComposerModal({ isOpen, onClose, user, onCreated }: EventComposerModalProps) {
+export function EventComposerModal({ isOpen, onClose, user, initialDate, onCreated }: EventComposerModalProps) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<EventFormState>(buildInitialForm);
   const institutionId = user?.institutionId;
@@ -97,6 +98,13 @@ export function EventComposerModal({ isOpen, onClose, user, onCreated }: EventCo
       setForm((current) => ({ ...current, academicYearId: preferred.id }));
     }
   }, [academicYearsData?.data, form.academicYearId, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !initialDate) return;
+
+    const date = toDateInput(initialDate);
+    setForm((current) => ({ ...current, startDate: date, endDate: date }));
+  }, [initialDate, isOpen]);
 
   const createMutation = useMutation({
     mutationFn: (data: CreateEventDto) => eventsService.create(data),

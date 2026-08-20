@@ -11,9 +11,16 @@ import {
   startOfWeek,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, MapPinIcon } from '@heroicons/react/24/outline';
+import {
+  CalendarDaysIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  MapPinIcon,
+  PlusIcon,
+} from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/Modal';
 import { Event } from '@/types/communication.types';
 
 const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
@@ -78,10 +85,19 @@ interface EventCalendarProps {
   year: number;
   events: Event[];
   onYearChange: (year: number) => void;
+  canManageEvents?: boolean;
+  onCreateEvent?: (date: Date) => void;
 }
 
-export function EventCalendar({ year, events, onYearChange }: EventCalendarProps) {
+export function EventCalendar({
+  year,
+  events,
+  onYearChange,
+  canManageEvents = false,
+  onCreateEvent,
+}: EventCalendarProps) {
   const today = new Date();
+  const [isDayModalOpen, setIsDayModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(
     today.getFullYear() === year ? today : new Date(year, 0, 1)
   );
@@ -109,11 +125,13 @@ export function EventCalendar({ year, events, onYearChange }: EventCalendarProps
   const changeYear = (nextYear: number) => {
     onYearChange(nextYear);
     setSelectedDate(new Date(nextYear, selectedDate.getMonth(), 1));
+    setIsDayModalOpen(false);
   };
 
   const selectToday = () => {
     onYearChange(today.getFullYear());
     setSelectedDate(today);
+    setIsDayModalOpen(false);
   };
 
   return (
@@ -151,7 +169,7 @@ export function EventCalendar({ year, events, onYearChange }: EventCalendarProps
       </div>
 
       <div className="p-5">
-        <div className="grid grid-cols-1 gap-x-8 gap-y-10 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-x-8 gap-y-10 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {MONTHS.map((month) => {
             const monthDate = new Date(year, month, 1);
             const monthStart = startOfMonth(monthDate);
@@ -173,8 +191,8 @@ export function EventCalendar({ year, events, onYearChange }: EventCalendarProps
 
                   {days.map((day) => {
                     const dayKey = format(day, 'yyyy-MM-dd');
-                    const dayEvents = eventDays.get(dayKey) ?? [];
                     const isCurrentMonth = isSameMonth(day, monthDate);
+                    const dayEvents = isCurrentMonth ? eventDays.get(dayKey) ?? [] : [];
                     const isToday = isSameDay(day, today);
                     const isSelected = isSameDay(day, selectedDate);
 
@@ -182,10 +200,17 @@ export function EventCalendar({ year, events, onYearChange }: EventCalendarProps
                       <button
                         key={dayKey}
                         type="button"
-                        onClick={() => setSelectedDate(day)}
+                        disabled={!isCurrentMonth}
+                        onClick={() => {
+                          if (!isCurrentMonth) return;
+                          setSelectedDate(day);
+                          setIsDayModalOpen(true);
+                        }}
                         className={`relative flex h-8 items-center justify-center rounded-full text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-1 ${
                           isCurrentMonth ? 'text-slate-700 dark:text-slate-200' : 'text-slate-300 dark:text-slate-600'
-                        } ${isSelected ? 'bg-primary-50 ring-2 ring-primary-500 dark:bg-primary-900/30' : 'hover:bg-slate-100 dark:hover:bg-slate-800'} ${
+                        } ${isCurrentMonth && isSelected ? 'bg-primary-50 ring-2 ring-primary-500 dark:bg-primary-900/30' : ''} ${
+                          isCurrentMonth ? 'hover:bg-slate-100 dark:hover:bg-slate-800' : 'cursor-default'
+                        } ${
                           isToday && !isSelected ? 'font-bold text-primary-700 dark:text-primary-300' : ''
                         }`}
                         aria-label={`${format(day, "d 'de' MMMM 'de' yyyy", { locale: ptBR })}${dayEvents.length ? `, ${dayEvents.length} evento(s)` : ''}`}
@@ -205,27 +230,41 @@ export function EventCalendar({ year, events, onYearChange }: EventCalendarProps
           })}
         </div>
 
-        <div className="mt-8 border-t border-slate-200 pt-5 dark:border-slate-700">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                Eventos do dia
-              </p>
-              <h3 className="mt-1 text-lg font-semibold capitalize text-slate-900 dark:text-white">
-                {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
-              </h3>
-            </div>
+      </div>
+
+      <Modal
+        isOpen={isDayModalOpen}
+        onClose={() => setIsDayModalOpen(false)}
+        title="Eventos do dia"
+        description={format(selectedDate, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
             <span className="text-sm text-slate-500 dark:text-slate-400">
-              {selectedEvents.length} evento(s)
+              {selectedEvents.length} evento(s) programado(s)
             </span>
+            {canManageEvents && onCreateEvent ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsDayModalOpen(false);
+                  onCreateEvent(selectedDate);
+                }}
+                leftIcon={<PlusIcon className="h-4 w-4" />}
+              >
+                Criar evento
+              </Button>
+            ) : null}
           </div>
 
           {selectedEvents.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
+            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
               Não há eventos programados neste dia.
             </div>
           ) : (
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-3">
               {selectedEvents.map((event) => (
                 <article key={event.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/60">
                   <div className="flex items-start justify-between gap-3">
@@ -249,7 +288,7 @@ export function EventCalendar({ year, events, onYearChange }: EventCalendarProps
             </div>
           )}
         </div>
-      </div>
+      </Modal>
     </section>
   );
 }

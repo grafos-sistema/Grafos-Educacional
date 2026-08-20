@@ -29,6 +29,7 @@ type CreateUserBody = {
   isActive?: boolean
   institutionId?: string
   institutionIds?: string[]
+  unitId?: string
   specialization?: string | null
   degree?: string | null
   registrationNumber?: string | null
@@ -177,6 +178,7 @@ Deno.serve(async (req: Request) => {
   const institutionIds = isCreatingGlobalAdmin
     ? []
     : Array.from(new Set([institutionId, ...requestedInstitutionIds].filter(Boolean)))
+  const unitId = body?.unitId?.trim() || null
   const isActive = body?.isActive ?? true
   const generatedPassword = normalizePassword(body?.password) ?? (email ? buildInitialPassword(email) : null)
 
@@ -187,6 +189,7 @@ Deno.serve(async (req: Request) => {
   if (!lastName) return json({ error: "missing_lastName" }, 400)
   if (!isCreatingGlobalAdmin && !institutionId) return json({ error: "missing_institutionId" }, 400)
   if (!isCreatingGlobalAdmin && institutionIds.length === 0) return json({ error: "missing_institutionIds" }, 400)
+  if (unitId && isCreatingGlobalAdmin) return json({ error: "global_admin_cannot_have_unit" }, 400)
 
   if (isCreatingGlobalAdmin && caller.role !== "SUPER_ADMIN_GLOBAL") {
     return json({ error: "not_authorized_for_role" }, 403)
@@ -223,6 +226,18 @@ Deno.serve(async (req: Request) => {
     }
     if (institutions.some((institution: { isActive: boolean }) => !institution.isActive)) {
       return json({ error: "institution_inactive" }, 400)
+    }
+
+    if (unitId) {
+      const { data: unit, error: unitError } = await supabase
+        .from("institution_units")
+        .select('id, "institutionId", "isActive"')
+        .eq("id", unitId)
+        .maybeSingle()
+
+      if (unitError) return json({ error: "failed_to_load_unit" }, 500)
+      if (!unit || unit.institutionId !== institutionId) return json({ error: "unit_not_found" }, 404)
+      if (!unit.isActive) return json({ error: "unit_inactive" }, 400)
     }
   }
 
@@ -272,6 +287,7 @@ Deno.serve(async (req: Request) => {
   const createdRelatedAuthIds: string[] = []
 
   const cleanup = async () => {
+    await supabase.from("user_units").delete().eq("userId", authUser.id)
     await supabase.from("user_institutions").delete().eq("userId", authUser.id)
     await supabase.from("users").delete().eq("id", authUser.id)
     await supabase.auth.admin.deleteUser(authUser.id)
@@ -338,6 +354,23 @@ Deno.serve(async (req: Request) => {
     if (linkError) {
       await cleanup()
       return json({ error: "failed_to_link_user_institution", details: linkError.message }, 500)
+    }
+  }
+
+  if (unitId) {
+    const { error: unitLinkError } = await supabase.from("user_units").insert({
+      id: crypto.randomUUID(),
+      userId: appUser.id,
+      unitId,
+      isActive: true,
+      isPrimary: true,
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    if (unitLinkError) {
+      await cleanup()
+      return json({ error: "failed_to_link_user_unit", details: unitLinkError.message }, 500)
     }
   }
 

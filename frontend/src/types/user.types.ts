@@ -191,6 +191,7 @@ export interface CreateUserDto {
   isActive?: boolean;
   institutionId?: string;
   institutionIds?: string[];
+  unitId?: string;
   
   // Health Info
   tipoSanguineo?: string;
