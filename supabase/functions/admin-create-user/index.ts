@@ -504,8 +504,8 @@ Deno.serve(async (req: Request) => {
               ? resp.email.trim().toLowerCase()
               : `responsavel_${crypto.randomUUID()}@sem-acesso.grafos.internal`
 
-            // Senha padrão forte para evitar erro de password policy
-            const parentPassword = 'Grafos@2024!'
+            // Usar a mesma senha padrão exibida na tela de login do responsável.
+            const parentPassword = buildInitialPassword(parentEmail)
 
             const { data: pAuth, error: pAuthError } = await supabase.auth.admin.createUser({
               email: parentEmail,
@@ -514,6 +514,7 @@ Deno.serve(async (req: Request) => {
               user_metadata: {
                 fullName: nomeCompleto,
                 temEmailReal,
+                mustChangePassword: true,
               },
             })
 

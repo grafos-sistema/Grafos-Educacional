@@ -40,6 +40,16 @@ export const authService = {
     });
 
     if (error || !data.session) {
+      const normalizedMessage = error?.message?.trim().toLowerCase() ?? '';
+      const normalizedCode = error?.code?.trim().toLowerCase() ?? '';
+
+      if (
+        normalizedCode === 'invalid_credentials' ||
+        normalizedMessage.includes('invalid login credentials')
+      ) {
+        throw new Error('Email ou senha incorretos. Confira os dados e tente novamente.');
+      }
+
       throw new Error(error?.message || 'Falha ao autenticar com o Supabase');
     }
 

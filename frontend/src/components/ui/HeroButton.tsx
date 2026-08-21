@@ -67,7 +67,7 @@ export function Button({
       'min-h-9 px-3 py-2 text-sm': size === 'sm',
       'min-h-10 px-4 py-2 text-sm': size === 'md',
       'min-h-11 px-5 py-2.5 text-base': size === 'lg',
-      'border-primary-500 !bg-primary-500 text-white hover:!bg-primary-600 active:!bg-primary-700':
+      'border-primary-500 !bg-primary-500 !text-white hover:!bg-primary-600 active:!bg-primary-700':
         variant === 'primary',
       'border-secondary-200 !bg-secondary-100 text-secondary-800 hover:!bg-secondary-200 active:!bg-secondary-300':
         variant === 'secondary',
@@ -75,7 +75,7 @@ export function Button({
         variant === 'outline',
       'border-secondary-200 !bg-white text-secondary-700 hover:!bg-secondary-50 active:!bg-secondary-100':
         variant === 'ghost',
-      'border-danger-500 !bg-danger-500 text-white hover:!bg-danger-600 active:!bg-danger-700':
+      'border-danger-500 !bg-danger-500 !text-white hover:!bg-danger-600 active:!bg-danger-700':
         variant === 'danger',
     },
     className

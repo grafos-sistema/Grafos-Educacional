@@ -20,6 +20,11 @@ function json(data: any, status = 200) {
   })
 }
 
+function buildInitialPassword(email: string) {
+  const [localPart] = email.trim().toLowerCase().split("@")
+  return `${localPart}@Grafos`
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders })
@@ -108,14 +113,14 @@ Deno.serve(async (req) => {
           ? resp.email.trim().toLowerCase()
           : `responsavel_${crypto.randomUUID()}@sem-acesso.grafos.internal`
 
-        // Senha padrão forte para evitar erro de password policy
-        const parentPassword = 'Grafos@2024!'
+        // Usar a mesma senha padrão exibida na tela de login do responsável.
+        const parentPassword = buildInitialPassword(parentEmail)
 
         const { data: pAuth, error: pAuthError } = await supabase.auth.admin.createUser({
           email: parentEmail,
           password: parentPassword,
           email_confirm: true,
-          user_metadata: { fullName: nomeCompleto, temEmailReal },
+          user_metadata: { fullName: nomeCompleto, temEmailReal, mustChangePassword: true },
         })
 
         if (pAuthError) {
