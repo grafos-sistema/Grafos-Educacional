@@ -864,7 +864,11 @@ export class UsersService {
         });
 
       if (authEmailError) {
-        if (/already|registered|exists|duplicate|unique/i.test(authEmailError.message)) {
+        if (
+          /already|registered|exists|duplicate|unique/i.test(
+            authEmailError.message,
+          )
+        ) {
           throw new ConflictException('Este email já está cadastrado.');
         }
 
@@ -925,7 +929,9 @@ export class UsersService {
         });
 
         if (shouldSyncInstitutionLinks) {
-          await transaction.userInstitution.deleteMany({ where: { userId: id } });
+          await transaction.userInstitution.deleteMany({
+            where: { userId: id },
+          });
           await transaction.userInstitution.createMany({
             data: requestedInstitutionIds.map((requestedId) => ({
               userId: id,
@@ -951,7 +957,9 @@ export class UsersService {
         } catch (rollbackError) {
           this.logger.error(
             `Falha ao desfazer o email do Auth após erro no banco para o usuário ${id}.`,
-            rollbackError instanceof Error ? rollbackError.stack : String(rollbackError),
+            rollbackError instanceof Error
+              ? rollbackError.stack
+              : String(rollbackError),
           );
         }
       }
