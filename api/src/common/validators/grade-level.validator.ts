@@ -43,7 +43,9 @@ const VALID_GRADE_LEVELS = [
 ];
 
 @ValidatorConstraint({ name: 'isValidGradeLevel', async: false })
-export class IsValidGradeLevelConstraint implements ValidatorConstraintInterface {
+export class IsValidGradeLevelConstraint
+  implements ValidatorConstraintInterface
+{
   validate(gradeLevel: string): boolean {
     if (!gradeLevel) return false;
 
