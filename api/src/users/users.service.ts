@@ -732,6 +732,24 @@ export class UsersService {
       ...data
     } = updateUserDto;
 
+    // O e-mail usado no login pertence ao Supabase Auth e o e-mail exibido
+    // pela aplicação pertence a public.users. Os dois registros precisam ser
+    // alterados juntos; caso contrário, a tela mostra o e-mail novo, mas o
+    // login continua aceitando apenas o antigo.
+    const normalizedEmail =
+      typeof email === 'string' ? email.trim().toLowerCase() : email;
+    const authIdentity = await this.prisma.user.findUnique({
+      where: { id },
+      select: { authUserId: true, email: true },
+    });
+    const currentEmail = authIdentity?.email?.trim().toLowerCase();
+    const emailChanged =
+      typeof normalizedEmail === 'string' &&
+      normalizedEmail.length > 0 &&
+      normalizedEmail !== currentEmail;
+
+    let authEmailUpdated = false;
+
     const isGlobalAdmin = currentUser.role === UserRole.SUPER_ADMIN_GLOBAL;
     const canManageRoles =
       isGlobalAdmin || currentUser.role === UserRole.SUPER_ADMIN;
@@ -788,11 +806,11 @@ export class UsersService {
     }
 
     // Verifica email único se fornecido NESTA instituição
-    if (email) {
+    if (normalizedEmail) {
       const existingEmail = await this.prisma.$queryRaw<Array<{ id: string }>>`
         SELECT id
         FROM public.users
-        WHERE email = ${email}
+        WHERE LOWER(email) = LOWER(${normalizedEmail})
           AND (
             ("institutionId" = ${existingUser.institutionId})
             OR (${existingUser.institutionId} IS NULL AND "institutionId" IS NULL)
@@ -828,6 +846,39 @@ export class UsersService {
       }
     }
 
+    // Só altera o Auth depois de concluir todas as validações locais. Assim,
+    // um CPF/email duplicado ou uma instituição inválida nunca deixa uma
+    // alteração parcial no login.
+    if (emailChanged) {
+      if (!authIdentity?.authUserId) {
+        throw new BadRequestException(
+          'Este usuário não possui uma conta de acesso vinculada. Não foi possível alterar o email de login.',
+        );
+      }
+
+      const supabase = this.getSupabaseAdminClient();
+      const { error: authEmailError } =
+        await supabase.auth.admin.updateUserById(authIdentity.authUserId, {
+          email: normalizedEmail,
+          email_confirm: true,
+        });
+
+      if (authEmailError) {
+        if (/already|registered|exists|duplicate|unique/i.test(authEmailError.message)) {
+          throw new ConflictException('Este email já está cadastrado.');
+        }
+
+        this.logger.error(
+          `Falha ao atualizar o email de login do usuário ${id}: ${authEmailError.message}`,
+        );
+        throw new InternalServerErrorException(
+          'Não foi possível atualizar o email de acesso agora. Tente novamente.',
+        );
+      }
+
+      authEmailUpdated = true;
+    }
+
     // Converte birthDate string para Date se fornecido
     const parsedBirthDate = birthDate ? new Date(birthDate) : undefined;
 
@@ -839,52 +890,74 @@ export class UsersService {
       fullName = `${newFirstName} ${newLastName}`.trim();
     }
 
-    return this.prisma.$transaction(async (transaction) => {
-      const updatedUser = await transaction.user.update({
-        where: { id },
-        data: {
-          ...data,
-          email,
-          cpf,
-          birthDate: parsedBirthDate,
-          firstName,
-          lastName,
-          state: state?.toUpperCase(),
-          ...(institutionId !== undefined ? { institutionId } : {}),
-          ...(fullName && { name: fullName }),
-        },
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          cpf: true,
-          phone: true,
-          whatsapp: true,
-          birthDate: true,
-          avatar: true,
-          role: true,
-          institutionId: true,
-          isActive: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      });
-
-      if (shouldSyncInstitutionLinks) {
-        await transaction.userInstitution.deleteMany({ where: { userId: id } });
-        await transaction.userInstitution.createMany({
-          data: requestedInstitutionIds.map((requestedId) => ({
-            userId: id,
-            institutionId: requestedId,
+    try {
+      return await this.prisma.$transaction(async (transaction) => {
+        const updatedUser = await transaction.user.update({
+          where: { id },
+          data: {
+            ...data,
+            email: normalizedEmail,
+            cpf,
+            birthDate: parsedBirthDate,
+            firstName,
+            lastName,
+            state: state?.toUpperCase(),
+            ...(emailChanged ? { emailVerified: true } : {}),
+            ...(institutionId !== undefined ? { institutionId } : {}),
+            ...(fullName && { name: fullName }),
+          },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            cpf: true,
+            phone: true,
+            whatsapp: true,
+            birthDate: true,
+            avatar: true,
+            role: true,
+            institutionId: true,
             isActive: true,
-            isPrimary: requestedId === primaryInstitutionId,
-          })),
+            createdAt: true,
+            updatedAt: true,
+          },
         });
+
+        if (shouldSyncInstitutionLinks) {
+          await transaction.userInstitution.deleteMany({ where: { userId: id } });
+          await transaction.userInstitution.createMany({
+            data: requestedInstitutionIds.map((requestedId) => ({
+              userId: id,
+              institutionId: requestedId,
+              isActive: true,
+              isPrimary: requestedId === primaryInstitutionId,
+            })),
+          });
+        }
+
+        return updatedUser;
+      });
+    } catch (error) {
+      // Se o Auth foi alterado e a gravação no banco falhou, tenta restaurar
+      // o e-mail anterior para não deixar os dois lados divergentes.
+      if (authEmailUpdated && authIdentity?.authUserId && currentEmail) {
+        try {
+          const supabase = this.getSupabaseAdminClient();
+          await supabase.auth.admin.updateUserById(authIdentity.authUserId, {
+            email: currentEmail,
+            email_confirm: true,
+          });
+        } catch (rollbackError) {
+          this.logger.error(
+            `Falha ao desfazer o email do Auth após erro no banco para o usuário ${id}.`,
+            rollbackError instanceof Error ? rollbackError.stack : String(rollbackError),
+          );
+        }
       }
 
-      return updatedUser;
-    });
+      throw error;
+    }
   }
 
   /**

@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -21,6 +20,7 @@ export default function ResetPasswordPage() {
   const [hasRecoveryToken, setHasRecoveryToken] = useState(false);
   const [hasAuthenticatedSession, setHasAuthenticatedSession] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
+  const [isLeaving, setIsLeaving] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -41,6 +41,24 @@ export default function ResetPasswordPage() {
   }, []);
 
   const isAuthenticatedPasswordChange = hasAuthenticatedSession && !hasRecoveryToken;
+
+  const handleBackToLogin = async () => {
+    if (isLeaving) return;
+
+    setIsLeaving(true);
+    try {
+      // A sessão precisa ser encerrada antes da navegação. Se apenas
+      // navegarmos para /login, a proteção da área autenticada identifica a
+      // sessão ainda ativa e devolve o usuário para esta mesma tela.
+      await authService.logout();
+    } catch {
+      // Mesmo que a revogação remota falhe, limpar o estado local impede um
+      // loop de redirecionamento e deixa o usuário voltar a tentar o login.
+    } finally {
+      clearAuthStore();
+      router.replace('/login');
+    }
+  };
 
   const {
     register,
@@ -172,9 +190,14 @@ export default function ResetPasswordPage() {
         </form>
 
         <div className="mt-6 text-center text-sm">
-          <Link href="/login" className="font-medium text-primary-600 hover:text-primary-500">
-            Voltar para o login
-          </Link>
+          <button
+            type="button"
+            onClick={handleBackToLogin}
+            disabled={isLeaving}
+            className="font-medium text-primary-600 transition-colors hover:text-primary-500 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isLeaving ? 'Saindo...' : 'Voltar para o login'}
+          </button>
         </div>
       </div>
     </div>
