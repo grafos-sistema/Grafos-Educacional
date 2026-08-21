@@ -749,6 +749,7 @@ export class UsersService {
       normalizedEmail !== currentEmail;
 
     let authEmailUpdated = false;
+    let shouldRefreshInitialPassword = false;
 
     const isGlobalAdmin = currentUser.role === UserRole.SUPER_ADMIN_GLOBAL;
     const canManageRoles =
@@ -857,6 +858,22 @@ export class UsersService {
       }
 
       const supabase = this.getSupabaseAdminClient();
+      const { data: authUserResult, error: authUserLookupError } =
+        await supabase.auth.admin.getUserById(authIdentity.authUserId);
+
+      if (authUserLookupError || !authUserResult.user) {
+        this.logger.warn(
+          `Não foi possível verificar o primeiro acesso do usuário ${id} durante a alteração de email. A senha atual será preservada.`,
+        );
+      } else {
+        // A senha padrão exibida no primeiro acesso é derivada do email.
+        // Só a regeneramos enquanto o usuário ainda não trocou a senha;
+        // usuários que já definiram uma senha pessoal não são afetados.
+        shouldRefreshInitialPassword = Boolean(
+          authUserResult.user.user_metadata?.mustChangePassword,
+        );
+      }
+
       const { error: authEmailError } =
         await supabase.auth.admin.updateUserById(authIdentity.authUserId, {
           email: normalizedEmail,
@@ -895,55 +912,80 @@ export class UsersService {
     }
 
     try {
-      return await this.prisma.$transaction(async (transaction) => {
-        const updatedUser = await transaction.user.update({
-          where: { id },
-          data: {
-            ...data,
-            email: normalizedEmail,
-            cpf,
-            birthDate: parsedBirthDate,
-            firstName,
-            lastName,
-            state: state?.toUpperCase(),
-            ...(emailChanged ? { emailVerified: true } : {}),
-            ...(institutionId !== undefined ? { institutionId } : {}),
-            ...(fullName && { name: fullName }),
-          },
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            cpf: true,
-            phone: true,
-            whatsapp: true,
-            birthDate: true,
-            avatar: true,
-            role: true,
-            institutionId: true,
-            isActive: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-        });
-
-        if (shouldSyncInstitutionLinks) {
-          await transaction.userInstitution.deleteMany({
-            where: { userId: id },
-          });
-          await transaction.userInstitution.createMany({
-            data: requestedInstitutionIds.map((requestedId) => ({
-              userId: id,
-              institutionId: requestedId,
+      const updatedUser = await this.prisma.$transaction(
+        async (transaction) => {
+          const updatedUser = await transaction.user.update({
+            where: { id },
+            data: {
+              ...data,
+              email: normalizedEmail,
+              cpf,
+              birthDate: parsedBirthDate,
+              firstName,
+              lastName,
+              state: state?.toUpperCase(),
+              ...(emailChanged ? { emailVerified: true } : {}),
+              ...(institutionId !== undefined ? { institutionId } : {}),
+              ...(fullName && { name: fullName }),
+            },
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              cpf: true,
+              phone: true,
+              whatsapp: true,
+              birthDate: true,
+              avatar: true,
+              role: true,
+              institutionId: true,
               isActive: true,
-              isPrimary: requestedId === primaryInstitutionId,
-            })),
+              createdAt: true,
+              updatedAt: true,
+            },
           });
-        }
 
-        return updatedUser;
-      });
+          if (shouldSyncInstitutionLinks) {
+            await transaction.userInstitution.deleteMany({
+              where: { userId: id },
+            });
+            await transaction.userInstitution.createMany({
+              data: requestedInstitutionIds.map((requestedId) => ({
+                userId: id,
+                institutionId: requestedId,
+                isActive: true,
+                isPrimary: requestedId === primaryInstitutionId,
+              })),
+            });
+          }
+
+          return updatedUser;
+        },
+      );
+
+      if (
+        emailChanged &&
+        shouldRefreshInitialPassword &&
+        authIdentity?.authUserId
+      ) {
+        const supabase = this.getSupabaseAdminClient();
+        const { error: authPasswordError } =
+          await supabase.auth.admin.updateUserById(authIdentity.authUserId, {
+            password: this.buildInitialPassword(normalizedEmail),
+          });
+
+        if (authPasswordError) {
+          // O email e o registro público já estão sincronizados. Nesse caso,
+          // preservamos a senha anterior para não bloquear o acesso; o usuário
+          // ainda poderá usar "Resetar senha" ou a senha antiga.
+          this.logger.error(
+            `Email sincronizado, mas não foi possível regenerar a senha inicial do usuário ${id}: ${authPasswordError.message}`,
+          );
+        }
+      }
+
+      return updatedUser;
     } catch (error) {
       // Se o Auth foi alterado e a gravação no banco falhou, tenta restaurar
       // o e-mail anterior para não deixar os dois lados divergentes.
