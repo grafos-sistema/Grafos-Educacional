@@ -190,12 +190,12 @@ export default function SubjectDetailPage() {
                       </p>
                     </div>
                   </div>
-                  {teacher?.user?.id ? (
+                  {teacher?.id ? (
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() =>
-                        router.push(`/admin/users/${teacher.user?.id}`)
+                        router.push(`/admin/users/${teacher.id}`)
                       }
                       aria-label={`Visualizar perfil de ${name}`}
                       title="Visualizar perfil"

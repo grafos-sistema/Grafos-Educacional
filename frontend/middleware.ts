@@ -31,6 +31,12 @@ const authRoutes = [
   '/forgot-password'
 ];
 
+// These pages are shared by all authenticated profiles. They must be checked
+// independently from the role-specific route prefixes below; otherwise a
+// valid user is redirected to their dashboard when opening Meu Perfil or
+// Configurações.
+const sharedAuthenticatedRoutes = ['/perfil', '/configuracoes'];
+
 // Role-based route access
 const roleRoutes: Record<string, string[]> = {
   SUPER_ADMIN_GLOBAL: ['/super-admin', '/admin', '/coordinator', '/professor', '/aluno', '/responsaveis', '/communication'],
@@ -84,6 +90,14 @@ export function middleware(request: NextRequest) {
 
   // Check role-based access for protected routes
   if (accessToken && userRole && !isPublicRoute) {
+    const canAccessSharedRoute = sharedAuthenticatedRoutes.some(
+      (route) => pathname === route || pathname.startsWith(route + '/'),
+    );
+
+    if (canAccessSharedRoute) {
+      return NextResponse.next();
+    }
+
     const hasAccess = checkRoleAccess(pathname, userRole);
     if (!hasAccess) {
       // User doesn't have access to this route, redirect to their dashboard
