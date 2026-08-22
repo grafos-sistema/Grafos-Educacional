@@ -4,10 +4,12 @@ import { useRouter, useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeftIcon,
+  EyeIcon,
   PencilIcon,
   BookOpenIcon,
 } from '@heroicons/react/24/outline';
 import { subjectsService } from '@/services/subjects.service';
+import { teacherSubjectsService } from '@/services/teacher-subjects.service';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -23,6 +25,13 @@ export default function SubjectDetailPage() {
     queryFn: () => subjectsService.findOne(subjectId),
     enabled: !!subjectId,
   });
+  const { data: subjectTeachers = [], isLoading: isLoadingTeachers } = useQuery(
+    {
+      queryKey: ['subject-teachers', subjectId],
+      queryFn: () => teacherSubjectsService.getBySubject(subjectId),
+      enabled: Boolean(subjectId),
+    },
+  );
 
   if (isLoading) {
     return (
@@ -108,24 +117,6 @@ export default function SubjectDetailPage() {
                   {subject.code || '-'}
                 </span>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-                  Cor
-                </label>
-                {subject.color ? (
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-6 h-6 rounded border border-gray-300 dark:border-gray-600"
-                      style={{ backgroundColor: subject.color }}
-                    />
-                    <span className="text-sm font-mono text-gray-900 dark:text-gray-100">
-                      {subject.color}
-                    </span>
-                  </div>
-                ) : (
-                  <span className="text-gray-900 dark:text-gray-100">-</span>
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -143,58 +134,81 @@ export default function SubjectDetailPage() {
         </div>
       )}
 
-      {/* Preview da Cor */}
-      {subject.color && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-            Preview da Cor
-          </h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Veja como a disciplina aparecerá em horários e calendários
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Card exemplo */}
-            <div
-              className="p-4 rounded-lg border-l-4"
-              style={{
-                borderLeftColor: subject.color,
-                backgroundColor: `${subject.color}10`,
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <BookOpenIcon
-                  className="h-6 w-6"
-                  style={{ color: subject.color }}
-                />
-                <div>
-                  <div className="font-medium text-gray-900 dark:text-white">
-                    {subject.name}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Segunda-feira, 08:00 - 09:00
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Badge exemplo */}
-            <div className="flex items-center gap-3">
-              <span
-                className="px-3 py-1 rounded-full text-sm font-medium"
-                style={{
-                  backgroundColor: `${subject.color}20`,
-                  color: subject.color,
-                }}
-              >
-                {subject.name}
-              </span>
-              <span className="text-gray-600 dark:text-gray-400">
-                Badge de horário
-              </span>
-            </div>
+      {/* Professores vinculados */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Professores da disciplina
+            </h3>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              Professores vinculados a esta disciplina e seus dados de contato.
+            </p>
           </div>
+          <Badge variant="info">{subjectTeachers.length}</Badge>
         </div>
-      )}
+        {isLoadingTeachers ? (
+          <div className="py-6">
+            <LoadingSpinner size="sm" text="Carregando professores..." />
+          </div>
+        ) : subjectTeachers.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-gray-300 p-5 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+            Nenhum professor foi vinculado a esta disciplina.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {subjectTeachers.map((link) => {
+              const teacher = link.teacher?.user;
+              const name = teacher
+                ? `${teacher.firstName} ${teacher.lastName}`.trim()
+                : 'Professor';
+              return (
+                <div
+                  key={link.id}
+                  className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    {teacher?.avatar ? (
+                      <img
+                        src={teacher.avatar}
+                        alt={name}
+                        className="h-11 w-11 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
+                        {name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-gray-900 dark:text-white">
+                        {name}
+                      </p>
+                      <p className="truncate text-sm text-gray-500 dark:text-gray-400">
+                        {teacher?.email ||
+                          teacher?.phone ||
+                          'Contato não informado'}
+                      </p>
+                    </div>
+                  </div>
+                  {teacher?.user?.id ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        router.push(`/admin/users/${teacher.user?.id}`)
+                      }
+                      aria-label={`Visualizar perfil de ${name}`}
+                      title="Visualizar perfil"
+                    >
+                      <EyeIcon className="h-5 w-5" />
+                    </Button>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Informações do Sistema */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">

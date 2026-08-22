@@ -82,7 +82,8 @@ type StudentParentRow = {
 const USER_BASE_COLUMNS =
   'id, email, role, firstName, lastName, cpf, phone, whatsapp, telefoneFixo, birthDate, gender, avatar, address, numero, complemento, bairro, city, state, zipCode, isActive, emailVerified, requestedProfileType, institutionId, createdAt, updatedAt, socialName';
 
-const TEACHER_LIST_PROFILE_COLUMNS = 'id, userId, specialization, registrationNumber, isActive';
+const TEACHER_LIST_PROFILE_COLUMNS =
+  'id, userId, specialization, registrationNumber, isActive';
 const STUDENT_LIST_PROFILE_COLUMNS = 'id, userId, registrationNumber, isActive';
 const PARENT_LIST_PROFILE_COLUMNS = 'id, userId, occupation, isActive';
 const STUDENT_DOCUMENT_BUCKET = 'student-documents';
@@ -105,12 +106,14 @@ function normalizeOptionalString(value: unknown) {
   return unmasked === '' ? null : value;
 }
 
-function isSupabaseFunctionHttpError(error: unknown): error is { context: Response } {
+function isSupabaseFunctionHttpError(
+  error: unknown,
+): error is { context: Response } {
   return Boolean(
     error &&
-      typeof error === 'object' &&
-      'context' in error &&
-      (error as { context?: unknown }).context instanceof Response
+    typeof error === 'object' &&
+    'context' in error &&
+    (error as { context?: unknown }).context instanceof Response,
   );
 }
 
@@ -226,7 +229,7 @@ async function getProfileUserIds(table: 'teachers' | 'students' | 'parents') {
 
 async function loadUserProfiles(
   userIds: string[],
-  mode: 'summary' | 'detailed' = 'detailed'
+  mode: 'summary' | 'detailed' = 'detailed',
 ) {
   if (userIds.length === 0) {
     return {
@@ -238,9 +241,18 @@ async function loadUserProfiles(
 
   if (mode === 'summary') {
     const [teacherResult, studentResult, parentResult] = await Promise.all([
-      supabase.from('teachers').select(TEACHER_LIST_PROFILE_COLUMNS).in('userId', userIds),
-      supabase.from('students').select(STUDENT_LIST_PROFILE_COLUMNS).in('userId', userIds),
-      supabase.from('parents').select(PARENT_LIST_PROFILE_COLUMNS).in('userId', userIds),
+      supabase
+        .from('teachers')
+        .select(TEACHER_LIST_PROFILE_COLUMNS)
+        .in('userId', userIds),
+      supabase
+        .from('students')
+        .select(STUDENT_LIST_PROFILE_COLUMNS)
+        .in('userId', userIds),
+      supabase
+        .from('parents')
+        .select(PARENT_LIST_PROFILE_COLUMNS)
+        .in('userId', userIds),
     ]);
 
     if (teacherResult.error) throw teacherResult.error;
@@ -249,20 +261,32 @@ async function loadUserProfiles(
 
     return {
       teacherMap: new Map(
-        (teacherResult.data ?? []).map((row: any) => [row.userId as string, row as NonNullable<User['teacherProfile']>])
+        (teacherResult.data ?? []).map((row: any) => [
+          row.userId as string,
+          row as NonNullable<User['teacherProfile']>,
+        ]),
       ),
       studentMap: new Map(
-        (studentResult.data ?? []).map((row: any) => [row.userId as string, row as NonNullable<User['studentProfile']>])
+        (studentResult.data ?? []).map((row: any) => [
+          row.userId as string,
+          row as NonNullable<User['studentProfile']>,
+        ]),
       ),
       parentMap: new Map(
-        (parentResult.data ?? []).map((row: any) => [row.userId as string, row as NonNullable<User['parentProfile']>])
+        (parentResult.data ?? []).map((row: any) => [
+          row.userId as string,
+          row as NonNullable<User['parentProfile']>,
+        ]),
       ),
     };
   }
 
   const [teacherResult, studentResult, parentResult] = await Promise.all([
     supabase.from('teachers').select('*').in('userId', userIds),
-    supabase.from('students').select(STUDENT_DETAIL_PROFILE_COLUMNS).in('userId', userIds),
+    supabase
+      .from('students')
+      .select(STUDENT_DETAIL_PROFILE_COLUMNS)
+      .in('userId', userIds),
     supabase.from('parents').select('*').in('userId', userIds),
   ]);
 
@@ -279,11 +303,18 @@ async function loadUserProfiles(
 
   if (studentIds.length > 0) {
     const [healthRes, transportRes, studentParentsRes] = await Promise.all([
-      supabase.from('student_health_records').select('*').in('studentId', studentIds),
-      supabase.from('student_transportation').select('*').in('studentId', studentIds),
+      supabase
+        .from('student_health_records')
+        .select('*')
+        .in('studentId', studentIds),
+      supabase
+        .from('student_transportation')
+        .select('*')
+        .in('studentId', studentIds),
       supabase
         .from('student_parents')
-        .select(`
+        .select(
+          `
           id,
           studentId,
           parentId,
@@ -306,7 +337,8 @@ async function loadUserProfiles(
               whatsapp
             )
           )
-        `)
+        `,
+        )
         .in('studentId', studentIds),
     ]);
 
@@ -341,7 +373,10 @@ async function loadUserProfiles(
 
   return {
     teacherMap: new Map(
-      (teacherResult.data ?? []).map((row: any) => [row.userId as string, row as NonNullable<User['teacherProfile']>])
+      (teacherResult.data ?? []).map((row: any) => [
+        row.userId as string,
+        row as NonNullable<User['teacherProfile']>,
+      ]),
     ),
     studentMap: new Map(
       studentRows.map((row: any) => {
@@ -351,28 +386,37 @@ async function loadUserProfiles(
           transportation: transportMap.get(row.id),
           parents: studentParentsMap.get(row.id) || [],
         };
-        return [row.userId as string, studentProfile as NonNullable<User['studentProfile']>];
-      })
+        return [
+          row.userId as string,
+          studentProfile as NonNullable<User['studentProfile']>,
+        ];
+      }),
     ),
     parentMap: new Map(
-      (parentResult.data ?? []).map((row: any) => [row.userId as string, row as NonNullable<User['parentProfile']>])
+      (parentResult.data ?? []).map((row: any) => [
+        row.userId as string,
+        row as NonNullable<User['parentProfile']>,
+      ]),
     ),
   };
 }
 
 async function mapUsers(
   rows: AppUserRow[],
-  mode: 'summary' | 'detailed' = 'detailed'
+  mode: 'summary' | 'detailed' = 'detailed',
 ) {
   const userIds = rows.map((row) => row.id);
-  const { teacherMap, studentMap, parentMap } = await loadUserProfiles(userIds, mode);
+  const { teacherMap, studentMap, parentMap } = await loadUserProfiles(
+    userIds,
+    mode,
+  );
 
   return rows.map((row) =>
     mapUser(row, {
       teacherProfile: teacherMap.get(row.id),
       studentProfile: studentMap.get(row.id),
       parentProfile: parentMap.get(row.id),
-    })
+    }),
   );
 }
 
@@ -415,7 +459,7 @@ function shouldUseSupabaseAsPrimarySource(_role?: UserRole) {
 
 async function loadParentStudentLinks(
   rows: StudentParentRow[],
-  relation: 'parent' | 'student'
+  relation: 'parent' | 'student',
 ): Promise<ParentStudent[]> {
   if (rows.length === 0) {
     return [];
@@ -439,8 +483,12 @@ async function loadParentStudentLinks(
 
     if (usersError) throw usersError;
 
-    const userMap = new Map((users ?? []).map((row: any) => [row.id as string, row as AppUserRow]));
-    const studentMap = new Map(studentRows.map((row: any) => [row.id as string, row]));
+    const userMap = new Map(
+      (users ?? []).map((row: any) => [row.id as string, row as AppUserRow]),
+    );
+    const studentMap = new Map(
+      studentRows.map((row: any) => [row.id as string, row]),
+    );
 
     return rows.map((row) => {
       const student = studentMap.get(row.studentId);
@@ -454,13 +502,14 @@ async function loadParentStudentLinks(
         isPrimary: row.isPrimary,
         createdAt: row.createdAt,
         updatedAt: row.createdAt,
-        student: student && user
-          ? {
-              id: student.id,
-              userId: student.userId,
-              user: mapUser(user),
-            }
-          : undefined,
+        student:
+          student && user
+            ? {
+                id: student.id,
+                userId: student.userId,
+                user: mapUser(user),
+              }
+            : undefined,
       };
     });
   }
@@ -482,8 +531,12 @@ async function loadParentStudentLinks(
 
   if (usersError) throw usersError;
 
-  const userMap = new Map((users ?? []).map((row: any) => [row.id as string, row as AppUserRow]));
-  const parentMap = new Map(parentRows.map((row: any) => [row.id as string, row]));
+  const userMap = new Map(
+    (users ?? []).map((row: any) => [row.id as string, row as AppUserRow]),
+  );
+  const parentMap = new Map(
+    parentRows.map((row: any) => [row.id as string, row]),
+  );
 
   return rows.map((row) => {
     const parent = parentMap.get(row.parentId);
@@ -497,13 +550,14 @@ async function loadParentStudentLinks(
       isPrimary: row.isPrimary,
       createdAt: row.createdAt,
       updatedAt: row.createdAt,
-      parent: parent && user
-        ? {
-            id: parent.id,
-            userId: parent.userId,
-            user: mapUser(user),
-          }
-        : undefined,
+      parent:
+        parent && user
+          ? {
+              id: parent.id,
+              userId: parent.userId,
+              user: mapUser(user),
+            }
+          : undefined,
     };
   });
 }
@@ -512,9 +566,12 @@ export const usersService = {
   /**
    * Listar todos os usuÃ¡rios com paginaÃ§Ã£o e filtros
    */
-  async findAll(params: UsersFilterParams = {}): Promise<PaginatedResponse<User>> {
+  async findAll(
+    params: UsersFilterParams = {},
+  ): Promise<PaginatedResponse<User>> {
     const viewer = useAuthStore.getState().user;
-    const viewerRole = (viewer?.activeProfile ?? viewer?.role) as UserRole | undefined;
+    const viewerRole = (viewer?.activeProfile ?? viewer?.role) as
+      UserRole | undefined;
     const excludeGlobalAdmins =
       viewerRole === UserRole.SUPER_ADMIN_GLOBAL && !params.includeGlobalAdmins;
     const useSupabaseAsPrimary = shouldUseSupabaseAsPrimarySource(viewerRole);
@@ -524,7 +581,8 @@ export const usersService = {
     if (params.limit) apiParams.append('limit', String(params.limit));
     if (params.search) apiParams.append('search', params.search);
     if (params.role) apiParams.append('role', params.role);
-    if (typeof params.isActive === 'boolean') apiParams.append('isActive', String(params.isActive));
+    if (typeof params.isActive === 'boolean')
+      apiParams.append('isActive', String(params.isActive));
     if (typeof params.hasTeacherProfile === 'boolean') {
       apiParams.append('hasTeacherProfile', String(params.hasTeacherProfile));
     }
@@ -538,8 +596,11 @@ export const usersService = {
       apiParams.append('hasProfile', String(params.hasProfile));
     }
 
-    const { institutionFilterAll, institutionFilterIds, institutionUnitFilterId } =
-      useAuthStore.getState();
+    const {
+      institutionFilterAll,
+      institutionFilterIds,
+      institutionUnitFilterId,
+    } = useAuthStore.getState();
     const effectiveIds =
       institutionFilterAll || params.includeAllInstitutions
         ? []
@@ -555,21 +616,29 @@ export const usersService = {
 
     if (!useSupabaseAsPrimary) {
       try {
-        const response = await api.get<PaginatedResponse<User>>(`/users?${apiParams.toString()}`, {
-          headers: { 'x-skip-error-toast': '1' },
-        });
+        const response = await api.get<PaginatedResponse<User>>(
+          `/users?${apiParams.toString()}`,
+          {
+            headers: { 'x-skip-error-toast': '1' },
+          },
+        );
         const payload = response as unknown as PaginatedResponse<User>;
         if (!excludeGlobalAdmins) {
           return payload;
         }
 
-        const filtered = payload.data.filter((item) => item.role !== UserRole.SUPER_ADMIN_GLOBAL);
+        const filtered = payload.data.filter(
+          (item) => item.role !== UserRole.SUPER_ADMIN_GLOBAL,
+        );
         return {
           ...payload,
           data: filtered,
           meta: {
             ...payload.meta,
-            total: Math.max(0, payload.meta.total - (payload.data.length - filtered.length)),
+            total: Math.max(
+              0,
+              payload.meta.total - (payload.data.length - filtered.length),
+            ),
           },
         };
       } catch (error) {
@@ -577,7 +646,10 @@ export const usersService = {
         // fallback silencioso para o Supabase, pois o RLS direto pode
         // devolver apenas o usuário autenticado e mascarar um erro real do
         // Railway como uma lista vazia/incompleta.
-        console.error('[usersService.findAll] Falha ao listar usuários pela API', error);
+        console.error(
+          '[usersService.findAll] Falha ao listar usuários pela API',
+          error,
+        );
         throw error;
       }
     }
@@ -624,19 +696,25 @@ export const usersService = {
     }
 
     if (params.hasTeacherProfile === true) {
-      includeIds = includeIds ? intersectSets(includeIds, teacherSet) : new Set(teacherSet);
+      includeIds = includeIds
+        ? intersectSets(includeIds, teacherSet)
+        : new Set(teacherSet);
     } else if (params.hasTeacherProfile === false) {
       for (const id of teacherSet) excludeIds.add(id);
     }
 
     if (params.hasStudentProfile === true) {
-      includeIds = includeIds ? intersectSets(includeIds, studentSet) : new Set(studentSet);
+      includeIds = includeIds
+        ? intersectSets(includeIds, studentSet)
+        : new Set(studentSet);
     } else if (params.hasStudentProfile === false) {
       for (const id of studentSet) excludeIds.add(id);
     }
 
     if (params.hasParentProfile === true) {
-      includeIds = includeIds ? intersectSets(includeIds, parentSet) : new Set(parentSet);
+      includeIds = includeIds
+        ? intersectSets(includeIds, parentSet)
+        : new Set(parentSet);
     } else if (params.hasParentProfile === false) {
       for (const id of parentSet) excludeIds.add(id);
     }
@@ -657,16 +735,18 @@ export const usersService = {
 
     if (effectiveUnitId) {
       const primaryUserIds: string[] = [];
-      const { data: unitDirectorRows, error: unitDirectorError } = await supabase
-        .from('institution_units')
-        .select('directorUserId')
-        .eq('id', effectiveUnitId)
-        .eq('isActive', true);
+      const { data: unitDirectorRows, error: unitDirectorError } =
+        await supabase
+          .from('institution_units')
+          .select('directorUserId')
+          .eq('id', effectiveUnitId)
+          .eq('isActive', true);
 
       if (unitDirectorError) throw unitDirectorError;
 
       for (const row of unitDirectorRows ?? []) {
-        const directorUserId = (row as any).directorUserId as string | undefined | null;
+        const directorUserId = (row as any).directorUserId as
+          string | undefined | null;
         if (directorUserId) primaryUserIds.push(directorUserId);
       }
 
@@ -701,7 +781,9 @@ export const usersService = {
         };
       }
 
-      includeIds = includeIds ? intersectSets(includeIds, unitUserIds) : unitUserIds;
+      includeIds = includeIds
+        ? intersectSets(includeIds, unitUserIds)
+        : unitUserIds;
 
       if (includeIds.size === 0) {
         return {
@@ -731,7 +813,7 @@ export const usersService = {
     if (params.search) {
       const sanitized = params.search.replace(/,/g, ' ').trim();
       query = query.or(
-        `email.ilike.%${sanitized}%,firstName.ilike.%${sanitized}%,lastName.ilike.%${sanitized}%,cpf.ilike.%${sanitized}%`
+        `email.ilike.%${sanitized}%,firstName.ilike.%${sanitized}%,lastName.ilike.%${sanitized}%,cpf.ilike.%${sanitized}%`,
       );
     }
 
@@ -743,7 +825,8 @@ export const usersService = {
     } else if (effectiveInstitutionIds.length > 1) {
       query = query.in('institutionId', effectiveInstitutionIds);
     }
-    if (typeof params.isActive === 'boolean') query = query.eq('isActive', params.isActive);
+    if (typeof params.isActive === 'boolean')
+      query = query.eq('isActive', params.isActive);
     if (includeIds) query = query.in('id', Array.from(includeIds));
     if (excludeIds.size > 0) {
       query = query.not('id', 'in', formatInFilter(Array.from(excludeIds)));
@@ -774,7 +857,8 @@ export const usersService = {
    */
   async findOne(id: string): Promise<User> {
     const viewer = useAuthStore.getState().user;
-    const viewerRole = (viewer?.activeProfile ?? viewer?.role) as UserRole | undefined;
+    const viewerRole = (viewer?.activeProfile ?? viewer?.role) as
+      UserRole | undefined;
 
     if (!shouldUseSupabaseAsPrimarySource(viewerRole)) {
       try {
@@ -806,9 +890,12 @@ export const usersService = {
         return acc;
       }, {} as any);
 
-      const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
-        body: sanitizedData,
-      });
+      const { data: result, error } = await supabase.functions.invoke(
+        'admin-create-user',
+        {
+          body: sanitizedData,
+        },
+      );
 
       if (error) {
         if (isSupabaseFunctionHttpError(error)) {
@@ -861,21 +948,27 @@ export const usersService = {
     lastName: string;
     cpf?: string;
   }): Promise<User> {
-    const sanitizedData = Object.entries(data).reduce((acc, [key, value]) => {
-      (acc as any)[key] =
-        key === 'cpf' && typeof value === 'string'
-          ? value.replace(/\D/g, '') || null
-          : normalizeOptionalString(value);
-      return acc;
-    }, {} as Record<string, unknown>);
-
-    const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
-      body: {
-        ...sanitizedData,
-        role: UserRole.SUPER_ADMIN_GLOBAL,
-        isActive: true,
+    const sanitizedData = Object.entries(data).reduce(
+      (acc, [key, value]) => {
+        (acc as any)[key] =
+          key === 'cpf' && typeof value === 'string'
+            ? value.replace(/\D/g, '') || null
+            : normalizeOptionalString(value);
+        return acc;
       },
-    });
+      {} as Record<string, unknown>,
+    );
+
+    const { data: result, error } = await supabase.functions.invoke(
+      'admin-create-user',
+      {
+        body: {
+          ...sanitizedData,
+          role: UserRole.SUPER_ADMIN_GLOBAL,
+          isActive: true,
+        },
+      },
+    );
 
     if (error) {
       if (isSupabaseFunctionHttpError(error)) {
@@ -934,7 +1027,7 @@ export const usersService = {
 
       // Transportation
       transportInfo,
-      
+
       // Responsaveis
       responsaveis,
       documents,
@@ -950,7 +1043,7 @@ export const usersService = {
         (key) =>
           validUsersColumns.includes(key) &&
           !readonlyColumns.includes(key) &&
-          key !== 'password'
+          key !== 'password',
       )
       .reduce<Record<string, any>>((obj, key) => {
         const val = normalizeOptionalString((userData as any)[key]);
@@ -959,7 +1052,9 @@ export const usersService = {
             const trimmed = val.trim();
             if (trimmed.includes('/')) {
               const match = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-              obj[key] = match ? `${match[3]}-${match[2]}-${match[1]}` : trimmed;
+              obj[key] = match
+                ? `${match[3]}-${match[2]}-${match[1]}`
+                : trimmed;
             } else if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
               obj[key] = trimmed.split('T')[0];
             } else {
@@ -970,7 +1065,9 @@ export const usersService = {
           }
         } else if (key === 'gender') {
           const normalizedGender = typeof val === 'string' ? val : '';
-          obj[key] = ['MALE', 'FEMALE', 'OTHER', 'NOT_INFORMED'].includes(normalizedGender)
+          obj[key] = ['MALE', 'FEMALE', 'OTHER', 'NOT_INFORMED'].includes(
+            normalizedGender,
+          )
             ? normalizedGender
             : null;
         } else if (key === 'state') {
@@ -1043,8 +1140,12 @@ export const usersService = {
       // Diretor, os vínculos professor-disciplina ficam apenas para consulta;
       // não sincronize com [] e não tente apagar vínculos por engano.
       if (refreshedUser.teacherProfile && subjectIds !== undefined) {
-        await import('@/services/teacher-subjects.service').then(({ teacherSubjectsService }) =>
-          teacherSubjectsService.syncTeacherSubjects(refreshedUser.teacherProfile!.id, subjectIds ?? [])
+        await import('@/services/teacher-subjects.service').then(
+          ({ teacherSubjectsService }) =>
+            teacherSubjectsService.syncTeacherSubjects(
+              refreshedUser.teacherProfile!.id,
+              subjectIds ?? [],
+            ),
         );
       }
     }
@@ -1054,7 +1155,11 @@ export const usersService = {
       if (user.parentProfile) {
         const { error: parentUpdateError } = await supabase
           .from('parents')
-          .update({ occupation: occupation ?? null, isActive: filteredUserData.isActive ?? user.isActive, updatedAt: now })
+          .update({
+            occupation: occupation ?? null,
+            isActive: filteredUserData.isActive ?? user.isActive,
+            updatedAt: now,
+          })
           .eq('id', user.parentProfile.id);
 
         if (parentUpdateError) throw parentUpdateError;
@@ -1081,7 +1186,9 @@ export const usersService = {
             }));
 
           if (payload.length > 0) {
-            const { error: insertLinksError } = await supabase.from('student_parents').insert(payload);
+            const { error: insertLinksError } = await supabase
+              .from('student_parents')
+              .insert(payload);
             if (insertLinksError) throw insertLinksError;
           }
         }
@@ -1116,17 +1223,23 @@ export const usersService = {
       // class_enrollments. A sincronização também transfere o aluno quando
       // ele já está matriculado em outra turma.
       if (turmaId !== undefined) {
-        await enrollmentsService.syncStudentClass(studentId, turmaId || undefined);
+        await enrollmentsService.syncStudentClass(
+          studentId,
+          turmaId || undefined,
+        );
       }
 
       // Update health record if healthInfo is provided
       if (healthInfo && Object.keys(healthInfo).length > 0) {
         const { error: healthError } = await supabase
           .from('student_health_records')
-          .upsert({
-            studentId: studentId,
-            ...healthInfo,
-          }, { onConflict: 'studentId' });
+          .upsert(
+            {
+              studentId: studentId,
+              ...healthInfo,
+            },
+            { onConflict: 'studentId' },
+          );
         if (healthError) throw healthError;
       }
 
@@ -1134,10 +1247,13 @@ export const usersService = {
       if (transportInfo && Object.keys(transportInfo).length > 0) {
         const { error: transportError } = await supabase
           .from('student_transportation')
-          .upsert({
-            studentId: studentId,
-            ...transportInfo,
-          }, { onConflict: 'studentId' });
+          .upsert(
+            {
+              studentId: studentId,
+              ...transportInfo,
+            },
+            { onConflict: 'studentId' },
+          );
         if (transportError) throw transportError;
       }
 
@@ -1145,32 +1261,41 @@ export const usersService = {
       // perfil antigo não trouxe os responsáveis por alguma indisponibilidade
       // temporária. A criação/edição exige ao menos um nome válido.
       const responsaveisValidos = Array.isArray(responsaveis)
-        ? responsaveis.filter((responsavel: any) => String(responsavel?.nome ?? '').trim())
+        ? responsaveis.filter((responsavel: any) =>
+            String(responsavel?.nome ?? '').trim(),
+          )
         : [];
       if (responsaveisValidos.length > 0) {
-        const { data: syncData, error: syncError } = await supabase.functions.invoke('admin-sync-student-parents', {
-          body: {
-            studentId,
-            institutionId: user.institutionId,
-            responsaveis: responsaveisValidos,
-          },
-        });
-        
+        const { data: syncData, error: syncError } =
+          await supabase.functions.invoke('admin-sync-student-parents', {
+            body: {
+              studentId,
+              institutionId: user.institutionId,
+              responsaveis: responsaveisValidos,
+            },
+          });
+
         if (syncError) {
-          let errorBody = "";
+          let errorBody = '';
           try {
-            if (syncError.context && typeof syncError.context.json === 'function') {
+            if (
+              syncError.context &&
+              typeof syncError.context.json === 'function'
+            ) {
               const errData = await syncError.context.json();
               errorBody = errData.error || JSON.stringify(errData);
             }
           } catch (e) {}
-          
-          console.error("Failed to sync responsaveis:", syncError, errorBody);
-          throw new Error("Falha ao sincronizar responsáveis: " + (errorBody || syncError.message || JSON.stringify(syncError)));
+
+          console.error('Failed to sync responsaveis:', syncError, errorBody);
+          throw new Error(
+            'Falha ao sincronizar responsáveis: ' +
+              (errorBody || syncError.message || JSON.stringify(syncError)),
+          );
         }
         if (syncData?.error) {
-          console.error("Function returned error:", syncData.error);
-          throw new Error("Erro na função: " + syncData.error);
+          console.error('Function returned error:', syncData.error);
+          throw new Error('Erro na função: ' + syncData.error);
         }
       }
     }
@@ -1190,39 +1315,55 @@ export const usersService = {
    * Excluir usuário permanentemente
    */
   async removePermanently(id: string): Promise<{ message: string }> {
-    const response = await api.delete<{ message: string }>(`/users/${id}/permanent`);
+    const response = await api.delete<{ message: string }>(
+      `/users/${id}/permanent`,
+    );
     return response as unknown as { message: string };
   },
 
   /**
    * Alterar senha do usuÃ¡rio
    */
-  async changePassword(id: string, data: ChangePasswordData): Promise<{ message: string }> {
-    const response = await api.post<{ message: string }>(`/users/${id}/change-password`, data);
+  async changePassword(
+    id: string,
+    data: ChangePasswordData,
+  ): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>(
+      `/users/${id}/change-password`,
+      data,
+    );
     return response as unknown as { message: string };
   },
 
-  async adminResetPassword(id: string, data: AdminResetPasswordData): Promise<{ message: string }> {
+  async adminResetPassword(
+    id: string,
+    data: AdminResetPasswordData,
+  ): Promise<{ message: string }> {
     const {
       data: { session },
       error: sessionError,
     } = await supabase.auth.getSession();
 
     if (sessionError || !session?.access_token) {
-      throw new Error('Sessão do Supabase não encontrada ou expirada. Faça login novamente.');
+      throw new Error(
+        'Sessão do Supabase não encontrada ou expirada. Faça login novamente.',
+      );
     }
 
-    const { data: result, error } = await supabase.functions.invoke('admin-reset-user-password', {
-      body: {
-        userId: id,
-        newPassword: data.newPassword,
+    const { data: result, error } = await supabase.functions.invoke(
+      'admin-reset-user-password',
+      {
+        body: {
+          userId: id,
+          newPassword: data.newPassword,
+        },
+        // Deixa explícito que a Edge Function deve autorizar o usuário atual,
+        // evitando qualquer ambiguidade com tokens armazenados por integrações.
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       },
-      // Deixa explícito que a Edge Function deve autorizar o usuário atual,
-      // evitando qualquer ambiguidade com tokens armazenados por integrações.
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
-    });
+    );
 
     if (error) {
       if (isSupabaseFunctionHttpError(error)) {
@@ -1235,30 +1376,37 @@ export const usersService = {
         }
         if (process.env.NODE_ENV !== 'production') {
           // eslint-disable-next-line no-console
-          console.error('[usersService.adminResetPassword] HTTP error context:', {
-            status,
-            payload,
-          });
+          console.error(
+            '[usersService.adminResetPassword] HTTP error context:',
+            {
+              status,
+              payload,
+            },
+          );
         }
 
         // Mensagem amigável para erro de permissão
         if (status === 403) {
-          const errCode = payload && typeof payload.error === 'string' ? payload.error : '';
-          const details = payload && typeof payload.details === 'string' ? payload.details : '';
+          const errCode =
+            payload && typeof payload.error === 'string' ? payload.error : '';
+          const details =
+            payload && typeof payload.details === 'string'
+              ? payload.details
+              : '';
 
           if (errCode === 'not_authorized') {
             throw new Error(
-              `Apenas Super Admin Global pode resetar senhas. ${details}`
+              `Apenas Super Admin Global pode resetar senhas. ${details}`,
             );
           }
           if (errCode === 'missing_profile') {
             throw new Error(
-              `Seu usuário autenticado não tem perfil vinculado no banco. ${details}`
+              `Seu usuário autenticado não tem perfil vinculado no banco. ${details}`,
             );
           }
           if (errCode === 'target_user_missing_auth_id') {
             throw new Error(
-              `O usuário alvo não tem auth_user_id vinculado (não foi criado pela nova edge function). ${details}`
+              `O usuário alvo não tem auth_user_id vinculado (não foi criado pela nova edge function). ${details}`,
             );
           }
           const generic =
@@ -1278,25 +1426,36 @@ export const usersService = {
       throw error;
     }
 
-    return { message: (result as { message?: string } | null)?.message ?? 'Senha redefinida com sucesso.' };
+    return {
+      message:
+        (result as { message?: string } | null)?.message ??
+        'Senha redefinida com sucesso.',
+    };
   },
 
   /**
    * Upload de avatar
    */
-  async uploadAvatar(id: string, file: File): Promise<{ message: string; avatar: string }> {
+  async uploadAvatar(
+    id: string,
+    file: File,
+  ): Promise<{ message: string; avatar: string }> {
     const profile = await fetchCurrentUserProfile();
 
     if (profile.id === id) {
       const safeFileName = sanitizeFileName(file.name || 'avatar.file');
-      const basePath = profile.institutionId ? `institutions/${profile.institutionId}` : 'global';
+      const basePath = profile.institutionId
+        ? `institutions/${profile.institutionId}`
+        : 'global';
       const storagePath = `${basePath}/users/${id}/avatar-${Date.now()}-${safeFileName}`;
 
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(storagePath, file, {
-        cacheControl: '3600',
-        upsert: true,
-        contentType: file.type || undefined,
-      });
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(storagePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: file.type || undefined,
+        });
 
       if (uploadError) {
         throw uploadError;
@@ -1337,7 +1496,7 @@ export const usersService = {
               'x-skip-error-toast': '1',
             },
           }
-        : { headers: { 'x-skip-error-toast': '1' } }
+        : { headers: { 'x-skip-error-toast': '1' } },
     );
 
     // Avatares de terceiros precisam passar pelo backend, que usa a credencial
@@ -1346,12 +1505,22 @@ export const usersService = {
     return response as unknown as { message: string; avatar: string };
   },
 
+  async deleteAvatar(id: string): Promise<{ message: string; avatar: null }> {
+    const response = await api.delete<{ message: string; avatar: null }>(
+      '/users/' + id + '/avatar',
+      { headers: { 'x-skip-error-toast': '1' } },
+    );
+    return response as unknown as { message: string; avatar: null };
+  },
+
   async uploadStudentDocument(
     studentProfileId: string,
     documentType: StudentDocumentKey,
-    file: File
+    file: File,
   ): Promise<PendingStudentDocumentUpload[]> {
-    const definition = STUDENT_DOCUMENT_DEFINITIONS.find((item) => item.key === documentType);
+    const definition = STUDENT_DOCUMENT_DEFINITIONS.find(
+      (item) => item.key === documentType,
+    );
     if (!definition) {
       throw new Error('Tipo de documento inválido.');
     }
@@ -1367,7 +1536,9 @@ export const usersService = {
     const existingDocuments = Array.isArray(studentRow.documents)
       ? (studentRow.documents as PendingStudentDocumentUpload[])
       : [];
-    const existingDocument = existingDocuments.find((item) => item.key === documentType);
+    const existingDocument = existingDocuments.find(
+      (item) => item.key === documentType,
+    );
 
     const safeFileName = sanitizeFileName(file.name || `${documentType}.file`);
     const storagePath = `${studentProfileId}/${documentType}-${Date.now()}-${safeFileName}`;
@@ -1385,7 +1556,9 @@ export const usersService = {
     }
 
     if (existingDocument?.path) {
-      await supabase.storage.from(STUDENT_DOCUMENT_BUCKET).remove([existingDocument.path]);
+      await supabase.storage
+        .from(STUDENT_DOCUMENT_BUCKET)
+        .remove([existingDocument.path]);
     }
 
     const nextDocument: PendingStudentDocumentUpload = {
@@ -1407,7 +1580,9 @@ export const usersService = {
     const { error: updateError } = await supabase
       .from('students')
       .update({
-        documents: nextDocuments.map(({ file: _file, ...document }) => document),
+        documents: nextDocuments.map(
+          ({ file: _file, ...document }) => document,
+        ),
       })
       .eq('id', studentProfileId);
 
@@ -1419,7 +1594,7 @@ export const usersService = {
         updateError.code === 'PGRST204'
       ) {
         throw new Error(
-          'A estrutura de documentos do aluno ainda nao foi aplicada no Supabase. Atualize as migrations do banco para liberar os anexos.'
+          'A estrutura de documentos do aluno ainda nao foi aplicada no Supabase. Atualize as migrations do banco para liberar os anexos.',
         );
       }
 
@@ -1431,13 +1606,17 @@ export const usersService = {
 
   async uploadStudentDocuments(
     studentProfileId: string,
-    documents: PendingStudentDocumentUpload[]
+    documents: PendingStudentDocumentUpload[],
   ): Promise<PendingStudentDocumentUpload[]> {
     let currentDocuments: PendingStudentDocumentUpload[] = [];
 
     for (const document of documents) {
       if (!document.file || !document.key) continue;
-      currentDocuments = await this.uploadStudentDocument(studentProfileId, document.key, document.file);
+      currentDocuments = await this.uploadStudentDocument(
+        studentProfileId,
+        document.key,
+        document.file,
+      );
     }
 
     return currentDocuments;
@@ -1457,7 +1636,9 @@ export const usersService = {
     // As telas administrativas precisam consultar a API, que aplica a
     // autorização por instituição. A leitura direta via Supabase pode ser
     // filtrada pela RLS e retornar uma lista vazia para Diretor/Coordenador.
-    const response = await api.get<ParentStudent[]>(`/users/${parentId}/children`);
+    const response = await api.get<ParentStudent[]>(
+      `/users/${parentId}/children`,
+    );
     return response as unknown as ParentStudent[];
   },
 
@@ -1468,19 +1649,33 @@ export const usersService = {
     // A API é a fonte autorizada para o Diretor/Coordenador. Consultar
     // student_parents diretamente no navegador fazia a RLS esconder vínculos
     // existentes sem produzir erro visível.
-    const response = await api.get<ParentStudent[]>(`/users/${studentId}/parents`);
+    const response = await api.get<ParentStudent[]>(
+      `/users/${studentId}/parents`,
+    );
     return response as unknown as ParentStudent[];
   },
 
   /**
    * Criar relacionamento pai-filho
    */
-  async linkParentStudent(data: CreateParentStudentDto): Promise<ParentStudent> {
-    const [{ data: parent, error: parentError }, { data: student, error: studentError }] =
-      await Promise.all([
-        supabase.from('parents').select('id, userId').eq('userId', data.parentId).maybeSingle(),
-        supabase.from('students').select('id, userId').eq('userId', data.studentId).maybeSingle(),
-      ]);
+  async linkParentStudent(
+    data: CreateParentStudentDto,
+  ): Promise<ParentStudent> {
+    const [
+      { data: parent, error: parentError },
+      { data: student, error: studentError },
+    ] = await Promise.all([
+      supabase
+        .from('parents')
+        .select('id, userId')
+        .eq('userId', data.parentId)
+        .maybeSingle(),
+      supabase
+        .from('students')
+        .select('id, userId')
+        .eq('userId', data.studentId)
+        .maybeSingle(),
+    ]);
 
     if (parentError) throw parentError;
     if (studentError) throw studentError;
@@ -1503,7 +1698,10 @@ export const usersService = {
       .single();
 
     if (error) throw error;
-    const [link] = await loadParentStudentLinks([created as StudentParentRow], 'parent');
+    const [link] = await loadParentStudentLinks(
+      [created as StudentParentRow],
+      'parent',
+    );
     return link;
   },
 
@@ -1512,7 +1710,7 @@ export const usersService = {
    */
   async updateParentStudent(
     id: string,
-    data: UpdateParentStudentDto
+    data: UpdateParentStudentDto,
   ): Promise<ParentStudent> {
     const payload: Record<string, unknown> = {};
     if (typeof data.relationship === 'string') {
@@ -1530,7 +1728,10 @@ export const usersService = {
       .single();
 
     if (error) throw error;
-    const [link] = await loadParentStudentLinks([updated as StudentParentRow], 'parent');
+    const [link] = await loadParentStudentLinks(
+      [updated as StudentParentRow],
+      'parent',
+    );
     return link;
   },
 
@@ -1538,14 +1739,24 @@ export const usersService = {
    * Remover relacionamento pai-filho
    */
   async unlinkParentStudent(id: string): Promise<void> {
-    const { error } = await supabase.from('student_parents').delete().eq('id', id);
+    const { error } = await supabase
+      .from('student_parents')
+      .delete()
+      .eq('id', id);
     if (error) throw error;
   },
 
   /**
    * Adicionar perfil de professor
    */
-  async addTeacherProfile(userId: string, data?: { specialization?: string; degree?: string; registrationNumber?: string }): Promise<any> {
+  async addTeacherProfile(
+    userId: string,
+    data?: {
+      specialization?: string;
+      degree?: string;
+      registrationNumber?: string;
+    },
+  ): Promise<any> {
     const response = await api.post(`/users/${userId}/profiles/teacher`, data);
     return response as unknown as any;
   },
@@ -1553,7 +1764,14 @@ export const usersService = {
   /**
    * Adicionar perfil de aluno
    */
-  async addStudentProfile(userId: string, data?: { registrationNumber?: string; enrollmentNumber?: string; enrollmentDate?: string }): Promise<any> {
+  async addStudentProfile(
+    userId: string,
+    data?: {
+      registrationNumber?: string;
+      enrollmentNumber?: string;
+      enrollmentDate?: string;
+    },
+  ): Promise<any> {
     const response = await api.post(`/users/${userId}/profiles/student`, data);
     return response as unknown as any;
   },
@@ -1561,7 +1779,10 @@ export const usersService = {
   /**
    * Adicionar perfil de responsável
    */
-  async addParentProfile(userId: string, data?: { occupation?: string }): Promise<any> {
+  async addParentProfile(
+    userId: string,
+    data?: { occupation?: string },
+  ): Promise<any> {
     const response = await api.post(`/users/${userId}/profiles/parent`, data);
     return response as unknown as any;
   },
@@ -1593,7 +1814,7 @@ export const usersService = {
   async quickApprove(
     userId: string,
     profileType: 'TEACHER' | 'STUDENT' | 'PARENT',
-    profileData?: any
+    profileData?: any,
   ): Promise<{ message: string; user: User; profile: any }> {
     const response = await api.post(`/users/${userId}/quick-approve`, {
       profileType,
@@ -1610,7 +1831,7 @@ export const usersService = {
       userId: string;
       profileType: 'TEACHER' | 'STUDENT' | 'PARENT';
       profileData?: any;
-    }>
+    }>,
   ): Promise<{ approved: any[]; failed: any[] }> {
     const response = await api.post('/users/bulk-approve', { approvals });
     return response as unknown as { approved: any[]; failed: any[] };

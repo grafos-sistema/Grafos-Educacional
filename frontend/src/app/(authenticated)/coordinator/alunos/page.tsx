@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { Pagination } from '@/components/ui/Pagination';
 import { Select } from '@/components/ui/Select';
+import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
 
 export default function CoordinatorStudentsPage() {
   const router = useRouter();
@@ -37,7 +38,11 @@ export default function CoordinatorStudentsPage() {
   const [selectedClassId, setSelectedClassId] = useState('');
   const [isSavingEnrollment, setIsSavingEnrollment] = useState(false);
 
-  const { data: studentsData, isLoading: loadingStudents, refetch: refetchStudents } = useQuery({
+  const {
+    data: studentsData,
+    isLoading: loadingStudents,
+    refetch: refetchStudents,
+  } = useQuery({
     queryKey: ['coordinator-students', filters, user?.institutionId],
     queryFn: () =>
       usersService.findAll({
@@ -92,13 +97,15 @@ export default function CoordinatorStudentsPage() {
         label: classItem.name,
       })) || []),
     ],
-    [classesData]
+    [classesData],
   );
 
   const activeStudents = studentsData?.data || [];
   const totalStudents = studentsData?.meta.total || 0;
   const studentsWithClass = activeStudents.filter((student) =>
-    student.studentProfile?.id ? enrollmentByStudentId.has(student.studentProfile.id) : false
+    student.studentProfile?.id
+      ? enrollmentByStudentId.has(student.studentProfile.id)
+      : false,
   ).length;
 
   const openEnrollmentModal = (student: User) => {
@@ -127,7 +134,9 @@ export default function CoordinatorStudentsPage() {
       return;
     }
 
-    const currentEnrollment = enrollmentByStudentId.get(managingStudent.studentProfile.id);
+    const currentEnrollment = enrollmentByStudentId.get(
+      managingStudent.studentProfile.id,
+    );
 
     if (currentEnrollment?.classId === selectedClassId) {
       toast.success('O aluno já está vinculado a esta turma.');
@@ -155,7 +164,9 @@ export default function CoordinatorStudentsPage() {
       closeEnrollmentModal();
     } catch (error: any) {
       console.error('Erro ao salvar vínculo do aluno:', error);
-      toast.error(error?.message || 'Não foi possível atualizar a turma do aluno.');
+      toast.error(
+        error?.message || 'Não foi possível atualizar a turma do aluno.',
+      );
       setIsSavingEnrollment(false);
     }
   };
@@ -163,7 +174,9 @@ export default function CoordinatorStudentsPage() {
   const handleRemoveEnrollment = async () => {
     if (!managingStudent?.studentProfile?.id) return;
 
-    const currentEnrollment = enrollmentByStudentId.get(managingStudent.studentProfile.id);
+    const currentEnrollment = enrollmentByStudentId.get(
+      managingStudent.studentProfile.id,
+    );
     if (!currentEnrollment) {
       toast.error('Este aluno não possui vínculo ativo com turma.');
       return;
@@ -204,7 +217,9 @@ export default function CoordinatorStudentsPage() {
             <div className="font-medium text-gray-900 dark:text-white">
               {student.firstName} {student.lastName}
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">{student.email}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              {student.email}
+            </div>
           </div>
         </div>
       ),
@@ -216,6 +231,16 @@ export default function CoordinatorStudentsPage() {
         student.studentProfile?.registrationNumber ||
         student.studentProfile?.enrollmentNumber ||
         '-',
+    },
+    {
+      key: 'cpf',
+      label: 'CPF',
+      render: (student) => (student.cpf ? formatCPF(student.cpf) : '-'),
+    },
+    {
+      key: 'phone',
+      label: 'Telefone',
+      render: (student) => (student.phone ? formatPhone(student.phone) : '-'),
     },
     {
       key: 'class',
@@ -231,11 +256,14 @@ export default function CoordinatorStudentsPage() {
               {currentEnrollment.class.name}
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              {currentEnrollment.class.academicYear?.year || 'Ano letivo não informado'}
+              {currentEnrollment.class.academicYear?.year ||
+                'Ano letivo não informado'}
             </div>
           </div>
         ) : (
-          <span className="text-sm text-amber-600 dark:text-amber-400">Sem turma</span>
+          <span className="text-sm text-amber-600 dark:text-amber-400">
+            Sem turma
+          </span>
         );
       },
     },
@@ -288,9 +316,12 @@ export default function CoordinatorStudentsPage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="mb-2 text-2xl font-bold text-gray-900 dark:text-white">Alunos</h1>
+        <h1 className="mb-2 text-2xl font-bold text-gray-900 dark:text-white">
+          Alunos
+        </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          A coordenação consulta os dados do aluno e gerencia apenas o vínculo com a turma.
+          A coordenação consulta os dados do aluno e gerencia apenas o vínculo
+          com a turma.
         </p>
       </div>
 
@@ -300,13 +331,17 @@ export default function CoordinatorStudentsPage() {
           <div className="mt-1 text-3xl font-bold">{totalStudents}</div>
         </div>
         <div className="rounded-lg bg-white p-5 shadow-sm dark:bg-gray-800">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Com turma na página atual</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Com turma na página atual
+          </div>
           <div className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">
             {studentsWithClass}
           </div>
         </div>
         <div className="rounded-lg bg-white p-5 shadow-sm dark:bg-gray-800">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Sem editar cadastro</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Sem editar cadastro
+          </div>
           <div className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
             Apenas consulta e vínculo
           </div>
@@ -326,7 +361,9 @@ export default function CoordinatorStudentsPage() {
                   page: 1,
                 }))
               }
-              leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
+              leftIcon={
+                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+              }
             />
           </div>
           <div className="w-full lg:w-40">
@@ -340,7 +377,9 @@ export default function CoordinatorStudentsPage() {
               onChange={(e) =>
                 setFilters((current) => ({
                   ...current,
-                  isActive: e.target.value ? e.target.value === 'true' : undefined,
+                  isActive: e.target.value
+                    ? e.target.value === 'true'
+                    : undefined,
                   page: 1,
                 }))
               }
@@ -363,7 +402,9 @@ export default function CoordinatorStudentsPage() {
         <div className="mt-6">
           <Pagination
             meta={studentsData.meta}
-            onPageChange={(page) => setFilters((current) => ({ ...current, page }))}
+            onPageChange={(page) =>
+              setFilters((current) => ({ ...current, page }))
+            }
           />
         </div>
       )}
@@ -395,7 +436,11 @@ export default function CoordinatorStudentsPage() {
             />
 
             <div className="flex flex-wrap justify-end gap-3">
-              <Button variant="secondary" onClick={closeEnrollmentModal} disabled={isSavingEnrollment}>
+              <Button
+                variant="secondary"
+                onClick={closeEnrollmentModal}
+                disabled={isSavingEnrollment}
+              >
                 Cancelar
               </Button>
               {currentEnrollment ? (
@@ -407,7 +452,10 @@ export default function CoordinatorStudentsPage() {
                   Remover vínculo
                 </Button>
               ) : null}
-              <Button onClick={handleSaveEnrollment} disabled={isSavingEnrollment}>
+              <Button
+                onClick={handleSaveEnrollment}
+                disabled={isSavingEnrollment}
+              >
                 {currentEnrollment ? 'Atualizar turma' : 'Vincular turma'}
               </Button>
             </div>

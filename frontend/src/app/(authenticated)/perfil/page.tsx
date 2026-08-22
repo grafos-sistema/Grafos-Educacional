@@ -1,6 +1,13 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from 'react';
 import { Menu, Transition } from '@headlessui/react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -13,10 +20,11 @@ import {
   IdentificationIcon,
   CakeIcon,
   CameraIcon,
+  TrashIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
-import { useAuthStore } from '@/stores/authStore';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/stores/authStore';
 import { usersService } from '@/services/users.service';
 import { UpdateUserData, Gender } from '@/types/user.types';
 import { Button } from '@/components/ui/Button';
@@ -25,7 +33,11 @@ import { Select } from '@/components/ui/Select';
 import { useToast } from '@/hooks/useToast';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Modal } from '@/components/ui/Modal';
-import { formatCPF, formatPhone, removeMask } from '@/components/ui/MaskedInput';
+import {
+  formatCPF,
+  formatPhone,
+  removeMask,
+} from '@/components/ui/MaskedInput';
 import { AvatarCropModal } from '@/components/ui/AvatarCropModal';
 import { BRAZILIAN_UF_OPTIONS } from '@/lib/constants/document-options';
 import { formatCep } from '@/lib/address-utils';
@@ -40,14 +52,33 @@ const genderLabels: Record<Gender, string> = {
 export default function PerfilPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user, setUser } = useAuthStore();
-  const { refreshProfile } = useAuth();
+  const { user, isLoading, refreshProfile } = useAuth();
+  const setUser = useAuthStore((state) => state.setUser);
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+
+  useEffect(() => {
+    setFormData({
+      firstName: user?.firstName || '',
+      lastName: user?.lastName || '',
+      email: user?.email || '',
+      cpf: user?.cpf ? formatCPF(user.cpf) : '',
+      phone: user?.phone ? formatPhone(user.phone) : '',
+      birthDate: user?.birthDate ? String(user.birthDate).split('T')[0] : '',
+      gender: user?.gender || Gender.NOT_INFORMED,
+      address: user?.address || '',
+      numero: user?.numero || '',
+      complemento: user?.complemento || '',
+      bairro: user?.bairro || '',
+      city: user?.city || '',
+      state: user?.state || '',
+      zipCode: user?.zipCode ? formatCep(user.zipCode) : '',
+    });
+  }, [user]);
 
   const [formData, setFormData] = useState<UpdateUserData>({
     firstName: user?.firstName || '',
@@ -82,7 +113,9 @@ export default function PerfilPage() {
       }
 
       try {
-        const response = await fetch(`https://viacep.com.br/ws/${normalizedCep}/json/`);
+        const response = await fetch(
+          `https://viacep.com.br/ws/${normalizedCep}/json/`,
+        );
         if (!response.ok) return;
 
         const result = (await response.json()) as {
@@ -122,7 +155,10 @@ export default function PerfilPage() {
       });
 
       if (photoFile) {
-        const uploadResult = await usersService.uploadAvatar(user.id, photoFile);
+        const uploadResult = await usersService.uploadAvatar(
+          user.id,
+          photoFile,
+        );
         return {
           ...updatedUser,
           avatar: uploadResult.avatar,
@@ -140,7 +176,8 @@ export default function PerfilPage() {
       toast.success('Perfil atualizado com sucesso!');
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.message || 'Erro ao atualizar perfil';
+      const message =
+        error?.response?.data?.message || 'Erro ao atualizar perfil';
       toast.error(message);
     },
   });
@@ -148,6 +185,21 @@ export default function PerfilPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateMutation.mutate(formData);
+  };
+
+  const handleDeleteAvatar = async () => {
+    if (!user?.id) return;
+
+    try {
+      await usersService.deleteAvatar(user.id);
+      setPhotoFile(null);
+      setUser({ ...user, avatar: undefined });
+      queryClient.invalidateQueries({ queryKey: ['user', user.id] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('Foto removida com sucesso.');
+    } catch (error: any) {
+      toast.error(error?.message || 'Não foi possível remover a foto agora.');
+    }
   };
 
   const handleChange = (field: keyof UpdateUserData, value: any) => {
@@ -158,7 +210,7 @@ export default function PerfilPage() {
           ? formatCPF(String(value))
           : field === 'zipCode'
             ? formatCep(String(value))
-          : value;
+            : value;
 
     setFormData((prev) => ({
       ...prev,
@@ -181,7 +233,7 @@ export default function PerfilPage() {
     event.target.value = '';
   };
 
-  if (!user) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner size="lg" text="Carregando..." />
@@ -189,9 +241,19 @@ export default function PerfilPage() {
     );
   }
 
+  if (!user) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center p-6">
+        <div className="max-w-md rounded-xl border border-amber-200 bg-amber-50 p-6 text-center text-amber-900">
+          Não foi possível carregar seus dados agora. Atualize a página ou entre
+          novamente no sistema.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
-
       {/* Header */}
       <div className="mb-6">
         <Button
@@ -234,7 +296,8 @@ export default function PerfilPage() {
                         />
                       ) : (
                         <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-3xl font-bold">
-                          {user.firstName?.[0]}{user.lastName?.[0]}
+                          {user.firstName?.[0]}
+                          {user.lastName?.[0]}
                         </div>
                       )}
                       {open && (
@@ -285,10 +348,30 @@ export default function PerfilPage() {
                               }`}
                             >
                               <CameraIcon className="h-5 w-5" />
-                              {avatarPreview ? 'Trocar imagem' : 'Adicionar imagem'}
+                              {avatarPreview
+                                ? 'Trocar imagem'
+                                : 'Adicionar imagem'}
                             </button>
                           )}
                         </Menu.Item>
+                        {avatarPreview && (
+                          <Menu.Item>
+                            {({ active }) => (
+                              <button
+                                type="button"
+                                onClick={handleDeleteAvatar}
+                                className={`flex w-full items-center gap-3 px-4 py-2 text-sm ${
+                                  active
+                                    ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300'
+                                    : 'text-red-600 dark:text-red-400'
+                                }`}
+                              >
+                                <TrashIcon className="h-5 w-5" />
+                                Excluir imagem
+                              </button>
+                            )}
+                          </Menu.Item>
+                        )}
                       </Menu.Items>
                     </Transition>
                   </>
@@ -349,7 +432,9 @@ export default function PerfilPage() {
               value={formData.cpf}
               onChange={(e) => handleChange('cpf', e.target.value)}
               placeholder="000.000.000-00"
-              leftIcon={<IdentificationIcon className="h-5 w-5 text-gray-400" />}
+              leftIcon={
+                <IdentificationIcon className="h-5 w-5 text-gray-400" />
+              }
             />
             <Input
               label="Data de Nascimento"
@@ -364,7 +449,10 @@ export default function PerfilPage() {
               onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                 handleChange('gender', e.target.value as Gender)
               }
-              options={Object.entries(genderLabels).map(([value, label]) => ({ value, label }))}
+              options={Object.entries(genderLabels).map(([value, label]) => ({
+                value,
+                label,
+              }))}
             />
           </div>
         </div>
@@ -407,8 +495,13 @@ export default function PerfilPage() {
             <Select
               label="Estado"
               value={formData.state || ''}
-              onChange={(e: ChangeEvent<HTMLSelectElement>) => handleChange('state', e.target.value)}
-              options={[{ value: '', label: 'Selecione a UF' }, ...BRAZILIAN_UF_OPTIONS]}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                handleChange('state', e.target.value)
+              }
+              options={[
+                { value: '', label: 'Selecione a UF' },
+                ...BRAZILIAN_UF_OPTIONS,
+              ]}
             />
             <Input
               label="CEP"
@@ -476,7 +569,8 @@ export default function PerfilPage() {
                 <XMarkIcon className="h-6 w-6" />
               </button>
               <div className="flex h-full w-full items-center justify-center text-6xl font-bold text-white">
-                {user.firstName?.[0]}{user.lastName?.[0]}
+                {user.firstName?.[0]}
+                {user.lastName?.[0]}
               </div>
             </div>
           )}

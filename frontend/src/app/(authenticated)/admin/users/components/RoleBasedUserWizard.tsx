@@ -23,7 +23,13 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { MaskedInput, masks, removeMask, validateCPF, formatCPF } from '@/components/ui/MaskedInput';
+import {
+  MaskedInput,
+  masks,
+  removeMask,
+  validateCPF,
+  formatCPF,
+} from '@/components/ui/MaskedInput';
 import { Badge } from '@/components/ui/Badge';
 import { Dropdown } from '@/components/ui/HeroDropdown';
 import { supabase } from '@/lib/supabase';
@@ -141,20 +147,50 @@ function getInitialPasswordFromEmail(email?: string) {
 function buildSteps(
   role?: UserRole,
   mode: 'create' | 'edit' = 'create',
-  canManageTeacherAssignments = true
+  canManageTeacherAssignments = true,
 ): StepDefinition[] {
   if (role === UserRole.TEACHER) {
     const teacherSteps: StepDefinition[] = [
-      { id: 'identity', label: 'Dados Pessoais', subtitle: 'Identificação do professor', icon: IdentificationIcon },
-      { id: 'contact', label: 'Contato', subtitle: 'Endereço e contatos', icon: MapPinIcon },
-      { id: 'profile', label: 'Dados Profissionais', subtitle: 'Formação e registro', icon: BriefcaseIcon },
-      { id: 'institution', label: 'Instituição', subtitle: 'Escolas em que atua', icon: BuildingOffice2Icon },
+      {
+        id: 'identity',
+        label: 'Dados Pessoais',
+        subtitle: 'Identificação do professor',
+        icon: IdentificationIcon,
+      },
+      {
+        id: 'contact',
+        label: 'Contato',
+        subtitle: 'Endereço e contatos',
+        icon: MapPinIcon,
+      },
+      {
+        id: 'profile',
+        label: 'Dados Profissionais',
+        subtitle: 'Formação e registro',
+        icon: BriefcaseIcon,
+      },
+      {
+        id: 'institution',
+        label: 'Instituição',
+        subtitle: 'Escolas em que atua',
+        icon: BuildingOffice2Icon,
+      },
     ];
 
     if (canManageTeacherAssignments) {
       teacherSteps.push(
-        { id: 'subjects', label: 'Disciplinas', subtitle: 'Disciplinas que leciona', icon: AcademicCapIcon },
-        { id: 'classes', label: 'Turmas', subtitle: 'Turmas em que atua', icon: UserGroupIcon },
+        {
+          id: 'subjects',
+          label: 'Disciplinas',
+          subtitle: 'Disciplinas que leciona',
+          icon: AcademicCapIcon,
+        },
+        {
+          id: 'classes',
+          label: 'Turmas',
+          subtitle: 'Turmas em que atua',
+          icon: UserGroupIcon,
+        },
       );
     }
 
@@ -172,36 +208,116 @@ function buildSteps(
 
   if (role === UserRole.COORDINATOR) {
     return [
-      { id: 'identity', label: 'Dados Pessoais', subtitle: 'Identificação do coordenador', icon: IdentificationIcon },
-      { id: 'contact', label: 'Contato', subtitle: 'Endereço e contatos', icon: MapPinIcon },
-      { id: 'institution', label: 'Instituição', subtitle: 'Instituições vinculadas', icon: BuildingOffice2Icon },
-      { id: 'access', label: 'Acesso', subtitle: 'Redefinição de senha', icon: ShieldCheckIcon },
+      {
+        id: 'identity',
+        label: 'Dados Pessoais',
+        subtitle: 'Identificação do coordenador',
+        icon: IdentificationIcon,
+      },
+      {
+        id: 'contact',
+        label: 'Contato',
+        subtitle: 'Endereço e contatos',
+        icon: MapPinIcon,
+      },
+      {
+        id: 'institution',
+        label: 'Instituição',
+        subtitle: 'Instituições vinculadas',
+        icon: BuildingOffice2Icon,
+      },
+      {
+        id: 'access',
+        label: 'Acesso',
+        subtitle: 'Redefinição de senha',
+        icon: ShieldCheckIcon,
+      },
     ];
   }
 
   if (role === UserRole.PARENT) {
     return [
-      { id: 'identity', label: 'Dados Pessoais', subtitle: 'Informações do responsável', icon: IdentificationIcon },
-      { id: 'contact', label: 'Contato', subtitle: 'Contato e endereço', icon: MapPinIcon },
-      { id: 'institution', label: 'Instituição', subtitle: 'Instituições relacionadas', icon: BuildingOffice2Icon },
-      { id: 'students', label: 'Vínculo com Alunos', subtitle: 'Alunos e permissões', icon: UserGroupIcon },
-      { id: 'access', label: 'Acesso', subtitle: 'Redefinição de senha', icon: EnvelopeIcon },
+      {
+        id: 'identity',
+        label: 'Dados Pessoais',
+        subtitle: 'Informações do responsável',
+        icon: IdentificationIcon,
+      },
+      {
+        id: 'contact',
+        label: 'Contato',
+        subtitle: 'Contato e endereço',
+        icon: MapPinIcon,
+      },
+      {
+        id: 'institution',
+        label: 'Instituição',
+        subtitle: 'Instituições relacionadas',
+        icon: BuildingOffice2Icon,
+      },
+      {
+        id: 'students',
+        label: 'Vínculo com Alunos',
+        subtitle: 'Alunos e permissões',
+        icon: UserGroupIcon,
+      },
+      {
+        id: 'access',
+        label: 'Acesso',
+        subtitle: 'Redefinição de senha',
+        icon: EnvelopeIcon,
+      },
     ];
   }
 
   if (role === UserRole.DIRECTOR) {
     return [
-      { id: 'identity', label: 'Dados Pessoais', subtitle: 'Identificação do diretor', icon: IdentificationIcon },
-      { id: 'contact', label: 'Contato', subtitle: 'Endereço e contatos', icon: MapPinIcon },
-      { id: 'institution', label: 'Instituição', subtitle: 'Instituição e anexo vinculados', icon: BuildingOffice2Icon },
+      {
+        id: 'identity',
+        label: 'Dados Pessoais',
+        subtitle: 'Identificação do diretor',
+        icon: IdentificationIcon,
+      },
+      {
+        id: 'contact',
+        label: 'Contato',
+        subtitle: 'Endereço e contatos',
+        icon: MapPinIcon,
+      },
+      {
+        id: 'institution',
+        label: 'Instituição',
+        subtitle: 'Instituição e anexo vinculados',
+        icon: BuildingOffice2Icon,
+      },
     ];
   }
 
   return [
-    { id: 'identity', label: 'Dados Pessoais', subtitle: 'Informações básicas do perfil', icon: IdentificationIcon },
-    { id: 'contact', label: 'Contato', subtitle: 'Contato e endereço', icon: MapPinIcon },
-    { id: 'institution', label: 'Instituição', subtitle: 'Instituições vinculadas', icon: BuildingOffice2Icon },
-    { id: 'access', label: 'Acesso', subtitle: 'Redefinição de senha', icon: ShieldCheckIcon },
+    {
+      id: 'identity',
+      label: 'Dados Pessoais',
+      subtitle: 'Informações básicas do perfil',
+      icon: IdentificationIcon,
+    },
+    {
+      id: 'contact',
+      label: 'Contato',
+      subtitle: 'Contato e endereço',
+      icon: MapPinIcon,
+    },
+    {
+      id: 'institution',
+      label: 'Instituição',
+      subtitle: 'Instituições vinculadas',
+      icon: BuildingOffice2Icon,
+    },
+    {
+      id: 'access',
+      label: 'Acesso',
+      subtitle: 'Redefinição de senha',
+      icon: ShieldCheckIcon,
+    },
   ];
 }
 
@@ -209,8 +325,12 @@ function TabHeader({ step }: { step: StepDefinition }) {
   return (
     <div className="border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{step.label}</h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400">{step.subtitle}</p>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          {step.label}
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          {step.subtitle}
+        </p>
       </div>
     </div>
   );
@@ -251,9 +371,19 @@ export function RoleBasedUserWizard({
 
   const [isAlsoDirector, setIsAlsoDirector] = useState(false);
   const [isPromotingDirector, setIsPromotingDirector] = useState(false);
-  const [availableDirectors, setAvailableDirectors] = useState<Array<{ id: string; name: string; email?: string; unitId?: string | null; unitName?: string | null }>>([]);
+  const [availableDirectors, setAvailableDirectors] = useState<
+    Array<{
+      id: string;
+      name: string;
+      email?: string;
+      unitId?: string | null;
+      unitName?: string | null;
+    }>
+  >([]);
   const [selectedDirectorId, setSelectedDirectorId] = useState<string>('');
-  const [availableUnits, setAvailableUnits] = useState<Array<{ id: string; name: string }>>([]);
+  const [availableUnits, setAvailableUnits] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
   const {
     register,
     setValue,
@@ -266,20 +396,30 @@ export function RoleBasedUserWizard({
   } = form;
 
   const role = useWatch({ control, name: 'role' }) as UserRole | undefined;
-  const firstName = useWatch({ control, name: 'firstName' }) as string | undefined;
-  const lastName = useWatch({ control, name: 'lastName' }) as string | undefined;
+  const firstName = useWatch({ control, name: 'firstName' }) as
+    string | undefined;
+  const lastName = useWatch({ control, name: 'lastName' }) as
+    string | undefined;
   const email = useWatch({ control, name: 'email' }) as string | undefined;
   const cpf = useWatch({ control, name: 'cpf' }) as string | undefined;
-  const birthDate = useWatch({ control, name: 'birthDate' }) as string | undefined;
+  const birthDate = useWatch({ control, name: 'birthDate' }) as
+    string | undefined;
   const state = useWatch({ control, name: 'state' }) as string | undefined;
-  const hireDate = useWatch({ control, name: 'hireDate' }) as string | undefined;
+  const hireDate = useWatch({ control, name: 'hireDate' }) as
+    string | undefined;
   const unitId = useWatch({ control, name: 'unitId' }) as string | undefined;
-  const isActive = useWatch({ control, name: 'isActive' }) as boolean | undefined;
+  const isActive = useWatch({ control, name: 'isActive' }) as
+    boolean | undefined;
   const avatar = useWatch({ control, name: 'avatar' }) as string | undefined;
-  const photo = useWatch({ control, name: 'photo' }) as FileList | File[] | undefined;
-  const selectedSubjects = (useWatch({ control, name: 'subjectIds' }) as string[] | undefined) ?? [];
-  const linkedStudents = (useWatch({ control, name: 'linkedStudents' }) as StudentLink[] | undefined) ?? [];
-  const password = useWatch({ control, name: 'password' }) as string | undefined;
+  const photo = useWatch({ control, name: 'photo' }) as
+    FileList | File[] | undefined;
+  const selectedSubjects =
+    (useWatch({ control, name: 'subjectIds' }) as string[] | undefined) ?? [];
+  const linkedStudents =
+    (useWatch({ control, name: 'linkedStudents' }) as
+      StudentLink[] | undefined) ?? [];
+  const password = useWatch({ control, name: 'password' }) as
+    string | undefined;
   const generatedInitialPassword = useMemo(() => {
     return getInitialPasswordFromEmail(email);
   }, [email]);
@@ -304,20 +444,36 @@ export function RoleBasedUserWizard({
   });
 
   const selectedInstitutionIds = useMemo(
-    () => Array.from(new Set([selectedPrimaryInstitutionId, ...selectedAdditionalInstitutionIds].filter(Boolean))),
-    [selectedAdditionalInstitutionIds, selectedPrimaryInstitutionId]
+    () =>
+      Array.from(
+        new Set(
+          [
+            selectedPrimaryInstitutionId,
+            ...selectedAdditionalInstitutionIds,
+          ].filter(Boolean),
+        ),
+      ),
+    [selectedAdditionalInstitutionIds, selectedPrimaryInstitutionId],
   );
 
   const steps = useMemo(
     () => buildSteps(role, mode, canManageTeacherAssignments),
-    [canManageTeacherAssignments, mode, role]
+    [canManageTeacherAssignments, mode, role],
   );
-  const activeIndex = Math.max(0, steps.findIndex((step) => step.id === activeStepId));
+  const activeIndex = Math.max(
+    0,
+    steps.findIndex((step) => step.id === activeStepId),
+  );
   const activeStep = steps[activeIndex] ?? steps[0];
   const searchableInstitutions = useMemo(() => {
     const term = institutionSearchTerm.trim().toLowerCase();
     return availableInstitutions.filter((institution) => {
-      const haystack = [institution.name, institution.city, institution.state, institution.slug]
+      const haystack = [
+        institution.name,
+        institution.city,
+        institution.state,
+        institution.slug,
+      ]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
@@ -327,20 +483,26 @@ export function RoleBasedUserWizard({
   const institutionCards = useMemo(() => {
     const selected = searchableInstitutions.filter(
       (institution) =>
-        institution.id === selectedPrimaryInstitutionId || selectedAdditionalInstitutionIds.includes(institution.id)
+        institution.id === selectedPrimaryInstitutionId ||
+        selectedAdditionalInstitutionIds.includes(institution.id),
     );
     const unselected = searchableInstitutions.filter(
       (institution) =>
-        institution.id !== selectedPrimaryInstitutionId && !selectedAdditionalInstitutionIds.includes(institution.id)
+        institution.id !== selectedPrimaryInstitutionId &&
+        !selectedAdditionalInstitutionIds.includes(institution.id),
     );
     return [...selected, ...unselected];
-  }, [searchableInstitutions, selectedAdditionalInstitutionIds, selectedPrimaryInstitutionId]);
+  }, [
+    searchableInstitutions,
+    selectedAdditionalInstitutionIds,
+    selectedPrimaryInstitutionId,
+  ]);
   const selectedPhotoFile = useMemo(() => {
     if (!photo) return null;
     if (typeof FileList !== 'undefined' && photo instanceof FileList) {
       return photo.item(0);
     }
-    return Array.isArray(photo) ? photo[0] ?? null : null;
+    return Array.isArray(photo) ? (photo[0] ?? null) : null;
   }, [photo]);
   const photoPreviewUrl = useMemo(() => {
     if (selectedPhotoFile) {
@@ -360,6 +522,14 @@ export function RoleBasedUserWizard({
     setPendingPhotoFile(nextFile);
     setIsCropModalOpen(true);
     event.target.value = '';
+  };
+
+  const handleDeletePhoto = () => {
+    setPendingPhotoFile(null);
+    setValue('avatar', null as never, { shouldDirty: true });
+    setValue('photo', undefined as never, { shouldDirty: true });
+    if (photoInputRef.current) photoInputRef.current.value = '';
+    toast.success('Foto removida. Salve o cadastro para confirmar.');
   };
 
   useEffect(() => {
@@ -394,7 +564,12 @@ export function RoleBasedUserWizard({
             const { data, error } = await supabase
               .from('subjects')
               .select('id, name, code, institutionId')
-              .in('institutionId', selectedInstitutionIds.length > 0 ? selectedInstitutionIds : [''])
+              .in(
+                'institutionId',
+                selectedInstitutionIds.length > 0
+                  ? selectedInstitutionIds
+                  : [''],
+              )
               .eq('isActive', true)
               .order('name', { ascending: true });
 
@@ -412,7 +587,9 @@ export function RoleBasedUserWizard({
           } else {
             const { data, error } = await supabase
               .from('students')
-              .select('id, registrationNumber, user:users!inner(id, firstName, lastName, institutionId, isActive)')
+              .select(
+                'id, registrationNumber, user:users!inner(id, firstName, lastName, institutionId, isActive)',
+              )
               .order('createdAt', { ascending: false });
 
             if (error) throw error;
@@ -421,13 +598,18 @@ export function RoleBasedUserWizard({
               .map((row: any) => ({
                 studentId: row.id as string,
                 userId: row.user?.id as string,
-                label: `${row.user?.firstName ?? ''} ${row.user?.lastName ?? ''}`.trim(),
+                label:
+                  `${row.user?.firstName ?? ''} ${row.user?.lastName ?? ''}`.trim(),
                 registrationNumber: row.registrationNumber ?? undefined,
                 institutionId: row.user?.institutionId ?? undefined,
                 isActive: row.user?.isActive ?? true,
               }))
               .filter((row) => row.userId && row.label && row.isActive)
-              .filter((row) => selectedInstitutionIds.length === 0 || selectedInstitutionIds.includes(row.institutionId ?? ''));
+              .filter(
+                (row) =>
+                  selectedInstitutionIds.length === 0 ||
+                  selectedInstitutionIds.includes(row.institutionId ?? ''),
+              );
 
             studentCache.set(cacheKey, normalized);
             setStudentOptions(normalized);
@@ -456,7 +638,9 @@ export function RoleBasedUserWizard({
       }
 
       const scopeInstitutionIds =
-        selectedInstitutionIds.length > 0 ? selectedInstitutionIds : [selectedPrimaryInstitutionId].filter(Boolean);
+        selectedInstitutionIds.length > 0
+          ? selectedInstitutionIds
+          : [selectedPrimaryInstitutionId].filter(Boolean);
 
       if (scopeInstitutionIds.length === 0) return;
 
@@ -471,7 +655,10 @@ export function RoleBasedUserWizard({
         if (!cancelled) {
           if (!unitError) {
             setAvailableUnits(
-              (unitRows ?? []).map((row: any) => ({ id: row.id, name: row.name }))
+              (unitRows ?? []).map((row: any) => ({
+                id: row.id,
+                name: row.name,
+              })),
             );
           } else {
             setAvailableUnits([]);
@@ -479,7 +666,11 @@ export function RoleBasedUserWizard({
         }
 
         const directorUserIds = Array.from(
-          new Set((unitRows ?? []).map((row: any) => row.directorUserId).filter(Boolean) as string[])
+          new Set(
+            (unitRows ?? [])
+              .map((row: any) => row.directorUserId)
+              .filter(Boolean) as string[],
+          ),
         );
 
         if (directorUserIds.length > 0) {
@@ -491,7 +682,13 @@ export function RoleBasedUserWizard({
 
           if (!cancelled && !userError) {
             const byId = new Map((userRows ?? []).map((u: any) => [u.id, u]));
-            const directorsList: Array<{ id: string; name: string; email?: string; unitId?: string | null; unitName?: string | null }> = [];
+            const directorsList: Array<{
+              id: string;
+              name: string;
+              email?: string;
+              unitId?: string | null;
+              unitName?: string | null;
+            }> = [];
             const seen = new Set<string>();
 
             for (const row of (unitRows ?? []) as any[]) {
@@ -502,7 +699,8 @@ export function RoleBasedUserWizard({
               seen.add(row.directorUserId);
               directorsList.push({
                 id: row.directorUserId,
-                name: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email,
+                name:
+                  `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email,
                 email: u.email,
                 unitId: row.id ?? null,
                 unitName: row.name ?? null,
@@ -517,7 +715,10 @@ export function RoleBasedUserWizard({
           setAvailableDirectors([]);
         }
       } catch (err) {
-        console.error('Erro ao carregar diretores/unidades para secretaria:', err);
+        console.error(
+          'Erro ao carregar diretores/unidades para secretaria:',
+          err,
+        );
         if (!cancelled) {
           setAvailableDirectors([]);
           setAvailableUnits([]);
@@ -535,7 +736,9 @@ export function RoleBasedUserWizard({
   const promoteDirectorToSecretary = async () => {
     if (!selectedDirectorId) return;
     if (!onPromoteExistingDirector) {
-      const director = availableDirectors.find((d) => d.id === selectedDirectorId);
+      const director = availableDirectors.find(
+        (d) => d.id === selectedDirectorId,
+      );
       if (!director) return;
       const current = getValues();
       const nameParts = director.name.trim().split(/\s+/);
@@ -551,7 +754,9 @@ export function RoleBasedUserWizard({
         unitId: director.unitId ?? current.unitId,
       });
       setIsAlsoDirector(true);
-      toast('Dados do diretor carregados. Confira e salve para finalizar a promoção.');
+      toast(
+        'Dados do diretor carregados. Confira e salve para finalizar a promoção.',
+      );
       return;
     }
     try {
@@ -564,11 +769,15 @@ export function RoleBasedUserWizard({
 
   useEffect(() => {
     const applyDefaultUnit = () => {
-      if (role !== UserRole.INSTITUTION_ADMIN && role !== UserRole.DIRECTOR) return;
+      if (role !== UserRole.INSTITUTION_ADMIN && role !== UserRole.DIRECTOR)
+        return;
       if (!defaultUnitId) return;
       const currentUnitId = (getValues as any)?.('unitId');
       if (!currentUnitId) {
-        setValue('unitId', defaultUnitId, { shouldDirty: false, shouldValidate: false });
+        setValue('unitId', defaultUnitId, {
+          shouldDirty: false,
+          shouldValidate: false,
+        });
       }
     };
     applyDefaultUnit();
@@ -578,15 +787,35 @@ export function RoleBasedUserWizard({
     const items: string[] = [];
     if (!firstName || !lastName) items.push('Preencher nome e sobrenome.');
     if (!email) items.push('Informar email de acesso.');
-    if (!selectedPrimaryInstitutionId) items.push('Definir a instituição principal.');
-    if (role === UserRole.TEACHER && canManageTeacherAssignments && selectedSubjects.length === 0) {
+    if (!selectedPrimaryInstitutionId)
+      items.push('Definir a instituição principal.');
+    if (
+      role === UserRole.TEACHER &&
+      canManageTeacherAssignments &&
+      selectedSubjects.length === 0
+    ) {
       items.push('Vincular ao menos uma disciplina.');
     }
-    if (role === UserRole.PARENT && linkedStudents.length === 0) items.push('Vincular ao menos um aluno.');
+    if (role === UserRole.PARENT && linkedStudents.length === 0)
+      items.push('Vincular ao menos um aluno.');
     return items;
-  }, [canManageTeacherAssignments, email, firstName, lastName, linkedStudents.length, role, selectedPrimaryInstitutionId, selectedSubjects.length]);
+  }, [
+    canManageTeacherAssignments,
+    email,
+    firstName,
+    lastName,
+    linkedStudents.length,
+    role,
+    selectedPrimaryInstitutionId,
+    selectedSubjects.length,
+  ]);
 
-  const status = pendencias.length === 0 ? 'Pronto para uso' : pendencias.length <= 2 ? 'Incompleto' : 'Cadastrado';
+  const status =
+    pendencias.length === 0
+      ? 'Pronto para uso'
+      : pendencias.length <= 2
+        ? 'Incompleto'
+        : 'Cadastrado';
 
   const goToStep = (index: number) => {
     if (index < 0 || index >= steps.length) return;
@@ -603,7 +832,9 @@ export function RoleBasedUserWizard({
   };
 
   const toggleLinkedStudent = (student: StudentOption) => {
-    const exists = linkedStudents.find((item) => item.studentId === student.studentId);
+    const exists = linkedStudents.find(
+      (item) => item.studentId === student.studentId,
+    );
     const next = exists
       ? linkedStudents.filter((item) => item.studentId !== student.studentId)
       : [
@@ -619,17 +850,30 @@ export function RoleBasedUserWizard({
           },
         ];
 
-    setValue('linkedStudents', next, { shouldDirty: true, shouldValidate: true });
+    setValue('linkedStudents', next, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
   };
 
-  const updateLinkedStudent = (studentId: string, field: keyof StudentLink, value: string | boolean) => {
-    const next = linkedStudents.map((item) => item.studentId === studentId ? { ...item, [field]: value } : item);
-    setValue('linkedStudents', next, { shouldDirty: true, shouldValidate: true });
+  const updateLinkedStudent = (
+    studentId: string,
+    field: keyof StudentLink,
+    value: string | boolean,
+  ) => {
+    const next = linkedStudents.map((item) =>
+      item.studentId === studentId ? { ...item, [field]: value } : item,
+    );
+    setValue('linkedStudents', next, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
   };
 
   const toggleInstitutionSelection = (institutionId: string) => {
     const isPrimary = institutionId === selectedPrimaryInstitutionId;
-    const isAdditional = selectedAdditionalInstitutionIds.includes(institutionId);
+    const isAdditional =
+      selectedAdditionalInstitutionIds.includes(institutionId);
 
     if (isPrimary) {
       const fallbackInstitutionId = selectedAdditionalInstitutionIds[0];
@@ -658,7 +902,10 @@ export function RoleBasedUserWizard({
       onToggleAdditionalInstitution(institutionId);
     }
 
-    if (currentPrimaryInstitutionId && currentPrimaryInstitutionId !== institutionId) {
+    if (
+      currentPrimaryInstitutionId &&
+      currentPrimaryInstitutionId !== institutionId
+    ) {
       onToggleAdditionalInstitution(currentPrimaryInstitutionId);
     }
 
@@ -672,47 +919,87 @@ export function RoleBasedUserWizard({
           role === UserRole.COORDINATOR ||
           role === UserRole.DIRECTOR) && (
           <div className="relative flex flex-col items-center rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-6 shadow-sm">
-            <label className="group relative flex h-36 w-36 cursor-pointer items-center justify-center overflow-hidden rounded-full border-4 border-dashed border-primary-200 bg-gray-50 transition-colors hover:border-primary-300 hover:bg-gray-100 dark:border-primary-900/40 dark:bg-gray-900/40 dark:hover:bg-gray-700">
-              {photoPreviewUrl ? (
-                <Image
-                  src={photoPreviewUrl}
-                  alt={profileDisplayName}
-                  width={144}
-                  height={144}
-                  className="h-full w-full object-cover"
-                  unoptimized={photoPreviewUrl.startsWith('blob:')}
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center gap-2 px-4 text-center text-gray-400">
-                  <CameraIcon className="h-8 w-8 text-primary-500 dark:text-primary-400" />
-                  <span className="text-xs font-semibold text-primary-600 dark:text-primary-400">
-                    Adicionar foto
-                  </span>
-                </div>
-              )}
+            <Dropdown
+              trigger={
+                <button
+                  type="button"
+                  aria-label="Ações da foto"
+                  className="group relative flex h-36 w-36 cursor-pointer items-center justify-center overflow-hidden rounded-full border-4 border-dashed border-primary-200 bg-gray-50 transition-colors hover:border-primary-300 hover:bg-gray-100 dark:border-primary-900/40 dark:bg-gray-900/40 dark:hover:bg-gray-700"
+                >
+                  {photoPreviewUrl ? (
+                    <Image
+                      src={photoPreviewUrl}
+                      alt={profileDisplayName}
+                      width={144}
+                      height={144}
+                      className="h-full w-full object-cover"
+                      unoptimized={photoPreviewUrl.startsWith('blob:')}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-2 px-4 text-center text-gray-400">
+                      <CameraIcon className="h-8 w-8 text-primary-500 dark:text-primary-400" />
+                      <span className="text-xs font-semibold text-primary-600 dark:text-primary-400">
+                        Adicionar foto
+                      </span>
+                    </div>
+                  )}
 
-              <div className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition-opacity group-hover:bg-black/35 group-hover:opacity-100">
-                <div className="flex flex-col items-center gap-1 text-center">
-                  <CameraIcon className="h-6 w-6" />
-                  <span className="text-xs font-medium">Trocar foto</span>
-                </div>
-              </div>
-
-              <input
-                type="file"
-                accept="image/png,image/jpeg"
-                className="hidden"
-                {...photoRegister}
-                ref={(element) => {
-                  photoRegister.ref(element);
-                  photoInputRef.current = element;
-                }}
-                onChange={handlePhotoChange}
-              />
-            </label>
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition-opacity group-hover:bg-black/35 group-hover:opacity-100">
+                    <div className="flex flex-col items-center gap-1 text-center">
+                      <CameraIcon className="h-6 w-6" />
+                      <span className="text-xs font-medium">Ações da foto</span>
+                    </div>
+                  </div>
+                </button>
+              }
+              items={[
+                ...(photoPreviewUrl
+                  ? [
+                      {
+                        key: 'view-photo',
+                        label: 'Visualizar foto',
+                        onClick: () =>
+                          window.open(
+                            photoPreviewUrl,
+                            '_blank',
+                            'noopener,noreferrer',
+                          ),
+                      },
+                    ]
+                  : []),
+                {
+                  key: 'change-photo',
+                  label: photoPreviewUrl ? 'Trocar foto' : 'Adicionar foto',
+                  onClick: () => photoInputRef.current?.click(),
+                },
+                ...(photoPreviewUrl
+                  ? [
+                      {
+                        key: 'delete-photo',
+                        label: 'Excluir foto',
+                        onClick: handleDeletePhoto,
+                        color: 'danger' as const,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+            <input
+              type="file"
+              accept="image/png,image/jpeg"
+              className="hidden"
+              {...photoRegister}
+              ref={(element) => {
+                photoRegister.ref(element);
+                photoInputRef.current = element;
+              }}
+              onChange={handlePhotoChange}
+            />
 
             <div className="mt-4 text-center">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">{profileDisplayName}</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                {profileDisplayName}
+              </p>
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 {profileSummary || 'xxx.xxx.xxx-xx'}
               </p>
@@ -735,7 +1022,9 @@ export function RoleBasedUserWizard({
                     : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800 border-transparent'
                 }`}
               >
-                <Icon className={`h-5 w-5 shrink-0 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400'}`} />
+                <Icon
+                  className={`h-5 w-5 shrink-0 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400'}`}
+                />
                 {step.label}
               </button>
             );
@@ -754,7 +1043,9 @@ export function RoleBasedUserWizard({
                     Opções de Secretário(a)
                   </h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    Se esse secretário(a) também for diretor(a) de um anexo, ou se você quiser promover um diretor(a) já cadastrado, use as opções abaixo.
+                    Se esse secretário(a) também for diretor(a) de um anexo, ou
+                    se você quiser promover um diretor(a) já cadastrado, use as
+                    opções abaixo.
                   </p>
                 </div>
 
@@ -765,7 +1056,8 @@ export function RoleBasedUserWizard({
                         Promover Diretor(a) existente para Secretário(a)
                       </h3>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Copia os dados do diretor selecionado para este cadastro (opcional).
+                        Copia os dados do diretor selecionado para este cadastro
+                        (opcional).
                       </p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
@@ -775,7 +1067,8 @@ export function RoleBasedUserWizard({
                           { value: '', label: 'Selecione...' },
                           ...availableDirectors.map((d) => ({
                             value: d.id,
-                            label: d.name + (d.unitName ? ` — ${d.unitName}` : ''),
+                            label:
+                              d.name + (d.unitName ? ` — ${d.unitName}` : ''),
                           })),
                         ]}
                         value={selectedDirectorId}
@@ -807,7 +1100,8 @@ export function RoleBasedUserWizard({
                         Também é Diretor(a) de um anexo
                       </span>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Marque se esse(a) secretário(a) atua também como diretor(a) de um anexo específico.
+                        Marque se esse(a) secretário(a) atua também como
+                        diretor(a) de um anexo específico.
                       </p>
                     </div>
                   </label>
@@ -819,25 +1113,41 @@ export function RoleBasedUserWizard({
                           label="Anexo (Unidade) *"
                           options={[
                             { value: '', label: 'Selecione...' },
-                            ...availableUnits.map((u) => ({ value: u.id, label: u.name })),
+                            ...availableUnits.map((u) => ({
+                              value: u.id,
+                              label: u.name,
+                            })),
                           ]}
                           {...register('unitId', {
-                            required: isAlsoDirector ? 'Selecione o anexo do diretor(a)' : false,
+                            required: isAlsoDirector
+                              ? 'Selecione o anexo do diretor(a)'
+                              : false,
                           })}
                           value={unitId ?? ''}
                           onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                            setValue('unitId', e.target.value, { shouldDirty: true, shouldValidate: true })
+                            setValue('unitId', e.target.value, {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            })
                           }
                           error={errors.unitId?.message as string}
                           required={isAlsoDirector}
                         />
                         <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                          Ao salvar, o usuário será vinculado como diretor(a) desse anexo automaticamente.
+                          Ao salvar, o usuário será vinculado como diretor(a)
+                          desse anexo automaticamente.
                         </p>
                       </div>
                       <div className="rounded-lg bg-gray-50 dark:bg-gray-900/40 p-3 text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                        <p>🔒 Dica: essa opção é ideal para escolas pequenas onde o(a) mesmo(a) profissional acumula os cargos de Diretor(a) e Secretário(a).</p>
-                        <p>📌 Você pode ajustar esse vínculo depois na tela de edição do anexo (Unidade).</p>
+                        <p>
+                          🔒 Dica: essa opção é ideal para escolas pequenas onde
+                          o(a) mesmo(a) profissional acumula os cargos de
+                          Diretor(a) e Secretário(a).
+                        </p>
+                        <p>
+                          📌 Você pode ajustar esse vínculo depois na tela de
+                          edição do anexo (Unidade).
+                        </p>
                       </div>
                     </div>
                   )}
@@ -855,10 +1165,15 @@ export function RoleBasedUserWizard({
                       <Select
                         label="Perfil *"
                         options={roleOptions}
-                        {...register('role', { required: 'Perfil é obrigatório' })}
+                        {...register('role', {
+                          required: 'Perfil é obrigatório',
+                        })}
                         value={role ?? ''}
                         onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                          setValue('role', e.target.value as UserRole, { shouldDirty: true, shouldValidate: true })
+                          setValue('role', e.target.value as UserRole, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          })
                         }
                         error={errors.role?.message as string}
                         required
@@ -866,10 +1181,22 @@ export function RoleBasedUserWizard({
                     </div>
                   )}
                   <div className="md:col-span-6">
-                    <Input label="Nome *" {...register('firstName', { required: 'Nome obrigatório' })} error={errors.firstName?.message as string} />
+                    <Input
+                      label="Nome *"
+                      {...register('firstName', {
+                        required: 'Nome obrigatório',
+                      })}
+                      error={errors.firstName?.message as string}
+                    />
                   </div>
                   <div className="md:col-span-6">
-                    <Input label="Sobrenome *" {...register('lastName', { required: 'Sobrenome obrigatório' })} error={errors.lastName?.message as string} />
+                    <Input
+                      label="Sobrenome *"
+                      {...register('lastName', {
+                        required: 'Sobrenome obrigatório',
+                      })}
+                      error={errors.lastName?.message as string}
+                    />
                   </div>
                   <div className="md:col-span-6">
                     <Input label="Nome Social" {...register('socialName')} />
@@ -881,7 +1208,10 @@ export function RoleBasedUserWizard({
                       {...register('birthDate')}
                       value={birthDate ?? ''}
                       onChange={(e) =>
-                        setValue('birthDate', e.target.value, { shouldDirty: true, shouldValidate: true })
+                        setValue('birthDate', e.target.value, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
                       }
                     />
                   </div>
@@ -891,7 +1221,10 @@ export function RoleBasedUserWizard({
                       options={genderOptions}
                       value={watch('gender') ?? Gender.NOT_INFORMED}
                       onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                        setValue('gender', e.target.value as Gender, { shouldDirty: true, shouldValidate: true })
+                        setValue('gender', e.target.value as Gender, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
                       }
                     />
                   </div>
@@ -904,7 +1237,8 @@ export function RoleBasedUserWizard({
                       {...register('cpf', {
                         validate: (value) => {
                           if (!value) return true;
-                          if (removeMask(value).length !== 11) return 'CPF deve conter 11 dígitos';
+                          if (removeMask(value).length !== 11)
+                            return 'CPF deve conter 11 dígitos';
                           if (!validateCPF(value)) return 'CPF inválido';
                           return true;
                         },
@@ -936,10 +1270,22 @@ export function RoleBasedUserWizard({
                     />
                   </div>
                   <div className="md:col-span-3">
-                    <MaskedInput label="Celular" mask={masks.phone} maskChar={null} {...register('phone')} placeholder="(00) 0 0000-0000" />
+                    <MaskedInput
+                      label="Celular"
+                      mask={masks.phone}
+                      maskChar={null}
+                      {...register('phone')}
+                      placeholder="(00) 0 0000-0000"
+                    />
                   </div>
                   <div className="md:col-span-3">
-                    <MaskedInput label="Telefone Fixo" mask={masks.phone} maskChar={null} {...register('telefoneFixo')} placeholder="(00) 0000-0000" />
+                    <MaskedInput
+                      label="Telefone Fixo"
+                      mask={masks.phone}
+                      maskChar={null}
+                      {...register('telefoneFixo')}
+                      placeholder="(00) 0000-0000"
+                    />
                   </div>
                 </div>
 
@@ -952,7 +1298,13 @@ export function RoleBasedUserWizard({
                       {...register('zipCode', {
                         onBlur: async () => {
                           await fillAddressFromCep();
-                          await trigger(['address', 'city', 'state', 'bairro', 'complemento']);
+                          await trigger([
+                            'address',
+                            'city',
+                            'state',
+                            'bairro',
+                            'complemento',
+                          ]);
                         },
                       })}
                       placeholder="00000-000"
@@ -976,11 +1328,17 @@ export function RoleBasedUserWizard({
                   <div className="md:col-span-2 xl:col-span-2">
                     <Select
                       label="Estado"
-                      options={[{ value: '', label: 'Selecione a UF' }, ...BRAZILIAN_UF_OPTIONS]}
+                      options={[
+                        { value: '', label: 'Selecione a UF' },
+                        ...BRAZILIAN_UF_OPTIONS,
+                      ]}
                       {...register('state')}
                       value={state ?? ''}
                       onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                        setValue('state', e.target.value, { shouldDirty: true, shouldValidate: true })
+                        setValue('state', e.target.value, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
                       }
                     />
                   </div>
@@ -993,13 +1351,25 @@ export function RoleBasedUserWizard({
                 <TabHeader step={activeStep} />
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                   <div className="md:col-span-4">
-                    <Input label="Formação principal" {...register('degree')} placeholder="Ex.: Licenciatura em Matemática" />
+                    <Input
+                      label="Formação principal"
+                      {...register('degree')}
+                      placeholder="Ex.: Licenciatura em Matemática"
+                    />
                   </div>
                   <div className="md:col-span-4">
-                    <Input label="Especialização" {...register('specialization')} placeholder="Ex.: Educação Inclusiva" />
+                    <Input
+                      label="Especialização"
+                      {...register('specialization')}
+                      placeholder="Ex.: Educação Inclusiva"
+                    />
                   </div>
                   <div className="md:col-span-4">
-                    <Input label="Registro profissional" {...register('registrationNumber')} placeholder="Ex.: Registro interno" />
+                    <Input
+                      label="Registro profissional"
+                      {...register('registrationNumber')}
+                      placeholder="Ex.: Registro interno"
+                    />
                   </div>
                   <div className="md:col-span-4">
                     <Input
@@ -1008,7 +1378,10 @@ export function RoleBasedUserWizard({
                       {...register('hireDate')}
                       value={hireDate ?? ''}
                       onChange={(e) =>
-                        setValue('hireDate', e.target.value, { shouldDirty: true, shouldValidate: true })
+                        setValue('hireDate', e.target.value, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
                       }
                     />
                   </div>
@@ -1050,18 +1423,23 @@ export function RoleBasedUserWizard({
                         <Input
                           label="Buscar instituição"
                           value={institutionSearchTerm}
-                          onChange={(event) => setInstitutionSearchTerm(event.target.value)}
+                          onChange={(event) =>
+                            setInstitutionSearchTerm(event.target.value)
+                          }
                           placeholder="Digite o nome, cidade ou UF"
                           leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
                         />
                         <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                          Clique no bloco para selecionar ou remover. Depois, use o menu de ações para definir a principal.
+                          Clique no bloco para selecionar ou remover. Depois,
+                          use o menu de ações para definir a principal.
                         </p>
                       </div>
                     </div>
 
                     <div className="rounded-xl border border-dashed border-gray-200 dark:border-gray-700 p-4">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white mb-3">Instituições</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                        Instituições
+                      </p>
                       {institutionCards.length === 0 ? (
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           Nenhuma instituição encontrada para esse filtro.
@@ -1069,16 +1447,26 @@ export function RoleBasedUserWizard({
                       ) : (
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                           {institutionCards.map((institution) => {
-                            const isPrimary = institution.id === selectedPrimaryInstitutionId;
-                            const isSelected = isPrimary || selectedAdditionalInstitutionIds.includes(institution.id);
+                            const isPrimary =
+                              institution.id === selectedPrimaryInstitutionId;
+                            const isSelected =
+                              isPrimary ||
+                              selectedAdditionalInstitutionIds.includes(
+                                institution.id,
+                              );
                             return (
                               <div
                                 key={institution.id}
                                 role="button"
                                 tabIndex={0}
-                                onClick={() => toggleInstitutionSelection(institution.id)}
+                                onClick={() =>
+                                  toggleInstitutionSelection(institution.id)
+                                }
                                 onKeyDown={(event) => {
-                                  if (event.key === 'Enter' || event.key === ' ') {
+                                  if (
+                                    event.key === 'Enter' ||
+                                    event.key === ' '
+                                  ) {
                                     event.preventDefault();
                                     toggleInstitutionSelection(institution.id);
                                   }
@@ -1092,32 +1480,49 @@ export function RoleBasedUserWizard({
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0 flex-1">
                                     <div>
-                                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{institution.name}</p>
-                                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{institutionLocation(institution)}</p>
+                                      <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                        {institution.name}
+                                      </p>
+                                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                        {institutionLocation(institution)}
+                                      </p>
                                     </div>
                                   </div>
                                   <div className="flex items-start gap-2 shrink-0">
                                     {isPrimary && (
-                                      <Badge variant="success" size="sm">Principal</Badge>
+                                      <Badge variant="success" size="sm">
+                                        Principal
+                                      </Badge>
                                     )}
                                     {isSelected && !isPrimary && (
-                                      <div onClick={(event) => event.stopPropagation()}>
+                                      <div
+                                        onClick={(event) =>
+                                          event.stopPropagation()
+                                        }
+                                      >
                                         <Dropdown
-                                          trigger={(
+                                          trigger={
                                             <button
                                               type="button"
-                                              onClick={(event) => event.stopPropagation()}
+                                              onClick={(event) =>
+                                                event.stopPropagation()
+                                              }
                                               className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-gray-500 transition-colors hover:bg-white/80 hover:text-gray-700 dark:hover:bg-gray-700"
                                               aria-label={`Ações da instituição ${institution.name}`}
                                             >
                                               <EllipsisHorizontalIcon className="h-5 w-5" />
                                             </button>
-                                          )}
+                                          }
                                           items={[
                                             {
                                               key: 'set-primary',
-                                              label: isPrimary ? 'Instituição principal' : 'Definir como principal',
-                                              onClick: () => defineInstitutionAsPrimary(institution.id),
+                                              label: isPrimary
+                                                ? 'Instituição principal'
+                                                : 'Definir como principal',
+                                              onClick: () =>
+                                                defineInstitutionAsPrimary(
+                                                  institution.id,
+                                                ),
                                               disabled: isPrimary,
                                             },
                                           ]}
@@ -1143,8 +1548,10 @@ export function RoleBasedUserWizard({
 
                 {!canManageTeacherAssignments && (
                   <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
-                    As disciplinas vinculadas ao professor estão disponíveis apenas para consulta nesta tela.
-                    A Coordenação, o Administrador da Instituição ou o Super Admin é responsável por incluir ou remover esses vínculos.
+                    As disciplinas vinculadas ao professor estão disponíveis
+                    apenas para consulta nesta tela. A Coordenação, o
+                    Administrador da Instituição ou o Super Admin é responsável
+                    por incluir ou remover esses vínculos.
                   </div>
                 )}
 
@@ -1160,12 +1567,16 @@ export function RoleBasedUserWizard({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {subjectOptions.map((subject) => {
                       const isSelected = selectedSubjects.includes(subject.id);
-                      const institutionName = availableInstitutions.find((item) => item.id === subject.institutionId)?.name;
+                      const institutionName = availableInstitutions.find(
+                        (item) => item.id === subject.institutionId,
+                      )?.name;
                       return (
                         <label
                           key={subject.id}
                           className={`flex items-start gap-3 rounded-xl border p-4 transition-colors ${
-                            canManageTeacherAssignments ? 'cursor-pointer' : 'cursor-default opacity-90'
+                            canManageTeacherAssignments
+                              ? 'cursor-pointer'
+                              : 'cursor-default opacity-90'
                           } ${
                             isSelected
                               ? 'border-primary-300 bg-primary-50/80 dark:bg-primary-900/20'
@@ -1180,9 +1591,13 @@ export function RoleBasedUserWizard({
                             className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                           />
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">{subject.name}</p>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              {subject.name}
+                            </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {[subject.code, institutionName].filter(Boolean).join(' | ')}
+                              {[subject.code, institutionName]
+                                .filter(Boolean)
+                                .join(' | ')}
                             </p>
                           </div>
                         </label>
@@ -1197,7 +1612,11 @@ export function RoleBasedUserWizard({
               <div>
                 <TabHeader step={activeStep} />
                 <div className="mb-4">
-                  <Input label="Ocupação" {...register('occupation')} placeholder="Ex.: Autônoma, Servidor, Analista" />
+                  <Input
+                    label="Ocupação"
+                    {...register('occupation')}
+                    placeholder="Ex.: Autônoma, Servidor, Analista"
+                  />
                 </div>
 
                 {isLoadingDynamicOptions ? (
@@ -1208,8 +1627,12 @@ export function RoleBasedUserWizard({
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {studentOptions.map((student) => {
-                        const isSelected = linkedStudents.some((item) => item.studentId === student.studentId);
-                        const institutionName = availableInstitutions.find((item) => item.id === student.institutionId)?.name;
+                        const isSelected = linkedStudents.some(
+                          (item) => item.studentId === student.studentId,
+                        );
+                        const institutionName = availableInstitutions.find(
+                          (item) => item.id === student.institutionId,
+                        )?.name;
 
                         return (
                           <label
@@ -1227,9 +1650,13 @@ export function RoleBasedUserWizard({
                               className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                             />
                             <div className="min-w-0">
-                              <p className="text-sm font-medium text-gray-900 dark:text-white">{student.label}</p>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                {student.label}
+                              </p>
                               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {[student.registrationNumber, institutionName].filter(Boolean).join(' | ')}
+                                {[student.registrationNumber, institutionName]
+                                  .filter(Boolean)
+                                  .join(' | ')}
                               </p>
                             </div>
                           </label>
@@ -1238,13 +1665,24 @@ export function RoleBasedUserWizard({
                     </div>
 
                     {linkedStudents.map((student) => (
-                      <div key={student.studentId} className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4 mt-4">
+                      <div
+                        key={student.studentId}
+                        className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4 mt-4"
+                      >
                         <div className="flex items-center justify-between gap-3">
                           <div>
-                            <p className="text-sm font-semibold text-gray-900 dark:text-white">{student.studentName}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Defina o parentesco e as permissões desse vínculo.</p>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                              {student.studentName}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              Defina o parentesco e as permissões desse vínculo.
+                            </p>
                           </div>
-                          {student.isPrimary && <Badge variant="success" size="sm">Principal</Badge>}
+                          {student.isPrimary && (
+                            <Badge variant="success" size="sm">
+                              Principal
+                            </Badge>
+                          )}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -1253,35 +1691,63 @@ export function RoleBasedUserWizard({
                             options={relationshipOptions}
                             value={student.relationship}
                             onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                              updateLinkedStudent(student.studentId, 'relationship', e.target.value)
+                              updateLinkedStudent(
+                                student.studentId,
+                                'relationship',
+                                e.target.value,
+                              )
                             }
                           />
                           <label className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-3">
                             <input
                               type="checkbox"
                               checked={!!student.isPrimary}
-                              onChange={(e) => updateLinkedStudent(student.studentId, 'isPrimary', e.target.checked)}
+                              onChange={(e) =>
+                                updateLinkedStudent(
+                                  student.studentId,
+                                  'isPrimary',
+                                  e.target.checked,
+                                )
+                              }
                               className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                             />
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">Contato principal</span>
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              Contato principal
+                            </span>
                           </label>
                           <label className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-3">
                             <input
                               type="checkbox"
                               checked={!!student.notificacoes}
-                              onChange={(e) => updateLinkedStudent(student.studentId, 'notificacoes', e.target.checked)}
+                              onChange={(e) =>
+                                updateLinkedStudent(
+                                  student.studentId,
+                                  'notificacoes',
+                                  e.target.checked,
+                                )
+                              }
                               className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                             />
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">Recebe notificações</span>
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              Recebe notificações
+                            </span>
                           </label>
                           <label className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-3">
                             <input
                               type="checkbox"
                               checked={!!student.podeRetirar}
-                              onChange={(e) => updateLinkedStudent(student.studentId, 'podeRetirar', e.target.checked)}
+                              onChange={(e) =>
+                                updateLinkedStudent(
+                                  student.studentId,
+                                  'podeRetirar',
+                                  e.target.checked,
+                                )
+                              }
                               className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                             />
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">Pode retirar o aluno</span>
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              Pode retirar o aluno
+                            </span>
                           </label>
                         </div>
                       </div>
@@ -1298,15 +1764,21 @@ export function RoleBasedUserWizard({
                 {mode === 'create' ? (
                   <div className="space-y-4">
                     <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4">
-                      <p className="text-sm font-semibold text-amber-900">Vincule as turmas após criar o professor</p>
+                      <p className="text-sm font-semibold text-amber-900">
+                        Vincule as turmas após criar o professor
+                      </p>
                       <p className="mt-2 text-sm text-amber-800">
-                        O vínculo com turmas depende do cadastro do professor já existir no sistema. Primeiro salve o professor,
-                        depois use a edição ou o módulo acadêmico para associar as turmas em que ele vai atuar.
+                        O vínculo com turmas depende do cadastro do professor já
+                        existir no sistema. Primeiro salve o professor, depois
+                        use a edição ou o módulo acadêmico para associar as
+                        turmas em que ele vai atuar.
                       </p>
                     </div>
                     <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-600 p-4 text-sm text-gray-600 dark:text-gray-400">
-                      As turmas são vinculadas junto da atuação do professor nas disciplinas. Selecione as disciplinas nesta etapa
-                      e finalize o cadastro para liberar o próximo passo operacional.
+                      As turmas são vinculadas junto da atuação do professor nas
+                      disciplinas. Selecione as disciplinas nesta etapa e
+                      finalize o cadastro para liberar o próximo passo
+                      operacional.
                     </div>
                   </div>
                 ) : isLoadingTeacherClasses ? (
@@ -1319,7 +1791,8 @@ export function RoleBasedUserWizard({
                       Este professor ainda não possui turmas vinculadas.
                     </div>
                     <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-800">
-                      Para deixar o professor pronto para uso, associe as turmas no fluxo acadêmico de distribuição de disciplinas/turmas.
+                      Para deixar o professor pronto para uso, associe as turmas
+                      no fluxo acadêmico de distribuição de disciplinas/turmas.
                     </div>
                   </div>
                 ) : (
@@ -1335,15 +1808,23 @@ export function RoleBasedUserWizard({
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold text-gray-900">{item.class.name}</p>
+                            <p className="text-sm font-semibold text-gray-900">
+                              {item.class.name}
+                            </p>
                             <p className="mt-1 text-xs text-gray-500">
                               {item.class.grade}
-                              {item.class.section ? ` • ${item.class.section}` : ''}
+                              {item.class.section
+                                ? ` • ${item.class.section}`
+                                : ''}
                               {item.class.shift ? ` • ${item.class.shift}` : ''}
                             </p>
                           </div>
                           <Badge
-                            variant={item.assignmentType === 'main_teacher' ? 'info' : 'success'}
+                            variant={
+                              item.assignmentType === 'main_teacher'
+                                ? 'info'
+                                : 'success'
+                            }
                             size="sm"
                           >
                             {item.assignmentLabel || 'Vinculada'}
@@ -1356,7 +1837,10 @@ export function RoleBasedUserWizard({
                           </p>
                           {item.weeklyHours ? (
                             <p className="text-sm text-gray-700">
-                              <span className="font-medium">Carga semanal:</span> {item.weeklyHours}h
+                              <span className="font-medium">
+                                Carga semanal:
+                              </span>{' '}
+                              {item.weeklyHours}h
                             </p>
                           ) : null}
                         </div>
@@ -1389,14 +1873,18 @@ export function RoleBasedUserWizard({
                           disabled={!generatedInitialPassword}
                           onClick={() => {
                             if (!generatedInitialPassword) return;
-                            setValue('password', generatedInitialPassword, { shouldDirty: true, shouldValidate: true });
+                            setValue('password', generatedInitialPassword, {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            });
                           }}
                         >
                           É o primeiro acesso? Preencher senha
                         </Button>
                         {generatedInitialPassword ? (
                           <span className="text-xs text-gray-500 dark:text-gray-400">
-                            Senha sugerida: <strong>{generatedInitialPassword}</strong>
+                            Senha sugerida:{' '}
+                            <strong>{generatedInitialPassword}</strong>
                           </span>
                         ) : null}
                       </div>
@@ -1408,12 +1896,16 @@ export function RoleBasedUserWizard({
                         type="text"
                         value={password ?? ''}
                         onChange={(event) =>
-                          setValue('password', event.target.value, { shouldDirty: true, shouldValidate: true })
+                          setValue('password', event.target.value, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          })
                         }
                         placeholder="Clique no botão para preencher automaticamente"
                       />
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        No primeiro login, o usuário poderá trocar essa senha depois de acessar a conta.
+                        No primeiro login, o usuário poderá trocar essa senha
+                        depois de acessar a conta.
                       </p>
                     </div>
                   </div>
@@ -1421,14 +1913,18 @@ export function RoleBasedUserWizard({
                   <div className="space-y-4">
                     {passwordField ?? (
                       <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-600 p-4 text-sm text-gray-600 dark:text-gray-400">
-                        A redefinição de senha fica disponível apenas para o Super Admin na edição do usuário.
+                        A redefinição de senha fica disponível apenas para o
+                        Super Admin na edição do usuário.
                       </div>
                     )}
 
                     <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 mt-4 space-y-2">
-                      <p className="text-sm font-semibold text-amber-900">Alteração sensível</p>
+                      <p className="text-sm font-semibold text-amber-900">
+                        Alteração sensível
+                      </p>
                       <p className="text-sm text-amber-800">
-                        Ao redefinir a senha, o usuário passará a acessar o sistema com a nova credencial definida pelo Super Admin.
+                        Ao redefinir a senha, o usuário passará a acessar o
+                        sistema com a nova credencial definida pelo Super Admin.
                       </p>
                     </div>
                   </div>
@@ -1454,7 +1950,9 @@ export function RoleBasedUserWizard({
                   }
                 }}
                 rightIcon={
-                  activeIndex < steps.length - 1 ? <ArrowRightIcon className="h-4 w-4" /> : undefined
+                  activeIndex < steps.length - 1 ? (
+                    <ArrowRightIcon className="h-4 w-4" />
+                  ) : undefined
                 }
               >
                 {activeIndex === steps.length - 1 ? 'Salvar' : 'Próximo'}
@@ -1472,7 +1970,10 @@ export function RoleBasedUserWizard({
           setPendingPhotoFile(null);
         }}
         onConfirm={(nextFile) => {
-          setValue('photo', [nextFile] as any, { shouldDirty: true, shouldValidate: true });
+          setValue('photo', [nextFile] as any, {
+            shouldDirty: true,
+            shouldValidate: true,
+          });
           setIsCropModalOpen(false);
           setPendingPhotoFile(null);
           if (photoInputRef.current) photoInputRef.current.value = '';

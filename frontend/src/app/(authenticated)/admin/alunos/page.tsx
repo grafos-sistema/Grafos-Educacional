@@ -71,7 +71,10 @@ export default function AlunosPage() {
       toast.success('Aluno excluído permanentemente com sucesso!');
     } catch (error: any) {
       console.error('Erro ao excluir aluno permanentemente:', error);
-      presentFriendlyError(error, 'Nao foi possivel excluir o aluno permanentemente agora.');
+      presentFriendlyError(
+        error,
+        'Nao foi possivel excluir o aluno permanentemente agora.',
+      );
     }
   };
 
@@ -94,17 +97,9 @@ export default function AlunosPage() {
           )}
           <div>
             <div className="flex items-center gap-2">
-              <div className="font-medium">{user.firstName} {user.lastName}</div>
-              {user.teacherProfile && (
-                <Badge variant="info" size="sm" title="Também é professor">
-                  Professor
-                </Badge>
-              )}
-              {user.parentProfile && (
-                <Badge variant="warning" size="sm" title="Também é responsável">
-                  Responsável
-                </Badge>
-              )}
+              <div className="font-medium">
+                {user.firstName} {user.lastName}
+              </div>
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
               {user.email}
@@ -200,7 +195,9 @@ export default function AlunosPage() {
                 onChange={(e) =>
                   setFilters({ ...filters, search: e.target.value, page: 1 })
                 }
-                leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
+                leftIcon={
+                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                }
               />
             </div>
             <div className="w-full sm:w-36">
@@ -214,7 +211,9 @@ export default function AlunosPage() {
                 onChange={(e) =>
                   setFilters({
                     ...filters,
-                    isActive: e.target.value ? e.target.value === 'true' : undefined,
+                    isActive: e.target.value
+                      ? e.target.value === 'true'
+                      : undefined,
                     page: 1,
                   })
                 }
@@ -291,15 +290,20 @@ export default function AlunosPage() {
         <div className="space-y-4">
           <p className="text-gray-600 dark:text-gray-400">
             Tem certeza que deseja remover o aluno{' '}
-            <strong>{deleteModal.user?.firstName} {deleteModal.user?.lastName}</strong>?
+            <strong>
+              {deleteModal.user?.firstName} {deleteModal.user?.lastName}
+            </strong>
+            ?
           </p>
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
             <p>
-              <strong>Desativar</strong> mantém o aluno no banco, apenas marcando-o como inativo.
+              <strong>Desativar</strong> mantém o aluno no banco, apenas
+              marcando-o como inativo.
             </p>
             {user?.role === UserRole.SUPER_ADMIN && (
               <p className="mt-2">
-                <strong>Excluir permanentemente</strong> remove o aluno de forma definitiva.
+                <strong>Excluir permanentemente</strong> remove o aluno de forma
+                definitiva.
               </p>
             )}
           </div>
@@ -312,7 +316,9 @@ export default function AlunosPage() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => deleteModal.user && handleDelete(deleteModal.user.id)}
+              onClick={() =>
+                deleteModal.user && handleDelete(deleteModal.user.id)
+              }
             >
               Apenas desativar
             </Button>

@@ -72,6 +72,8 @@ const STUDENT_HEADERS = [
   'responsavel_whatsapp',
   'responsavel_telefone_fixo',
   'parentesco',
+  'responsavel_data_nascimento',
+  'responsavel_contato_emergencia',
   'responsavel_notificacoes',
   'responsavel_pode_retirar',
 ];
@@ -164,6 +166,8 @@ const STUDENT_SAMPLE: ImportRow = {
   responsavel_whatsapp: '11988888888',
   responsavel_telefone_fixo: '1131112222',
   parentesco: 'Mãe',
+  responsavel_data_nascimento: '1982-06-18',
+  responsavel_contato_emergencia: 'SIM',
   responsavel_notificacoes: 'SIM',
   responsavel_pode_retirar: 'SIM',
 };
@@ -183,7 +187,11 @@ function headersForMode(mode: ImportMode) {
 function templateForMode(mode: ImportMode) {
   const headers = headersForMode(mode);
   const rows = TEMPLATE_SAMPLES[mode].map((sample) =>
-    headers.map((header) => sample[header] ?? '').join(';'),
+    headers
+      .map(
+        (header) => sample[header] ?? (mode === 'ALL' ? 'NÃO SE APLICA' : ''),
+      )
+      .join(';'),
   );
 
   return [headers.join(';'), ...rows].join('\n');
@@ -234,8 +242,10 @@ function parseFile(content: string): ImportRow[] {
 
 function normalizedRole(value: string) {
   const normalized = value.trim().toUpperCase();
-  if (normalized === 'ALUNO' || normalized === 'STUDENT') return UserRole.STUDENT;
-  if (normalized === 'PROFESSOR' || normalized === 'TEACHER') return UserRole.TEACHER;
+  if (normalized === 'ALUNO' || normalized === 'STUDENT')
+    return UserRole.STUDENT;
+  if (normalized === 'PROFESSOR' || normalized === 'TEACHER')
+    return UserRole.TEACHER;
   return null;
 }
 
@@ -271,7 +281,10 @@ export function BulkUserImportModal({
   const [mode, setMode] = useState<ImportMode | ''>(defaultMode);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingInstitutions, setLoadingInstitutions] = useState(false);
-  const [result, setResult] = useState<{ imported: number; errors: string[] } | null>(null);
+  const [result, setResult] = useState<{
+    imported: number;
+    errors: string[];
+  } | null>(null);
   const institutionsRequested = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -293,11 +306,20 @@ export function BulkUserImportModal({
   }, [institutionSearch, institutions]);
 
   const validRows = useMemo(
-    () => rows.filter((row) => {
-      const role = mode ? roleForRow(row, mode) : null;
-      const hasBasicData = Boolean(role && row.nome?.trim() && row.sobrenome?.trim() && row.email?.trim());
-      return hasBasicData && (role !== UserRole.STUDENT || Boolean(row.responsavel_nome?.trim()));
-    }),
+    () =>
+      rows.filter((row) => {
+        const role = mode ? roleForRow(row, mode) : null;
+        const hasBasicData = Boolean(
+          role &&
+          row.nome?.trim() &&
+          row.sobrenome?.trim() &&
+          row.email?.trim(),
+        );
+        return (
+          hasBasicData &&
+          (role !== UserRole.STUDENT || Boolean(row.responsavel_nome?.trim()))
+        );
+      }),
     [mode, rows],
   );
 
@@ -311,7 +333,11 @@ export function BulkUserImportModal({
   const loadInstitutions = async () => {
     setLoadingInstitutions(true);
     try {
-      const response = await institutionsService.findAll({ page: 1, limit: 500, isActive: true });
+      const response = await institutionsService.findAll({
+        page: 1,
+        limit: 500,
+        isActive: true,
+      });
       setInstitutions(response.data);
     } catch {
       toast.error('Não foi possível carregar as instituições.');
@@ -348,7 +374,10 @@ export function BulkUserImportModal({
 
   const handleInstitutionSearch = (value: string) => {
     setInstitutionSearch(value);
-    if (!selectedInstitution || value !== institutionName(selectedInstitution)) {
+    if (
+      !selectedInstitution ||
+      value !== institutionName(selectedInstitution)
+    ) {
       setInstitutionId('');
       setUnitId('');
       setMode('');
@@ -363,11 +392,15 @@ export function BulkUserImportModal({
 
   const downloadTemplate = () => {
     if (!mode) {
-      toast.error('Selecione o tipo de importação para baixar o modelo correto.');
+      toast.error(
+        'Selecione o tipo de importação para baixar o modelo correto.',
+      );
       return;
     }
 
-    const blob = new Blob([`\uFEFF${templateForMode(mode)}`], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([`\uFEFF${templateForMode(mode)}`], {
+      type: 'text/csv;charset=utf-8;',
+    });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
@@ -401,11 +434,15 @@ export function BulkUserImportModal({
       return;
     }
     if (!mode) {
-      toast.error('Selecione se a importação será de alunos, professores ou dos dois.');
+      toast.error(
+        'Selecione se a importação será de alunos, professores ou dos dois.',
+      );
       return;
     }
     if (validRows.length === 0) {
-      toast.error('Envie um arquivo com linhas válidas para o modelo selecionado.');
+      toast.error(
+        'Envie um arquivo com linhas válidas para o modelo selecionado.',
+      );
       return;
     }
 
@@ -454,34 +491,52 @@ export function BulkUserImportModal({
         dataMatricula: row.data_matricula || undefined,
         modalidade: row.modalidade || undefined,
         observacoes: row.observacoes || undefined,
-        healthInfo: role === UserRole.STUDENT ? {
-          tipoSanguineo: row.tipo_sanguineo || null,
-          alergias: row.alergias || null,
-          medicamentos: row.medicamentos || null,
-          necessidadesEspeciais: row.necessidades_especiais || null,
-          restricoesAlimentares: row.restricoes_alimentares || null,
-          convenioMedico: row.convenio_medico || null,
-        } : undefined,
-        responsaveis: role === UserRole.STUDENT && row.responsavel_nome
-          ? [{
-              nome: row.responsavel_nome,
-              cpf: row.responsavel_cpf || undefined,
-              email: row.responsavel_email || undefined,
-              celular: row.responsavel_celular || undefined,
-              whatsapp: row.responsavel_whatsapp || undefined,
-              telefoneFixo: row.responsavel_telefone_fixo || undefined,
-              parentesco: row.parentesco || 'Responsável',
-              notificacoes: ['SIM', 'S', 'TRUE', '1'].includes(row.responsavel_notificacoes?.trim().toUpperCase() || '') || undefined,
-              podeRetirar: ['SIM', 'S', 'TRUE', '1'].includes(row.responsavel_pode_retirar?.trim().toUpperCase() || '') || undefined,
-            }]
-          : undefined,
+        healthInfo:
+          role === UserRole.STUDENT
+            ? {
+                tipoSanguineo: row.tipo_sanguineo || null,
+                alergias: row.alergias || null,
+                medicamentos: row.medicamentos || null,
+                necessidadesEspeciais: row.necessidades_especiais || null,
+                restricoesAlimentares: row.restricoes_alimentares || null,
+                convenioMedico: row.convenio_medico || null,
+              }
+            : undefined,
+        responsaveis:
+          role === UserRole.STUDENT && row.responsavel_nome
+            ? [
+                {
+                  nome: row.responsavel_nome,
+                  cpf: row.responsavel_cpf || undefined,
+                  email: row.responsavel_email || undefined,
+                  celular: row.responsavel_celular || undefined,
+                  whatsapp: row.responsavel_whatsapp || undefined,
+                  telefoneFixo: row.responsavel_telefone_fixo || undefined,
+                  parentesco: row.parentesco || 'Responsável',
+                  dataNascimento: row.responsavel_data_nascimento || undefined,
+                  contatoEmergencia: ['SIM', 'S', 'TRUE', '1'].includes(
+                    row.responsavel_contato_emergencia?.trim().toUpperCase() ||
+                      '',
+                  ),
+                  notificacoes:
+                    ['SIM', 'S', 'TRUE', '1'].includes(
+                      row.responsavel_notificacoes?.trim().toUpperCase() || '',
+                    ) || undefined,
+                  podeRetirar:
+                    ['SIM', 'S', 'TRUE', '1'].includes(
+                      row.responsavel_pode_retirar?.trim().toUpperCase() || '',
+                    ) || undefined,
+                },
+              ]
+            : undefined,
       };
 
       try {
         await usersService.create(payload);
         imported += 1;
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'erro não identificado';
+        const message =
+          error instanceof Error ? error.message : 'erro não identificado';
         errors.push(`Linha ${index + 2}: ${message}`);
       }
     }
@@ -501,11 +556,16 @@ export function BulkUserImportModal({
     >
       <div className="space-y-6">
         <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-100">
-          O arquivo deve seguir o modelo do tipo escolhido. Para alunos, o nome do responsável é obrigatório e será criado/vinculado automaticamente ao aluno.
+          O arquivo deve seguir o modelo do tipo escolhido. Para alunos, o nome
+          do responsável é obrigatório e será criado/vinculado automaticamente
+          ao aluno.
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="bulk-import-institution" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+          <label
+            htmlFor="bulk-import-institution"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+          >
             Instituição <span className="text-red-500">*</span>
           </label>
           <div className="relative">
@@ -513,7 +573,11 @@ export function BulkUserImportModal({
               id="bulk-import-institution"
               value={institutionSearch}
               onChange={(event) => handleInstitutionSearch(event.target.value)}
-              placeholder={loadingInstitutions ? 'Carregando instituições...' : 'Buscar instituição pelo nome'}
+              placeholder={
+                loadingInstitutions
+                  ? 'Carregando instituições...'
+                  : 'Buscar instituição pelo nome'
+              }
               disabled={loadingInstitutions || isLoading}
               className="block w-full rounded-lg border-2 border-gray-300 bg-white py-3 pl-11 pr-4 text-sm text-gray-900 shadow-sm outline-none transition focus:border-primary-500 focus:ring-4 focus:ring-primary-100 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:ring-primary-900/30"
             />
@@ -521,22 +585,30 @@ export function BulkUserImportModal({
           </div>
           {!institutionId && !loadingInstitutions ? (
             <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
-              {filteredInstitutions.length > 0 ? filteredInstitutions.map((institution) => (
-                <button
-                  key={institution.id}
-                  type="button"
-                  onClick={() => selectInstitution(institution)}
-                  className="block w-full border-b border-gray-100 px-4 py-3 text-left text-sm text-gray-700 transition-colors last:border-0 hover:bg-primary-50 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-primary-900/20"
-                >
-                  <span className="font-medium">{institutionName(institution)}</span>
-                  {institution.city || institution.state ? (
-                    <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
-                      {[institution.city, institution.state].filter(Boolean).join(' - ')}
+              {filteredInstitutions.length > 0 ? (
+                filteredInstitutions.map((institution) => (
+                  <button
+                    key={institution.id}
+                    type="button"
+                    onClick={() => selectInstitution(institution)}
+                    className="block w-full border-b border-gray-100 px-4 py-3 text-left text-sm text-gray-700 transition-colors last:border-0 hover:bg-primary-50 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-primary-900/20"
+                  >
+                    <span className="font-medium">
+                      {institutionName(institution)}
                     </span>
-                  ) : null}
-                </button>
-              )) : (
-                <p className="px-4 py-3 text-sm text-gray-500">Nenhuma instituição encontrada.</p>
+                    {institution.city || institution.state ? (
+                      <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
+                        {[institution.city, institution.state]
+                          .filter(Boolean)
+                          .join(' - ')}
+                      </span>
+                    ) : null}
+                  </button>
+                ))
+              ) : (
+                <p className="px-4 py-3 text-sm text-gray-500">
+                  Nenhuma instituição encontrada.
+                </p>
               )}
             </div>
           ) : null}
@@ -557,24 +629,38 @@ export function BulkUserImportModal({
                 setMode('');
                 resetFile();
               }}
-              options={[{ value: '', label: 'Selecione o anexo...' }, ...availableUnits.map((unit) => ({ value: unit.id, label: unit.name }))]}
+              options={[
+                { value: '', label: 'Selecione o anexo...' },
+                ...availableUnits.map((unit) => ({
+                  value: unit.id,
+                  label: unit.name,
+                })),
+              ]}
               disabled={isLoading}
               required
-              helpText={availableUnits.length === 0 ? 'Esta instituição ainda não possui anexos ativos.' : 'Os usuários serão vinculados a este anexo.'}
+              helpText={
+                availableUnits.length === 0
+                  ? 'Esta instituição ainda não possui anexos ativos.'
+                  : 'Os usuários serão vinculados a este anexo.'
+              }
             />
             {unitId ? (
               lockMode ? (
-                <div className="rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 dark:border-primary-900/50 dark:bg-primary-950/30">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-primary-700 dark:text-primary-300">Tipo da importação</p>
-                  <p className="mt-1 text-sm font-medium text-primary-900 dark:text-primary-100">{MODE_LABELS[mode || defaultMode as ImportMode]}</p>
-                  <p className="mt-1 text-xs text-primary-700/80 dark:text-primary-300/80">Este modelo foi definido pelo menu que você acessou.</p>
-                </div>
+                <p className="self-center text-sm text-gray-600 dark:text-gray-300">
+                  Importação de{' '}
+                  {MODE_LABELS[mode || (defaultMode as ImportMode)]}.
+                </p>
               ) : (
                 <Select
                   label="O que deseja importar?"
                   value={mode}
-                  onChange={(event) => handleModeChange(event.target.value as ImportMode | '')}
-                  options={[{ value: '', label: 'Selecione...' }, ...MODE_OPTIONS]}
+                  onChange={(event) =>
+                    handleModeChange(event.target.value as ImportMode | '')
+                  }
+                  options={[
+                    { value: '', label: 'Selecione...' },
+                    ...MODE_OPTIONS,
+                  ]}
                   disabled={isLoading}
                   required
                 />
@@ -589,15 +675,30 @@ export function BulkUserImportModal({
 
         {mode ? (
           <div className="flex flex-wrap items-center gap-3">
-            <Button variant="secondary" onClick={downloadTemplate} leftIcon={<ArrowDownTrayIcon className="h-5 w-5" />}>
+            <Button
+              variant="secondary"
+              onClick={downloadTemplate}
+              leftIcon={<ArrowDownTrayIcon className="h-5 w-5" />}
+            >
               Baixar modelo de {MODE_LABELS[mode]}
             </Button>
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800">
               <DocumentArrowUpIcon className="h-5 w-5" />
               Selecionar arquivo
-              <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleFile} disabled={isLoading} />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={handleFile}
+                disabled={isLoading}
+              />
             </label>
-            {fileName ? <span className="self-center text-sm text-gray-500">{fileName}</span> : null}
+            {fileName ? (
+              <span className="self-center text-sm text-gray-500">
+                {fileName}
+              </span>
+            ) : null}
           </div>
         ) : null}
 
@@ -617,33 +718,72 @@ export function BulkUserImportModal({
                 {rows.slice(0, 8).map((row, index) => {
                   const role = mode ? roleForRow(row, mode) : null;
                   return (
-                    <tr key={`${row.email}-${index}`} className="border-t border-gray-100 dark:border-gray-700">
-                      <td className="px-3 py-2">{role === UserRole.STUDENT ? 'Aluno' : role === UserRole.TEACHER ? 'Professor' : row.tipo || '-'}</td>
-                      <td className="px-3 py-2">{`${row.nome || ''} ${row.sobrenome || ''}`.trim() || '-'}</td>
+                    <tr
+                      key={`${row.email}-${index}`}
+                      className="border-t border-gray-100 dark:border-gray-700"
+                    >
+                      <td className="px-3 py-2">
+                        {role === UserRole.STUDENT
+                          ? 'Aluno'
+                          : role === UserRole.TEACHER
+                            ? 'Professor'
+                            : row.tipo || '-'}
+                      </td>
+                      <td className="px-3 py-2">
+                        {`${row.nome || ''} ${row.sobrenome || ''}`.trim() ||
+                          '-'}
+                      </td>
                       <td className="px-3 py-2">{row.email || '-'}</td>
                       <td className="px-3 py-2">{selectedUnit?.name || '-'}</td>
-                      <td className="px-3 py-2">{row.responsavel_nome || '—'}</td>
+                      <td className="px-3 py-2">
+                        {row.responsavel_nome || '—'}
+                      </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-            {rows.length > 8 ? <p className="px-3 py-2 text-xs text-gray-500">Mostrando 8 de {rows.length} linhas.</p> : null}
-            {validRows.length < rows.length ? <p className="border-t border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800">{rows.length - validRows.length} linha(s) não serão importadas porque estão incompletas ou não correspondem ao modelo selecionado.</p> : null}
+            {rows.length > 8 ? (
+              <p className="px-3 py-2 text-xs text-gray-500">
+                Mostrando 8 de {rows.length} linhas.
+              </p>
+            ) : null}
+            {validRows.length < rows.length ? (
+              <p className="border-t border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                {rows.length - validRows.length} linha(s) não serão importadas
+                porque estão incompletas ou não correspondem ao modelo
+                selecionado.
+              </p>
+            ) : null}
           </div>
         ) : null}
 
         {result ? (
           <div className="rounded-lg border border-gray-200 p-4 text-sm dark:border-gray-700">
             <p>{result.imported} usuário(s) importado(s) com sucesso.</p>
-            {result.errors.length > 0 ? <ul className="mt-2 list-disc pl-5 text-red-700">{result.errors.map((error) => <li key={error}>{error}</li>)}</ul> : null}
+            {result.errors.length > 0 ? (
+              <ul className="mt-2 list-disc pl-5 text-red-700">
+                {result.errors.map((error) => (
+                  <li key={error}>{error}</li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         ) : null}
 
         <div className="flex justify-end gap-3">
-          <Button variant="secondary" onClick={onClose} disabled={isLoading}>Fechar</Button>
-          <Button onClick={importUsers} isLoading={isLoading} disabled={!mode || !institutionId || !unitId || validRows.length === 0}>
-            Importar {validRows.length > 0 ? `${validRows.length} linha(s)` : ''}
+          <Button variant="secondary" onClick={onClose} disabled={isLoading}>
+            Fechar
+          </Button>
+          <Button
+            onClick={importUsers}
+            isLoading={isLoading}
+            disabled={
+              !mode || !institutionId || !unitId || validRows.length === 0
+            }
+          >
+            Importar{' '}
+            {validRows.length > 0 ? `${validRows.length} linha(s)` : ''}
           </Button>
         </div>
       </div>

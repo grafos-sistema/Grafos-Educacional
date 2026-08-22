@@ -5,14 +5,25 @@ import { useRouter, useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeftIcon, EyeIcon, EyeSlashIcon, AcademicCapIcon, EllipsisHorizontalIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowLeftIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  AcademicCapIcon,
+  EllipsisHorizontalIcon,
+} from '@heroicons/react/24/outline';
 import { usersService } from '@/services/users.service';
 import { UpdateUserData, Gender } from '@/types/user.types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { removeMask, formatCPF, formatPhone, formatCEP } from '@/components/ui/MaskedInput';
+import {
+  removeMask,
+  formatCPF,
+  formatPhone,
+  formatCEP,
+} from '@/components/ui/MaskedInput';
 import { StudentFormTabs } from '@/app/(authenticated)/admin/users/new/components/StudentFormTabs';
 import { UserRole } from '@/types/user.types';
 import { RoleBasedUserWizard } from '@/app/(authenticated)/admin/users/components/RoleBasedUserWizard';
@@ -28,7 +39,10 @@ import { useAuthStore } from '@/stores/authStore';
 import { Modal } from '@/components/ui/Modal';
 import { presentFriendlyError } from '@/lib/friendly-error';
 import { Dropdown } from '@/components/ui/HeroDropdown';
-import { parseStudentTagList, serializeStudentTagList } from '@/lib/student-form-utils';
+import {
+  parseStudentTagList,
+  serializeStudentTagList,
+} from '@/lib/student-form-utils';
 
 function buildInitialPassword(email?: string) {
   if (!email) return '';
@@ -58,7 +72,14 @@ interface EditUserPageContentProps {
   successRoute?: string;
 }
 
-type EditUserFormData = Omit<UpdateUserData, 'alergias' | 'medicamentos' | 'necessidadesEspeciais' | 'restricoesAlimentares' | 'convenioMedico'> & {
+type EditUserFormData = Omit<
+  UpdateUserData,
+  | 'alergias'
+  | 'medicamentos'
+  | 'necessidadesEspeciais'
+  | 'restricoesAlimentares'
+  | 'convenioMedico'
+> & {
   alergias?: string[];
   medicamentos?: string[];
   necessidadesEspeciais?: string[];
@@ -96,34 +117,57 @@ export function EditUserPageContent({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoadingInstitutions, setIsLoadingInstitutions] = useState(false);
   const [availableInstitutions, setAvailableInstitutions] = useState<any[]>([]);
-  const [selectedAdditionalInstitutionIds, setSelectedAdditionalInstitutionIds] = useState<string[]>([]);
+  const [
+    selectedAdditionalInstitutionIds,
+    setSelectedAdditionalInstitutionIds,
+  ] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [passwordTermsAccepted, setPasswordTermsAccepted] = useState(false);
-  const [pendingPasswordData, setPendingPasswordData] = useState<EditUserFormData | null>(null);
-  const [directorInstitutionName, setDirectorInstitutionName] = useState<string | null>(null);
+  const [pendingPasswordData, setPendingPasswordData] =
+    useState<EditUserFormData | null>(null);
+  const [directorInstitutionName, setDirectorInstitutionName] = useState<
+    string | null
+  >(null);
   const [directorUnitName, setDirectorUnitName] = useState<string | null>(null);
-  const [loadedPrimaryUnitId, setLoadedPrimaryUnitId] = useState<string | null>(null);
-  const [isResetDefaultPasswordOpen, setIsResetDefaultPasswordOpen] = useState(false);
-  const [isResettingDefaultPassword, setIsResettingDefaultPassword] = useState(false);
+  const [loadedPrimaryUnitId, setLoadedPrimaryUnitId] = useState<string | null>(
+    null,
+  );
+  const [isResetDefaultPasswordOpen, setIsResetDefaultPasswordOpen] =
+    useState(false);
+  const [isResettingDefaultPassword, setIsResettingDefaultPassword] =
+    useState(false);
 
   // Buscar usuário
-  const { data: user, isLoading, error: queryError } = useQuery({
+  const {
+    data: user,
+    isLoading,
+    error: queryError,
+  } = useQuery({
     queryKey: ['user', userId],
     queryFn: () => usersService.findOne(userId),
     enabled: !!userId,
   });
-  const teacherProfileId = user?.role === UserRole.TEACHER ? user.teacherProfile?.id : undefined;
-  const { data: teacherClasses = [], isLoading: isLoadingTeacherClasses } = useQuery({
-    queryKey: ['teacher-classes', teacherProfileId],
-    queryFn: () => teachersService.getTeacherClasses(teacherProfileId as string),
-    enabled: Boolean(teacherProfileId),
-  });
-  const studentProfileId = user?.role === UserRole.STUDENT ? user.studentProfile?.id : undefined;
+  const teacherProfileId =
+    user?.role === UserRole.TEACHER ? user.teacherProfile?.id : undefined;
+  const { data: teacherClasses = [], isLoading: isLoadingTeacherClasses } =
+    useQuery({
+      queryKey: ['teacher-classes', teacherProfileId],
+      queryFn: () =>
+        teachersService.getTeacherClasses(teacherProfileId as string),
+      enabled: Boolean(teacherProfileId),
+    });
+  const studentProfileId =
+    user?.role === UserRole.STUDENT ? user.studentProfile?.id : undefined;
   const { data: studentEnrollmentData } = useQuery({
     queryKey: ['student-class-enrollment', studentProfileId],
-    queryFn: () => enrollmentsService.findAll({ studentId: studentProfileId as string, isActive: true, limit: 1000 }),
+    queryFn: () =>
+      enrollmentsService.findAll({
+        studentId: studentProfileId as string,
+        isActive: true,
+        limit: 1000,
+      }),
     enabled: Boolean(studentProfileId),
     retry: false,
   });
@@ -141,7 +185,7 @@ export function EditUserPageContent({
   const watchedConfirmPassword = watch('confirmPassword');
   const hasPasswordChangePending = useMemo(
     () => Boolean(watchedPassword && String(watchedPassword).trim()),
-    [watchedPassword]
+    [watchedPassword],
   );
 
   // Preencher formulário quando usuário carregar
@@ -152,15 +196,28 @@ export function EditUserPageContent({
       setIsLoadingInstitutions(true);
 
       try {
-        const [institutions, userInstitutionLinks, teacherSubjects, parentChildren] = await Promise.all([
-          callerRole === UserRole.SUPER_ADMIN || callerRole === UserRole.SUPER_ADMIN_GLOBAL
+        const [
+          institutions,
+          userInstitutionLinks,
+          teacherSubjects,
+          parentChildren,
+        ] = await Promise.all([
+          callerRole === UserRole.SUPER_ADMIN ||
+          callerRole === UserRole.SUPER_ADMIN_GLOBAL
             ? institutionsService.getPublicInstitutions()
-            : authService.getInstitutions().catch(() => institutionsService.getPublicInstitutions()),
-          supabase.from('user_institutions').select('institutionId, isPrimary').eq('userId', user.id),
+            : authService
+                .getInstitutions()
+                .catch(() => institutionsService.getPublicInstitutions()),
+          supabase
+            .from('user_institutions')
+            .select('institutionId, isPrimary')
+            .eq('userId', user.id),
           user.role === UserRole.TEACHER && user.teacherProfile
             ? teacherSubjectsService.getByTeacher(user.teacherProfile.id)
             : Promise.resolve([]),
-          user.role === UserRole.PARENT ? usersService.getParentChildren(user.id).catch(() => []) : Promise.resolve([]),
+          user.role === UserRole.PARENT
+            ? usersService.getParentChildren(user.id).catch(() => [])
+            : Promise.resolve([]),
         ]);
 
         const normalizedInstitutions = institutions.map((institution: any) => ({
@@ -173,8 +230,16 @@ export function EditUserPageContent({
 
         setAvailableInstitutions(normalizedInstitutions);
 
-        const additionalInstitutionIds = ((userInstitutionLinks.data ?? []) as Array<{ institutionId: string; isPrimary: boolean }>)
-          .filter((item) => !item.isPrimary && item.institutionId !== user.institutionId)
+        const additionalInstitutionIds = (
+          (userInstitutionLinks.data ?? []) as Array<{
+            institutionId: string;
+            isPrimary: boolean;
+          }>
+        )
+          .filter(
+            (item) =>
+              !item.isPrimary && item.institutionId !== user.institutionId,
+          )
           .map((item) => item.institutionId);
 
         setSelectedAdditionalInstitutionIds(additionalInstitutionIds);
@@ -189,30 +254,34 @@ export function EditUserPageContent({
 
           if (unitError) throw unitError;
 
-          const unitRow = (unitRows ?? [])[0] as {
-            id?: string;
-            name?: string | null;
-            institutionId?: string | null;
-          } | undefined;
+          const unitRow = (unitRows ?? [])[0] as
+            | {
+                id?: string;
+                name?: string | null;
+                institutionId?: string | null;
+              }
+            | undefined;
 
           if (unitRow?.id && unitRow.institutionId) {
             setLoadedPrimaryUnitId(unitRow.id);
             setDirectorUnitName(unitRow.name ?? null);
-            const { data: institutionRow, error: institutionError } = await supabase
-              .from('institutions')
-              .select('name')
-              .eq('id', unitRow.institutionId)
-              .maybeSingle();
+            const { data: institutionRow, error: institutionError } =
+              await supabase
+                .from('institutions')
+                .select('name')
+                .eq('id', unitRow.institutionId)
+                .maybeSingle();
 
             if (institutionError) throw institutionError;
             setDirectorInstitutionName((institutionRow as any)?.name ?? null);
           } else if (user.institutionId) {
             setLoadedPrimaryUnitId(null);
-            const { data: institutionRow, error: institutionError } = await supabase
-              .from('institutions')
-              .select('name')
-              .eq('id', user.institutionId)
-              .maybeSingle();
+            const { data: institutionRow, error: institutionError } =
+              await supabase
+                .from('institutions')
+                .select('name')
+                .eq('id', user.institutionId)
+                .maybeSingle();
 
             if (institutionError) throw institutionError;
             setDirectorInstitutionName((institutionRow as any)?.name ?? null);
@@ -228,94 +297,148 @@ export function EditUserPageContent({
           setDirectorUnitName(null);
         }
 
+        const emergencyContactNames = new Set(
+          String(user.studentProfile?.healthRecord?.contatoEmergencia ?? '')
+            .split('|')
+            .map((value) => value.split('—')[0].trim())
+            .map((value) => value.trim())
+            .filter(Boolean),
+        );
+
         reset({
-        role: user.role,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        cpf: user.cpf ? formatCPF(user.cpf) : '',
-        phone: user.phone ? formatPhone(user.phone) : '',
-        birthDate: user.birthDate
-          ? String(user.birthDate).split('T')[0]
-          : '',
-        gender: user.gender,
-        address: user.address || '',
-        city: user.city || '',
-        state: user.state ? String(user.state).toUpperCase().slice(0, 2) : '',
-        zipCode: user.zipCode ? formatCEP(user.zipCode) : '',
-        isActive: user.isActive,
-        socialName: user.socialName || '',
-        telefoneFixo: user.telefoneFixo || '',
-        numero: user.numero || '',
-        complemento: user.complemento || '',
-        bairro: user.bairro || '',
-        avatar: user.avatar || '',
+          role: user.role,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          cpf: user.cpf ? formatCPF(user.cpf) : '',
+          phone: user.phone ? formatPhone(user.phone) : '',
+          birthDate: user.birthDate ? String(user.birthDate).split('T')[0] : '',
+          gender: user.gender,
+          address: user.address || '',
+          city: user.city || '',
+          state: user.state ? String(user.state).toUpperCase().slice(0, 2) : '',
+          zipCode: user.zipCode ? formatCEP(user.zipCode) : '',
+          isActive: user.isActive,
+          socialName: user.socialName || '',
+          telefoneFixo: user.telefoneFixo || '',
+          numero: user.numero || '',
+          complemento: user.complemento || '',
+          bairro: user.bairro || '',
+          avatar: user.avatar || '',
           institutionId: user.institutionId,
           institutionIds: additionalInstitutionIds,
-          subjectIds: Array.isArray(teacherSubjects) ? teacherSubjects.map((item: any) => item.subjectId) : [],
+          subjectIds: Array.isArray(teacherSubjects)
+            ? teacherSubjects.map((item: any) => item.subjectId)
+            : [],
           linkedStudents: Array.isArray(parentChildren)
             ? parentChildren.map((child: any) => ({
                 studentId: child.student?.id,
                 studentUserId: child.student?.userId,
-                studentName: `${child.student?.user?.firstName || ''} ${child.student?.user?.lastName || ''}`.trim(),
+                studentName:
+                  `${child.student?.user?.firstName || ''} ${child.student?.user?.lastName || ''}`.trim(),
                 relationship: child.relationship || 'Responsável Legal',
                 isPrimary: child.isPrimary || false,
                 notificacoes: true,
                 podeRetirar: false,
               }))
             : [],
-        
-        // Student Data
-        ...(user.role === UserRole.STUDENT && user.studentProfile ? {
-          situacao: user.studentProfile.situacao || 'ATIVO',
-          escola: user.studentProfile.escola || '',
-          unidade: user.studentProfile.unidade || '',
-          anoLetivo: user.studentProfile.anoLetivo || '',
-          curso: user.studentProfile.curso || '',
-          serie: user.studentProfile.serie || '',
-          turma: user.studentProfile.turma || '',
-          turmaId: studentEnrollmentData?.data?.[0]?.classId || '',
-          modalidade: user.studentProfile.modalidade || '',
-          turno: user.studentProfile.turno || '',
-          dataMatricula: user.studentProfile.enrollmentDate ? String(user.studentProfile.enrollmentDate).split('T')[0] : '',
-          observacoes: user.studentProfile.observacoes || '',
-          documents: user.studentProfile.documents || [],
-          ...user.studentProfile.healthRecord,
-          alergias: parseStudentTagList(user.studentProfile.healthRecord?.alergias),
-          medicamentos: parseStudentTagList(user.studentProfile.healthRecord?.medicamentos),
-          necessidadesEspeciais: parseStudentTagList(user.studentProfile.healthRecord?.necessidadesEspeciais),
-          restricoesAlimentares: parseStudentTagList(user.studentProfile.healthRecord?.restricoesAlimentares),
-          convenioMedico: parseStudentTagList(user.studentProfile.healthRecord?.convenioMedico),
-          ...user.studentProfile.transportation,
-          responsaveis: (user.studentProfile as any).parents?.length > 0 
-            ? (user.studentProfile as any).parents.map((p: any, index: number) => {
-                const parentUser = p.parent?.user ?? p.user ?? {};
-                return {
-                id: index + 1,
-                linkId: p.id,
-                nome: parentUser.name || `${parentUser.firstName || ''} ${parentUser.lastName || ''}`.trim() || '',
-                parentesco: p.relationship || '',
-                cpf: parentUser.cpf ? formatCPF(parentUser.cpf) : '',
-                email: parentUser.email || '',
-                celular: parentUser.phone ? formatPhone(parentUser.phone) : '',
-                whatsapp: parentUser.whatsapp ? formatPhone(parentUser.whatsapp) : '',
-                financeiro: p.isPrimary || false,
-                notificacoes: p.receivesNotifications ?? p.notificacoes ?? false,
-                podeRetirar: p.canPickup ?? p.podeRetirar ?? false,
-              };
-              })
-            : [{ id: 1 }],
-        } : {}),
-          ...(user.role === UserRole.TEACHER && user.teacherProfile ? {
-            specialization: user.teacherProfile.specialization || '',
-            degree: user.teacherProfile.degree || '',
-            registrationNumber: user.teacherProfile.registrationNumber || '',
-            hireDate: user.teacherProfile.hireDate ? String(user.teacherProfile.hireDate).split('T')[0] : '',
-          } : {}),
 
-          ...(user.role === UserRole.PARENT && user.parentProfile ? {
-            occupation: user.parentProfile.occupation || '',
-          } : {}),
+          // Student Data
+          ...(user.role === UserRole.STUDENT && user.studentProfile
+            ? {
+                situacao: user.studentProfile.situacao || 'ATIVO',
+                escola: user.studentProfile.escola || '',
+                unidade: user.studentProfile.unidade || '',
+                anoLetivo: user.studentProfile.anoLetivo || '',
+                curso: user.studentProfile.curso || '',
+                serie: user.studentProfile.serie || '',
+                turma: user.studentProfile.turma || '',
+                turmaId: studentEnrollmentData?.data?.[0]?.classId || '',
+                modalidade: user.studentProfile.modalidade || '',
+                turno: user.studentProfile.turno || '',
+                dataMatricula: user.studentProfile.enrollmentDate
+                  ? String(user.studentProfile.enrollmentDate).split('T')[0]
+                  : '',
+                observacoes: user.studentProfile.observacoes || '',
+                documents: user.studentProfile.documents || [],
+                ...user.studentProfile.healthRecord,
+                alergias: parseStudentTagList(
+                  user.studentProfile.healthRecord?.alergias,
+                ),
+                medicamentos: parseStudentTagList(
+                  user.studentProfile.healthRecord?.medicamentos,
+                ),
+                necessidadesEspeciais: parseStudentTagList(
+                  user.studentProfile.healthRecord?.necessidadesEspeciais,
+                ),
+                restricoesAlimentares: parseStudentTagList(
+                  user.studentProfile.healthRecord?.restricoesAlimentares,
+                ),
+                convenioMedico: parseStudentTagList(
+                  user.studentProfile.healthRecord?.convenioMedico,
+                ),
+                ...user.studentProfile.transportation,
+                responsaveis:
+                  (user.studentProfile as any).parents?.length > 0
+                    ? (user.studentProfile as any).parents.map(
+                        (p: any, index: number) => {
+                          const parentUser = p.parent?.user ?? p.user ?? {};
+                          return {
+                            id: index + 1,
+                            linkId: p.id,
+                            nome:
+                              parentUser.name ||
+                              `${parentUser.firstName || ''} ${parentUser.lastName || ''}`.trim() ||
+                              '',
+                            parentesco: p.relationship || '',
+                            cpf: parentUser.cpf
+                              ? formatCPF(parentUser.cpf)
+                              : '',
+                            email: parentUser.email || '',
+                            celular: parentUser.phone
+                              ? formatPhone(parentUser.phone)
+                              : '',
+                            whatsapp: parentUser.whatsapp
+                              ? formatPhone(parentUser.whatsapp)
+                              : '',
+                            dataNascimento: parentUser.birthDate
+                              ? String(parentUser.birthDate).split('T')[0]
+                              : '',
+                            financeiro: p.isPrimary || false,
+                            notificacoes:
+                              p.receivesNotifications ??
+                              p.notificacoes ??
+                              false,
+                            podeRetirar: p.canPickup ?? p.podeRetirar ?? false,
+                            contatoEmergencia: emergencyContactNames.has(
+                              String(
+                                parentUser.name ||
+                                  `${parentUser.firstName || ''} ${parentUser.lastName || ''}`,
+                              ).trim(),
+                            ),
+                          };
+                        },
+                      )
+                    : [{ id: 1 }],
+              }
+            : {}),
+          ...(user.role === UserRole.TEACHER && user.teacherProfile
+            ? {
+                specialization: user.teacherProfile.specialization || '',
+                degree: user.teacherProfile.degree || '',
+                registrationNumber:
+                  user.teacherProfile.registrationNumber || '',
+                hireDate: user.teacherProfile.hireDate
+                  ? String(user.teacherProfile.hireDate).split('T')[0]
+                  : '',
+              }
+            : {}),
+
+          ...(user.role === UserRole.PARENT && user.parentProfile
+            ? {
+                occupation: user.parentProfile.occupation || '',
+              }
+            : {}),
         });
       } finally {
         setIsLoadingInstitutions(false);
@@ -325,7 +448,8 @@ export function EditUserPageContent({
     loadExtraData();
   }, [currentUser?.role, reset, studentEnrollmentData?.data, user]);
 
-  const selectedPrimaryInstitutionId = watch('institutionId') ?? user?.institutionId ?? '';
+  const selectedPrimaryInstitutionId =
+    watch('institutionId') ?? user?.institutionId ?? '';
 
   const toggleAdditionalInstitution = (institutionId: string) => {
     const nextIds = selectedAdditionalInstitutionIds.includes(institutionId)
@@ -333,14 +457,25 @@ export function EditUserPageContent({
       : [...selectedAdditionalInstitutionIds, institutionId];
 
     setSelectedAdditionalInstitutionIds(nextIds);
-    setValue('institutionIds', nextIds, { shouldDirty: true, shouldValidate: true });
+    setValue('institutionIds', nextIds, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
   };
 
   const handlePrimaryInstitutionChange = (institutionId: string) => {
-    setValue('institutionId', institutionId, { shouldDirty: true, shouldValidate: true });
-    const filtered = selectedAdditionalInstitutionIds.filter((id) => id !== institutionId);
+    setValue('institutionId', institutionId, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    const filtered = selectedAdditionalInstitutionIds.filter(
+      (id) => id !== institutionId,
+    );
     setSelectedAdditionalInstitutionIds(filtered);
-    setValue('institutionIds', filtered, { shouldDirty: true, shouldValidate: true });
+    setValue('institutionIds', filtered, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
   };
 
   const getSelectedPhotoFile = (value: unknown): File | null => {
@@ -348,7 +483,7 @@ export function EditUserPageContent({
     if (typeof FileList !== 'undefined' && value instanceof FileList) {
       return value.item(0);
     }
-    return Array.isArray(value) ? value[0] ?? null : null;
+    return Array.isArray(value) ? (value[0] ?? null) : null;
   };
 
   const handleToggleUserStatus = async () => {
@@ -360,17 +495,24 @@ export function EditUserPageContent({
     try {
       const nextIsActive = !user.isActive;
       await usersService.update(userId, { isActive: nextIsActive });
-      setValue('isActive', nextIsActive, { shouldDirty: true, shouldValidate: true });
+      setValue('isActive', nextIsActive, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
       queryClient.invalidateQueries({ queryKey: ['user', userId] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       queryClient.invalidateQueries({ queryKey: ['coordinators'] });
-      toast.success(nextIsActive ? 'Usuário ativado com sucesso!' : 'Usuário desativado com sucesso!');
+      toast.success(
+        nextIsActive
+          ? 'Usuário ativado com sucesso!'
+          : 'Usuário desativado com sucesso!',
+      );
     } catch (err: any) {
       const info = presentFriendlyError(
         err,
-        'Nao foi possivel alterar o status do usuario agora.'
+        'Nao foi possivel alterar o status do usuario agora.',
       );
       setError(info.description);
     } finally {
@@ -387,19 +529,23 @@ export function EditUserPageContent({
     try {
       const defaultPassword = buildInitialPassword(user.email);
       if (!defaultPassword) {
-        throw new Error('Não foi possível gerar a senha padrão a partir do email.');
+        throw new Error(
+          'Não foi possível gerar a senha padrão a partir do email.',
+        );
       }
 
-      await usersService.adminResetPassword(userId, { newPassword: defaultPassword });
+      await usersService.adminResetPassword(userId, {
+        newPassword: defaultPassword,
+      });
       toast.success(
-        `Senha redefinida para o padrão! (${defaultPassword}) — avise o usuário para alterá-la no primeiro acesso.`
+        `Senha redefinida para o padrão! (${defaultPassword}) — avise o usuário para alterá-la no primeiro acesso.`,
       );
       setIsResetDefaultPasswordOpen(false);
     } catch (err: any) {
       console.error('Erro ao resetar senha para padrão:', err);
       const info = presentFriendlyError(
         err,
-        'Não foi possível redefinir a senha para o padrão agora.'
+        'Não foi possível redefinir a senha para o padrão agora.',
       );
       setError(info.description);
       toast.error(info.description);
@@ -408,13 +554,17 @@ export function EditUserPageContent({
     }
   };
 
-  const submitUserUpdate = async (data: EditUserFormData, shouldResetPassword: boolean) => {
+  const submitUserUpdate = async (
+    data: EditUserFormData,
+    shouldResetPassword: boolean,
+  ) => {
     setIsSubmitting(true);
     setError(null);
 
     try {
       const pendingStudentDocuments =
-        user?.role === UserRole.STUDENT && Array.isArray((data as any).documents)
+        user?.role === UserRole.STUDENT &&
+        Array.isArray((data as any).documents)
           ? (data as any).documents
           : [];
       // Remove máscaras antes de enviar
@@ -427,29 +577,48 @@ export function EditUserPageContent({
           typeof data.institutionId === 'string'
             ? data.institutionId.trim()
             : (user?.institutionId ?? ''),
-        institutionIds: Array.from(new Set([data.institutionId || user?.institutionId, ...((data as any).institutionIds ?? [])].filter(Boolean))),
-        subjectIds: canManageTeacherAssignments ? ((data as any).subjectIds ?? []) : undefined,
+        institutionIds: Array.from(
+          new Set(
+            [
+              data.institutionId || user?.institutionId,
+              ...((data as any).institutionIds ?? []),
+            ].filter(Boolean),
+          ),
+        ),
+        subjectIds: canManageTeacherAssignments
+          ? ((data as any).subjectIds ?? [])
+          : undefined,
         linkedStudents: (data as any).linkedStudents ?? [],
-        
+
         // Group healthInfo if student
-        healthInfo: user?.role === UserRole.STUDENT ? {
-          tipoSanguineo: (data as any).tipoSanguineo,
-          alergias: serializeStudentTagList(data.alergias),
-          medicamentos: serializeStudentTagList(data.medicamentos),
-          restricoesAlimentares: serializeStudentTagList(data.restricoesAlimentares),
-          necessidadesEspeciais: serializeStudentTagList(data.necessidadesEspeciais),
-          convenioMedico: serializeStudentTagList(data.convenioMedico),
-          contatoEmergencia: data.contatoEmergencia,
-        } : undefined,
+        healthInfo:
+          user?.role === UserRole.STUDENT
+            ? {
+                tipoSanguineo: (data as any).tipoSanguineo,
+                alergias: serializeStudentTagList(data.alergias),
+                medicamentos: serializeStudentTagList(data.medicamentos),
+                restricoesAlimentares: serializeStudentTagList(
+                  data.restricoesAlimentares,
+                ),
+                necessidadesEspeciais: serializeStudentTagList(
+                  data.necessidadesEspeciais,
+                ),
+                convenioMedico: serializeStudentTagList(data.convenioMedico),
+                contatoEmergencia: data.contatoEmergencia,
+              }
+            : undefined,
 
         // Group transportInfo if student
-        transportInfo: user?.role === UserRole.STUDENT ? {
-          usaTransporte: data.usaTransporte,
-          tipoTransporte: data.tipoTransporte,
-          empresaTransporte: data.empresaTransporte,
-          motoristaTransporte: data.motoristaTransporte,
-          rotaTransporte: data.rotaTransporte,
-        } : undefined,
+        transportInfo:
+          user?.role === UserRole.STUDENT
+            ? {
+                usaTransporte: data.usaTransporte,
+                tipoTransporte: data.tipoTransporte,
+                empresaTransporte: data.empresaTransporte,
+                motoristaTransporte: data.motoristaTransporte,
+                rotaTransporte: data.rotaTransporte,
+              }
+            : undefined,
       };
       const photoFile =
         user?.role === UserRole.TEACHER ||
@@ -476,7 +645,7 @@ export function EditUserPageContent({
         delete (userData as any).unidade;
         delete (userData as any).modalidade;
       }
-      
+
       if (userData.responsaveis && Array.isArray(userData.responsaveis)) {
         userData.responsaveis = userData.responsaveis.map((r: any) => ({
           ...r,
@@ -485,7 +654,7 @@ export function EditUserPageContent({
           whatsapp: r.whatsapp ? removeMask(r.whatsapp) : undefined,
         }));
       }
-      
+
       // Clean up auxiliary fields before passing to service
       delete userData.photo;
       delete userData.password;
@@ -500,7 +669,7 @@ export function EditUserPageContent({
       ) {
         await usersService.uploadStudentDocuments(
           user.studentProfile.id,
-          pendingStudentDocuments
+          pendingStudentDocuments,
         );
       }
 
@@ -519,23 +688,33 @@ export function EditUserPageContent({
         photoFile
       ) {
         try {
-          const uploadResult = await usersService.uploadAvatar(userId, photoFile);
+          const uploadResult = await usersService.uploadAvatar(
+            userId,
+            photoFile,
+          );
           setValue('avatar', uploadResult.avatar, { shouldDirty: true });
         } catch (avatarError) {
           // A atualização dos dados já foi concluída; a foto pode ser incluída
           // posteriormente sem bloquear o restante do fluxo.
-          console.warn('Usuário atualizado, mas o avatar não pôde ser salvo:', avatarError);
-          toast.error('Dados atualizados, mas a foto não pôde ser salva. Tente adicioná-la novamente depois.');
+          console.warn(
+            'Usuário atualizado, mas o avatar não pôde ser salvo:',
+            avatarError,
+          );
+          toast.error(
+            'Dados atualizados, mas a foto não pôde ser salva. Tente adicioná-la novamente depois.',
+          );
         }
       }
 
       // Link / unlink director unit when unitId is provided in the form
       const roleWithUnit =
-        user?.role === UserRole.DIRECTOR || user?.role === UserRole.INSTITUTION_ADMIN
+        user?.role === UserRole.DIRECTOR ||
+        user?.role === UserRole.INSTITUTION_ADMIN
           ? user.role
           : undefined;
       if (roleWithUnit) {
-        const submittedUnitId = ((data as any).unitId as string | undefined)?.trim() || undefined;
+        const submittedUnitId =
+          ((data as any).unitId as string | undefined)?.trim() || undefined;
         const previousUnitId = loadedPrimaryUnitId ?? null;
 
         try {
@@ -547,9 +726,12 @@ export function EditUserPageContent({
               .eq('id', submittedUnitId);
 
             if (newUnitErr) {
-              console.error('Erro ao vincular diretor(a) ao anexo:', newUnitErr);
+              console.error(
+                'Erro ao vincular diretor(a) ao anexo:',
+                newUnitErr,
+              );
               toast.error(
-                'Não foi possível vincular como diretor(a) ao novo anexo. Verifique a tela do anexo.'
+                'Não foi possível vincular como diretor(a) ao novo anexo. Verifique a tela do anexo.',
               );
             }
 
@@ -561,10 +743,17 @@ export function EditUserPageContent({
                 .eq('id', previousUnitId)
                 .eq('directorUserId', userId);
               if (oldUnitErr) {
-                console.warn('Aviso: não foi possível limpar vínculo antigo do diretor(a):', oldUnitErr);
+                console.warn(
+                  'Aviso: não foi possível limpar vínculo antigo do diretor(a):',
+                  oldUnitErr,
+                );
               }
             }
-          } else if (!submittedUnitId && previousUnitId && user?.role !== UserRole.DIRECTOR) {
+          } else if (
+            !submittedUnitId &&
+            previousUnitId &&
+            user?.role !== UserRole.DIRECTOR
+          ) {
             // If user changed to INSTITUTION_ADMIN and unit was cleared, we leave the existing link
             // unless the institution admin is not supposed to be a director anymore
             // (The user can clear the checkbox to indicate they are no longer director)
@@ -579,11 +768,11 @@ export function EditUserPageContent({
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       queryClient.invalidateQueries({ queryKey: ['coordinators'] });
-      
+
       toast.success(
         shouldResetPassword
           ? 'Usuário atualizado e senha redefinida com sucesso!'
-          : 'Usuário atualizado com sucesso!'
+          : 'Usuário atualizado com sucesso!',
       );
       setValue('password', '', { shouldDirty: false });
       setValue('confirmPassword', '', { shouldDirty: false });
@@ -592,7 +781,7 @@ export function EditUserPageContent({
       console.error('Erro ao atualizar usuário:', err);
       const info = presentFriendlyError(
         err,
-        'Nao foi possivel atualizar o usuario agora. Revise os dados e tente novamente.'
+        'Nao foi possivel atualizar o usuario agora. Revise os dados e tente novamente.',
       );
       setError(info.description);
       toast.error(info.description);
@@ -607,7 +796,8 @@ export function EditUserPageContent({
 
     if (nextPassword) {
       if (!canManagePassword) {
-        const errorMsg = 'Apenas o Super Admin Global pode redefinir senhas por este fluxo.';
+        const errorMsg =
+          'Apenas o Super Admin Global pode redefinir senhas por este fluxo.';
         setError(errorMsg);
         toast.error(errorMsg);
         return;
@@ -664,7 +854,9 @@ export function EditUserPageContent({
     return (
       <div className="p-6">
         <div className="text-center text-gray-600 dark:text-gray-400">
-          {queryError instanceof Error ? queryError.message : 'Usuário não encontrado'}
+          {queryError instanceof Error
+            ? queryError.message
+            : 'Usuário não encontrado'}
         </div>
       </div>
     );
@@ -688,7 +880,9 @@ export function EditUserPageContent({
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
-              onClick={() => (backRoute ? router.push(backRoute) : router.back())}
+              onClick={() =>
+                backRoute ? router.push(backRoute) : router.back()
+              }
               className="p-2 h-9 w-9 flex items-center justify-center rounded-full"
               aria-label="Voltar"
             >
@@ -699,22 +893,28 @@ export function EditUserPageContent({
             </h1>
           </div>
           <Dropdown
-            trigger={(
+            trigger={
               <button
                 type="button"
                 className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
                 aria-label="Ações do usuário"
-                disabled={isSubmitting || isTogglingStatus || isResettingDefaultPassword}
+                disabled={
+                  isSubmitting || isTogglingStatus || isResettingDefaultPassword
+                }
               >
                 <EllipsisHorizontalIcon className="h-5 w-5" />
               </button>
-            )}
+            }
             items={[
-              ...(canManagePassword ? [{
-                key: 'reset-default-password',
-                label: 'Resetar senha para padrão',
-                onClick: () => setIsResetDefaultPasswordOpen(true),
-              }] : []),
+              ...(canManagePassword
+                ? [
+                    {
+                      key: 'reset-default-password',
+                      label: 'Resetar senha para padrão',
+                      onClick: () => setIsResetDefaultPasswordOpen(true),
+                    },
+                  ]
+                : []),
               {
                 key: user.isActive ? 'deactivate-user' : 'activate-user',
                 label: user.isActive ? 'Desativar Usuário' : 'Ativar Usuário',
@@ -734,7 +934,9 @@ export function EditUserPageContent({
           {/* Erro geral */}
           {error && (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/50">
-              <p className="text-sm text-slate-700 dark:text-slate-200">{error}</p>
+              <p className="text-sm text-slate-700 dark:text-slate-200">
+                {error}
+              </p>
             </div>
           )}
 
@@ -746,7 +948,7 @@ export function EditUserPageContent({
                 isLoadingInstitutions={isLoadingInstitutions}
                 mode="edit"
                 studentProfileId={user.studentProfile?.id}
-                passwordField={(
+                passwordField={
                   canManagePassword ? (
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -761,9 +963,15 @@ export function EditUserPageContent({
                               tabIndex={-1}
                               onClick={() => setShowPassword((value) => !value)}
                               className="pointer-events-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                              aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                              aria-label={
+                                showPassword ? 'Ocultar senha' : 'Mostrar senha'
+                              }
                             >
-                              {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                              {showPassword ? (
+                                <EyeSlashIcon className="h-5 w-5" />
+                              ) : (
+                                <EyeIcon className="h-5 w-5" />
+                              )}
                             </button>
                           }
                         />
@@ -776,11 +984,21 @@ export function EditUserPageContent({
                             <button
                               type="button"
                               tabIndex={-1}
-                              onClick={() => setShowConfirmPassword((value) => !value)}
+                              onClick={() =>
+                                setShowConfirmPassword((value) => !value)
+                              }
                               className="pointer-events-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                              aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
+                              aria-label={
+                                showConfirmPassword
+                                  ? 'Ocultar confirmação de senha'
+                                  : 'Mostrar confirmação de senha'
+                              }
                             >
-                              {showConfirmPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                              {showConfirmPassword ? (
+                                <EyeSlashIcon className="h-5 w-5" />
+                              ) : (
+                                <EyeIcon className="h-5 w-5" />
+                              )}
                             </button>
                           }
                         />
@@ -788,9 +1006,13 @@ export function EditUserPageContent({
                       <div className="flex items-center gap-3 p-4 rounded-lg border border-blue-200 bg-blue-50/70 dark:border-blue-900/40 dark:bg-blue-950/30">
                         <AcademicCapIcon className="h-5 w-5 text-blue-700 dark:text-blue-400 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">Senha padrão automática</p>
+                          <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">
+                            Senha padrão automática
+                          </p>
                           <p className="text-xs text-blue-800/90 dark:text-blue-300/90 mt-0.5 truncate">
-                            {user?.email ? buildInitialPassword(user.email) : 'Preencha o email do usuário para gerar.'}
+                            {user?.email
+                              ? buildInitialPassword(user.email)
+                              : 'Preencha o email do usuário para gerar.'}
                           </p>
                         </div>
                         <Button
@@ -806,7 +1028,7 @@ export function EditUserPageContent({
                       </div>
                     </div>
                   ) : null
-                )}
+                }
               />
             </div>
           ) : (
@@ -817,7 +1039,9 @@ export function EditUserPageContent({
               isLoadingInstitutions={isLoadingInstitutions}
               roleOptions={roleOptions}
               selectedPrimaryInstitutionId={selectedPrimaryInstitutionId}
-              selectedAdditionalInstitutionIds={selectedAdditionalInstitutionIds}
+              selectedAdditionalInstitutionIds={
+                selectedAdditionalInstitutionIds
+              }
               onPrimaryInstitutionChange={handlePrimaryInstitutionChange}
               onToggleAdditionalInstitution={toggleAdditionalInstitution}
               isRoleLocked
@@ -827,7 +1051,7 @@ export function EditUserPageContent({
               directorUnitName={directorUnitName}
               defaultUnitId={loadedPrimaryUnitId ?? undefined}
               canManageTeacherAssignments={canManageTeacherAssignments}
-              passwordField={(
+              passwordField={
                 canManagePassword ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -842,9 +1066,15 @@ export function EditUserPageContent({
                             tabIndex={-1}
                             onClick={() => setShowPassword((value) => !value)}
                             className="pointer-events-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                            aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                            aria-label={
+                              showPassword ? 'Ocultar senha' : 'Mostrar senha'
+                            }
                           >
-                            {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                            {showPassword ? (
+                              <EyeSlashIcon className="h-5 w-5" />
+                            ) : (
+                              <EyeIcon className="h-5 w-5" />
+                            )}
                           </button>
                         }
                       />
@@ -857,11 +1087,21 @@ export function EditUserPageContent({
                           <button
                             type="button"
                             tabIndex={-1}
-                            onClick={() => setShowConfirmPassword((value) => !value)}
+                            onClick={() =>
+                              setShowConfirmPassword((value) => !value)
+                            }
                             className="pointer-events-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                            aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
+                            aria-label={
+                              showConfirmPassword
+                                ? 'Ocultar confirmação de senha'
+                                : 'Mostrar confirmação de senha'
+                            }
                           >
-                            {showConfirmPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                            {showConfirmPassword ? (
+                              <EyeSlashIcon className="h-5 w-5" />
+                            ) : (
+                              <EyeIcon className="h-5 w-5" />
+                            )}
                           </button>
                         }
                       />
@@ -869,9 +1109,13 @@ export function EditUserPageContent({
                     <div className="flex items-center gap-3 p-4 rounded-lg border border-blue-200 bg-blue-50/70 dark:border-blue-900/40 dark:bg-blue-950/30">
                       <AcademicCapIcon className="h-5 w-5 text-blue-700 dark:text-blue-400 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">Senha padrão automática</p>
+                        <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">
+                          Senha padrão automática
+                        </p>
                         <p className="text-xs text-blue-800/90 dark:text-blue-300/90 mt-0.5 truncate">
-                          {user?.email ? buildInitialPassword(user.email) : 'Preencha o email do usuário para gerar.'}
+                          {user?.email
+                            ? buildInitialPassword(user.email)
+                            : 'Preencha o email do usuário para gerar.'}
                         </p>
                       </div>
                       <Button
@@ -887,7 +1131,7 @@ export function EditUserPageContent({
                     </div>
                   </div>
                 ) : null
-              )}
+              }
             />
           )}
 
@@ -896,12 +1140,18 @@ export function EditUserPageContent({
             <Button
               type="button"
               variant="secondary"
-              onClick={() => (backRoute ? router.push(backRoute) : router.back())}
+              onClick={() =>
+                backRoute ? router.push(backRoute) : router.back()
+              }
               disabled={isSubmitting}
             >
               Cancelar
             </Button>
-            <Button type="submit" isLoading={isSubmitting} disabled={isSubmitting}>
+            <Button
+              type="submit"
+              isLoading={isSubmitting}
+              disabled={isSubmitting}
+            >
               Salvar Alterações
             </Button>
           </div>
@@ -922,9 +1172,12 @@ export function EditUserPageContent({
       >
         <div className="space-y-5">
           <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4">
-            <p className="text-sm font-semibold text-amber-900">Confirmação obrigatória</p>
+            <p className="text-sm font-semibold text-amber-900">
+              Confirmação obrigatória
+            </p>
             <p className="mt-2 text-sm text-amber-800">
-              Ao confirmar, a senha do usuário será alterada imediatamente e o acesso anterior deixará de funcionar.
+              Ao confirmar, a senha do usuário será alterada imediatamente e o
+              acesso anterior deixará de funcionar.
             </p>
           </div>
 
@@ -932,11 +1185,14 @@ export function EditUserPageContent({
             <input
               type="checkbox"
               checked={passwordTermsAccepted}
-              onChange={(event) => setPasswordTermsAccepted(event.target.checked)}
+              onChange={(event) =>
+                setPasswordTermsAccepted(event.target.checked)
+              }
               className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">
-              Confirmo que estou autorizado a redefinir a senha deste usuário e assumo a responsabilidade por essa ação.
+              Confirmo que estou autorizado a redefinir a senha deste usuário e
+              assumo a responsabilidade por essa ação.
             </span>
           </label>
 
@@ -990,7 +1246,8 @@ export function EditUserPageContent({
                     {buildInitialPassword(user.email)}
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-300">
-                    O usuário receberá esta senha e deverá alterá-la no primeiro acesso ao sistema.
+                    O usuário receberá esta senha e deverá alterá-la no primeiro
+                    acesso ao sistema.
                   </p>
                 </>
               ) : (

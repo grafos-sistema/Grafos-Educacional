@@ -415,6 +415,26 @@ export class UsersController {
     return this.usersService.updateAvatar(id, file, currentUser);
   }
 
+  @Delete(':id/avatar')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Remover avatar do usuário',
+    description:
+      'O próprio usuário ou um usuário administrativo autorizado pode remover a foto de perfil.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Avatar removido com sucesso',
+  })
+  @ApiResponse({ status: 403, description: 'Acesso negado' })
+  @ApiResponse({ status: 404, description: 'Usuário não encontrado' })
+  deleteAvatar(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: CurrentUserPayload,
+  ) {
+    return this.usersService.deleteAvatar(id, currentUser);
+  }
+
   @Get(':id/children')
   @ApiOperation({
     summary: 'Listar filhos de um responsável',

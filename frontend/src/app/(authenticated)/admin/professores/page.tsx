@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
-import { formatPhone } from '@/components/ui/MaskedInput';
+import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
 import { presentFriendlyError } from '@/lib/friendly-error';
 import { GlobalAdminInstitutionUnitFilter } from '@/components/users/GlobalAdminInstitutionUnitFilter';
 import { BulkUserImportModal } from '@/components/users/BulkUserImportModal';
@@ -59,7 +59,10 @@ export default function ProfessoresPage() {
       toast.success('Professor desativado com sucesso!');
     } catch (error) {
       console.error('Erro ao remover professor:', error);
-      presentFriendlyError(error, 'Nao foi possivel remover o professor agora.');
+      presentFriendlyError(
+        error,
+        'Nao foi possivel remover o professor agora.',
+      );
     }
   };
 
@@ -71,7 +74,10 @@ export default function ProfessoresPage() {
       toast.success('Professor excluído permanentemente com sucesso!');
     } catch (error) {
       console.error('Erro ao excluir professor permanentemente:', error);
-      presentFriendlyError(error, 'Nao foi possivel excluir o professor permanentemente agora.');
+      presentFriendlyError(
+        error,
+        'Nao foi possivel excluir o professor permanentemente agora.',
+      );
     }
   };
 
@@ -94,17 +100,9 @@ export default function ProfessoresPage() {
           )}
           <div>
             <div className="flex items-center gap-2">
-              <div className="font-medium">{user.firstName} {user.lastName}</div>
-              {user.studentProfile && (
-                <Badge variant="info" size="sm" title="Também é aluno">
-                  Aluno
-                </Badge>
-              )}
-              {user.parentProfile && (
-                <Badge variant="warning" size="sm" title="Também é responsável">
-                  Responsável
-                </Badge>
-              )}
+              <div className="font-medium">
+                {user.firstName} {user.lastName}
+              </div>
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
               {user.email}
@@ -122,6 +120,11 @@ export default function ProfessoresPage() {
       key: 'registrationNumber',
       label: 'Matrícula',
       render: (user) => user.teacherProfile?.registrationNumber || '-',
+    },
+    {
+      key: 'cpf',
+      label: 'CPF',
+      render: (user) => (user.cpf ? formatCPF(user.cpf) : '-'),
     },
     {
       key: 'phone',
@@ -200,7 +203,9 @@ export default function ProfessoresPage() {
                 onChange={(e) =>
                   setFilters({ ...filters, search: e.target.value, page: 1 })
                 }
-                leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
+                leftIcon={
+                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                }
               />
             </div>
             <div className="w-full sm:w-36">
@@ -214,7 +219,9 @@ export default function ProfessoresPage() {
                 onChange={(e) =>
                   setFilters({
                     ...filters,
-                    isActive: e.target.value ? e.target.value === 'true' : undefined,
+                    isActive: e.target.value
+                      ? e.target.value === 'true'
+                      : undefined,
                     page: 1,
                   })
                 }
@@ -291,15 +298,20 @@ export default function ProfessoresPage() {
         <div className="space-y-4">
           <p className="text-gray-600 dark:text-gray-400">
             Tem certeza que deseja remover o professor{' '}
-            <strong>{deleteModal.user?.firstName} {deleteModal.user?.lastName}</strong>?
+            <strong>
+              {deleteModal.user?.firstName} {deleteModal.user?.lastName}
+            </strong>
+            ?
           </p>
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
             <p>
-              <strong>Desativar</strong> mantém o professor no banco, apenas marcando-o como inativo.
+              <strong>Desativar</strong> mantém o professor no banco, apenas
+              marcando-o como inativo.
             </p>
             {user?.role === UserRole.SUPER_ADMIN && (
               <p className="mt-2">
-                <strong>Excluir permanentemente</strong> remove o professor de forma definitiva.
+                <strong>Excluir permanentemente</strong> remove o professor de
+                forma definitiva.
               </p>
             )}
           </div>
@@ -312,7 +324,9 @@ export default function ProfessoresPage() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => deleteModal.user && handleDelete(deleteModal.user.id)}
+              onClick={() =>
+                deleteModal.user && handleDelete(deleteModal.user.id)
+              }
             >
               Apenas desativar
             </Button>

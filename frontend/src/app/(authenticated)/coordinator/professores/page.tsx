@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Pagination } from '@/components/ui/Pagination';
 import { Select } from '@/components/ui/Select';
-import { formatPhone } from '@/components/ui/MaskedInput';
+import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
 import { TeacherSubjectsModal } from '@/components/teachers/TeacherSubjectsModal';
 import { TeacherClassesModal } from '@/components/teachers/TeacherClassesModal';
 
@@ -71,7 +71,9 @@ export default function CoordinatorTeachersPage() {
             <div className="font-medium text-gray-900 dark:text-white">
               {teacher.firstName} {teacher.lastName}
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">{teacher.email}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              {teacher.email}
+            </div>
           </div>
         </div>
       ),
@@ -85,6 +87,11 @@ export default function CoordinatorTeachersPage() {
       key: 'registrationNumber',
       label: 'Matrícula',
       render: (teacher) => teacher.teacherProfile?.registrationNumber || '-',
+    },
+    {
+      key: 'cpf',
+      label: 'CPF',
+      render: (teacher) => (teacher.cpf ? formatCPF(teacher.cpf) : '-'),
     },
     {
       key: 'phone',
@@ -162,9 +169,12 @@ export default function CoordinatorTeachersPage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="mb-2 text-2xl font-bold text-gray-900 dark:text-white">Professores</h1>
+        <h1 className="mb-2 text-2xl font-bold text-gray-900 dark:text-white">
+          Professores
+        </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          A coordenação acompanha o corpo docente sem alterar o cadastro principal.
+          A coordenação acompanha o corpo docente sem alterar o cadastro
+          principal.
         </p>
       </div>
 
@@ -174,13 +184,17 @@ export default function CoordinatorTeachersPage() {
           <div className="mt-1 text-3xl font-bold">{data?.meta.total || 0}</div>
         </div>
         <div className="rounded-lg bg-white p-5 shadow-sm dark:bg-gray-800">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Tela da coordenação</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Tela da coordenação
+          </div>
           <div className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
             Consulta operacional
           </div>
         </div>
         <div className="rounded-lg bg-white p-5 shadow-sm dark:bg-gray-800">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Permissão desta tela</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Permissão desta tela
+          </div>
           <div className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
             Sem editar cadastro
           </div>
@@ -200,7 +214,9 @@ export default function CoordinatorTeachersPage() {
                   page: 1,
                 }))
               }
-              leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
+              leftIcon={
+                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+              }
             />
           </div>
           <div className="w-full lg:w-40">
@@ -214,7 +230,9 @@ export default function CoordinatorTeachersPage() {
               onChange={(e) =>
                 setFilters((current) => ({
                   ...current,
-                  isActive: e.target.value ? e.target.value === 'true' : undefined,
+                  isActive: e.target.value
+                    ? e.target.value === 'true'
+                    : undefined,
                   page: 1,
                 }))
               }
@@ -237,7 +255,9 @@ export default function CoordinatorTeachersPage() {
         <div className="mt-6">
           <Pagination
             meta={data.meta}
-            onPageChange={(page) => setFilters((current) => ({ ...current, page }))}
+            onPageChange={(page) =>
+              setFilters((current) => ({ ...current, page }))
+            }
           />
         </div>
       )}

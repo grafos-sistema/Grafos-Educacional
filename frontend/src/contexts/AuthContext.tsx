@@ -21,14 +21,22 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { user, accessToken, refreshToken, isAuthenticated, login: storeLogin, logout: storeLogout, setLoading } = useAuthStore();
+  const {
+    user,
+    accessToken,
+    refreshToken,
+    isAuthenticated,
+    login: storeLogin,
+    logout: storeLogout,
+    setLoading,
+  } = useAuthStore();
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Initialize auth state on mount
   useEffect(() => {
     const syncPersistedSession = async (
       storedAccessToken: string,
-      storedRefreshToken: string | null
+      storedRefreshToken: string | null,
     ) => {
       try {
         const profile = await authService.getProfile();
@@ -36,9 +44,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch {
         if (storedRefreshToken) {
           try {
-            const refreshResponse = await authService.refreshToken(storedRefreshToken);
+            const refreshResponse =
+              await authService.refreshToken(storedRefreshToken);
             const profile = await authService.getProfile();
-            storeLogin(profile, refreshResponse.accessToken, refreshResponse.refreshToken);
+            storeLogin(
+              profile,
+              refreshResponse.accessToken,
+              refreshResponse.refreshToken,
+            );
             return;
           } catch {
             clearCurrentUserProfileCache();
@@ -51,11 +64,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const initAuth = async () => {
       const storeState = useAuthStore.getState();
-      const { accessToken: cookieAccessToken, refreshToken: cookieRefreshToken } = clientCookies.getAuthTokens();
+      const {
+        accessToken: cookieAccessToken,
+        refreshToken: cookieRefreshToken,
+      } = clientCookies.getAuthTokens();
       const storedAccessToken = storeState.accessToken ?? cookieAccessToken;
       const storedRefreshToken = storeState.refreshToken ?? cookieRefreshToken;
       const hasPersistedSession = Boolean(
-        storeState.user && storeState.isAuthenticated && storedAccessToken
+        storeState.user && storeState.isAuthenticated && storedAccessToken,
       );
 
       if (!hasPersistedSession) {
@@ -65,7 +81,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (hasPersistedSession) {
         setLoading(false);
         setIsInitialized(true);
-        void syncPersistedSession(storedAccessToken as string, storedRefreshToken ?? null);
+        void syncPersistedSession(
+          storedAccessToken as string,
+          storedRefreshToken ?? null,
+        );
         return;
       }
 
@@ -78,9 +97,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Token is invalid, try to refresh
           if (storedRefreshToken) {
             try {
-              const refreshResponse = await authService.refreshToken(storedRefreshToken);
+              const refreshResponse =
+                await authService.refreshToken(storedRefreshToken);
               const profile = await authService.getProfile();
-              storeLogin(profile, refreshResponse.accessToken, refreshResponse.refreshToken);
+              storeLogin(
+                profile,
+                refreshResponse.accessToken,
+                refreshResponse.refreshToken,
+              );
             } catch (refreshError) {
               // Refresh failed, clear auth state
               clearCurrentUserProfileCache();
@@ -127,7 +151,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         clearCurrentUserProfileCache();
         storeLogout();
-        throw new Error('O Super Admin Global deve acessar exclusivamente pela rota /security.');
+        throw new Error(
+          'O Super Admin Global deve acessar exclusivamente pela rota /security.',
+        );
       }
 
       // Store user and tokens
@@ -161,7 +187,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push(from && from !== '/login' ? from : '/select-profile');
       } else {
         // Single profile, redirect to intended page or dashboard
-        const redirectPath = from && from !== '/login' ? from : getRedirectPathByRole(response.user.role);
+        const redirectPath =
+          from && from !== '/login'
+            ? from
+            : getRedirectPathByRole(response.user.role);
         router.push(redirectPath);
       }
 
@@ -219,8 +248,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       storeLogin(profile, accessToken, refreshToken || '');
     } catch (error) {
       console.error('Failed to refresh profile:', error);
-      // If profile refresh fails, logout user
-      await logout();
+      // Não descarte uma sessão válida só porque a atualização complementar do
+      // perfil falhou. Isso fazia Meu Perfil/Configurações voltarem ao dashboard
+      // sem uma ação do usuário. A sessão será renovada no próximo login.
+      if (!user) {
+        await logout();
+      }
     }
   };
 

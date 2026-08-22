@@ -22,6 +22,9 @@ export interface TeacherSubject {
       firstName: string;
       lastName: string;
       email: string;
+      phone?: string | null;
+      whatsapp?: string | null;
+      avatar?: string | null;
     };
   };
 }
@@ -46,6 +49,9 @@ type DbTeacherSubject = {
       firstName: string;
       lastName: string;
       email: string;
+      phone?: string | null;
+      whatsapp?: string | null;
+      avatar?: string | null;
     } | null;
   } | null;
 };
@@ -79,8 +85,12 @@ export const teacherSubjectsService = {
     // A tela do professor deve consultar a API autenticada. Além de manter a
     // regra de autorização no backend, isso evita que a listagem dependa de
     // uma política RLS diferente da usada nas demais telas do professor.
-    const response = await api.get<DbTeacherSubject[]>('/teacher-subjects/my-subjects');
-    return ((response as unknown as DbTeacherSubject[]) ?? []).map(mapTeacherSubject);
+    const response = await api.get<DbTeacherSubject[]>(
+      '/teacher-subjects/my-subjects',
+    );
+    return ((response as unknown as DbTeacherSubject[]) ?? []).map(
+      mapTeacherSubject,
+    );
   },
 
   // Adicionar disciplina às minhas disciplinas
@@ -105,7 +115,9 @@ export const teacherSubjectsService = {
   },
 
   // Adicionar múltiplas disciplinas
-  addMySubjectsBulk: async (subjectIds: string[]): Promise<{ created: number; message: string }> => {
+  addMySubjectsBulk: async (
+    subjectIds: string[],
+  ): Promise<{ created: number; message: string }> => {
     const profile = await fetchCurrentUserProfile();
     const teacherId = profile.teacherProfile?.id;
 
@@ -126,11 +138,16 @@ export const teacherSubjectsService = {
 
     if (existingError) throw existingError;
 
-    const existingSet = new Set((existing ?? []).map((row: any) => row.subjectId as string));
+    const existingSet = new Set(
+      (existing ?? []).map((row: any) => row.subjectId as string),
+    );
     const toCreate = uniqueIds.filter((id) => !existingSet.has(id));
 
     if (toCreate.length === 0) {
-      return { created: 0, message: 'Todas as disciplinas já estavam adicionadas' };
+      return {
+        created: 0,
+        message: 'Todas as disciplinas já estavam adicionadas',
+      };
     }
 
     const now = new Date().toISOString();
@@ -142,10 +159,15 @@ export const teacherSubjectsService = {
       updatedAt: now,
     }));
 
-    const { error: insertError } = await supabase.from('teacher_subjects').insert(payload);
+    const { error: insertError } = await supabase
+      .from('teacher_subjects')
+      .insert(payload);
     if (insertError) throw insertError;
 
-    return { created: toCreate.length, message: 'Disciplinas adicionadas com sucesso' };
+    return {
+      created: toCreate.length,
+      message: 'Disciplinas adicionadas com sucesso',
+    };
   },
 
   // Sincronizar disciplinas (substitui todas)
@@ -206,34 +228,50 @@ export const teacherSubjectsService = {
 
   // Admin: Listar disciplinas de um professor
   getByTeacher: async (teacherId: string): Promise<TeacherSubject[]> => {
-    const response = await api.get<DbTeacherSubject[]>(`/teacher-subjects/teacher/${teacherId}`);
+    const response = await api.get<DbTeacherSubject[]>(
+      `/teacher-subjects/teacher/${teacherId}`,
+    );
     const data = response as unknown as DbTeacherSubject[];
     return (data ?? []).map(mapTeacherSubject);
   },
 
   // Admin: Listar professores habilitados para uma disciplina
   getBySubject: async (subjectId: string): Promise<TeacherSubject[]> => {
-    const response = await api.get<DbTeacherSubject[]>(`/teacher-subjects/subject/${subjectId}`);
+    const response = await api.get<DbTeacherSubject[]>(
+      `/teacher-subjects/subject/${subjectId}`,
+    );
     const data = response as unknown as DbTeacherSubject[];
     return (data ?? []).map(mapTeacherSubject);
   },
 
   // Admin: Sincronizar disciplinas de um professor
-  syncTeacherSubjects: async (teacherId: string, subjectIds: string[]): Promise<TeacherSubject[]> => {
+  syncTeacherSubjects: async (
+    teacherId: string,
+    subjectIds: string[],
+  ): Promise<TeacherSubject[]> => {
     const uniqueIds = Array.from(new Set(subjectIds)).filter(Boolean);
-    const response = await api.put<DbTeacherSubject[]>(`/teacher-subjects/teacher/${teacherId}/sync`, {
-      subjectIds: uniqueIds,
-    });
+    const response = await api.put<DbTeacherSubject[]>(
+      `/teacher-subjects/teacher/${teacherId}/sync`,
+      {
+        subjectIds: uniqueIds,
+      },
+    );
     const data = response as unknown as DbTeacherSubject[];
     return (data ?? []).map(mapTeacherSubject);
   },
 
   // Coordenador: sincronizar professores habilitados para uma disciplina
-  syncSubjectTeachers: async (subjectId: string, teacherIds: string[]): Promise<TeacherSubject[]> => {
+  syncSubjectTeachers: async (
+    subjectId: string,
+    teacherIds: string[],
+  ): Promise<TeacherSubject[]> => {
     const uniqueIds = Array.from(new Set(teacherIds)).filter(Boolean);
-    const response = await api.put<DbTeacherSubject[]>(`/teacher-subjects/subject/${subjectId}/sync`, {
-      teacherIds: uniqueIds,
-    });
+    const response = await api.put<DbTeacherSubject[]>(
+      `/teacher-subjects/subject/${subjectId}/sync`,
+      {
+        teacherIds: uniqueIds,
+      },
+    );
     const data = response as unknown as DbTeacherSubject[];
     return (data ?? []).map(mapTeacherSubject);
   },

@@ -55,7 +55,10 @@ export default function CoordenadoresPage() {
       toast.success('Coordenador desativado com sucesso!');
     } catch (error) {
       console.error('Erro ao remover coordenador:', error);
-      presentFriendlyError(error, 'Nao foi possivel remover o coordenador agora.');
+      presentFriendlyError(
+        error,
+        'Nao foi possivel remover o coordenador agora.',
+      );
     }
   };
 
@@ -67,7 +70,10 @@ export default function CoordenadoresPage() {
       toast.success('Coordenador excluído permanentemente com sucesso!');
     } catch (error) {
       console.error('Erro ao excluir coordenador permanentemente:', error);
-      presentFriendlyError(error, 'Nao foi possivel excluir o coordenador permanentemente agora.');
+      presentFriendlyError(
+        error,
+        'Nao foi possivel excluir o coordenador permanentemente agora.',
+      );
     }
   };
 
@@ -89,7 +95,9 @@ export default function CoordenadoresPage() {
             </div>
           )}
           <div>
-            <div className="font-medium">{user.firstName} {user.lastName}</div>
+            <div className="font-medium">
+              {user.firstName} {user.lastName}
+            </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
               {user.email}
             </div>
@@ -106,11 +114,6 @@ export default function CoordenadoresPage() {
       key: 'phone',
       label: 'Telefone',
       render: (user) => (user.phone ? formatPhone(user.phone) : '-'),
-    },
-    {
-      key: 'city',
-      label: 'Cidade',
-      render: (user) => user.city || '-',
     },
     {
       key: 'isActive',
@@ -184,7 +187,9 @@ export default function CoordenadoresPage() {
                 onChange={(e) =>
                   setFilters({ ...filters, search: e.target.value, page: 1 })
                 }
-                leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
+                leftIcon={
+                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                }
               />
             </div>
             <div className="w-full sm:w-36">
@@ -198,7 +203,9 @@ export default function CoordenadoresPage() {
                 onChange={(e) =>
                   setFilters({
                     ...filters,
-                    isActive: e.target.value ? e.target.value === 'true' : undefined,
+                    isActive: e.target.value
+                      ? e.target.value === 'true'
+                      : undefined,
                     page: 1,
                   })
                 }
@@ -257,15 +264,20 @@ export default function CoordenadoresPage() {
         <div className="space-y-4">
           <p className="text-gray-600 dark:text-gray-400">
             Tem certeza que deseja remover o coordenador{' '}
-            <strong>{deleteModal.user?.firstName} {deleteModal.user?.lastName}</strong>?
+            <strong>
+              {deleteModal.user?.firstName} {deleteModal.user?.lastName}
+            </strong>
+            ?
           </p>
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
             <p>
-              <strong>Desativar</strong> mantém o coordenador no banco, apenas marcando-o como inativo.
+              <strong>Desativar</strong> mantém o coordenador no banco, apenas
+              marcando-o como inativo.
             </p>
             {user?.role === UserRole.SUPER_ADMIN && (
               <p className="mt-2">
-                <strong>Excluir permanentemente</strong> remove o coordenador de forma definitiva.
+                <strong>Excluir permanentemente</strong> remove o coordenador de
+                forma definitiva.
               </p>
             )}
           </div>
@@ -278,7 +290,9 @@ export default function CoordenadoresPage() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => deleteModal.user && handleDelete(deleteModal.user.id)}
+              onClick={() =>
+                deleteModal.user && handleDelete(deleteModal.user.id)
+              }
             >
               Apenas desativar
             </Button>

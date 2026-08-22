@@ -502,6 +502,11 @@ export class UsersService {
             select: {
               id: true,
               userId: true,
+              specialization: true,
+              degree: true,
+              registrationNumber: true,
+              hireDate: true,
+              isActive: true,
             },
           }),
           this.prisma.student.findMany({
@@ -509,6 +514,16 @@ export class UsersService {
             select: {
               id: true,
               userId: true,
+              registrationNumber: true,
+              enrollmentNumber: true,
+              enrollmentDate: true,
+              situacao: true,
+              anoLetivo: true,
+              curso: true,
+              serie: true,
+              turma: true,
+              turno: true,
+              isActive: true,
             },
           }),
           this.prisma.parent.findMany({
@@ -516,6 +531,8 @@ export class UsersService {
             select: {
               id: true,
               userId: true,
+              occupation: true,
+              isActive: true,
             },
           }),
         ]);
@@ -663,6 +680,7 @@ export class UsersService {
                         email: true,
                         phone: true,
                         whatsapp: true,
+                        birthDate: true,
                       },
                     },
                   },
@@ -1247,6 +1265,48 @@ export class UsersService {
     return {
       message: 'Avatar atualizado com sucesso',
       avatar: avatarUrl,
+    };
+  }
+
+  async deleteAvatar(
+    userId: string,
+    currentUser: {
+      userId: string;
+      role: UserRole;
+      institutionId?: string | null;
+    },
+  ) {
+    const user = await this.findOne(userId, currentUser);
+    const previousStoragePath = this.extractStoragePathFromAvatarUrl(
+      user.avatar,
+    );
+
+    if (previousStoragePath) {
+      const supabase = this.getSupabaseAdminClient();
+      const bucket = this.getAvatarBucketName();
+      const { error: removeError } = await supabase.storage
+        .from(bucket)
+        .remove([previousStoragePath]);
+
+      if (removeError) {
+        this.logger.warn(
+          'Falha ao remover avatar do Supabase Storage: ' + removeError.message,
+        );
+      }
+    }
+
+    const updatedRows = await this.prisma.$executeRawUnsafe(
+      'UPDATE public.users SET avatar = NULL, "updatedAt" = NOW() WHERE id = $1',
+      userId,
+    );
+
+    if (!updatedRows) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    return {
+      message: 'Foto removida com sucesso',
+      avatar: null,
     };
   }
 

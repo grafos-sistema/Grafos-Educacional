@@ -12,6 +12,7 @@ import {
   InformationCircleIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
+import { useAuth } from '@/contexts/AuthContext';
 import { usersService } from '@/services/users.service';
 import { ChangePasswordData } from '@/types/user.types';
 import { Button } from '@/components/ui/Button';
@@ -31,13 +32,13 @@ const roleLabels: Record<string, string> = {
 };
 
 const getMutationErrorMessage = (error: unknown) => {
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'response' in error
-  ) {
-    const response = (error as { response?: { data?: { message?: string } } }).response;
-    if (typeof response?.data?.message === 'string' && response.data.message.trim()) {
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    const response = (error as { response?: { data?: { message?: string } } })
+      .response;
+    if (
+      typeof response?.data?.message === 'string' &&
+      response.data.message.trim()
+    ) {
       return response.data.message;
     }
   }
@@ -47,7 +48,8 @@ const getMutationErrorMessage = (error: unknown) => {
 
 export default function ConfiguracoesPage() {
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user, isLoading } = useAuth();
+  const logout = useAuthStore((state) => state.logout);
   const toast = useToast();
 
   const [passwordData, setPasswordData] = useState({
@@ -94,10 +96,21 @@ export default function ConfiguracoesPage() {
     });
   };
 
-  if (!user) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner size="lg" text="Carregando..." />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center p-6">
+        <div className="max-w-md rounded-xl border border-amber-200 bg-amber-50 p-6 text-center text-amber-900">
+          Não foi possível carregar suas configurações agora. Atualize a página
+          ou entre novamente no sistema.
+        </div>
       </div>
     );
   }
@@ -131,7 +144,9 @@ export default function ConfiguracoesPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
             <div>
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Nome</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Nome
+              </p>
               <p className="text-gray-900 dark:text-white">
                 {user.firstName} {user.lastName}
               </p>
@@ -139,7 +154,9 @@ export default function ConfiguracoesPage() {
           </div>
           <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
             <div>
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Email
+              </p>
               <p className="text-gray-900 dark:text-white">{user.email}</p>
             </div>
             {user.emailVerified ? (
@@ -154,8 +171,12 @@ export default function ConfiguracoesPage() {
           </div>
           <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
             <div>
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Perfil</p>
-              <p className="text-gray-900 dark:text-white">{roleLabels[user.role]}</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Perfil
+              </p>
+              <p className="text-gray-900 dark:text-white">
+                {roleLabels[user.role]}
+              </p>
             </div>
             <Badge variant="info" size="sm">
               {user.role}
@@ -163,7 +184,9 @@ export default function ConfiguracoesPage() {
           </div>
           <div className="flex items-center justify-between py-3">
             <div>
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Status</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Status
+              </p>
               <p className="text-gray-900 dark:text-white">
                 {user.isActive ? 'Conta Ativa' : 'Conta Inativa'}
               </p>
@@ -211,7 +234,10 @@ export default function ConfiguracoesPage() {
             type="password"
             value={passwordData.currentPassword}
             onChange={(e) =>
-              setPasswordData({ ...passwordData, currentPassword: e.target.value })
+              setPasswordData({
+                ...passwordData,
+                currentPassword: e.target.value,
+              })
             }
             required
             leftIcon={<LockClosedIcon className="h-5 w-5 text-gray-400" />}
@@ -220,7 +246,9 @@ export default function ConfiguracoesPage() {
             label="Nova Senha"
             type="password"
             value={passwordData.newPassword}
-            onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+            onChange={(e) =>
+              setPasswordData({ ...passwordData, newPassword: e.target.value })
+            }
             required
             minLength={6}
             leftIcon={<LockClosedIcon className="h-5 w-5 text-gray-400" />}
@@ -230,7 +258,10 @@ export default function ConfiguracoesPage() {
             type="password"
             value={passwordData.confirmPassword}
             onChange={(e) =>
-              setPasswordData({ ...passwordData, confirmPassword: e.target.value })
+              setPasswordData({
+                ...passwordData,
+                confirmPassword: e.target.value,
+              })
             }
             required
             minLength={6}
@@ -242,7 +273,11 @@ export default function ConfiguracoesPage() {
               type="button"
               variant="secondary"
               onClick={() =>
-                setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+                setPasswordData({
+                  currentPassword: '',
+                  newPassword: '',
+                  confirmPassword: '',
+                })
               }
               disabled={changePasswordMutation.isPending}
             >
@@ -281,10 +316,14 @@ export default function ConfiguracoesPage() {
         <div className="space-y-4">
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
             <p className="text-sm text-red-700 dark:text-red-300 mb-3">
-              <strong>Sair da conta:</strong> Você será desconectado do sistema e precisará fazer
-              login novamente.
+              <strong>Sair da conta:</strong> Você será desconectado do sistema
+              e precisará fazer login novamente.
             </p>
-            <Button variant="danger" onClick={logout} className="w-full md:w-auto">
+            <Button
+              variant="danger"
+              onClick={logout}
+              className="w-full md:w-auto"
+            >
               Sair da Conta
             </Button>
           </div>
