@@ -60,6 +60,22 @@ export default function PerfilPage() {
   const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+  const [formData, setFormData] = useState<UpdateUserData>({
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || '',
+    cpf: user?.cpf ? formatCPF(user.cpf) : '',
+    phone: user?.phone ? formatPhone(user.phone) : '',
+    birthDate: user?.birthDate || '',
+    gender: user?.gender || Gender.NOT_INFORMED,
+    address: user?.address || '',
+    numero: user?.numero || '',
+    complemento: user?.complemento || '',
+    bairro: user?.bairro || '',
+    city: user?.city || '',
+    state: user?.state || '',
+    zipCode: user?.zipCode ? formatCep(user.zipCode) : '',
+  });
 
   useEffect(() => {
     setFormData({
@@ -79,23 +95,6 @@ export default function PerfilPage() {
       zipCode: user?.zipCode ? formatCep(user.zipCode) : '',
     });
   }, [user]);
-
-  const [formData, setFormData] = useState<UpdateUserData>({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
-    email: user?.email || '',
-    cpf: user?.cpf ? formatCPF(user.cpf) : '',
-    phone: user?.phone ? formatPhone(user.phone) : '',
-    birthDate: user?.birthDate || '',
-    gender: user?.gender || Gender.NOT_INFORMED,
-    address: user?.address || '',
-    numero: user?.numero || '',
-    complemento: user?.complemento || '',
-    bairro: user?.bairro || '',
-    city: user?.city || '',
-    state: user?.state || '',
-    zipCode: user?.zipCode ? formatCep(user.zipCode) : '',
-  });
 
   const avatarPreview = useMemo(() => {
     if (photoFile) {

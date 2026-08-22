@@ -199,7 +199,7 @@ export function AnnouncementComposerModal({
     }
 
     return institutions.find((institution) => isUuid(institution.id))?.id ?? '';
-  }, [institutionFilterAll, institutionFilterIds, institutions, user?.institutionId]);
+  }, [institutionFilterAll, institutionFilterIds, institutions, user]);
 
   const [form, setForm] = useState<AnnouncementFormState>(() =>
     getInitialForm(defaultInstitutionId, defaultTargetRoles),

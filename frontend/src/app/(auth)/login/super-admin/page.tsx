@@ -64,7 +64,7 @@ export default function SuperAdminLoginPage() {
         throw new Error('Somente usuarios globais autorizados podem acessar /security.');
       }
 
-      window.location.href = '/super-admin/dashboard';
+      router.replace('/super-admin/dashboard');
     } catch (err: unknown) {
       setError(
         err instanceof Error

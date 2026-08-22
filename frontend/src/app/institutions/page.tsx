@@ -25,11 +25,7 @@ export default function InstitutionsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    fetchInstitutions();
-  }, []);
-
-  const fetchInstitutions = async () => {
+  async function fetchInstitutions() {
     try {
       const { data, error } = await supabase
         .from('institutions')
@@ -48,7 +44,11 @@ export default function InstitutionsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  useEffect(() => {
+    void fetchInstitutions();
+  }, []);
 
   const filteredInstitutions = institutions.filter((inst) =>
     inst.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
