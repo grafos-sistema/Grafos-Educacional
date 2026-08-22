@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import {
   ArrowDownTrayIcon,
   DocumentArrowUpIcon,
+  InformationCircleIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
@@ -14,11 +15,35 @@ import { UserRole, type CreateUserDto } from '@/types/user.types';
 import { usersService } from '@/services/users.service';
 import { institutionsService } from '@/services/institutions.service';
 import type { Institution } from '@/types/institution.types';
+import { getFriendlyErrorInfo } from '@/lib/friendly-error';
 
 type ImportRow = Record<string, string> & {
   __lineNumber?: string;
 };
 type ImportMode = 'ALL' | 'TEACHERS' | 'STUDENTS';
+type ImportBatchSize = 1 | 5 | 10;
+
+const IMPORT_BATCH_OPTIONS: Array<{
+  value: ImportBatchSize;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: 1,
+    label: 'Sequencial',
+    description: 'Um usuário por vez, com máxima estabilidade.',
+  },
+  {
+    value: 5,
+    label: 'Grupos de 3 a 5',
+    description: 'Até 5 usuários ao mesmo tempo, equilibrando velocidade.',
+  },
+  {
+    value: 10,
+    label: 'Grupos de 6 a 10',
+    description: 'Até 10 usuários ao mesmo tempo, para planilhas maiores.',
+  },
+];
 
 const COMMON_HEADERS = [
   'nome',
@@ -304,6 +329,79 @@ function rowValidationError(row: ImportRow, mode: ImportMode) {
   return null;
 }
 
+function normalizeErrorText(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('pt-BR');
+}
+
+function friendlyImportError(error: unknown) {
+  const info = getFriendlyErrorInfo(
+    error,
+    'Não foi possível importar este usuário. Revise os dados e tente novamente.',
+  );
+  const normalized = normalizeErrorText(`${info.rawMessage} ${info.description}`);
+  const isDuplicate =
+    normalized.includes('duplicate') ||
+    normalized.includes('duplicad') ||
+    normalized.includes('ja existe') ||
+    normalized.includes('already registered') ||
+    normalized.includes('unique constraint');
+
+  if (normalized.includes('cpf') && isDuplicate) {
+    return 'CPF duplicado: já existe outro usuário com esse CPF.';
+  }
+
+  if (
+    normalized.includes('email') &&
+    (normalized.includes('invalid') ||
+      normalized.includes('invalido') ||
+      normalized.includes('format') ||
+      normalized.includes('validate'))
+  ) {
+    return 'E-mail inválido: confira o endereço informado.';
+  }
+
+  if (
+    normalized.includes('email') &&
+    (isDuplicate || normalized.includes('registered'))
+  ) {
+    return 'E-mail já cadastrado: informe outro endereço.';
+  }
+
+  if (normalized.includes('cpf') && normalized.includes('invalido')) {
+    return 'CPF inválido: confira os números informados.';
+  }
+
+  if (
+    normalized.includes('obrigatori') ||
+    normalized.includes('required') ||
+    normalized.includes('not-null')
+  ) {
+    return 'Dados incompletos: preencha os campos obrigatórios.';
+  }
+
+  if (
+    normalized.includes('forbidden') ||
+    normalized.includes('permissao') ||
+    normalized.includes('acesso negado')
+  ) {
+    return 'Acesso não permitido para importar este usuário.';
+  }
+
+  if (
+    normalized.includes('network') ||
+    normalized.includes('timeout') ||
+    normalized.includes('conexao') ||
+    normalized.includes('conexão')
+  ) {
+    return 'Falha de conexão: tente importar esta linha novamente.';
+  }
+
+  return info.description;
+}
+
 function institutionName(institution: Institution) {
   return institution.name || institution.slug;
 }
@@ -330,6 +428,7 @@ export function BulkUserImportModal({
   const [mode, setMode] = useState<ImportMode | ''>(defaultMode);
   const [isLoading, setIsLoading] = useState(false);
   const [importProgress, setImportProgress] = useState<number | null>(null);
+  const [importBatchSize, setImportBatchSize] = useState<ImportBatchSize>(1);
   const [loadingInstitutions, setLoadingInstitutions] = useState(false);
   const [result, setResult] = useState<{
     imported: number;
@@ -502,106 +601,130 @@ export function BulkUserImportModal({
       ({ row, reason }) => `Linha ${row.__lineNumber ?? '?'}: ${reason}`,
     );
     let imported = 0;
-
-    for (const [index, row] of validRows.entries()) {
+    const buildPayload = (row: ImportRow, role: UserRole): CreateUserDto => ({
+      email: row.email.trim(),
+      password: row.senha || undefined,
+      role,
+      firstName: row.nome.trim(),
+      lastName: row.sobrenome.trim(),
+      socialName: row.nome_social || undefined,
+      cpf: row.cpf || undefined,
+      phone: row.telefone || undefined,
+      whatsapp: row.whatsapp || undefined,
+      telefoneFixo: row.telefone_fixo || undefined,
+      birthDate: row.data_nascimento || undefined,
+      gender: (row.genero || undefined) as CreateUserDto['gender'],
+      address: row.endereco || undefined,
+      numero: row.numero || undefined,
+      complemento: row.complemento || undefined,
+      bairro: row.bairro || undefined,
+      city: row.cidade || undefined,
+      state: row.estado || undefined,
+      zipCode: row.cep || undefined,
+      institutionId,
+      unitId,
+      specialization: row.especializacao || undefined,
+      degree: row.formacao || undefined,
+      registrationNumber: row.registro_profissional || undefined,
+      hireDate: row.data_admissao || undefined,
+      occupation: row.ocupacao || undefined,
+      unidade: selectedUnit?.name,
+      situacao: row.situacao || undefined,
+      anoLetivo: row.ano_letivo || undefined,
+      curso: row.curso || undefined,
+      serie: row.serie || undefined,
+      turma: row.turma || undefined,
+      turno: row.turno || undefined,
+      dataMatricula: row.data_matricula || undefined,
+      modalidade: row.modalidade || undefined,
+      observacoes: row.observacoes || undefined,
+      healthInfo:
+        role === UserRole.STUDENT
+          ? {
+              tipoSanguineo: row.tipo_sanguineo || null,
+              alergias: row.alergias || null,
+              medicamentos: row.medicamentos || null,
+              necessidadesEspeciais: row.necessidades_especiais || null,
+              restricoesAlimentares: row.restricoes_alimentares || null,
+              convenioMedico: row.convenio_medico || null,
+            }
+          : undefined,
+      responsaveis:
+        role === UserRole.STUDENT && row.responsavel_nome
+          ? [
+              {
+                nome: row.responsavel_nome,
+                cpf: row.responsavel_cpf || undefined,
+                email: row.responsavel_email || undefined,
+                celular: row.responsavel_celular || undefined,
+                whatsapp: row.responsavel_whatsapp || undefined,
+                telefoneFixo: row.responsavel_telefone_fixo || undefined,
+                parentesco: row.parentesco || 'Responsável',
+                dataNascimento: row.responsavel_data_nascimento || undefined,
+                contatoEmergencia: ['SIM', 'S', 'TRUE', '1'].includes(
+                  row.responsavel_contato_emergencia?.trim().toUpperCase() ||
+                    '',
+                ),
+                notificacoes:
+                  ['SIM', 'S', 'TRUE', '1'].includes(
+                    row.responsavel_notificacoes?.trim().toUpperCase() || '',
+                  ) || undefined,
+                podeRetirar:
+                  ['SIM', 'S', 'TRUE', '1'].includes(
+                    row.responsavel_pode_retirar?.trim().toUpperCase() || '',
+                  ) || undefined,
+              },
+            ]
+          : undefined,
+    });
+    const rowsToImport = validRows.flatMap((row) => {
       const role = roleForRow(row, mode);
-      if (!role) continue;
+      return role ? [{ row, role }] : [];
+    });
 
-      const payload: CreateUserDto = {
-        email: row.email,
-        password: row.senha || undefined,
-        role,
-        firstName: row.nome,
-        lastName: row.sobrenome,
-        socialName: row.nome_social || undefined,
-        cpf: row.cpf || undefined,
-        phone: row.telefone || undefined,
-        whatsapp: row.whatsapp || undefined,
-        telefoneFixo: row.telefone_fixo || undefined,
-        birthDate: row.data_nascimento || undefined,
-        gender: (row.genero || undefined) as CreateUserDto['gender'],
-        address: row.endereco || undefined,
-        numero: row.numero || undefined,
-        complemento: row.complemento || undefined,
-        bairro: row.bairro || undefined,
-        city: row.cidade || undefined,
-        state: row.estado || undefined,
-        zipCode: row.cep || undefined,
-        institutionId,
-        unitId,
-        specialization: row.especializacao || undefined,
-        degree: row.formacao || undefined,
-        registrationNumber: row.registro_profissional || undefined,
-        hireDate: row.data_admissao || undefined,
-        occupation: row.ocupacao || undefined,
-        unidade: selectedUnit?.name,
-        situacao: row.situacao || undefined,
-        anoLetivo: row.ano_letivo || undefined,
-        curso: row.curso || undefined,
-        serie: row.serie || undefined,
-        turma: row.turma || undefined,
-        turno: row.turno || undefined,
-        dataMatricula: row.data_matricula || undefined,
-        modalidade: row.modalidade || undefined,
-        observacoes: row.observacoes || undefined,
-        healthInfo:
-          role === UserRole.STUDENT
-            ? {
-                tipoSanguineo: row.tipo_sanguineo || null,
-                alergias: row.alergias || null,
-                medicamentos: row.medicamentos || null,
-                necessidadesEspeciais: row.necessidades_especiais || null,
-                restricoesAlimentares: row.restricoes_alimentares || null,
-                convenioMedico: row.convenio_medico || null,
-              }
-            : undefined,
-        responsaveis:
-          role === UserRole.STUDENT && row.responsavel_nome
-            ? [
-                {
-                  nome: row.responsavel_nome,
-                  cpf: row.responsavel_cpf || undefined,
-                  email: row.responsavel_email || undefined,
-                  celular: row.responsavel_celular || undefined,
-                  whatsapp: row.responsavel_whatsapp || undefined,
-                  telefoneFixo: row.responsavel_telefone_fixo || undefined,
-                  parentesco: row.parentesco || 'Responsável',
-                  dataNascimento: row.responsavel_data_nascimento || undefined,
-                  contatoEmergencia: ['SIM', 'S', 'TRUE', '1'].includes(
-                    row.responsavel_contato_emergencia?.trim().toUpperCase() ||
-                      '',
-                  ),
-                  notificacoes:
-                    ['SIM', 'S', 'TRUE', '1'].includes(
-                      row.responsavel_notificacoes?.trim().toUpperCase() || '',
-                    ) || undefined,
-                  podeRetirar:
-                    ['SIM', 'S', 'TRUE', '1'].includes(
-                      row.responsavel_pode_retirar?.trim().toUpperCase() || '',
-                    ) || undefined,
-                },
-              ]
-            : undefined,
-      };
+    try {
+      for (
+        let start = 0;
+        start < rowsToImport.length;
+        start += importBatchSize
+      ) {
+        const batch = rowsToImport.slice(start, start + importBatchSize);
+        const batchResults = await Promise.allSettled(
+          batch.map(({ row, role }) =>
+            usersService.create(buildPayload(row, role)),
+          ),
+        );
 
-      try {
-        await usersService.create(payload);
-        imported += 1;
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'erro não identificado';
-        errors.push(`Linha ${row.__lineNumber ?? index + 2}: ${message}`);
-      } finally {
+        batchResults.forEach((batchResult, batchIndex) => {
+          const row = batch[batchIndex].row;
+          if (batchResult.status === 'fulfilled') {
+            imported += 1;
+            return;
+          }
+
+          errors.push(
+            `Linha ${row.__lineNumber ?? '?'}: ${friendlyImportError(batchResult.reason)}`,
+          );
+        });
+
+        const processed = Math.min(
+          start + batch.length,
+          rowsToImport.length,
+        );
         setImportProgress(
-          Math.round(((index + 1) / validRows.length) * 100),
+          Math.round((processed / rowsToImport.length) * 100),
         );
       }
-    }
 
-    setResult({ imported, errors });
-    setImportProgress(100);
-    setIsLoading(false);
-    if (imported > 0) onComplete();
+      setResult({ imported, errors });
+      if (imported > 0) onComplete();
+    } catch (error) {
+      errors.push(`Importação interrompida: ${friendlyImportError(error)}`);
+      setResult({ imported, errors });
+    } finally {
+      setImportProgress(100);
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -755,6 +878,44 @@ export function BulkUserImportModal({
         ) : null}
 
         {rows.length > 0 ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                Velocidade da importação
+              </p>
+              <InformationCircleIcon
+                className="h-4 w-4 cursor-help text-gray-400"
+                title="Escolha quantos usuários serão processados por vez. O sistema nunca envia a planilha inteira de uma só vez."
+                aria-label="Informações sobre a velocidade da importação"
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              {IMPORT_BATCH_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setImportBatchSize(option.value)}
+                  disabled={isLoading}
+                  aria-pressed={importBatchSize === option.value}
+                  className={`rounded-lg border px-3 py-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                    importBatchSize === option.value
+                      ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-100 dark:border-primary-400 dark:bg-primary-950/30 dark:ring-primary-900/40'
+                      : 'border-gray-200 bg-white hover:border-primary-300 hover:bg-primary-50/50 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-primary-700 dark:hover:bg-primary-900/20'
+                  }`}
+                >
+                  <span className="block text-sm font-semibold text-gray-900 dark:text-white">
+                    {option.label}
+                  </span>
+                  <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
+                    {option.description}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {rows.length > 0 ? (
           <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
             <table className="min-w-full text-left text-sm">
               <thead className="bg-gray-50 dark:bg-gray-800">
@@ -824,7 +985,7 @@ export function BulkUserImportModal({
                 </div>
                 <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">
                   {isLoading
-                    ? `Processando importação... ${importProgress}%`
+                    ? `Processando em lotes de até ${importBatchSize}... ${importProgress}%`
                     : `Importação concluída: ${importProgress}%`}
                 </p>
               </div>
