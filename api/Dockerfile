@@ -23,7 +23,8 @@ ENV NODE_ENV=production \
 
 # O Railway pode sobrescrever o CMD com `npm run start:prod`. Mantemos o npm,
 # mas substituimos a versao da imagem-base pela arvore corrigida e auditada.
-RUN apk add --no-cache \
+RUN apk upgrade --no-cache \
+  && apk add --no-cache \
       chromium \
       dumb-init \
       ca-certificates \
