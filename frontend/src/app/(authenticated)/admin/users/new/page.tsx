@@ -120,8 +120,10 @@ export function NewUserPageContent({
       setIsLoadingInstitutions(true);
 
       try {
+        const viewerRole = user.activeProfile ?? user.role;
         const institutions =
-          user.role === UserRole.SUPER_ADMIN
+          viewerRole === UserRole.SUPER_ADMIN_GLOBAL ||
+          viewerRole === UserRole.SUPER_ADMIN
             ? await institutionsService.getPublicInstitutions()
             : await authService.getInstitutions();
 
