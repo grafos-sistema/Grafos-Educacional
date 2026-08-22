@@ -15,7 +15,9 @@ import { usersService } from '@/services/users.service';
 import { institutionsService } from '@/services/institutions.service';
 import type { Institution } from '@/types/institution.types';
 
-type ImportRow = Record<string, string>;
+type ImportRow = Record<string, string> & {
+  __lineNumber?: string;
+};
 type ImportMode = 'ALL' | 'TEACHERS' | 'STUDENTS';
 
 const COMMON_HEADERS = [
@@ -257,12 +259,14 @@ function parseFile(content: string): ImportRow[] {
   const headers = splitLine(lines[0], delimiter).map((header) =>
     header.toLowerCase(),
   );
-  return lines.slice(1).map((line) => {
+  return lines.slice(1).map((line, index) => {
     const values = splitLine(line, delimiter);
-    return headers.reduce<ImportRow>((row, header, index) => {
-      row[header] = values[index] ?? '';
-      return row;
+    const row = headers.reduce<ImportRow>((parsedRow, header, valueIndex) => {
+      parsedRow[header] = values[valueIndex] ?? '';
+      return parsedRow;
     }, {});
+    row.__lineNumber = String(index + 2);
+    return row;
   });
 }
 
@@ -279,6 +283,25 @@ function roleForRow(row: ImportRow, mode: ImportMode) {
   if (mode === 'STUDENTS') return UserRole.STUDENT;
   if (mode === 'TEACHERS') return UserRole.TEACHER;
   return normalizedRole(row.tipo);
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function rowValidationError(row: ImportRow, mode: ImportMode) {
+  const role = roleForRow(row, mode);
+
+  if (!role) return 'tipo de usuário inválido';
+  if (!row.nome?.trim() || !row.sobrenome?.trim()) {
+    return 'nome e sobrenome são obrigatórios';
+  }
+  if (!isValidEmail(row.email || '')) return 'e-mail inválido';
+  if (role === UserRole.STUDENT && !row.responsavel_nome?.trim()) {
+    return 'nome do responsável é obrigatório para alunos';
+  }
+
+  return null;
 }
 
 function institutionName(institution: Institution) {
@@ -306,6 +329,7 @@ export function BulkUserImportModal({
   const [unitId, setUnitId] = useState('');
   const [mode, setMode] = useState<ImportMode | ''>(defaultMode);
   const [isLoading, setIsLoading] = useState(false);
+  const [importProgress, setImportProgress] = useState<number | null>(null);
   const [loadingInstitutions, setLoadingInstitutions] = useState(false);
   const [result, setResult] = useState<{
     imported: number;
@@ -332,20 +356,19 @@ export function BulkUserImportModal({
   }, [institutionSearch, institutions]);
 
   const validRows = useMemo(
+    () => (mode ? rows.filter((row) => !rowValidationError(row, mode)) : []),
+    [mode, rows],
+  );
+  const invalidRows = useMemo(
     () =>
-      rows.filter((row) => {
-        const role = mode ? roleForRow(row, mode) : null;
-        const hasBasicData = Boolean(
-          role &&
-          row.nome?.trim() &&
-          row.sobrenome?.trim() &&
-          row.email?.trim(),
-        );
-        return (
-          hasBasicData &&
-          (role !== UserRole.STUDENT || Boolean(row.responsavel_nome?.trim()))
-        );
-      }),
+      mode
+        ? rows
+            .map((row) => ({ row, reason: rowValidationError(row, mode) }))
+            .filter(
+              (item): item is { row: ImportRow; reason: string } =>
+                Boolean(item.reason),
+            )
+        : [],
     [mode, rows],
   );
 
@@ -353,6 +376,7 @@ export function BulkUserImportModal({
     setRows([]);
     setFileName('');
     setResult(null);
+    setImportProgress(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -473,7 +497,10 @@ export function BulkUserImportModal({
     }
 
     setIsLoading(true);
-    const errors: string[] = [];
+    setImportProgress(0);
+    const errors: string[] = invalidRows.map(
+      ({ row, reason }) => `Linha ${row.__lineNumber ?? '?'}: ${reason}`,
+    );
     let imported = 0;
 
     for (const [index, row] of validRows.entries()) {
@@ -563,11 +590,16 @@ export function BulkUserImportModal({
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'erro não identificado';
-        errors.push(`Linha ${index + 2}: ${message}`);
+        errors.push(`Linha ${row.__lineNumber ?? index + 2}: ${message}`);
+      } finally {
+        setImportProgress(
+          Math.round(((index + 1) / validRows.length) * 100),
+        );
       }
     }
 
     setResult({ imported, errors });
+    setImportProgress(100);
     setIsLoading(false);
     if (imported > 0) onComplete();
   };
@@ -581,12 +613,6 @@ export function BulkUserImportModal({
       size="2xl"
     >
       <div className="space-y-6">
-        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-100">
-          O arquivo deve seguir o modelo do tipo escolhido. Para alunos, o nome
-          do responsável é obrigatório e será criado/vinculado automaticamente
-          ao aluno.
-        </div>
-
         <div className="space-y-2">
           <label
             htmlFor="bulk-import-institution"
@@ -737,7 +763,9 @@ export function BulkUserImportModal({
                   <th className="px-3 py-2">Nome</th>
                   <th className="px-3 py-2">E-mail</th>
                   <th className="px-3 py-2">Anexo</th>
-                  <th className="px-3 py-2">Responsável</th>
+                  {mode !== 'TEACHERS' ? (
+                    <th className="px-3 py-2">Responsável</th>
+                  ) : null}
                 </tr>
               </thead>
               <tbody>
@@ -761,9 +789,11 @@ export function BulkUserImportModal({
                       </td>
                       <td className="px-3 py-2">{row.email || '-'}</td>
                       <td className="px-3 py-2">{selectedUnit?.name || '-'}</td>
-                      <td className="px-3 py-2">
-                        {row.responsavel_nome || '—'}
-                      </td>
+                      {mode !== 'TEACHERS' ? (
+                        <td className="px-3 py-2">
+                          {row.responsavel_nome || '—'}
+                        </td>
+                      ) : null}
                     </tr>
                   );
                 })}
@@ -774,12 +804,30 @@ export function BulkUserImportModal({
                 Mostrando 8 de {rows.length} linhas.
               </p>
             ) : null}
-            {validRows.length < rows.length ? (
+            {invalidRows.length > 0 ? (
               <p className="border-t border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                {rows.length - validRows.length} linha(s) não serão importadas
-                porque estão incompletas ou não correspondem ao modelo
-                selecionado.
+                {invalidRows.length} linha(s) não serão importadas.{' '}
+                {invalidRows
+                  .slice(0, 3)
+                  .map(({ row, reason }) => `Linha ${row.__lineNumber}: ${reason}`)
+                  .join(' • ')}
+                {invalidRows.length > 3 ? ' • ...' : ''}
               </p>
+            ) : null}
+            {importProgress !== null ? (
+              <div className="border-t border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/60">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                  <div
+                    className="h-full rounded-full bg-primary-600 transition-[width] duration-200"
+                    style={{ width: `${importProgress}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">
+                  {isLoading
+                    ? `Processando importação... ${importProgress}%`
+                    : `Importação concluída: ${importProgress}%`}
+                </p>
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -805,7 +853,11 @@ export function BulkUserImportModal({
             onClick={importUsers}
             isLoading={isLoading}
             disabled={
-              !mode || !institutionId || !unitId || validRows.length === 0
+              isLoading ||
+              !mode ||
+              !institutionId ||
+              !unitId ||
+              validRows.length === 0
             }
           >
             Importar{' '}
