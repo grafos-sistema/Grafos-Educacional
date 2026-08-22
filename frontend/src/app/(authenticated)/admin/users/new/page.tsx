@@ -269,7 +269,8 @@ export function NewUserPageContent({
       const photoFile =
         currentRole === UserRole.TEACHER ||
         currentRole === UserRole.STUDENT ||
-        currentRole === UserRole.COORDINATOR
+        currentRole === UserRole.COORDINATOR ||
+        currentRole === UserRole.PARENT
           ? getSelectedPhotoFile((data as any).photo)
           : null;
 
@@ -327,7 +328,8 @@ export function NewUserPageContent({
           currentRole === UserRole.STUDENT ||
           currentRole === UserRole.COORDINATOR ||
           currentRole === UserRole.DIRECTOR ||
-          currentRole === UserRole.INSTITUTION_ADMIN) &&
+          currentRole === UserRole.INSTITUTION_ADMIN ||
+          currentRole === UserRole.PARENT) &&
         photoFile
       ) {
         try {

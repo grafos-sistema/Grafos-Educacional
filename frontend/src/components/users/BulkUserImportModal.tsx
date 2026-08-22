@@ -197,7 +197,7 @@ function templateForMode(mode: ImportMode) {
   return [headers.join(';'), ...rows].join('\n');
 }
 
-function splitLine(line: string) {
+function splitLine(line: string, delimiter: ',' | ';') {
   const values: string[] = [];
   let value = '';
   let quoted = false;
@@ -211,7 +211,7 @@ function splitLine(line: string) {
       } else {
         quoted = !quoted;
       }
-    } else if (char === ';' && !quoted) {
+    } else if (char === delimiter && !quoted) {
       values.push(value.trim());
       value = '';
     } else {
@@ -223,6 +223,29 @@ function splitLine(line: string) {
   return values;
 }
 
+function detectDelimiter(headerLine: string): ',' | ';' {
+  let commas = 0;
+  let semicolons = 0;
+  let quoted = false;
+
+  for (let index = 0; index < headerLine.length; index += 1) {
+    const char = headerLine[index];
+    if (char === '"') {
+      if (quoted && headerLine[index + 1] === '"') {
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+      continue;
+    }
+
+    if (!quoted && char === ',') commas += 1;
+    if (!quoted && char === ';') semicolons += 1;
+  }
+
+  return commas > semicolons ? ',' : ';';
+}
+
 function parseFile(content: string): ImportRow[] {
   const lines = content
     .replace(/^\uFEFF/, '')
@@ -230,9 +253,12 @@ function parseFile(content: string): ImportRow[] {
     .filter((line) => line.trim());
   if (lines.length < 2) return [];
 
-  const headers = splitLine(lines[0]).map((header) => header.toLowerCase());
+  const delimiter = detectDelimiter(lines[0]);
+  const headers = splitLine(lines[0], delimiter).map((header) =>
+    header.toLowerCase(),
+  );
   return lines.slice(1).map((line) => {
-    const values = splitLine(line);
+    const values = splitLine(line, delimiter);
     return headers.reduce<ImportRow>((row, header, index) => {
       row[header] = values[index] ?? '';
       return row;

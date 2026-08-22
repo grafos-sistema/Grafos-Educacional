@@ -624,7 +624,8 @@ export function EditUserPageContent({
         user?.role === UserRole.TEACHER ||
         user?.role === UserRole.STUDENT ||
         user?.role === UserRole.COORDINATOR ||
-        user?.role === UserRole.DIRECTOR
+        user?.role === UserRole.DIRECTOR ||
+        user?.role === UserRole.PARENT
           ? getSelectedPhotoFile((data as any).photo)
           : null;
 
@@ -684,7 +685,8 @@ export function EditUserPageContent({
           user?.role === UserRole.STUDENT ||
           user?.role === UserRole.COORDINATOR ||
           user?.role === UserRole.DIRECTOR ||
-          user?.role === UserRole.INSTITUTION_ADMIN) &&
+          user?.role === UserRole.INSTITUTION_ADMIN ||
+          user?.role === UserRole.PARENT) &&
         photoFile
       ) {
         try {

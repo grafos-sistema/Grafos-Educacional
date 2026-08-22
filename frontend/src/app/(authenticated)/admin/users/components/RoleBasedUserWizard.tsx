@@ -426,9 +426,11 @@ export function RoleBasedUserWizard({
   const profileDisplayName =
     [firstName, lastName].filter(Boolean).join(' ').trim() ||
     (role === UserRole.COORDINATOR
-      ? 'Novo coordenador'
-      : role === UserRole.DIRECTOR
-        ? 'Novo diretor'
+    ? 'Novo coordenador'
+    : role === UserRole.DIRECTOR
+      ? 'Novo diretor'
+      : role === UserRole.PARENT
+        ? 'Novo responsável'
         : 'Novo professor');
   const profileSummary = cpf?.trim() ? formatCPF(cpf.trim()) : '';
   const { fillAddressFromCep } = useCepAutofill({
@@ -917,7 +919,8 @@ export function RoleBasedUserWizard({
       <div className="w-full md:w-[248px] shrink-0 flex flex-col gap-5">
         {(role === UserRole.TEACHER ||
           role === UserRole.COORDINATOR ||
-          role === UserRole.DIRECTOR) && (
+          role === UserRole.DIRECTOR ||
+          role === UserRole.PARENT) && (
           <div className="relative flex flex-col items-center rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-6 shadow-sm">
             <Dropdown
               trigger={
