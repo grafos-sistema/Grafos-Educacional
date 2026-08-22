@@ -34,7 +34,7 @@ RUN apk add --no-cache \
   && mkdir -p /tmp/npm-security \
   && npm install --prefix /tmp/npm-security --omit=dev --no-save \
       brace-expansion@5.0.9 \
-      ip-address@10.3.1 \
+      ip-address@10.5.0 \
   && rm -rf \
       /usr/local/lib/node_modules/npm/node_modules/brace-expansion \
       /usr/local/lib/node_modules/npm/node_modules/ip-address \
