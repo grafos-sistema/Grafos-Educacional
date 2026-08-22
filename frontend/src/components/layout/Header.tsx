@@ -16,6 +16,24 @@ import { useMunicipalityConfig } from '@/config/municipality.config';
 import Image from 'next/image';
 import Link from 'next/link';
 
+function handleNativeAccountNavigation(
+  event: React.MouseEvent<HTMLAnchorElement>,
+) {
+  if (
+    event.defaultPrevented ||
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey
+  ) {
+    return;
+  }
+
+  event.preventDefault();
+  window.location.assign(event.currentTarget.href);
+}
+
 interface HeaderProps {
   title?: string;
 }
@@ -122,6 +140,8 @@ export function Header({ title }: HeaderProps) {
                   {({ active }) => (
                     <Link
                       href="/perfil"
+                      data-native-navigation="true"
+                      onClick={handleNativeAccountNavigation}
                       className={cn(
                         active ? 'bg-secondary-50' : '',
                         'flex items-center gap-3 px-4 py-2 text-sm text-secondary-700'
@@ -136,6 +156,8 @@ export function Header({ title }: HeaderProps) {
                   {({ active }) => (
                     <Link
                       href={settingsHref}
+                      data-native-navigation="true"
+                      onClick={handleNativeAccountNavigation}
                       className={cn(
                         active ? 'bg-secondary-50' : '',
                         'flex items-center gap-3 px-4 py-2 text-sm text-secondary-700'

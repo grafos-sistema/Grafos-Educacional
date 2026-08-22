@@ -104,6 +104,10 @@ export function AuthenticatedNavigationProvider({
       const anchor = target?.closest('a[href]') as HTMLAnchorElement | null;
 
       if (!anchor) return;
+      // Shared account pages use a full document navigation deliberately. It
+      // avoids serving a stale/failed RSC payload and prevents the global
+      // transition skeleton from masking the destination page.
+      if (anchor.dataset.nativeNavigation === 'true') return;
       if (anchor.target === '_blank' || anchor.hasAttribute('download')) return;
 
       const href = anchor.getAttribute('href');
