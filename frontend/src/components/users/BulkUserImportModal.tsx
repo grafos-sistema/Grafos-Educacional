@@ -346,6 +346,7 @@ function friendlyImportError(error: unknown) {
     normalized.includes('duplicate') ||
     normalized.includes('duplicad') ||
     normalized.includes('ja existe') ||
+    normalized.includes('cadastrad') ||
     normalized.includes('already registered') ||
     normalized.includes('unique constraint');
 
