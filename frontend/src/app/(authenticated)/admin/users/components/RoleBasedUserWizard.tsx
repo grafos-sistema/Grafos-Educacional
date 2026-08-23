@@ -11,6 +11,7 @@ import {
   BriefcaseIcon,
   BuildingOffice2Icon,
   CameraIcon,
+  ChevronDownIcon,
   CheckCircleIcon,
   EllipsisHorizontalIcon,
   EnvelopeIcon,
@@ -370,6 +371,7 @@ export function RoleBasedUserWizard({
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
 
   const [isAlsoDirector, setIsAlsoDirector] = useState(false);
+  const [showDirectorPromotion, setShowDirectorPromotion] = useState(false);
   const [isPromotingDirector, setIsPromotingDirector] = useState(false);
   const [availableDirectors, setAvailableDirectors] = useState<
     Array<{
@@ -1025,122 +1027,132 @@ export function RoleBasedUserWizard({
         <div className="flex-1 p-6 md:p-8 xl:p-10">
           <div className="w-full">
             {role === UserRole.INSTITUTION_ADMIN && (
-              <div className="mb-8 rounded-xl border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-900/10 p-5 space-y-5">
-                <div>
-                  <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                    <BuildingOffice2Icon className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                    Opções de Secretário(a)
-                  </h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    Se esse secretário(a) também for diretor(a) de um anexo, ou
-                    se você quiser promover um diretor(a) já cadastrado, use as
-                    opções abaixo.
-                  </p>
-                </div>
+              <div className="mb-8 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-4">
+                <button
+                  type="button"
+                  onClick={() => setShowDirectorPromotion((value) => !value)}
+                  className="flex w-full items-center justify-between gap-3 text-left"
+                  aria-expanded={showDirectorPromotion}
+                >
+                  <span className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+                    <BuildingOffice2Icon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                    Promover Diretor existente para Secretário
+                  </span>
+                  <ChevronDownIcon
+                    className={`h-5 w-5 text-gray-500 transition-transform ${showDirectorPromotion ? 'rotate-180' : ''}`}
+                  />
+                </button>
 
-                <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                        Promover Diretor(a) existente para Secretário(a)
-                      </h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Copia os dados do diretor selecionado para este cadastro
-                        (opcional).
-                      </p>
+                {showDirectorPromotion && (
+                  <>
+                    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+                        <div>
+                          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                            Promover Diretor(a) existente para Secretário(a)
+                          </h3>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Copia os dados do diretor selecionado para este
+                            cadastro (opcional).
+                          </p>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                          <Select
+                            placeholder="Selecione um diretor(a)"
+                            options={[
+                              { value: '', label: 'Selecione...' },
+                              ...availableDirectors.map((d) => ({
+                                value: d.id,
+                                label:
+                                  d.name +
+                                  (d.unitName ? ` — ${d.unitName}` : ''),
+                              })),
+                            ]}
+                            value={selectedDirectorId}
+                            onChange={(e) =>
+                              setSelectedDirectorId(e.target.value)
+                            }
+                            className="sm:w-72"
+                          />
+                          <Button
+                            variant="secondary"
+                            onClick={promoteDirectorToSecretary}
+                            isLoading={isPromotingDirector}
+                            disabled={!selectedDirectorId}
+                          >
+                            Carregar dados
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                      <Select
-                        placeholder="Selecione um diretor(a)"
-                        options={[
-                          { value: '', label: 'Selecione...' },
-                          ...availableDirectors.map((d) => ({
-                            value: d.id,
-                            label:
-                              d.name + (d.unitName ? ` — ${d.unitName}` : ''),
-                          })),
-                        ]}
-                        value={selectedDirectorId}
-                        onChange={(e) => setSelectedDirectorId(e.target.value)}
-                        className="sm:w-72"
-                      />
-                      <Button
-                        variant="secondary"
-                        onClick={promoteDirectorToSecretary}
-                        isLoading={isPromotingDirector}
-                        disabled={!selectedDirectorId}
-                      >
-                        Carregar dados
-                      </Button>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-4">
-                  <label className="inline-flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isAlsoDirector}
-                      onChange={(e) => setIsAlsoDirector(e.target.checked)}
-                      className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                    />
-                    <div>
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                        Também é Diretor(a) de um anexo
-                      </span>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Marque se esse(a) secretário(a) atua também como
-                        diretor(a) de um anexo específico.
-                      </p>
-                    </div>
-                  </label>
-
-                  {isAlsoDirector && (
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 pl-7">
-                      <div>
-                        <Select
-                          label="Anexo (Unidade) *"
-                          options={[
-                            { value: '', label: 'Selecione...' },
-                            ...availableUnits.map((u) => ({
-                              value: u.id,
-                              label: u.name,
-                            })),
-                          ]}
-                          {...register('unitId', {
-                            required: isAlsoDirector
-                              ? 'Selecione o anexo do diretor(a)'
-                              : false,
-                          })}
-                          value={unitId ?? ''}
-                          onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                            setValue('unitId', e.target.value, {
-                              shouldDirty: true,
-                              shouldValidate: true,
-                            })
-                          }
-                          error={errors.unitId?.message as string}
-                          required={isAlsoDirector}
+                    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-4">
+                      <label className="inline-flex items-start gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isAlsoDirector}
+                          onChange={(e) => setIsAlsoDirector(e.target.checked)}
+                          className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
                         />
-                        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                          Ao salvar, o usuário será vinculado como diretor(a)
-                          desse anexo automaticamente.
-                        </p>
-                      </div>
-                      <div className="rounded-lg bg-gray-50 dark:bg-gray-900/40 p-3 text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                        <p>
-                          🔒 Dica: essa opção é ideal para escolas pequenas onde
-                          o(a) mesmo(a) profissional acumula os cargos de
-                          Diretor(a) e Secretário(a).
-                        </p>
-                        <p>
-                          📌 Você pode ajustar esse vínculo depois na tela de
-                          edição do anexo (Unidade).
-                        </p>
-                      </div>
+                        <div>
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            Também é Diretor(a) de um anexo
+                          </span>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Marque se esse(a) secretário(a) atua também como
+                            diretor(a) de um anexo específico.
+                          </p>
+                        </div>
+                      </label>
+
+                      {isAlsoDirector && (
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 pl-7">
+                          <div>
+                            <Select
+                              label="Anexo (Unidade) *"
+                              options={[
+                                { value: '', label: 'Selecione...' },
+                                ...availableUnits.map((u) => ({
+                                  value: u.id,
+                                  label: u.name,
+                                })),
+                              ]}
+                              {...register('unitId', {
+                                required: isAlsoDirector
+                                  ? 'Selecione o anexo do diretor(a)'
+                                  : false,
+                              })}
+                              value={unitId ?? ''}
+                              onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                                setValue('unitId', e.target.value, {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                })
+                              }
+                              error={errors.unitId?.message as string}
+                              required={isAlsoDirector}
+                            />
+                            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                              Ao salvar, o usuário será vinculado como
+                              diretor(a) desse anexo automaticamente.
+                            </p>
+                          </div>
+                          <div className="rounded-lg bg-gray-50 dark:bg-gray-900/40 p-3 text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                            <p>
+                              🔒 Dica: essa opção é ideal para escolas pequenas
+                              onde o(a) mesmo(a) profissional acumula os cargos
+                              de Diretor(a) e Secretário(a).
+                            </p>
+                            <p>
+                              📌 Você pode ajustar esse vínculo depois na tela
+                              de edição do anexo (Unidade).
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </>
+                )}
               </div>
             )}
 

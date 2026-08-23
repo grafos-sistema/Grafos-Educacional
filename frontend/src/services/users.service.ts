@@ -334,7 +334,8 @@ async function loadUserProfiles(
               cpf,
               email,
               phone,
-              whatsapp
+              whatsapp,
+              birthDate
             )
           )
         `,

@@ -14,6 +14,7 @@ export interface TeacherSubject {
     code?: string;
     color?: string;
     description?: string;
+    institutionId?: string;
   };
   teacher?: {
     id: string;
@@ -41,6 +42,7 @@ type DbTeacherSubject = {
     code: string | null;
     color: string | null;
     description: string | null;
+    institutionId?: string | null;
   } | null;
   teacher?: {
     id: string;
@@ -69,6 +71,7 @@ function mapTeacherSubject(row: DbTeacherSubject): TeacherSubject {
       code: row.subject?.code ?? undefined,
       color: row.subject?.color ?? undefined,
       description: row.subject?.description ?? undefined,
+      institutionId: row.subject?.institutionId ?? undefined,
     },
     teacher: row.teacher
       ? {

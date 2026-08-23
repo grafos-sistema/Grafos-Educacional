@@ -1605,30 +1605,6 @@ export function StudentFormTabs({
                     </Button>
                   </div>
 
-                  {/* Aviso de acesso ao sistema */}
-                  <div className="mb-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 flex items-start gap-2">
-                    <svg
-                      className="h-4 w-4 text-blue-500 mt-0.5 shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <p className="text-xs text-blue-700 dark:text-blue-300">
-                      <strong>Acesso ao sistema:</strong> Se o responsável tiver
-                      um <strong>email</strong> informado, uma conta será criada
-                      automaticamente e ele poderá acessar o sistema para
-                      acompanhar as notas e dados do aluno. Sem email, o
-                      responsável será cadastrado apenas para fins de registro.
-                    </p>
-                  </div>
-
                   {responsaveis.map((resp: { id: number }, index: number) => {
                     const responsavelAtual = watchResponsaveis?.[index];
                     const relationship = String(

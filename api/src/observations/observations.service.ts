@@ -13,6 +13,12 @@ import { UserRole } from '@prisma/client';
 export class ObservationsService {
   constructor(private prisma: PrismaService) {}
 
+  private isGlobalAdmin(role: UserRole) {
+    return (
+      role === UserRole.SUPER_ADMIN_GLOBAL || role === UserRole.SUPER_ADMIN
+    );
+  }
+
   async create(createObservationDto: CreateObservationDto, userId: string) {
     // Verify the student exists
     const student = await this.prisma.student.findUnique({
@@ -112,8 +118,9 @@ export class ObservationsService {
       }
     }
 
-    // Filter by institution if not SUPER_ADMIN
-    if (currentUser.role !== UserRole.SUPER_ADMIN) {
+    // Administradores globais podem consultar todas as instituições. Os
+    // demais perfis ficam limitados à instituição do próprio usuário.
+    if (!this.isGlobalAdmin(currentUser.role)) {
       where.student = {
         user: {
           institutionId: currentUser.institutionId,
@@ -273,7 +280,7 @@ export class ObservationsService {
       }
 
       where.isPrivate = false;
-    } else if (currentUser.role !== UserRole.SUPER_ADMIN) {
+    } else if (!this.isGlobalAdmin(currentUser.role)) {
       // Check institution access
       if (student.user.institutionId !== currentUser.institutionId) {
         throw new ForbiddenException('You do not have access to this student');
@@ -324,8 +331,9 @@ export class ObservationsService {
 
     // Only the observer or admins can update
     if (
-      currentUser.role !== UserRole.SUPER_ADMIN &&
+      !this.isGlobalAdmin(currentUser.role) &&
       currentUser.role !== UserRole.INSTITUTION_ADMIN &&
+      currentUser.role !== UserRole.DIRECTOR &&
       observation.teacherId !== currentUser.teacherId
     ) {
       throw new ForbiddenException(
@@ -334,7 +342,7 @@ export class ObservationsService {
     }
 
     // Check institution access for non-SUPER_ADMIN
-    if (currentUser.role !== UserRole.SUPER_ADMIN) {
+    if (!this.isGlobalAdmin(currentUser.role)) {
       if (
         observation.student.user.institutionId !== currentUser.institutionId
       ) {
@@ -393,8 +401,9 @@ export class ObservationsService {
 
     // Only the observer or admins can delete
     if (
-      currentUser.role !== UserRole.SUPER_ADMIN &&
+      !this.isGlobalAdmin(currentUser.role) &&
       currentUser.role !== UserRole.INSTITUTION_ADMIN &&
+      currentUser.role !== UserRole.DIRECTOR &&
       observation.teacherId !== currentUser.teacherId
     ) {
       throw new ForbiddenException(
@@ -403,7 +412,7 @@ export class ObservationsService {
     }
 
     // Check institution access for non-SUPER_ADMIN
-    if (currentUser.role !== UserRole.SUPER_ADMIN) {
+    if (!this.isGlobalAdmin(currentUser.role)) {
       if (
         observation.student.user.institutionId !== currentUser.institutionId
       ) {
@@ -422,7 +431,7 @@ export class ObservationsService {
 
   private checkAccessPermission(observation: any, currentUser: any) {
     // SUPER_ADMIN can see everything
-    if (currentUser.role === UserRole.SUPER_ADMIN) {
+    if (this.isGlobalAdmin(currentUser.role)) {
       return;
     }
 

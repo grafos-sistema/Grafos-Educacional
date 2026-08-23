@@ -53,7 +53,9 @@ export class ObservationsController {
 
   @Get()
   @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
     UserRole.TEACHER,
@@ -70,7 +72,9 @@ export class ObservationsController {
 
   @Get('student/:studentId')
   @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
     UserRole.TEACHER,
@@ -99,7 +103,9 @@ export class ObservationsController {
 
   @Get(':id')
   @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
     UserRole.TEACHER,
@@ -125,7 +131,9 @@ export class ObservationsController {
 
   @Patch(':id')
   @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
     UserRole.TEACHER,
@@ -159,7 +167,9 @@ export class ObservationsController {
 
   @Delete(':id')
   @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
     UserRole.TEACHER,

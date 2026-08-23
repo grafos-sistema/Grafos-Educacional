@@ -208,6 +208,7 @@ export class ParentStudentsService {
                 phone: true,
                 whatsapp: true,
                 avatar: true,
+                birthDate: true,
               },
             },
           },

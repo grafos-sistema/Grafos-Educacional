@@ -15,14 +15,32 @@ export class TeacherSubjectsService {
   async findAllByTeacher(teacherId: string) {
     const teacher = await this.prisma.teacher.findUnique({
       where: { id: teacherId },
+      include: {
+        user: {
+          select: {
+            institutionId: true,
+          },
+        },
+      },
     });
 
     if (!teacher) {
       throw new NotFoundException('Professor não encontrado');
     }
 
+    if (!teacher.user.institutionId) {
+      return [];
+    }
+
     return this.prisma.teacherSubject.findMany({
-      where: { teacherId },
+      // Evita exibir vínculos antigos de outra instituição caso um dado
+      // inconsistente tenha sido criado antes da validação de pertencimento.
+      where: {
+        teacherId,
+        subject: {
+          institutionId: teacher.user.institutionId,
+        },
+      },
       include: {
         subject: {
           select: {
@@ -31,6 +49,7 @@ export class TeacherSubjectsService {
             code: true,
             color: true,
             description: true,
+            institutionId: true,
           },
         },
       },
