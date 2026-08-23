@@ -32,6 +32,7 @@ type CreateUserBody = {
   institutionId?: string;
   institutionIds?: string[];
   unitId?: string;
+  unitIds?: string[];
   specialization?: string | null;
   degree?: string | null;
   registrationNumber?: string | null;
@@ -213,6 +214,13 @@ Deno.serve(async (req: Request) => {
         new Set([institutionId, ...requestedInstitutionIds].filter(Boolean)),
       );
   const unitId = body?.unitId?.trim() || null;
+  const requestedUnitIds = Array.from(
+    new Set(
+      [unitId, ...(Array.isArray(body?.unitIds) ? body.unitIds : [])]
+        .map((value) => value?.trim())
+        .filter(Boolean),
+    ),
+  ) as string[];
   const isActive = body?.isActive ?? true;
   const generatedPassword =
     normalizePassword(body?.password) ??
@@ -229,7 +237,7 @@ Deno.serve(async (req: Request) => {
     return json({ error: "missing_institutionId" }, 400);
   if (!isCreatingGlobalAdmin && institutionIds.length === 0)
     return json({ error: "missing_institutionIds" }, 400);
-  if (unitId && isCreatingGlobalAdmin)
+  if (requestedUnitIds.length > 0 && isCreatingGlobalAdmin)
     return json({ error: "global_admin_cannot_have_unit" }, 400);
 
   if (isCreatingGlobalAdmin && caller.role !== "SUPER_ADMIN_GLOBAL") {
@@ -279,17 +287,23 @@ Deno.serve(async (req: Request) => {
       return json({ error: "institution_inactive" }, 400);
     }
 
-    if (unitId) {
-      const { data: unit, error: unitError } = await supabase
+    if (requestedUnitIds.length > 0) {
+      const { data: units, error: unitError } = await supabase
         .from("institution_units")
         .select('id, "institutionId", "isActive"')
-        .eq("id", unitId)
-        .maybeSingle();
+        .in("id", requestedUnitIds);
 
       if (unitError) return json({ error: "failed_to_load_unit" }, 500);
-      if (!unit || unit.institutionId !== institutionId)
+      if (!units || units.length !== requestedUnitIds.length)
         return json({ error: "unit_not_found" }, 404);
-      if (!unit.isActive) return json({ error: "unit_inactive" }, 400);
+      if (
+        units.some(
+          (unit: { institutionId: string; isActive: boolean }) =>
+            !unit.isActive || !institutionIds.includes(unit.institutionId),
+        )
+      ) {
+        return json({ error: "unit_not_available" }, 400);
+      }
     }
   }
 
@@ -426,16 +440,20 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  if (unitId) {
-    const { error: unitLinkError } = await supabase.from("user_units").insert({
-      id: crypto.randomUUID(),
-      userId: appUser.id,
-      unitId,
-      isActive: true,
-      isPrimary: true,
-      createdAt: now,
-      updatedAt: now,
-    });
+  if (requestedUnitIds.length > 0) {
+    const { error: unitLinkError } = await supabase
+      .from("user_units")
+      .insert(
+        requestedUnitIds.map((requestedUnitId, index) => ({
+          id: crypto.randomUUID(),
+          userId: appUser.id,
+          unitId: requestedUnitId,
+          isActive: true,
+          isPrimary: index === 0,
+          createdAt: now,
+          updatedAt: now,
+        })),
+      );
 
     if (unitLinkError) {
       await cleanup();

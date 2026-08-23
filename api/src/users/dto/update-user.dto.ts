@@ -44,6 +44,16 @@ export class UpdateUserDto extends PartialType(
   @IsUUID('4', { each: true })
   institutionIds?: string[];
 
+  @ApiProperty({
+    description: 'IDs dos anexos/unidades em que o usuário atua',
+    required: false,
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  unitIds?: string[];
+
   @ApiProperty({ required: false })
   @IsOptional()
   @IsBoolean()

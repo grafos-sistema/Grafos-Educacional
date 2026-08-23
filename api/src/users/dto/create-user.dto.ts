@@ -4,6 +4,7 @@ import {
   IsNotEmpty,
   IsEmail,
   IsOptional,
+  IsArray,
   IsEnum,
   IsUUID,
   Matches,
@@ -122,4 +123,24 @@ export class CreateUserDto {
   @IsUUID('4', { message: 'ID da instituição inválido' })
   @IsNotEmpty({ message: 'ID da instituição é obrigatório' })
   institutionId: string;
+
+  @ApiProperty({
+    description: 'IDs dos anexos/unidades em que o usuário atua',
+    required: false,
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  unitIds?: string[];
+
+  @ApiProperty({
+    description: 'Instituições adicionais vinculadas ao usuário',
+    required: false,
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  institutionIds?: string[];
 }

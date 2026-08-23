@@ -205,15 +205,27 @@ export class UsersService {
       password,
       birthDate,
       institutionId,
+      institutionIds: additionalInstitutionIds = [],
+      unitIds = [],
       firstName,
       lastName,
       ...data
     } = createUserDto;
 
+    const requestedInstitutionIds = Array.from(
+      new Set(
+        [institutionId, ...(additionalInstitutionIds ?? [])].filter(Boolean),
+      ),
+    );
+
     if (currentUser.role !== UserRole.SUPER_ADMIN_GLOBAL) {
       const allowedInstitutionIds =
         await this.getAllowedInstitutionIds(currentUser);
-      if (!allowedInstitutionIds.includes(institutionId)) {
+      if (
+        requestedInstitutionIds.some(
+          (requestedId) => !allowedInstitutionIds.includes(requestedId),
+        )
+      ) {
         throw new ForbiddenException(
           'Você só pode cadastrar usuários nas suas instituições.',
         );
@@ -281,6 +293,35 @@ export class UsersService {
       throw new BadRequestException('Instituição não está ativa');
     }
 
+    if (requestedInstitutionIds.length > 1) {
+      const activeInstitutions = await this.prisma.institution.findMany({
+        where: { id: { in: requestedInstitutionIds }, isActive: true },
+        select: { id: true },
+      });
+      if (activeInstitutions.length !== requestedInstitutionIds.length) {
+        throw new BadRequestException(
+          'Uma ou mais instituições selecionadas não foram encontradas ou estão inativas',
+        );
+      }
+    }
+
+    const requestedUnitIds = Array.from(new Set(unitIds ?? []));
+    if (requestedUnitIds.length > 0) {
+      const activeUnits = await this.prisma.institutionUnit.findMany({
+        where: {
+          id: { in: requestedUnitIds },
+          isActive: true,
+          institutionId: { in: requestedInstitutionIds },
+        },
+        select: { id: true },
+      });
+      if (activeUnits.length !== requestedUnitIds.length) {
+        throw new BadRequestException(
+          'Um ou mais anexos selecionados não pertencem às instituições escolhidas ou estão inativos',
+        );
+      }
+    }
+
     // Hash da senha
     const rounds = this.configService.get<number>('bcrypt.rounds', 10);
     const hashedPassword = await bcrypt.hash(resolvedPassword, rounds);
@@ -291,7 +332,7 @@ export class UsersService {
     // Combina firstName e lastName para criar name
     const fullName = `${firstName} ${lastName}`.trim();
 
-    return this.prisma.user.create({
+    const createdUser = await this.prisma.user.create({
       data: {
         ...data,
         email,
@@ -319,6 +360,32 @@ export class UsersService {
         updatedAt: true,
       },
     });
+
+    if (requestedInstitutionIds.length > 0) {
+      await this.prisma.userInstitution.createMany({
+        data: requestedInstitutionIds.map((requestedId) => ({
+          userId: createdUser.id,
+          institutionId: requestedId,
+          isActive: true,
+          isPrimary: requestedId === institutionId,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
+    if (requestedUnitIds.length > 0) {
+      await this.prisma.userUnit.createMany({
+        data: requestedUnitIds.map((requestedUnitId, index) => ({
+          userId: createdUser.id,
+          unitId: requestedUnitId,
+          isActive: true,
+          isPrimary: index === 0,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
+    return createdUser;
   }
 
   /**
@@ -624,6 +691,22 @@ export class UsersService {
             slug: true,
           },
         },
+        userUnits: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            unitId: true,
+            isActive: true,
+            isPrimary: true,
+            unit: {
+              select: {
+                id: true,
+                name: true,
+                institutionId: true,
+              },
+            },
+          },
+        },
         teacherProfile: {
           select: {
             id: true,
@@ -747,6 +830,7 @@ export class UsersService {
       state,
       institutionId,
       institutionIds,
+      unitIds,
       ...data
     } = updateUserDto;
 
@@ -781,6 +865,7 @@ export class UsersService {
 
     const shouldSyncInstitutionLinks =
       institutionId !== undefined || institutionIds !== undefined;
+    const shouldSyncUnitLinks = unitIds !== undefined;
     const primaryInstitutionId = institutionId ?? existingUser.institutionId;
     const requestedInstitutionIds = shouldSyncInstitutionLinks
       ? Array.from(
@@ -820,6 +905,52 @@ export class UsersService {
       if (activeInstitutions.length !== requestedInstitutionIds.length) {
         throw new BadRequestException(
           'Uma ou mais instituições selecionadas não foram encontradas ou estão inativas',
+        );
+      }
+    }
+
+    const requestedUnitIds = shouldSyncUnitLinks
+      ? Array.from(new Set(unitIds ?? []))
+      : [];
+    if (shouldSyncUnitLinks && requestedUnitIds.length > 0) {
+      const unitInstitutionIds = shouldSyncInstitutionLinks
+        ? requestedInstitutionIds
+        : [existingUser.institutionId].filter((value): value is string =>
+            Boolean(value),
+          );
+
+      if (unitInstitutionIds.length === 0) {
+        throw new BadRequestException(
+          'Os anexos selecionados precisam estar vinculados a uma instituição',
+        );
+      }
+
+      if (!isGlobalAdmin) {
+        const allowedInstitutionIds =
+          await this.getAllowedInstitutionIds(currentUser);
+        if (
+          unitInstitutionIds.some(
+            (requestedId) => !allowedInstitutionIds.includes(requestedId),
+          )
+        ) {
+          throw new ForbiddenException(
+            'Você não tem permissão para vincular anexos fora das suas instituições',
+          );
+        }
+      }
+
+      const activeUnits = await this.prisma.institutionUnit.findMany({
+        where: {
+          id: { in: requestedUnitIds },
+          isActive: true,
+          institutionId: { in: unitInstitutionIds },
+        },
+        select: { id: true },
+      });
+
+      if (activeUnits.length !== requestedUnitIds.length) {
+        throw new BadRequestException(
+          'Um ou mais anexos selecionados não foram encontrados, estão inativos ou não pertencem às instituições escolhidas',
         );
       }
     }
@@ -976,6 +1107,23 @@ export class UsersService {
                 isPrimary: requestedId === primaryInstitutionId,
               })),
             });
+          }
+
+          if (shouldSyncUnitLinks) {
+            await transaction.userUnit.deleteMany({
+              where: { userId: id },
+            });
+
+            if (requestedUnitIds.length > 0) {
+              await transaction.userUnit.createMany({
+                data: requestedUnitIds.map((requestedUnitId, index) => ({
+                  userId: id,
+                  unitId: requestedUnitId,
+                  isActive: true,
+                  isPrimary: index === 0,
+                })),
+              });
+            }
           }
 
           return updatedUser;

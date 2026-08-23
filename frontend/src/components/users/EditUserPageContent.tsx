@@ -50,6 +50,16 @@ function buildInitialPassword(email?: string) {
   return localPart ? `${localPart}@Grafos` : '';
 }
 
+function toDateInputValue(value: unknown) {
+  if (!value) return '';
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  const match = String(value).match(/\d{4}-\d{2}-\d{2}/);
+  return match?.[0] ?? '';
+}
+
 const genderOptions = [
   { value: Gender.MALE, label: 'Masculino' },
   { value: Gender.FEMALE, label: 'Feminino' },
@@ -105,6 +115,7 @@ export function EditUserPageContent({
     UserRole.SUPER_ADMIN,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
+    UserRole.DIRECTOR,
   ].includes(callerRole as UserRole);
 
   // A troca de perfil/localStorage só controla a navegação da interface. A
@@ -201,6 +212,7 @@ export function EditUserPageContent({
           userInstitutionLinks,
           teacherSubjects,
           parentChildren,
+          studentParents,
         ] = await Promise.all([
           callerRole === UserRole.SUPER_ADMIN ||
           callerRole === UserRole.SUPER_ADMIN_GLOBAL
@@ -217,6 +229,9 @@ export function EditUserPageContent({
             : Promise.resolve([]),
           user.role === UserRole.PARENT
             ? usersService.getParentChildren(user.id).catch(() => [])
+            : Promise.resolve([]),
+          user.role === UserRole.STUDENT
+            ? usersService.getStudentParents(user.id).catch(() => [])
             : Promise.resolve([]),
         ]);
 
@@ -312,7 +327,7 @@ export function EditUserPageContent({
           email: user.email,
           cpf: user.cpf ? formatCPF(user.cpf) : '',
           phone: user.phone ? formatPhone(user.phone) : '',
-          birthDate: user.birthDate ? String(user.birthDate).split('T')[0] : '',
+          birthDate: toDateInputValue(user.birthDate),
           gender: user.gender,
           address: user.address || '',
           city: user.city || '',
@@ -327,6 +342,18 @@ export function EditUserPageContent({
           avatar: user.avatar || '',
           institutionId: user.institutionId,
           institutionIds: additionalInstitutionIds,
+          unitId: ((user as any).userUnits ?? []).find(
+            (link: any) => link.isPrimary && link.isActive !== false,
+          )?.unitId ?? '',
+          unitIds: ((user as any).userUnits ?? [])
+            .filter((link: any) => link.isActive !== false)
+            .map((link: any) => link.unitId)
+            .filter(Boolean),
+          managesInstitutionGlobally:
+            user.role === UserRole.COORDINATOR &&
+            ((user as any).userUnits ?? []).filter(
+              (link: any) => link.isActive !== false,
+            ).length === 0,
           subjectIds: Array.isArray(teacherSubjects)
             ? teacherSubjects.map((item: any) => item.subjectId)
             : [],
@@ -356,9 +383,9 @@ export function EditUserPageContent({
                 turmaId: studentEnrollmentData?.data?.[0]?.classId || '',
                 modalidade: user.studentProfile.modalidade || '',
                 turno: user.studentProfile.turno || '',
-                dataMatricula: user.studentProfile.enrollmentDate
-                  ? String(user.studentProfile.enrollmentDate).split('T')[0]
-                  : '',
+                dataMatricula: toDateInputValue(
+                  user.studentProfile.enrollmentDate,
+                ),
                 observacoes: user.studentProfile.observacoes || '',
                 documents: user.studentProfile.documents || [],
                 ...user.studentProfile.healthRecord,
@@ -379,10 +406,17 @@ export function EditUserPageContent({
                 ),
                 ...user.studentProfile.transportation,
                 responsaveis:
-                  (user.studentProfile as any).parents?.length > 0
-                    ? (user.studentProfile as any).parents.map(
+                  (Array.isArray(studentParents) && studentParents.length > 0
+                    ? studentParents
+                    : (user.studentProfile as any).parents ?? []
+                  ).length > 0
+                    ? (Array.isArray(studentParents) && studentParents.length > 0
+                        ? studentParents
+                        : (user.studentProfile as any).parents ?? []
+                      ).map(
                         (p: any, index: number) => {
-                          const parentUser = p.parent?.user ?? p.user ?? {};
+                          const parentUser =
+                            p.parent?.user ?? p.user ?? p.parent ?? {};
                           return {
                             id: index + 1,
                             linkId: p.id,
@@ -401,9 +435,13 @@ export function EditUserPageContent({
                             whatsapp: parentUser.whatsapp
                               ? formatPhone(parentUser.whatsapp)
                               : '',
-                            dataNascimento: parentUser.birthDate
-                              ? String(parentUser.birthDate).split('T')[0]
-                              : '',
+                            dataNascimento: toDateInputValue(
+                                parentUser.birthDate ??
+                                parentUser.dataNascimento ??
+                                p.parent?.birthDate ??
+                                p.parent?.dataNascimento ??
+                                p.birthDate,
+                            ),
                             financeiro: p.isPrimary || false,
                             notificacoes:
                               p.receivesNotifications ??
@@ -428,9 +466,7 @@ export function EditUserPageContent({
                 degree: user.teacherProfile.degree || '',
                 registrationNumber:
                   user.teacherProfile.registrationNumber || '',
-                hireDate: user.teacherProfile.hireDate
-                  ? String(user.teacherProfile.hireDate).split('T')[0]
-                  : '',
+                hireDate: toDateInputValue(user.teacherProfile.hireDate),
               }
             : {}),
 
@@ -585,6 +621,16 @@ export function EditUserPageContent({
             ].filter(Boolean),
           ),
         ),
+        unitIds:
+          user?.role === UserRole.COORDINATOR &&
+          Boolean((data as any).managesInstitutionGlobally)
+            ? []
+            : Array.from(
+                new Set(
+                  ((data as any).unitIds ??
+                    [((data as any).unitId ?? '').trim()]).filter(Boolean),
+                ),
+              ),
         subjectIds: canManageTeacherAssignments
           ? ((data as any).subjectIds ?? [])
           : undefined,
@@ -625,7 +671,8 @@ export function EditUserPageContent({
         user?.role === UserRole.STUDENT ||
         user?.role === UserRole.COORDINATOR ||
         user?.role === UserRole.DIRECTOR ||
-        user?.role === UserRole.PARENT
+        user?.role === UserRole.PARENT ||
+        user?.role === UserRole.INSTITUTION_ADMIN
           ? getSelectedPhotoFile((data as any).photo)
           : null;
 

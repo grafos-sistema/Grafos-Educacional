@@ -410,6 +410,11 @@ export function RoleBasedUserWizard({
   const hireDate = useWatch({ control, name: 'hireDate' }) as
     string | undefined;
   const unitId = useWatch({ control, name: 'unitId' }) as string | undefined;
+  const selectedUnitIds =
+    (useWatch({ control, name: 'unitIds' }) as string[] | undefined) ?? [];
+  const managesInstitutionGlobally = Boolean(
+    useWatch({ control, name: 'managesInstitutionGlobally' }),
+  );
   const isActive = useWatch({ control, name: 'isActive' }) as
     boolean | undefined;
   const avatar = useWatch({ control, name: 'avatar' }) as string | undefined;
@@ -428,12 +433,14 @@ export function RoleBasedUserWizard({
   const profileDisplayName =
     [firstName, lastName].filter(Boolean).join(' ').trim() ||
     (role === UserRole.COORDINATOR
-    ? 'Novo coordenador'
-    : role === UserRole.DIRECTOR
-      ? 'Novo diretor'
-      : role === UserRole.PARENT
-        ? 'Novo responsável'
-        : 'Novo professor');
+      ? 'Novo coordenador'
+      : role === UserRole.DIRECTOR
+        ? 'Novo diretor'
+        : role === UserRole.INSTITUTION_ADMIN
+          ? 'Novo secretário'
+          : role === UserRole.PARENT
+            ? 'Novo responsável'
+            : 'Novo professor');
   const profileSummary = cpf?.trim() ? formatCPF(cpf.trim()) : '';
   const { fillAddressFromCep } = useCepAutofill({
     form,
@@ -633,7 +640,13 @@ export function RoleBasedUserWizard({
     let cancelled = false;
 
     async function loadDirectorsAndUnits() {
-      if (role !== UserRole.INSTITUTION_ADMIN) {
+      const canSelectUnits = [
+        UserRole.INSTITUTION_ADMIN,
+        UserRole.COORDINATOR,
+        UserRole.TEACHER,
+      ].includes(role as UserRole);
+
+      if (!canSelectUnits) {
         if (!cancelled) {
           setAvailableDirectors([]);
           setAvailableUnits([]);
@@ -668,6 +681,8 @@ export function RoleBasedUserWizard({
             setAvailableUnits([]);
           }
         }
+
+        if (role !== UserRole.INSTITUTION_ADMIN) return;
 
         // A promoção não deve depender de o diretor já estar associado ao
         // campo directorUserId de um anexo. O diretor pode ter sido criado
@@ -780,6 +795,19 @@ export function RoleBasedUserWizard({
     if (!selectedPrimaryInstitutionId)
       items.push('Definir a instituição principal.');
     if (
+      role === UserRole.COORDINATOR &&
+      !managesInstitutionGlobally &&
+      !unitId
+    ) {
+      items.push('Selecionar o anexo do coordenador ou marcar gestão geral.');
+    }
+    if (
+      role === UserRole.TEACHER &&
+      selectedUnitIds.length === 0
+    ) {
+      items.push('Vincular o professor a pelo menos um anexo.');
+    }
+    if (
       role === UserRole.TEACHER &&
       canManageTeacherAssignments &&
       selectedSubjects.length === 0
@@ -790,15 +818,17 @@ export function RoleBasedUserWizard({
       items.push('Vincular ao menos um aluno.');
     return items;
   }, [
-    canManageTeacherAssignments,
-    email,
-    firstName,
-    lastName,
-    linkedStudents.length,
-    role,
-    selectedPrimaryInstitutionId,
-    selectedSubjects.length,
-  ]);
+      canManageTeacherAssignments,
+      email,
+      firstName,
+      lastName,
+      linkedStudents.length,
+      managesInstitutionGlobally,
+      role,
+      selectedPrimaryInstitutionId,
+      selectedSubjects.length,
+      selectedUnitIds.length,
+    ]);
 
   const status =
     pendencias.length === 0
@@ -908,7 +938,8 @@ export function RoleBasedUserWizard({
         {(role === UserRole.TEACHER ||
           role === UserRole.COORDINATOR ||
           role === UserRole.DIRECTOR ||
-          role === UserRole.PARENT) && (
+          role === UserRole.PARENT ||
+          role === UserRole.INSTITUTION_ADMIN) && (
           <div className="relative flex flex-col items-center rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-6 shadow-sm">
             <Dropdown
               trigger={
@@ -1056,7 +1087,7 @@ export function RoleBasedUserWizard({
                             cadastro (opcional).
                           </p>
                         </div>
-                        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                        <div className="flex flex-col sm:flex-row sm:items-end gap-3 w-full sm:w-auto">
                           <Select
                             placeholder="Selecione um diretor(a)"
                             options={[
@@ -1076,6 +1107,7 @@ export function RoleBasedUserWizard({
                           />
                           <Button
                             variant="secondary"
+                            className="h-12"
                             onClick={promoteDirectorToSecretary}
                             isLoading={isPromotingDirector}
                             disabled={!selectedDirectorId}
@@ -1538,6 +1570,122 @@ export function RoleBasedUserWizard({
                         </div>
                       )}
                     </div>
+
+                    {role === UserRole.COORDINATOR && (
+                      <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={managesInstitutionGlobally}
+                            onChange={(event) => {
+                              const managesGlobally = event.target.checked;
+                              setValue(
+                                'managesInstitutionGlobally',
+                                managesGlobally,
+                                { shouldDirty: true, shouldValidate: true },
+                              );
+                              if (managesGlobally) {
+                                setValue('unitId', '', {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                });
+                                setValue('unitIds', [], {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                });
+                              }
+                            }}
+                            className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          />
+                          <span>
+                            <span className="block text-sm font-semibold text-gray-900 dark:text-white">
+                              Coordenador geral da instituição
+                            </span>
+                            <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
+                              Gerencia a instituição e todos os seus anexos.
+                            </span>
+                          </span>
+                        </label>
+
+                        {!managesInstitutionGlobally && (
+                          <Select
+                            label="Anexo do coordenador *"
+                            options={[
+                              { value: '', label: 'Selecione um anexo' },
+                              ...availableUnits.map((unit) => ({
+                                value: unit.id,
+                                label: unit.name,
+                              })),
+                            ]}
+                            value={unitId ?? ''}
+                            onChange={(event) =>
+                              setValue('unitId', event.target.value, {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              })
+                            }
+                            error={
+                              (errors.unitId?.message as string | undefined) ??
+                              undefined
+                            }
+                          />
+                        )}
+                      </div>
+                    )}
+
+                    {role === UserRole.TEACHER && (
+                      <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                            Anexos em que leciona *
+                          </p>
+                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Selecione um ou mais anexos onde este professor dará aulas.
+                          </p>
+                        </div>
+                        {availableUnits.length === 0 ? (
+                          <p className="rounded-lg border border-dashed border-gray-300 p-3 text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">
+                            Selecione uma instituição para carregar os anexos disponíveis.
+                          </p>
+                        ) : (
+                          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                            {availableUnits.map((unit) => {
+                              const isSelected = selectedUnitIds.includes(unit.id);
+                              return (
+                                <label
+                                  key={unit.id}
+                                  className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
+                                    isSelected
+                                      ? 'border-primary-300 bg-primary-50/80 dark:bg-primary-900/20'
+                                      : 'border-gray-200 hover:border-primary-200 dark:border-gray-700'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => {
+                                      const next = isSelected
+                                        ? selectedUnitIds.filter(
+                                            (id) => id !== unit.id,
+                                          )
+                                        : [...selectedUnitIds, unit.id];
+                                      setValue('unitIds', next, {
+                                        shouldDirty: true,
+                                        shouldValidate: true,
+                                      });
+                                    }}
+                                    className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                  />
+                                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {unit.name}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

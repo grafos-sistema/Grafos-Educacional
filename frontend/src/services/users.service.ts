@@ -1032,6 +1032,7 @@ export const usersService = {
       // Responsaveis
       responsaveis,
       documents,
+      unitIds,
 
       // The rest goes to users
       ...userData
@@ -1088,6 +1089,7 @@ export const usersService = {
       ...filteredUserData,
       ...(institutionId !== undefined ? { institutionId } : {}),
       ...(institutionIds !== undefined ? { institutionIds } : {}),
+      ...(unitIds !== undefined ? { unitIds } : {}),
     };
 
     if (process.env.NODE_ENV !== 'production') {

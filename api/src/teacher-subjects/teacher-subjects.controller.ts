@@ -71,6 +71,7 @@ export class TeacherSubjectsController {
     UserRole.SUPER_ADMIN,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
+    UserRole.DIRECTOR,
   )
   @ApiOperation({
     summary: 'Listar professores habilitados para uma disciplina',
@@ -183,6 +184,7 @@ export class TeacherSubjectsController {
     UserRole.SUPER_ADMIN,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
+    UserRole.DIRECTOR,
   )
   @ApiOperation({ summary: 'Adicionar disciplina a um professor' })
   @ApiResponse({
@@ -203,6 +205,7 @@ export class TeacherSubjectsController {
     UserRole.SUPER_ADMIN,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
+    UserRole.DIRECTOR,
   )
   @ApiOperation({ summary: 'Sincronizar disciplinas de um professor' })
   @ApiResponse({
@@ -226,6 +229,7 @@ export class TeacherSubjectsController {
     UserRole.SUPER_ADMIN,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
+    UserRole.DIRECTOR,
   )
   @ApiOperation({ summary: 'Sincronizar professores de uma disciplina' })
   @ApiResponse({
@@ -249,6 +253,7 @@ export class TeacherSubjectsController {
     UserRole.SUPER_ADMIN,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
+    UserRole.DIRECTOR,
   )
   @ApiOperation({ summary: 'Remover disciplina de um professor' })
   @ApiResponse({

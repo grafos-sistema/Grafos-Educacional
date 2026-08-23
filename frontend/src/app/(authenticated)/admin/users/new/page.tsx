@@ -94,6 +94,8 @@ export function NewUserPageContent({
       role: resolvedInitialRole,
       isActive: true,
       institutionIds: [],
+      unitIds: [],
+      managesInstitutionGlobally: false,
       institutionId: user?.institutionId,
     }
   });
@@ -169,6 +171,7 @@ export function NewUserPageContent({
     UserRole.SUPER_ADMIN,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
+    UserRole.DIRECTOR,
   ].includes((user?.activeProfile ?? user?.role) as UserRole);
   const currentEmail = watch('email');
   const selectedPrimaryInstitutionId = watch('institutionId') ?? user?.institutionId ?? '';
@@ -263,6 +266,15 @@ export function NewUserPageContent({
         name: `${data.firstName} ${data.lastName}`,
         institutionId: primaryInstitutionId,
         institutionIds: normalizedInstitutionIds,
+        unitIds: Array.from(
+          new Set(
+            currentRole === UserRole.TEACHER
+              ? ((data as any).unitIds ?? [])
+              : (data as any).managesInstitutionGlobally
+                ? []
+                : [((data as any).unitId ?? '').trim()].filter(Boolean),
+          ),
+        ),
         cpf: data.cpf ? removeMask(data.cpf) : undefined,
         phone: data.phone ? removeMask(data.phone) : undefined,
         zipCode: data.zipCode ? removeMask(data.zipCode) : undefined,
@@ -272,7 +284,8 @@ export function NewUserPageContent({
         currentRole === UserRole.TEACHER ||
         currentRole === UserRole.STUDENT ||
         currentRole === UserRole.COORDINATOR ||
-        currentRole === UserRole.PARENT
+        currentRole === UserRole.PARENT ||
+        currentRole === UserRole.INSTITUTION_ADMIN
           ? getSelectedPhotoFile((data as any).photo)
           : null;
 
@@ -319,6 +332,7 @@ export function NewUserPageContent({
       delete userData.avatar;
       delete userData.documents;
       delete (userData as any).unitId;
+      delete (userData as any).managesInstitutionGlobally;
       delete (userData as any).unidade;
       delete (userData as any).modalidade;
       delete (userData as any).alsoDirectorUserId;

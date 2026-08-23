@@ -28,7 +28,6 @@ import {
   HeartIcon,
   TruckIcon,
   DocumentTextIcon,
-  PencilSquareIcon,
   ShieldCheckIcon,
   CameraIcon,
   ArrowLeftIcon,
@@ -112,12 +111,6 @@ const tabs = [
     label: 'Acesso',
     icon: ShieldCheckIcon,
     subtitle: 'Senha e credenciais do aluno',
-  },
-  {
-    id: 'observacoes',
-    label: 'Observações',
-    icon: PencilSquareIcon,
-    subtitle: 'Anotações da secretaria',
   },
 ];
 

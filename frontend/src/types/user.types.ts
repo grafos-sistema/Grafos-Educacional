@@ -136,6 +136,13 @@ export interface User {
   institutionId?: string;
   /** Compatibilidade com respostas antigas; prefira teacherProfile.id. */
   teacherId?: string;
+  userUnits?: Array<{
+    id: string;
+    unitId: string;
+    isActive: boolean;
+    isPrimary: boolean;
+    unit?: { id: string; name: string; institutionId?: string };
+  }>;
   createdAt: string;
   updatedAt: string;
 
@@ -193,6 +200,8 @@ export interface CreateUserDto {
   institutionId?: string;
   institutionIds?: string[];
   unitId?: string;
+  unitIds?: string[];
+  managesInstitutionGlobally?: boolean;
   
   // Health Info
   tipoSanguineo?: string;
@@ -328,6 +337,9 @@ export interface UpdateUserData {
   documents?: PendingStudentDocumentUpload[];
   institutionId?: string;
   institutionIds?: string[];
+  unitId?: string;
+  unitIds?: string[];
+  managesInstitutionGlobally?: boolean;
   password?: string;
   specialization?: string;
   degree?: string;

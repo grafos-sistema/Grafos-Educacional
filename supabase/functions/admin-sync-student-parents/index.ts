@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
       return (
         resp?.nome?.trim() &&
         adultOnlyRelationships.has(relationship) &&
-        !isAtLeast18(resp?.dataNascimento)
+        !isAtLeast18(resp?.dataNascimento ?? resp?.birthDate)
       );
     });
 
@@ -136,6 +136,10 @@ Deno.serve(async (req) => {
       const primeiroNome = nomeCompleto.split(" ")[0];
       const ultimoNome =
         nomeCompleto.split(" ").slice(1).join(" ") || "Responsável";
+      // A tela usa dataNascimento; aceitar birthDate também mantém a função
+      // compatível com versões anteriores do formulário e evita perder o dado.
+      const responsibleBirthDate =
+        resp.dataNascimento ?? resp.birthDate ?? null;
 
       let parentUserId: string | null = null;
       let parentProfileId: string | null = null;
@@ -168,7 +172,7 @@ Deno.serve(async (req) => {
               lastName: ultimoNome,
               phone: resp.celular ?? null,
               whatsapp: resp.whatsapp ?? null,
-              birthDate: resp.dataNascimento ?? null,
+              birthDate: responsibleBirthDate,
               updatedAt: now,
             })
             .eq("id", parentUserId);
@@ -235,7 +239,7 @@ Deno.serve(async (req) => {
               cpf: resp.cpf ?? null,
               phone: resp.celular ?? null,
               whatsapp: resp.whatsapp ?? null,
-              birthDate: resp.dataNascimento ?? null,
+              birthDate: responsibleBirthDate,
               institutionId,
               isActive: true,
               emailVerified: temEmailReal,
