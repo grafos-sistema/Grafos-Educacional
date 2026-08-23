@@ -344,39 +344,52 @@ export function SubjectClassesManager({
                   disciplina.
                 </p>
               ) : (
-                <div className="grid max-h-60 grid-cols-1 gap-2 overflow-y-auto pr-1 md:grid-cols-2">
-                  {availableClasses.map((item) => {
-                    const checked = selectedClassIds.includes(item.id);
-                    const label = [item.course?.name, item.name, item.shift]
-                      .filter(Boolean)
-                      .join(" • ");
-                    return (
-                      <label
-                        key={item.id}
-                        className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
-                          checked
-                            ? "border-emerald-300 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-900/20"
-                            : "border-gray-200 hover:border-emerald-200 dark:border-gray-700 dark:hover:border-emerald-800"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleClass(item.id)}
-                          disabled={isBusy}
-                          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                        />
-                        <span className="min-w-0">
-                          <span className="block text-sm font-medium text-gray-900 dark:text-white">
-                            {label || item.name}
+                <div className="max-h-72 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                  <div className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-3 border-b border-gray-200 bg-gray-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400 md:grid-cols-[72px_minmax(0,1fr)_minmax(0,1fr)]">
+                    <span className="text-center">Selecionar</span>
+                    <span>Turma</span>
+                    <span className="hidden md:block">Detalhes</span>
+                  </div>
+                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {availableClasses.map((item) => {
+                      const checked = selectedClassIds.includes(item.id);
+                      const details = [
+                        item.course?.name,
+                        item.grade,
+                        item.shift,
+                      ]
+                        .filter(Boolean)
+                        .join(" • ");
+                      const label = item.name || "Turma";
+                      return (
+                        <label
+                          key={item.id}
+                          className={`grid cursor-pointer grid-cols-[56px_minmax(0,1fr)] items-center gap-3 px-4 py-3 transition-colors md:grid-cols-[72px_minmax(0,1fr)_minmax(0,1fr)] ${
+                            checked
+                              ? "bg-emerald-50 dark:bg-emerald-900/20"
+                              : "bg-white hover:bg-gray-50 dark:bg-gray-900/20 dark:hover:bg-gray-800/50"
+                          }`}
+                        >
+                          <span className="flex justify-center">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleClass(item.id)}
+                              disabled={isBusy}
+                              aria-label={`Selecionar ${label}`}
+                              className="h-5 w-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                            />
                           </span>
-                          <span className="block text-xs text-gray-500 dark:text-gray-400">
-                            {item.grade || "Série não informada"}
+                          <span className="min-w-0 text-sm font-medium text-gray-900 dark:text-white">
+                            {label}
                           </span>
-                        </span>
-                      </label>
-                    );
-                  })}
+                          <span className="hidden min-w-0 truncate text-sm text-gray-500 dark:text-gray-400 md:block">
+                            {details || "Dados acadêmicos não informados"}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
