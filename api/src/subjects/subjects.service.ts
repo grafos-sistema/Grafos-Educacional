@@ -8,6 +8,30 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateSubjectDto, UpdateSubjectDto } from './dto';
 import { calculateScheduleLoad } from '../common/utils/schedule-load';
 
+const SUBJECT_COLOR_PALETTE = [
+  '#16A34A',
+  '#2563EB',
+  '#4F46E5',
+  '#9333EA',
+  '#C026D3',
+  '#DB2777',
+  '#DC2626',
+  '#EA580C',
+  '#7F56D9',
+  '#64748B',
+];
+
+function getAutomaticSubjectColor(institutionId: string, subjectName: string) {
+  const seed = `${institutionId}:${subjectName.trim().toLocaleLowerCase()}`;
+  let hash = 0;
+
+  for (const character of seed) {
+    hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  }
+
+  return SUBJECT_COLOR_PALETTE[hash % SUBJECT_COLOR_PALETTE.length];
+}
+
 @Injectable()
 export class SubjectsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -54,6 +78,7 @@ export class SubjectsService {
       data: {
         ...data,
         code,
+        color: getAutomaticSubjectColor(institutionId, data.name),
         institutionId,
       },
       include: {
@@ -215,6 +240,25 @@ export class SubjectsService {
                 endTime: true,
               },
               orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+            },
+          },
+        },
+        teacherSubjects: {
+          include: {
+            teacher: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    phone: true,
+                    avatar: true,
+                  },
+                },
+              },
             },
           },
         },

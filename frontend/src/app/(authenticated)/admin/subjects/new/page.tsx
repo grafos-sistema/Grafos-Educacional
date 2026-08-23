@@ -1,25 +1,23 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'react-hot-toast';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
-import { subjectsService } from '@/services/subjects.service';
-import { CreateSubjectDto } from '@/types/subject.types';
-import { useAuthStore } from '@/stores/authStore';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { SubjectNameSelector } from '@/components/subjects/SubjectNameSelector';
-import { SubjectColorPicker } from '@/components/subjects/SubjectColorPicker';
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-hot-toast";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { subjectsService } from "@/services/subjects.service";
+import { CreateSubjectDto } from "@/types/subject.types";
+import { useAuthStore } from "@/stores/authStore";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { SubjectNameSelector } from "@/components/subjects/SubjectNameSelector";
 import {
   isCatalogSubject,
   normalizeSubjectCode,
   suggestUniqueSubjectCode,
-} from '@/lib/constants/subject-options';
-import { DEFAULT_SUBJECT_COLOR } from '@/lib/constants/subject-colors';
-import { presentFriendlyError } from '@/lib/friendly-error';
+} from "@/lib/constants/subject-options";
+import { presentFriendlyError } from "@/lib/friendly-error";
 
 export default function NewSubjectPage() {
   const router = useRouter();
@@ -27,10 +25,9 @@ export default function NewSubjectPage() {
   const { user } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
-  const [selectedColor, setSelectedColor] = useState(DEFAULT_SUBJECT_COLOR);
   const [isCustomSubjectName, setIsCustomSubjectName] = useState(false);
   const [codeManuallyEdited, setCodeManuallyEdited] = useState(false);
-  const [lastSuggestedCode, setLastSuggestedCode] = useState('');
+  const [lastSuggestedCode, setLastSuggestedCode] = useState("");
 
   const {
     register,
@@ -42,11 +39,11 @@ export default function NewSubjectPage() {
     watch,
   } = useForm<CreateSubjectDto>();
 
-  const watchedName = watch('name') ?? '';
-  const watchedCode = watch('code') ?? '';
+  const watchedName = watch("name") ?? "";
+  const watchedCode = watch("code") ?? "";
 
   const { data: existingSubjectsData } = useQuery({
-    queryKey: ['subject-codes', user?.institutionId],
+    queryKey: ["subject-codes", user?.institutionId],
     queryFn: () =>
       subjectsService.findAll({
         institutionId: user!.institutionId,
@@ -59,9 +56,9 @@ export default function NewSubjectPage() {
   const existingCodes = useMemo(
     () =>
       (existingSubjectsData?.data ?? [])
-        .map((subject) => normalizeSubjectCode(subject.code ?? ''))
+        .map((subject) => normalizeSubjectCode(subject.code ?? ""))
         .filter(Boolean),
-    [existingSubjectsData?.data]
+    [existingSubjectsData?.data],
   );
 
   const applySuggestedCode = (nextName: string) => {
@@ -69,16 +66,20 @@ export default function NewSubjectPage() {
 
     if (!trimmedName) {
       if (!codeManuallyEdited || watchedCode === lastSuggestedCode) {
-        setValue('code', '');
-        setLastSuggestedCode('');
+        setValue("code", "");
+        setLastSuggestedCode("");
       }
       return;
     }
 
     const suggestedCode = suggestUniqueSubjectCode(trimmedName, existingCodes);
 
-    if (!codeManuallyEdited || !watchedCode || watchedCode === lastSuggestedCode) {
-      setValue('code', suggestedCode, { shouldValidate: true });
+    if (
+      !codeManuallyEdited ||
+      !watchedCode ||
+      watchedCode === lastSuggestedCode
+    ) {
+      setValue("code", suggestedCode, { shouldValidate: true });
       setLastSuggestedCode(suggestedCode);
     }
   };
@@ -88,8 +89,8 @@ export default function NewSubjectPage() {
       setIsCustomSubjectName(false);
     }
 
-    setValue('name', nextName, { shouldValidate: true });
-    clearErrors('name');
+    setValue("name", nextName, { shouldValidate: true });
+    clearErrors("name");
     applySuggestedCode(nextName);
   };
 
@@ -102,24 +103,24 @@ export default function NewSubjectPage() {
     const normalizedCode = normalizeSubjectCode(watchedCode);
 
     if (!normalizedCode) {
-      clearErrors('code');
+      clearErrors("code");
       return;
     }
 
     if (existingCodes.includes(normalizedCode)) {
-      setFormError('code', {
-        type: 'manual',
-        message: 'Já existe uma disciplina com este código',
+      setFormError("code", {
+        type: "manual",
+        message: "Já existe uma disciplina com este código",
       });
       return;
     }
 
-    clearErrors('code');
+    clearErrors("code");
   }, [clearErrors, existingCodes, setFormError, watchedCode]);
 
   const onSubmit = async (data: CreateSubjectDto) => {
     if (!user?.institutionId) {
-      setPageError('Instituição não encontrada');
+      setPageError("Instituição não encontrada");
       return;
     }
 
@@ -128,25 +129,26 @@ export default function NewSubjectPage() {
 
     try {
       if (!data.name?.trim()) {
-        setFormError('name', { type: 'manual', message: 'Nome é obrigatório' });
+        setFormError("name", { type: "manual", message: "Nome é obrigatório" });
         setIsSubmitting(false);
         return;
       }
 
       if (!isCustomSubjectName && !isCatalogSubject(data.name)) {
-        setFormError('name', {
-          type: 'manual',
-          message: 'Selecione uma disciplina da lista ou use a opcao de cadastrar o nome digitado',
+        setFormError("name", {
+          type: "manual",
+          message:
+            "Selecione uma disciplina da lista ou use a opcao de cadastrar o nome digitado",
         });
         setIsSubmitting(false);
         return;
       }
 
-      const normalizedCode = normalizeSubjectCode(data.code ?? '');
+      const normalizedCode = normalizeSubjectCode(data.code ?? "");
       if (normalizedCode && existingCodes.includes(normalizedCode)) {
-        setFormError('code', {
-          type: 'manual',
-          message: 'Já existe uma disciplina com este código',
+        setFormError("code", {
+          type: "manual",
+          message: "Já existe uma disciplina com este código",
         });
         setIsSubmitting(false);
         return;
@@ -156,7 +158,6 @@ export default function NewSubjectPage() {
         ...data,
         name: data.name.trim(),
         code: normalizedCode || undefined,
-        color: selectedColor,
         institutionId: user.institutionId,
       };
 
@@ -165,19 +166,19 @@ export default function NewSubjectPage() {
       // Invalide também as consultas inativas para que a disciplina apareça imediatamente
       // ao voltar para a listagem, sem depender de um recarregamento manual.
       await queryClient.invalidateQueries({
-        queryKey: ['subjects'],
-        refetchType: 'all',
+        queryKey: ["subjects"],
+        refetchType: "all",
       });
       await queryClient.invalidateQueries({
-        queryKey: ['subject-codes'],
-        refetchType: 'all',
+        queryKey: ["subject-codes"],
+        refetchType: "all",
       });
-      toast.success('Disciplina criada com sucesso!');
-      router.push('/admin/subjects');
+      toast.success("Disciplina criada com sucesso!");
+      router.push("/admin/subjects");
     } catch (err: any) {
       const friendlyError = presentFriendlyError(
         err,
-        'Nao foi possivel criar a disciplina agora. Revise os dados e tente novamente.'
+        "Nao foi possivel criar a disciplina agora. Revise os dados e tente novamente.",
       );
       setPageError(friendlyError.description);
     } finally {
@@ -211,7 +212,9 @@ export default function NewSubjectPage() {
           {/* Erro geral */}
           {pageError && (
             <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
-              <p className="text-red-800 dark:text-red-400 text-sm">{pageError}</p>
+              <p className="text-red-800 dark:text-red-400 text-sm">
+                {pageError}
+              </p>
             </div>
           )}
 
@@ -223,12 +226,9 @@ export default function NewSubjectPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <input
                 type="hidden"
-                {...register('name', { required: 'Nome é obrigatório' })}
+                {...register("name", { required: "Nome é obrigatório" })}
               />
-              <input
-                type="hidden"
-                {...register('code')}
-              />
+              <input type="hidden" {...register("code")} />
               <div className="md:col-span-3">
                 <SubjectNameSelector
                   value={watchedName}
@@ -247,7 +247,7 @@ export default function NewSubjectPage() {
                   value={watchedCode}
                   onChange={(event) => {
                     setCodeManuallyEdited(true);
-                    setValue('code', normalizeSubjectCode(event.target.value), {
+                    setValue("code", normalizeSubjectCode(event.target.value), {
                       shouldValidate: true,
                     });
                   }}
@@ -264,28 +264,19 @@ export default function NewSubjectPage() {
               Descrição
             </label>
             <textarea
-              {...register('description')}
+              {...register("description")}
               rows={3}
               className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white p-3"
               placeholder="Descreva a disciplina..."
             />
           </div>
 
-          {/* Cor */}
-          <div>
-            <SubjectColorPicker
-              value={selectedColor}
-              onChange={setSelectedColor}
-              description="Escolha uma cor para identificar visualmente a disciplina em horários e calendários."
-            />
-          </div>
-
           {/* Status */}
-          <div>
+          <div className="p-6">
             <label className="flex items-center">
               <input
                 type="checkbox"
-                {...register('isActive')}
+                {...register("isActive")}
                 defaultChecked={true}
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
@@ -293,7 +284,7 @@ export default function NewSubjectPage() {
                 Disciplina ativa
               </span>
             </label>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Disciplinas ativas podem ser atribuídas a turmas
             </p>
           </div>
@@ -308,7 +299,11 @@ export default function NewSubjectPage() {
             >
               Cancelar
             </Button>
-            <Button type="submit" isLoading={isSubmitting} disabled={isSubmitting}>
+            <Button
+              type="submit"
+              isLoading={isSubmitting}
+              disabled={isSubmitting}
+            >
               Criar Disciplina
             </Button>
           </div>

@@ -39,13 +39,26 @@ export interface Subject {
       } | null;
     } | null;
   }>;
+  teacherSubjects?: Array<{
+    id: string;
+    teacher?: {
+      id: string;
+      user?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email?: string | null;
+        phone?: string | null;
+        avatar?: string | null;
+      } | null;
+    } | null;
+  }>;
 }
 
 export interface CreateSubjectDto {
   name: string;
   code?: string;
   description?: string;
-  color?: string;
   institutionId: string;
   isActive?: boolean;
 }
@@ -54,7 +67,6 @@ export interface UpdateSubjectDto {
   name?: string;
   code?: string;
   description?: string;
-  color?: string;
   isActive?: boolean;
 }
 

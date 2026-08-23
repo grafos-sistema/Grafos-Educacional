@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useParams } from "next/navigation";
-import { useState } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeftIcon,
@@ -10,18 +10,14 @@ import {
   BookOpenIcon,
 } from "@heroicons/react/24/outline";
 import { subjectsService } from "@/services/subjects.service";
-import { teacherSubjectsService } from "@/services/teacher-subjects.service";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { SubjectTeachersModal } from "@/components/subjects/SubjectTeachersModal";
-import { SubjectClassesManager } from "@/components/subjects/SubjectClassesManager";
 
 export default function SubjectDetailPage() {
   const router = useRouter();
   const params = useParams();
   const subjectId = params?.id as string;
-  const [isTeachersModalOpen, setIsTeachersModalOpen] = useState(false);
 
   // Buscar disciplina
   const { data: subject, isLoading } = useQuery({
@@ -29,13 +25,25 @@ export default function SubjectDetailPage() {
     queryFn: () => subjectsService.findOne(subjectId),
     enabled: !!subjectId,
   });
-  const { data: subjectTeachers = [], isLoading: isLoadingTeachers } = useQuery(
-    {
-      queryKey: ["subject-teachers", subjectId],
-      queryFn: () => teacherSubjectsService.getBySubject(subjectId),
-      enabled: Boolean(subjectId),
-    },
-  );
+  const subjectTeachers = useMemo(() => {
+    const seenTeacherIds = new Set<string>();
+
+    const links = [
+      ...(subject?.classSubjects ?? []),
+      ...(subject?.teacherSubjects ?? []),
+    ];
+
+    return links.filter((classSubject) => {
+      const teacherId = classSubject.teacher?.user?.id;
+
+      if (!teacherId || seenTeacherIds.has(teacherId)) {
+        return false;
+      }
+
+      seenTeacherIds.add(teacherId);
+      return true;
+    });
+  }, [subject?.classSubjects, subject?.teacherSubjects]);
 
   if (isLoading) {
     return (
@@ -148,22 +156,9 @@ export default function SubjectDetailPage() {
               Professores vinculados a esta disciplina e seus dados de contato.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="info">{subjectTeachers.length}</Badge>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setIsTeachersModalOpen(true)}
-            >
-              Ver lista
-            </Button>
-          </div>
+          <Badge variant="info">{subjectTeachers.length}</Badge>
         </div>
-        {isLoadingTeachers ? (
-          <div className="py-6">
-            <LoadingSpinner size="sm" text="Carregando professores..." />
-          </div>
-        ) : subjectTeachers.length === 0 ? (
+        {subjectTeachers.length === 0 ? (
           <p className="rounded-lg border border-dashed border-gray-300 p-5 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
             Nenhum professor foi vinculado a esta disciplina.
           </p>
@@ -220,11 +215,74 @@ export default function SubjectDetailPage() {
         )}
       </div>
 
-      <SubjectClassesManager
-        subjectId={subjectId}
-        institutionId={subject.institutionId}
-        subjectName={subject.name}
-      />
+      {/* Turmas vinculadas */}
+      <div className="mb-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Turmas da disciplina
+            </h3>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              Turmas em que esta disciplina está disponível e seus professores.
+            </p>
+          </div>
+          <Badge variant="info">{subject.classSubjects?.length ?? 0}</Badge>
+        </div>
+        {!subject.classSubjects?.length ? (
+          <p className="rounded-lg border border-dashed border-gray-300 p-5 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+            Nenhuma turma foi vinculada a esta disciplina.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {subject.classSubjects.map((classSubject) => {
+              const classInfo = classSubject.class;
+              const teacher = classSubject.teacher?.user;
+              const teacherName = teacher
+                ? `${teacher.firstName} ${teacher.lastName}`.trim()
+                : "Professor não definido";
+              const classDetails = [
+                classInfo?.course?.name,
+                classInfo?.grade,
+                classInfo?.shift,
+              ]
+                .filter(Boolean)
+                .join(" • ");
+
+              return (
+                <div
+                  key={classSubject.id}
+                  className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-gray-900 dark:text-white">
+                      {classInfo?.name || "Turma não identificada"}
+                    </p>
+                    <p className="truncate text-sm text-gray-500 dark:text-gray-400">
+                      {classDetails || "Detalhes da turma não informados"}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {teacher?.avatar ? (
+                      <img
+                        src={teacher.avatar}
+                        alt={teacherName}
+                        className="h-9 w-9 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
+                        {teacherName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="max-w-48 truncate text-sm text-gray-700 dark:text-gray-300">
+                      {teacherName}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Informações do Sistema */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
@@ -250,14 +308,6 @@ export default function SubjectDetailPage() {
           </div>
         </div>
       </div>
-
-      <SubjectTeachersModal
-        isOpen={isTeachersModalOpen}
-        onClose={() => setIsTeachersModalOpen(false)}
-        subjectId={subjectId}
-        subjectName={subject.name}
-        readOnly
-      />
     </div>
   );
 }
