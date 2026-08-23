@@ -1690,6 +1690,16 @@ export function StudentFormTabs({
                               `responsaveis.${index}.dataNascimento`,
                               { validate: birthDateError },
                             )}
+                            value={String(
+                              responsavelAtual?.dataNascimento ?? '',
+                            )}
+                            onChange={(event) =>
+                              setValue(
+                                `responsaveis.${index}.dataNascimento`,
+                                event.target.value,
+                                { shouldDirty: true, shouldValidate: true },
+                              )
+                            }
                             error={
                               (errors.responsaveis as any)?.[index]
                                 ?.dataNascimento?.message as string

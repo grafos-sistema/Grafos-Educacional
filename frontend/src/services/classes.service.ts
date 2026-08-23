@@ -125,6 +125,7 @@ function mapClassRow(
 
 function mapClassSubject(row: DbClassSubject): ClassSubject {
   const teacher = firstRelation(row.teacher);
+  const teacherUser = firstRelation(teacher?.user) ?? (teacher as any);
   return {
     id: row.id,
     weeklyHours: row.weeklyHours ?? undefined,
@@ -132,7 +133,7 @@ function mapClassSubject(row: DbClassSubject): ClassSubject {
     subjectId: row.subjectId,
     teacherId: row.teacherId ?? undefined,
     subject: (firstRelation(row.subject) ?? undefined) as any,
-    teacher: (firstRelation(teacher?.user) ?? undefined) as any,
+    teacher: (teacherUser ?? undefined) as any,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

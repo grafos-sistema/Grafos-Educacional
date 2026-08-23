@@ -235,12 +235,26 @@ import { teacherSubjectsService } from '@/services/teacher-subjects.service';
 
          {!loadingClassSubjects && classSubjects.length > 0 && (
            <div className="mt-6 space-y-3">
-             {classSubjects.map((item) => (
-               <div
+              {classSubjects.map((item) => (
+                <div
                  key={item.id}
                  className="flex flex-col gap-3 rounded-xl border border-gray-200 dark:border-gray-700 p-4 md:flex-row md:items-center md:justify-between"
-               >
-                 <div className="min-w-0 flex-1">
+                >
+                  {item.teacher?.avatar ? (
+                    <img
+                      src={item.teacher.avatar}
+                      alt=""
+                      className="h-10 w-10 shrink-0 rounded-full object-cover"
+                    />
+                  ) : item.teacher ? (
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                      {`${item.teacher.firstName ?? ''} ${item.teacher.lastName ?? ''}`
+                        .trim()
+                        .charAt(0)
+                        .toUpperCase() || 'P'}
+                    </span>
+                  ) : null}
+                  <div className="min-w-0 flex-1">
                    <div className="flex items-center gap-2 flex-wrap">
                      <span className="font-medium text-gray-900 dark:text-white">
                        {item.subject?.name ?? 'Disciplina'}
