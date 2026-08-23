@@ -106,6 +106,19 @@ function normalizeOptionalString(value: unknown) {
   return unmasked === '' ? null : value;
 }
 
+function normalizeBirthDate(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) return null;
+
+  const trimmed = value.trim();
+  const brazilianDate = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (brazilianDate) {
+    return `${brazilianDate[3]}-${brazilianDate[2]}-${brazilianDate[1]}`;
+  }
+
+  const isoDate = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
+  return isoDate?.[1] ?? null;
+}
+
 function isSupabaseFunctionHttpError(
   error: unknown,
 ): error is { context: Response } {
@@ -1269,12 +1282,28 @@ export const usersService = {
           )
         : [];
       if (responsaveisValidos.length > 0) {
+        const responsaveisNormalizados = responsaveisValidos.map(
+          (responsavel: any) => {
+            const birthDate = normalizeBirthDate(
+              responsavel.dataNascimento ?? responsavel.birthDate,
+            );
+
+            return {
+              ...responsavel,
+              // Enviar os dois nomes mantém compatibilidade com versões
+              // antigas e novas da Edge Function, sempre com a mesma data.
+              dataNascimento: birthDate,
+              birthDate,
+            };
+          },
+        );
+
         const { data: syncData, error: syncError } =
           await supabase.functions.invoke('admin-sync-student-parents', {
             body: {
               studentId,
               institutionId: user.institutionId,
-              responsaveis: responsaveisValidos,
+              responsaveis: responsaveisNormalizados,
             },
           });
 
@@ -1300,6 +1329,25 @@ export const usersService = {
           console.error('Function returned error:', syncData.error);
           throw new Error('Erro na função: ' + syncData.error);
         }
+
+        // A data pertence ao usuário do responsável, e não à tabela de
+        // relacionamento. Atualize explicitamente o mesmo usuário já
+        // vinculado ao aluno para não depender de CPF/e-mail (que podem ser
+        // alterados ou estar vazios).
+        const existingParentUpdates = responsaveisNormalizados.filter(
+          (responsavel: any) =>
+            responsavel.parentUserId && responsavel.birthDate,
+        );
+
+        await Promise.all(
+          existingParentUpdates.map((responsavel: any) =>
+            api.patch<User>(
+              `/users/${responsavel.parentUserId}`,
+              { birthDate: responsavel.birthDate },
+              { headers: { 'x-skip-error-toast': '1' } },
+            ),
+          ),
+        );
       }
     }
 
