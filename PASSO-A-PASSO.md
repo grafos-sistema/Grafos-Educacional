@@ -65,6 +65,8 @@ order by name;
 
 ## 3. ORDEM 01 — Super Admin Global cria a estrutura institucional
 
+> Em uma implantação nova, a equipe de Desenvolvimento pode executar essa etapa pela rota administrativa `/security`. Depois que a instituição, o anexo e o Diretor estiverem criados, o restante do teste pode ser realizado pelos perfis da própria instituição.
+
 ### 3.1 Criar a instituição
 
 1. No menu administrativo, acesse **Instituições**.
