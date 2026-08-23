@@ -5,16 +5,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   PlusIcon,
-  PencilIcon,
   TrashIcon,
   DocumentTextIcon,
-  DocumentDuplicateIcon,
-  ArrowDownTrayIcon,
   AcademicCapIcon,
   DocumentIcon,
   CheckCircleIcon,
   MagnifyingGlassIcon,
-  EyeIcon,
+  EllipsisVerticalIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
 import { worksheetsService } from '@/services/worksheets.service';
@@ -42,6 +39,7 @@ export default function WorksheetsPage() {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string>('');
   const [selectedWorksheet, setSelectedWorksheet] = useState<Worksheet | null>(null);
+  const [openActionsId, setOpenActionsId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCourseId, setSelectedCourseId] = useState('');
 
@@ -584,7 +582,7 @@ export default function WorksheetsPage() {
           {filteredWorksheets.map((worksheet) => (
             <div
               key={worksheet.id}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow"
+              className="relative bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
@@ -609,6 +607,79 @@ export default function WorksheetsPage() {
                     )}
                   </div>
                 </div>
+                <div className="relative ml-3 shrink-0">
+                  <button
+                    type="button"
+                    aria-label={`Ações da atividade ${worksheet.title}`}
+                    title="Ações da atividade"
+                    onClick={() =>
+                      setOpenActionsId((currentId) =>
+                        currentId === worksheet.id ? null : worksheet.id
+                      )
+                    }
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+                  >
+                    <EllipsisVerticalIcon className="h-5 w-5" />
+                  </button>
+
+                  {openActionsId === worksheet.id && (
+                    <div className="absolute right-0 top-10 z-20 w-44 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenActionsId(null);
+                          handleEdit(worksheet);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        disabled={duplicateMutation.isPending}
+                        onClick={() => {
+                          setOpenActionsId(null);
+                          handleDuplicate(worksheet.id);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-700"
+                      >
+                        Duplicar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenActionsId(null);
+                          void handlePreview(worksheet.id);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700"
+                      >
+                        Visualizar
+                      </button>
+                      <button
+                        type="button"
+                        disabled={generatePdfMutation.isPending}
+                        onClick={() => {
+                          setOpenActionsId(null);
+                          handleGeneratePdf(worksheet.id);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-700"
+                      >
+                        Baixar PDF
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenActionsId(null);
+                          setSelectedWorksheet(worksheet);
+                          setShowDeleteDialog(true);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center gap-4 mb-4 text-sm text-gray-500 dark:text-gray-400">
@@ -621,51 +692,6 @@ export default function WorksheetsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 mb-2">
-                <button
-                  onClick={() => handleEdit(worksheet)}
-                  className="px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors flex items-center justify-center gap-1"
-                >
-                  <PencilIcon className="h-4 w-4" />
-                  Editar
-                </button>
-                <button
-                  onClick={() => handleDuplicate(worksheet.id)}
-                  disabled={duplicateMutation.isPending}
-                  className="px-3 py-2 text-sm text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
-                >
-                  <DocumentDuplicateIcon className="h-4 w-4" />
-                  Duplicar
-                </button>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  onClick={() => handlePreview(worksheet.id)}
-                  className="px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors flex items-center justify-center gap-1"
-                >
-                  <EyeIcon className="h-4 w-4" />
-                  Preview
-                </button>
-                <button
-                  onClick={() => handleGeneratePdf(worksheet.id)}
-                  disabled={generatePdfMutation.isPending}
-                  className="px-3 py-2 text-sm text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
-                >
-                  <ArrowDownTrayIcon className="h-4 w-4" />
-                  PDF
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedWorksheet(worksheet);
-                    setShowDeleteDialog(true);
-                  }}
-                  className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex items-center justify-center gap-1"
-                >
-                  <TrashIcon className="h-4 w-4" />
-                  Excluir
-                </button>
-              </div>
             </div>
           ))}
         </div>

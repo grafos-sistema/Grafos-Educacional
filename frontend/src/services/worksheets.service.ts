@@ -1,4 +1,5 @@
 import { fetchCurrentUserProfile } from '@/lib/auth-profile';
+import api from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import {
   Question,
@@ -355,8 +356,29 @@ export const worksheetsService = {
   /**
    * Gerar PDF da atividade
    */
-  async generatePdf(_id: string): Promise<Blob> {
-    throw new Error(`Geração de PDF ainda não foi migrada (${_id})`);
+  async generatePdf(id: string): Promise<Blob> {
+    const response = (await api.get<{
+      data: string;
+      filename?: string;
+      mimeType?: string;
+    }>(`/activities/${id}/pdf`)) as unknown as {
+      data: string;
+      filename?: string;
+      mimeType?: string;
+    };
+
+    if (!response?.data) {
+      throw new Error('O PDF foi gerado sem conteúdo.');
+    }
+
+    const binary = window.atob(response.data);
+    const bytes = new Uint8Array(binary.length);
+
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+
+    return new Blob([bytes], { type: response.mimeType || 'application/pdf' });
   },
 
   /**

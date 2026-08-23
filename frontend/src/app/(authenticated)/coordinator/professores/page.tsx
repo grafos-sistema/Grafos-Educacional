@@ -178,29 +178,6 @@ export default function CoordinatorTeachersPage() {
         </p>
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 p-5 text-white shadow-sm">
-          <div className="text-sm text-blue-100">Professores encontrados</div>
-          <div className="mt-1 text-3xl font-bold">{data?.meta.total || 0}</div>
-        </div>
-        <div className="rounded-lg bg-white p-5 shadow-sm dark:bg-gray-800">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            Tela da coordenação
-          </div>
-          <div className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
-            Consulta operacional
-          </div>
-        </div>
-        <div className="rounded-lg bg-white p-5 shadow-sm dark:bg-gray-800">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            Permissão desta tela
-          </div>
-          <div className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
-            Sem editar cadastro
-          </div>
-        </div>
-      </div>
-
       <div className="mb-6 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-800">
         <div className="flex flex-col gap-3 lg:flex-row">
           <div className="flex-1">
