@@ -3,22 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { toast } from "react-hot-toast";
 import {
   PlusIcon,
   MagnifyingGlassIcon,
   PencilIcon,
-  TrashIcon,
   EyeIcon,
   BookOpenIcon,
-  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import {
   subjectsService,
   SubjectsFilterParams,
 } from "@/services/subjects.service";
 import { Subject } from "@/types/subject.types";
-import { UserRole } from "@/types/user.types";
 import { useAuthStore } from "@/stores/authStore";
 import { Table, Column } from "@/components/ui/Table";
 import { Button } from "@/components/ui/Button";
@@ -26,15 +22,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Pagination } from "@/components/ui/Pagination";
-import { Modal } from "@/components/ui/Modal";
-import { presentFriendlyError } from "@/lib/friendly-error";
-import { SubjectTeachersModal } from "@/components/subjects/SubjectTeachersModal";
 
 export default function SubjectsPage() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const currentRole = user?.activeProfile || user?.role;
-  const canRemoveSubjects = currentRole !== UserRole.COORDINATOR;
   const [filters, setFilters] = useState<SubjectsFilterParams>({
     page: 1,
     limit: 20,
@@ -42,15 +33,6 @@ export default function SubjectsPage() {
     institutionId: user?.institutionId,
     isActive: undefined,
   });
-  const [deleteModal, setDeleteModal] = useState<{
-    isOpen: boolean;
-    subject: Subject | null;
-  }>({ isOpen: false, subject: null });
-  const [subjectForTeachers, setSubjectForTeachers] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
-
   const effectiveFilters = {
     ...filters,
     institutionId: user?.institutionId,
@@ -66,36 +48,6 @@ export default function SubjectsPage() {
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setFilters({ ...filters, page: 1 });
-  };
-
-  const handleDelete = async (subjectId: string) => {
-    try {
-      await subjectsService.remove(subjectId);
-      refetch();
-      setDeleteModal({ isOpen: false, subject: null });
-      toast.success("Disciplina removida com sucesso!");
-    } catch (error: any) {
-      console.error("Erro ao remover disciplina:", error);
-      presentFriendlyError(
-        error,
-        "Nao foi possivel remover a disciplina agora.",
-      );
-    }
-  };
-
-  const handlePermanentDelete = async (subjectId: string) => {
-    try {
-      await subjectsService.removePermanently(subjectId);
-      refetch();
-      setDeleteModal({ isOpen: false, subject: null });
-      toast.success("Disciplina excluida permanentemente com sucesso!");
-    } catch (error: any) {
-      console.error("Erro ao excluir disciplina permanentemente:", error);
-      presentFriendlyError(
-        error,
-        "Nao foi possivel excluir a disciplina permanentemente agora.",
-      );
-    }
   };
 
   const columns: Column<Subject>[] = [
@@ -163,21 +115,6 @@ export default function SubjectsPage() {
           >
             <EyeIcon className="h-5 w-5" />
           </button>
-          {[UserRole.COORDINATOR, UserRole.DIRECTOR].includes(
-            currentRole as UserRole,
-          ) && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSubjectForTeachers({ id: subject.id, name: subject.name });
-              }}
-              className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
-              title="Ver professores"
-              aria-label={`Ver professores da disciplina ${subject.name}`}
-            >
-              <UserGroupIcon className="h-5 w-5" />
-            </button>
-          )}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -188,18 +125,6 @@ export default function SubjectsPage() {
           >
             <PencilIcon className="h-5 w-5" />
           </button>
-          {canRemoveSubjects && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setDeleteModal({ isOpen: true, subject });
-              }}
-              className="text-red-600 hover:text-red-700 dark:text-red-400"
-              title="Remover"
-            >
-              <TrashIcon className="h-5 w-5" />
-            </button>
-          )}
         </div>
       ),
     },
@@ -312,67 +237,6 @@ export default function SubjectsPage() {
         </div>
       )}
 
-      {/* Modal de confirmação de exclusão */}
-      <Modal
-        isOpen={deleteModal.isOpen}
-        onClose={() => setDeleteModal({ isOpen: false, subject: null })}
-        title="Remover Disciplina"
-        size="md"
-      >
-        <div className="space-y-4">
-          <p className="text-gray-600 dark:text-gray-400">
-            Tem certeza que deseja remover a disciplina{" "}
-            <strong>{deleteModal.subject?.name}</strong>?
-          </p>
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            <p>
-              <strong>Desativar</strong> mantém a disciplina no banco, apenas
-              marcando-a como inativa.
-            </p>
-            {currentRole === UserRole.SUPER_ADMIN && (
-              <p className="mt-2">
-                <strong>Excluir permanentemente</strong> remove a disciplina de
-                forma definitiva.
-              </p>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-3 justify-end">
-            <Button
-              variant="secondary"
-              onClick={() => setDeleteModal({ isOpen: false, subject: null })}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() =>
-                deleteModal.subject && handleDelete(deleteModal.subject.id)
-              }
-            >
-              Apenas desativar
-            </Button>
-            {currentRole === UserRole.SUPER_ADMIN && (
-              <Button
-                variant="danger"
-                onClick={() =>
-                  deleteModal.subject &&
-                  handlePermanentDelete(deleteModal.subject.id)
-                }
-              >
-                Excluir permanentemente
-              </Button>
-            )}
-          </div>
-        </div>
-      </Modal>
-
-      <SubjectTeachersModal
-        isOpen={Boolean(subjectForTeachers)}
-        onClose={() => setSubjectForTeachers(null)}
-        subjectId={subjectForTeachers?.id ?? null}
-        subjectName={subjectForTeachers?.name}
-        readOnly
-      />
     </div>
   );
 }
