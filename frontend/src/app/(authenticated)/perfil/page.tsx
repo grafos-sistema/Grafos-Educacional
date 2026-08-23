@@ -26,7 +26,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuthStore } from '@/stores/authStore';
 import { usersService } from '@/services/users.service';
-import { UpdateUserData, Gender } from '@/types/user.types';
+import { UpdateUserData, Gender, User } from '@/types/user.types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -48,6 +48,77 @@ const genderLabels: Record<Gender, string> = {
   OTHER: 'Outro',
   NOT_INFORMED: 'Não informado',
 };
+
+function dateOnly(value?: string) {
+  return value ? String(value).split('T')[0] : '';
+}
+
+function buildOwnProfilePatch(
+  data: UpdateUserData,
+  currentUser: User,
+): UpdateUserData {
+  const patch: UpdateUserData = {};
+
+  const assignIfChanged = <K extends keyof UpdateUserData>(
+    key: K,
+    nextValue: UpdateUserData[K],
+    currentValue: unknown,
+  ) => {
+    if (nextValue !== currentValue) {
+      patch[key] = nextValue;
+    }
+  };
+
+  assignIfChanged('firstName', data.firstName?.trim(), currentUser.firstName);
+  assignIfChanged('lastName', data.lastName?.trim(), currentUser.lastName);
+
+  const nextEmail = data.email?.trim().toLowerCase();
+  const currentEmail = currentUser.email?.trim().toLowerCase();
+  assignIfChanged('email', nextEmail, currentEmail);
+
+  const nextCpf = data.cpf ? removeMask(data.cpf) : '';
+  const currentCpf = currentUser.cpf ? removeMask(currentUser.cpf) : '';
+  if (nextCpf !== currentCpf) {
+    assignIfChanged('cpf', nextCpf, currentCpf);
+  }
+
+  const nextPhone = data.phone ? removeMask(data.phone) : '';
+  const currentPhone = currentUser.phone ? removeMask(currentUser.phone) : '';
+  if (nextPhone !== currentPhone) {
+    assignIfChanged('phone', nextPhone, currentPhone);
+  }
+
+  assignIfChanged(
+    'birthDate',
+    dateOnly(data.birthDate),
+    dateOnly(currentUser.birthDate),
+  );
+  assignIfChanged('gender', data.gender, currentUser.gender);
+  assignIfChanged('address', data.address?.trim(), currentUser.address);
+  assignIfChanged('numero', data.numero?.trim(), currentUser.numero);
+  assignIfChanged(
+    'complemento',
+    data.complemento?.trim(),
+    currentUser.complemento,
+  );
+  assignIfChanged('bairro', data.bairro?.trim(), currentUser.bairro);
+  assignIfChanged('city', data.city?.trim(), currentUser.city);
+  assignIfChanged(
+    'state',
+    data.state?.trim().toUpperCase(),
+    currentUser.state?.trim().toUpperCase(),
+  );
+
+  const nextZipCode = data.zipCode ? removeMask(data.zipCode) : '';
+  const currentZipCode = currentUser.zipCode
+    ? removeMask(currentUser.zipCode)
+    : '';
+  if (nextZipCode !== currentZipCode) {
+    assignIfChanged('zipCode', nextZipCode, currentZipCode);
+  }
+
+  return patch;
+}
 
 export default function PerfilPage() {
   const router = useRouter();
@@ -146,12 +217,10 @@ export default function PerfilPage() {
   const updateMutation = useMutation({
     mutationFn: async (data: UpdateUserData) => {
       if (!user?.id) throw new Error('Usuário não encontrado');
-      const updatedUser = await usersService.update(user.id, {
-        ...data,
-        cpf: data.cpf ? removeMask(data.cpf) : undefined,
-        phone: data.phone ? removeMask(data.phone) : undefined,
-        zipCode: data.zipCode ? removeMask(data.zipCode) : undefined,
-      });
+      const profilePatch = buildOwnProfilePatch(data, user);
+      const updatedUser = Object.keys(profilePatch).length
+        ? await usersService.update(user.id, profilePatch)
+        : await usersService.findOne(user.id);
 
       if (photoFile) {
         const uploadResult = await usersService.uploadAvatar(

@@ -225,14 +225,28 @@ export default function GlobalAdminsPage() {
                   key={admin.id}
                   className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div>
-                    <p className="font-semibold text-gray-900">
-                      {admin.firstName} {admin.lastName}
-                    </p>
-                    <p className="text-sm text-gray-600">{admin.email}</p>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Criado em {formatDate(admin.createdAt)}
-                    </p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    {admin.avatar ? (
+                      <img
+                        src={admin.avatar}
+                        alt={`${admin.firstName} ${admin.lastName}`}
+                        className="h-11 w-11 shrink-0 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-bold text-white">
+                        {admin.firstName?.[0]}
+                        {admin.lastName?.[0]}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-gray-900">
+                        {admin.firstName} {admin.lastName}
+                      </p>
+                      <p className="truncate text-sm text-gray-600">{admin.email}</p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Criado em {formatDate(admin.createdAt)}
+                      </p>
+                    </div>
                   </div>
                   <Badge variant={admin.isActive ? 'success' : 'error'} size="sm">
                     {admin.isActive ? 'Ativo' : 'Inativo'}
