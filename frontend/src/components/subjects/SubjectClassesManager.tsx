@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AcademicCapIcon,
   CheckCircleIcon,
+  MagnifyingGlassIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { classesService } from "@/services/classes.service";
@@ -14,6 +15,8 @@ import { teachersService } from "@/services/teachers.service";
 import { useAuthStore } from "@/stores/authStore";
 import { UserRole } from "@/types/user.types";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/hooks/useToast";
@@ -48,7 +51,12 @@ export function SubjectClassesManager({
   const canManage =
     currentRole === UserRole.DIRECTOR || currentRole === UserRole.COORDINATOR;
   const [teacherId, setTeacherId] = useState("");
+  const [teacherSearch, setTeacherSearch] = useState("");
+  const [visibleTeacherCount, setVisibleTeacherCount] = useState(12);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
+  const [courseFilter, setCourseFilter] = useState("");
+  const [shiftFilter, setShiftFilter] = useState("");
+  const [visibleClassCount, setVisibleClassCount] = useState(7);
   const [removingLinkId, setRemovingLinkId] = useState<string | null>(null);
 
   const { data: subject, isLoading: loadingSubject } = useQuery({
@@ -96,6 +104,80 @@ export function SubjectClassesManager({
     );
   }, [assignedClassIds, classesData?.data]);
 
+  const filteredTeachers = useMemo(() => {
+    const normalizedSearch = teacherSearch.trim().toLocaleLowerCase("pt-BR");
+    if (!normalizedSearch) return teachersData?.data ?? [];
+
+    return (teachersData?.data ?? []).filter((teacher) => {
+      const searchableText = [
+        teacher.firstName,
+        teacher.lastName,
+        teacher.email,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLocaleLowerCase("pt-BR");
+
+      return searchableText.includes(normalizedSearch);
+    });
+  }, [teacherSearch, teachersData?.data]);
+
+  const visibleTeachers = filteredTeachers.slice(0, visibleTeacherCount);
+
+  const courseOptions = useMemo(() => {
+    const options = new Map<string, string>();
+    availableClasses.forEach((item) => {
+      const value = item.course?.id || item.course?.name;
+      if (value && item.course?.name) options.set(value, item.course.name);
+    });
+
+    return [
+      { value: "", label: "Todos os cursos" },
+      ...Array.from(options, ([value, label]) => ({ value, label })).sort(
+        (left, right) => left.label.localeCompare(right.label, "pt-BR"),
+      ),
+    ];
+  }, [availableClasses]);
+
+  const shiftOptions = useMemo(() => {
+    const shifts = new Set(
+      availableClasses
+        .map((item) => item.shift)
+        .filter((shift): shift is string => Boolean(shift)),
+    );
+
+    return [
+      { value: "", label: "Todos os turnos" },
+      ...Array.from(shifts)
+        .sort((left, right) => left.localeCompare(right, "pt-BR"))
+        .map((shift) => ({ value: shift, label: shift })),
+    ];
+  }, [availableClasses]);
+
+  const filteredAvailableClasses = useMemo(
+    () =>
+      availableClasses.filter((item) => {
+        const matchesCourse =
+          !courseFilter ||
+          item.course?.id === courseFilter ||
+          item.course?.name === courseFilter;
+        const matchesShift = !shiftFilter || item.shift === shiftFilter;
+        return matchesCourse && matchesShift;
+      }),
+    [availableClasses, courseFilter, shiftFilter],
+  );
+
+  const visibleAvailableClasses = filteredAvailableClasses.slice(
+    0,
+    visibleClassCount,
+  );
+
+  const areAllFilteredClassesSelected =
+    filteredAvailableClasses.length > 0 &&
+    filteredAvailableClasses.every((item) =>
+      selectedClassIds.includes(item.id),
+    );
+
   const resetForm = () => {
     setTeacherId("");
     setSelectedClassIds([]);
@@ -121,16 +203,16 @@ export function SubjectClassesManager({
     );
   };
 
-  const selectAllVisible = () => {
-    const visibleIds = availableClasses.map((item) => item.id);
-    setSelectedClassIds((current) => [...new Set([...current, ...visibleIds])]);
-  };
+  const toggleAllFilteredClasses = () => {
+    const filteredIds = filteredAvailableClasses.map((item) => item.id);
 
-  const clearVisible = () => {
-    const visibleIds = new Set(availableClasses.map((item) => item.id));
-    setSelectedClassIds((current) =>
-      current.filter((classId) => !visibleIds.has(classId)),
-    );
+    setSelectedClassIds((current) => {
+      if (filteredIds.every((id) => current.includes(id))) {
+        return current.filter((id) => !filteredIds.includes(id));
+      }
+
+      return [...new Set([...current, ...filteredIds])];
+    });
   };
 
   const distributeMutation = useMutation({
@@ -232,79 +314,107 @@ export function SubjectClassesManager({
         </div>
 
         {canManage && (
-          <div className="mb-6 rounded-xl border border-primary-100 bg-primary-50/40 p-4 dark:border-primary-900/40 dark:bg-primary-900/10">
-            <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                Professor responsável
-              </p>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Escolha o professor que lecionará esta disciplina. A carga
-                semanal será calculada pela grade de horários.
-              </p>
-              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {(teachersData?.data ?? []).map((teacher) => {
-                  const profileId = teacher.teacherProfile!.id;
-                  const selected = teacherId === profileId;
-                  const name =
-                    `${teacher.firstName ?? ""} ${teacher.lastName ?? ""}`.trim() ||
-                    "Professor";
-                  return (
-                    <label
-                      key={profileId}
-                      className={`flex cursor-pointer items-center gap-3 rounded-xl border bg-white p-3 transition-colors dark:bg-gray-900/40 ${
-                        selected
-                          ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-100 dark:border-emerald-600 dark:bg-emerald-900/20 dark:ring-emerald-900/40"
-                          : "border-gray-200 hover:border-emerald-300 dark:border-gray-700 dark:hover:border-emerald-700"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="subject-teacher"
-                        value={profileId}
-                        checked={selected}
-                        onChange={() => setTeacherId(profileId)}
-                        disabled={isLoading || isBusy}
-                        className="h-4 w-4 border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                      />
-                      {teacher.avatar ? (
-                        <img
-                          src={teacher.avatar}
-                          alt=""
-                          className="h-11 w-11 shrink-0 rounded-full object-cover"
-                        />
-                      ) : (
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                          {name.charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium text-gray-900 dark:text-white">
-                          {name}
-                        </span>
-                        <span className="block truncate text-xs text-gray-500 dark:text-gray-400">
-                          {teacher.email || "Contato não informado"}
-                        </span>
-                        <span className="block truncate text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                          Carga atual:{" "}
-                          {formatScheduleLoad(
-                            teacher.scheduledMinutes,
-                            teacher.scheduledClassCount,
-                          )}
-                        </span>
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-              {!loadingTeachers && (teachersData?.data ?? []).length === 0 && (
-                <p className="mt-3 rounded-lg border border-dashed border-gray-300 bg-white p-4 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-400">
-                  Nenhum professor ativo foi encontrado nesta instituição.
+          <div className="mb-6">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  Professor responsável
                 </p>
-              )}
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Escolha o professor que lecionará esta disciplina. A carga
+                  semanal será calculada pela grade de horários.
+                </p>
+              </div>
+              <div className="w-full md:max-w-sm">
+                <Input
+                  value={teacherSearch}
+                  onChange={(event) => {
+                    setTeacherSearch(event.target.value);
+                    setVisibleTeacherCount(12);
+                  }}
+                  placeholder="Buscar professor por nome ou e-mail"
+                  aria-label="Buscar professor por nome ou e-mail"
+                  leftIcon={<MagnifyingGlassIcon className="h-5 w-5" />}
+                />
+              </div>
             </div>
 
-            <div className="mt-4 rounded-lg border border-white/80 bg-white p-3 dark:border-gray-700 dark:bg-gray-900/30">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
+              {visibleTeachers.map((teacher) => {
+                const profileId = teacher.teacherProfile!.id;
+                const selected = teacherId === profileId;
+                const name =
+                  `${teacher.firstName ?? ""} ${teacher.lastName ?? ""}`.trim() ||
+                  "Professor";
+                return (
+                  <label
+                    key={profileId}
+                    className={`flex cursor-pointer items-center gap-2 rounded-lg border bg-white p-2.5 transition-colors dark:bg-gray-900/40 ${
+                      selected
+                        ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-100 dark:border-emerald-600 dark:bg-emerald-900/20 dark:ring-emerald-900/40"
+                        : "border-gray-200 hover:border-emerald-300 dark:border-gray-700 dark:hover:border-emerald-700"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="subject-teacher"
+                      value={profileId}
+                      checked={selected}
+                      onChange={() => setTeacherId(profileId)}
+                      disabled={isLoading || isBusy}
+                      className="h-4 w-4 shrink-0 border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    {teacher.avatar ? (
+                      <img
+                        src={teacher.avatar}
+                        alt=""
+                        className="h-9 w-9 shrink-0 rounded-full object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                        {name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-gray-900 dark:text-white">
+                        {name}
+                      </span>
+                      <span className="block truncate text-xs text-gray-500 dark:text-gray-400">
+                        {teacher.email || "Contato não informado"}
+                      </span>
+                      <span className="block truncate text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                        Carga atual:{" "}
+                        {formatScheduleLoad(
+                          teacher.scheduledMinutes,
+                          teacher.scheduledClassCount,
+                        )}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+            {!loadingTeachers && filteredTeachers.length === 0 && (
+              <p className="mt-3 rounded-lg border border-dashed border-gray-300 bg-white p-4 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-400">
+                {teacherSearch.trim()
+                  ? "Nenhum professor corresponde à busca."
+                  : "Nenhum professor ativo foi encontrado nesta instituição."}
+              </p>
+            )}
+            {filteredTeachers.length > visibleTeacherCount && (
+              <div className="mt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setVisibleTeacherCount((count) => count + 12)}
+                  className="text-sm font-medium text-blue-600 transition-colors hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  Mostrar mais
+                </button>
+              </div>
+            )}
+
+            <div className="mt-5">
+              <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
                     Turmas que receberão a disciplina
@@ -314,44 +424,52 @@ export function SubjectClassesManager({
                     {availableClasses.length} disponível(is)
                   </p>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={selectAllVisible}
-                    disabled={
-                      isLoading || isBusy || availableClasses.length === 0
-                    }
-                  >
-                    Selecionar todas
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearVisible}
-                    disabled={isBusy || selectedClassIds.length === 0}
-                  >
-                    Limpar
-                  </Button>
+                <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 md:max-w-lg">
+                  <Select
+                    value={courseFilter}
+                    onChange={(event) => {
+                      setCourseFilter(event.target.value);
+                      setVisibleClassCount(7);
+                    }}
+                    options={courseOptions}
+                    aria-label="Filtrar turmas por curso"
+                  />
+                  <Select
+                    value={shiftFilter}
+                    onChange={(event) => {
+                      setShiftFilter(event.target.value);
+                      setVisibleClassCount(7);
+                    }}
+                    options={shiftOptions}
+                    aria-label="Filtrar turmas por turno"
+                  />
                 </div>
               </div>
 
-              {availableClasses.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-gray-300 p-4 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                  Todas as turmas ativas já estão distribuídas para esta
-                  disciplina.
+              {filteredAvailableClasses.length === 0 ? (
+                <p className="mt-3 rounded-lg border border-dashed border-gray-300 bg-white p-4 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-400">
+                  {availableClasses.length === 0
+                    ? "Todas as turmas ativas já estão distribuídas para esta disciplina."
+                    : "Nenhuma turma corresponde aos filtros selecionados."}
                 </p>
               ) : (
                 <div className="max-h-72 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
                   <div className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-3 border-b border-gray-200 bg-gray-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400 md:grid-cols-[72px_minmax(0,1fr)_minmax(0,1fr)]">
-                    <span className="text-center">Selecionar</span>
+                    <span className="flex justify-center">
+                      <input
+                        type="checkbox"
+                        checked={areAllFilteredClassesSelected}
+                        onChange={toggleAllFilteredClasses}
+                        disabled={isLoading || isBusy}
+                        aria-label="Selecionar todas as turmas filtradas"
+                        className="h-5 w-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                    </span>
                     <span>Turma</span>
                     <span className="hidden md:block">Detalhes</span>
                   </div>
                   <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {availableClasses.map((item) => {
+                    {visibleAvailableClasses.map((item) => {
                       const checked = selectedClassIds.includes(item.id);
                       const details = [
                         item.course?.name,
@@ -390,6 +508,19 @@ export function SubjectClassesManager({
                       );
                     })}
                   </div>
+                  {filteredAvailableClasses.length > visibleClassCount && (
+                    <div className="flex justify-end border-t border-gray-100 px-4 py-2 dark:border-gray-700">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setVisibleClassCount((count) => count + 7)
+                        }
+                        className="text-sm font-medium text-blue-600 transition-colors hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        Mostrar mais
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -406,7 +537,7 @@ export function SubjectClassesManager({
                   selectedClassIds.length === 0
                 }
               >
-                Distribuir disciplina
+                Salvar
               </Button>
             </div>
           </div>
