@@ -691,7 +691,11 @@ export class ActivitiesService {
         },
         teacher: {
           include: {
-            user: true,
+            user: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
         questions: {
@@ -858,7 +862,13 @@ export class ActivitiesService {
           },
         },
         teacher: {
-          include: { user: true },
+          include: {
+            user: {
+              select: {
+                name: true,
+              },
+            },
+          },
         },
         questions: {
           include: {
