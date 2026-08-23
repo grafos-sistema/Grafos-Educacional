@@ -973,17 +973,28 @@ export class UsersService {
       }
     }
 
-    // Verifica CPF único se fornecido NESTA instituição
-    if (cpf) {
-      // Valida CPF
-      if (!this.validateCPF(cpf)) {
+    // A tela de edição pode reenviar o CPF já salvo junto com outros campos.
+    // Só validamos o documento quando ele realmente foi alterado, evitando
+    // que um cadastro legado com CPF inválido impeça mudanças no perfil.
+    const normalizedCpf =
+      typeof cpf === 'string' ? cpf.replace(/\D/g, '') : cpf;
+    const existingCpf =
+      typeof existingUser.cpf === 'string'
+        ? existingUser.cpf.replace(/\D/g, '')
+        : existingUser.cpf;
+    const cpfChanged =
+      cpf !== undefined && (normalizedCpf || null) !== (existingCpf || null);
+
+    // Verifica CPF único se ele foi alterado nesta instituição
+    if (cpfChanged && normalizedCpf) {
+      if (!this.validateCPF(normalizedCpf)) {
         throw new BadRequestException('CPF inválido');
       }
 
       const existingCPF = await this.prisma.$queryRaw<Array<{ id: string }>>`
         SELECT id
         FROM public.users
-        WHERE cpf = ${cpf}
+        WHERE cpf = ${normalizedCpf}
           AND (
             ("institutionId" = ${existingUser.institutionId})
             OR (${existingUser.institutionId} IS NULL AND "institutionId" IS NULL)
@@ -1068,7 +1079,7 @@ export class UsersService {
             data: {
               ...data,
               email: normalizedEmail,
-              cpf,
+              cpf: normalizedCpf,
               birthDate: parsedBirthDate,
               firstName,
               lastName,

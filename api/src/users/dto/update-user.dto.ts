@@ -16,6 +16,21 @@ import {
 export class UpdateUserDto extends PartialType(
   OmitType(CreateUserDto, ['password'] as const),
 ) {
+  /**
+   * O formulário de edição envia novamente os dados atuais do usuário.
+   * A validação de CPF alterado é feita no serviço, comparando com o valor
+   * já salvo, para não bloquear a edição de um cadastro legado que possua um
+   * CPF antigo inválido quando o usuário estiver apenas alterando o perfil.
+   */
+  @ApiProperty({
+    description: 'CPF (apenas números ou com formatação)',
+    example: '12345678901',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  cpf?: string;
+
   @ApiProperty({
     description: 'Status do usuário (ativo/inativo)',
     example: true,
