@@ -1,23 +1,27 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { MagnifyingGlassIcon, UserGroupIcon } from '@heroicons/react/24/outline';
-import { toast } from 'react-hot-toast';
-import { Modal } from '@/components/ui/Modal';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { usersService } from '@/services/users.service';
-import { teacherSubjectsService } from '@/services/teacher-subjects.service';
-import { useAuthStore } from '@/stores/authStore';
-import { UserRole } from '@/types/user.types';
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  MagnifyingGlassIcon,
+  UserGroupIcon,
+} from "@heroicons/react/24/outline";
+import { toast } from "react-hot-toast";
+import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { usersService } from "@/services/users.service";
+import { teacherSubjectsService } from "@/services/teacher-subjects.service";
+import { useAuthStore } from "@/stores/authStore";
+import { UserRole } from "@/types/user.types";
 
 interface SubjectTeachersModalProps {
   isOpen: boolean;
   onClose: () => void;
   subjectId: string | null;
   subjectName?: string;
+  readOnly?: boolean;
 }
 
 export function SubjectTeachersModal({
@@ -25,16 +29,21 @@ export function SubjectTeachersModal({
   onClose,
   subjectId,
   subjectName,
+  readOnly = false,
 }: SubjectTeachersModalProps) {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const currentRole = user?.activeProfile || user?.role;
-  const canManage = currentRole === UserRole.DIRECTOR || currentRole === UserRole.COORDINATOR;
-  const [search, setSearch] = useState('');
-  const [selectedTeacherIds, setSelectedTeacherIds] = useState<Set<string>>(new Set());
+  const canManage =
+    !readOnly &&
+    (currentRole === UserRole.DIRECTOR || currentRole === UserRole.COORDINATOR);
+  const [search, setSearch] = useState("");
+  const [selectedTeacherIds, setSelectedTeacherIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   const { data: teachersData, isLoading: loadingTeachers } = useQuery({
-    queryKey: ['subject-teachers-modal', 'teachers', user?.institutionId],
+    queryKey: ["subject-teachers-modal", "teachers", user?.institutionId],
     queryFn: () =>
       usersService.findAll({
         institutionId: user?.institutionId,
@@ -47,18 +56,20 @@ export function SubjectTeachersModal({
   });
 
   const { data: subjectTeachers = [], isLoading: loadingLinks } = useQuery({
-    queryKey: ['teacher-subjects', 'subject', subjectId],
+    queryKey: ["teacher-subjects", "subject", subjectId],
     queryFn: () => teacherSubjectsService.getBySubject(subjectId!),
     enabled: isOpen && Boolean(subjectId),
   });
 
   useEffect(() => {
     if (!isOpen) {
-      setSearch('');
+      setSearch("");
       return;
     }
 
-    setSelectedTeacherIds(new Set(subjectTeachers.map((item) => item.teacherId)));
+    setSelectedTeacherIds(
+      new Set(subjectTeachers.map((item) => item.teacherId)),
+    );
   }, [isOpen, subjectId, subjectTeachers]);
 
   const filteredTeachers = useMemo(() => {
@@ -86,8 +97,11 @@ export function SubjectTeachersModal({
 
   const saveMutation = useMutation({
     mutationFn: () => {
-      if (!canManage) throw new Error('Somente a Direção e a Coordenação podem alterar os professores.');
-      if (!subjectId) throw new Error('Disciplina não encontrada.');
+      if (!canManage)
+        throw new Error(
+          "Somente a Direção e a Coordenação podem alterar os professores.",
+        );
+      if (!subjectId) throw new Error("Disciplina não encontrada.");
       return teacherSubjectsService.syncSubjectTeachers(
         subjectId,
         Array.from(selectedTeacherIds),
@@ -95,15 +109,22 @@ export function SubjectTeachersModal({
     },
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['teacher-subjects', 'subject', subjectId] }),
-        queryClient.invalidateQueries({ queryKey: ['teacher-subjects'] }),
-        queryClient.invalidateQueries({ queryKey: ['coordinator-teacher-subjects'] }),
+        queryClient.invalidateQueries({
+          queryKey: ["teacher-subjects", "subject", subjectId],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["teacher-subjects"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["coordinator-teacher-subjects"],
+        }),
       ]);
-      toast.success('Professores da disciplina atualizados com sucesso!');
+      toast.success("Professores da disciplina atualizados com sucesso!");
       onClose();
     },
     onError: (error: any) => {
-      toast.error(error?.message || 'Não foi possível salvar os professores da disciplina.');
+      toast.error(
+        error?.message ||
+          "Não foi possível salvar os professores da disciplina.",
+      );
     },
   });
 
@@ -114,21 +135,27 @@ export function SubjectTeachersModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Professores da disciplina"
-      description={subjectName
-        ? canManage
-          ? `Selecione os professores habilitados para ${subjectName}.`
-          : `Professores habilitados para ${subjectName}.`
-        : undefined}
+      description={
+        subjectName
+          ? canManage
+            ? `Selecione os professores habilitados para ${subjectName}.`
+            : `Professores habilitados para ${subjectName}. A distribuição para turmas é feita no bloco abaixo da disciplina.`
+          : undefined
+      }
       size="lg"
-      footer={(
+      footer={
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm text-gray-500 dark:text-gray-400">
             {canManage
               ? `${selectedTeacherIds.size} professor(es) selecionado(s)`
-              : 'Somente consulta'}
+              : "Somente consulta"}
           </span>
           <div className="flex gap-3">
-            <Button variant="secondary" onClick={onClose} disabled={saveMutation.isPending}>
+            <Button
+              variant="secondary"
+              onClick={onClose}
+              disabled={saveMutation.isPending}
+            >
               Fechar
             </Button>
             {canManage && (
@@ -142,7 +169,7 @@ export function SubjectTeachersModal({
             )}
           </div>
         </div>
-      )}
+      }
     >
       <div className="space-y-4">
         <Input
@@ -159,7 +186,9 @@ export function SubjectTeachersModal({
           <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center dark:border-gray-700">
             <UserGroupIcon className="mx-auto mb-3 h-10 w-10 text-gray-400" />
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              {search ? 'Nenhum professor corresponde à busca.' : 'Nenhum professor ativo foi encontrado.'}
+              {search
+                ? "Nenhum professor corresponde à busca."
+                : "Nenhum professor ativo foi encontrado."}
             </p>
           </div>
         ) : (
@@ -173,8 +202,8 @@ export function SubjectTeachersModal({
                   key={teacher.id}
                   className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors ${
                     checked
-                      ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-900/20'
-                      : 'border-gray-200 hover:border-emerald-200 dark:border-gray-700 dark:hover:border-emerald-800'
+                      ? "border-emerald-300 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-900/20"
+                      : "border-gray-200 hover:border-emerald-200 dark:border-gray-700 dark:hover:border-emerald-800"
                   }`}
                 >
                   <input
@@ -192,7 +221,7 @@ export function SubjectTeachersModal({
                     />
                   ) : (
                     <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                      {teacher.firstName?.[0]?.toUpperCase() || 'P'}
+                      {teacher.firstName?.[0]?.toUpperCase() || "P"}
                     </span>
                   )}
                   <span className="min-w-0 flex-1">
@@ -203,7 +232,7 @@ export function SubjectTeachersModal({
                       {teacher.email}
                       {teacher.teacherProfile?.registrationNumber
                         ? ` • Matrícula ${teacher.teacherProfile.registrationNumber}`
-                        : ''}
+                        : ""}
                     </span>
                   </span>
                 </label>

@@ -6,11 +6,135 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateTeacherSubjectDto, BulkCreateTeacherSubjectDto } from './dto';
+import {
+  CreateTeacherSubjectDto,
+  BulkCreateTeacherSubjectDto,
+  DistributeSubjectDto,
+} from './dto';
 
 @Injectable()
 export class TeacherSubjectsService {
   constructor(private prisma: PrismaService) {}
+
+  private timeToMinutes(time: string) {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  }
+
+  private dayLabel(dayOfWeek: string) {
+    const labels: Record<string, string> = {
+      MONDAY: 'segunda-feira',
+      TUESDAY: 'terça-feira',
+      WEDNESDAY: 'quarta-feira',
+      THURSDAY: 'quinta-feira',
+      FRIDAY: 'sexta-feira',
+      SATURDAY: 'sábado',
+      SUNDAY: 'domingo',
+    };
+
+    return labels[dayOfWeek] || 'neste dia';
+  }
+
+  private async assertNoScheduleConflictOnAssignment(
+    teacherId: string,
+    classSubjectIds: string[],
+  ) {
+    if (classSubjectIds.length === 0) return;
+
+    const pendingSchedules = await this.prisma.classSchedule.findMany({
+      where: { classSubjectId: { in: classSubjectIds } },
+      select: {
+        id: true,
+        dayOfWeek: true,
+        startTime: true,
+        endTime: true,
+        classSubjectId: true,
+        class: { select: { name: true } },
+      },
+    });
+
+    if (pendingSchedules.length === 0) return;
+
+    const existingSchedules = await this.prisma.classSchedule.findMany({
+      where: {
+        classSubject: {
+          teacherId,
+          id: { notIn: classSubjectIds },
+        },
+      },
+      select: {
+        dayOfWeek: true,
+        startTime: true,
+        endTime: true,
+        class: { select: { name: true } },
+      },
+    });
+
+    const schedulesToCompare = [
+      ...existingSchedules.map((schedule) => ({
+        ...schedule,
+        source: 'existing',
+      })),
+      ...pendingSchedules.map((schedule) => ({
+        ...schedule,
+        source: schedule.id,
+      })),
+    ];
+
+    for (const pending of pendingSchedules) {
+      for (const existing of schedulesToCompare) {
+        if (existing.source === pending.id) continue;
+        if (existing.dayOfWeek !== pending.dayOfWeek) continue;
+
+        const hasOverlap =
+          this.timeToMinutes(pending.startTime) <
+            this.timeToMinutes(existing.endTime) &&
+          this.timeToMinutes(pending.endTime) >
+            this.timeToMinutes(existing.startTime);
+
+        if (!hasOverlap) continue;
+
+        throw new ConflictException(
+          `O professor já tem aula na turma ${existing.class.name} na ${this.dayLabel(pending.dayOfWeek)}, das ${existing.startTime} às ${existing.endTime}. Escolha outro professor ou revise os horários antes de distribuir.`,
+        );
+      }
+    }
+  }
+
+  private async assertTeacherSubjectCanBeRemoved(
+    teacherId: string,
+    subjectId: string,
+  ) {
+    const assignments = await this.prisma.classSubject.findMany({
+      where: { teacherId, subjectId },
+      select: {
+        class: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        class: {
+          name: 'asc',
+        },
+      },
+    });
+
+    if (assignments.length === 0) return;
+
+    const classNames = assignments
+      .map((assignment) => assignment.class.name)
+      .filter(Boolean);
+    const suffix =
+      classNames.length > 0
+        ? ` Turma(s): ${classNames.slice(0, 3).join(', ')}${classNames.length > 3 ? '...' : ''}.`
+        : '';
+
+    throw new ConflictException(
+      `Não é possível remover esta disciplina do professor enquanto ela estiver distribuída em uma turma.${suffix} Primeiro altere a distribuição da disciplina.`,
+    );
+  }
 
   async findAllByTeacher(teacherId: string) {
     const teacher = await this.prisma.teacher.findUnique({
@@ -187,6 +311,175 @@ export class TeacherSubjectsService {
     });
   }
 
+  async distributeSubject(
+    subjectId: string,
+    distributeDto: DistributeSubjectDto,
+  ) {
+    const uniqueClassIds = Array.from(new Set(distributeDto.classIds));
+
+    if (uniqueClassIds.length === 0) {
+      throw new BadRequestException('Selecione pelo menos uma turma.');
+    }
+
+    const [subject, teacher, classes, existingAssignments] = await Promise.all([
+      this.prisma.subject.findUnique({
+        where: { id: subjectId },
+        select: { id: true, name: true, institutionId: true },
+      }),
+      this.prisma.teacher.findUnique({
+        where: { id: distributeDto.teacherId },
+        select: {
+          id: true,
+          user: {
+            select: {
+              firstName: true,
+              lastName: true,
+              institutionId: true,
+            },
+          },
+        },
+      }),
+      this.prisma.class.findMany({
+        where: { id: { in: uniqueClassIds } },
+        select: { id: true, name: true, isActive: true, institutionId: true },
+      }),
+      this.prisma.classSubject.findMany({
+        where: {
+          subjectId,
+          classId: { in: uniqueClassIds },
+        },
+        select: {
+          id: true,
+          classId: true,
+          teacherId: true,
+          class: { select: { name: true } },
+          schedules: {
+            select: {
+              id: true,
+              dayOfWeek: true,
+              startTime: true,
+              endTime: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    if (!subject) {
+      throw new NotFoundException('Disciplina não encontrada.');
+    }
+
+    if (!teacher) {
+      throw new NotFoundException('Professor não encontrado.');
+    }
+
+    if (
+      !teacher.user.institutionId ||
+      teacher.user.institutionId !== subject.institutionId
+    ) {
+      throw new ForbiddenException(
+        'O professor e a disciplina precisam pertencer à mesma instituição.',
+      );
+    }
+
+    if (classes.length !== uniqueClassIds.length) {
+      throw new NotFoundException(
+        'Uma ou mais turmas não foram encontradas na instituição selecionada.',
+      );
+    }
+
+    const invalidClass = classes.find(
+      (item) => item.institutionId !== subject.institutionId || !item.isActive,
+    );
+    if (invalidClass) {
+      throw new BadRequestException(
+        `A turma ${invalidClass.name} não está ativa ou não pertence à instituição da disciplina.`,
+      );
+    }
+
+    const occupiedByAnotherTeacher = existingAssignments.filter(
+      (assignment) =>
+        assignment.teacherId &&
+        assignment.teacherId !== distributeDto.teacherId,
+    );
+
+    if (occupiedByAnotherTeacher.length > 0) {
+      const classNames = occupiedByAnotherTeacher
+        .map((assignment) => assignment.class.name)
+        .join(', ');
+      throw new ConflictException(
+        `A disciplina já possui outro professor vinculado à(s) turma(s): ${classNames}. Remova ou altere essa distribuição antes de continuar.`,
+      );
+    }
+
+    await this.assertNoScheduleConflictOnAssignment(
+      distributeDto.teacherId,
+      existingAssignments
+        .filter((assignment) => !assignment.teacherId)
+        .map((assignment) => assignment.id),
+    );
+
+    const existingByClassId = new Map(
+      existingAssignments.map((assignment) => [assignment.classId, assignment]),
+    );
+
+    return this.prisma.$transaction(async (transaction) => {
+      const teacherSubject = await transaction.teacherSubject.upsert({
+        where: {
+          teacherId_subjectId: {
+            teacherId: distributeDto.teacherId,
+            subjectId,
+          },
+        },
+        create: {
+          teacherId: distributeDto.teacherId,
+          subjectId,
+        },
+        update: {},
+      });
+
+      let created = 0;
+      let updated = 0;
+
+      for (const classId of uniqueClassIds) {
+        const existing = existingByClassId.get(classId);
+        const data = {
+          teacherId: distributeDto.teacherId,
+          ...(distributeDto.weeklyHours !== undefined
+            ? { weeklyHours: distributeDto.weeklyHours }
+            : {}),
+        };
+
+        if (existing) {
+          await transaction.classSubject.update({
+            where: { id: existing.id },
+            data,
+          });
+          updated += 1;
+        } else {
+          await transaction.classSubject.create({
+            data: {
+              classId,
+              subjectId,
+              ...data,
+            },
+          });
+          created += 1;
+        }
+      }
+
+      return {
+        teacherSubjectId: teacherSubject.id,
+        subjectId,
+        teacherId: distributeDto.teacherId,
+        classIds: uniqueClassIds,
+        created,
+        updated,
+        message: `${subject.name} distribuída para ${uniqueClassIds.length} turma(s) com sucesso.`,
+      };
+    });
+  }
+
   async bulkCreate(teacherId: string, bulkDto: BulkCreateTeacherSubjectDto) {
     // Verificar se professor existe
     const teacher = await this.prisma.teacher.findUnique({
@@ -259,6 +552,8 @@ export class TeacherSubjectsService {
   }
 
   async syncTeacherSubjects(teacherId: string, subjectIds: string[]) {
+    const uniqueSubjectIds = Array.from(new Set(subjectIds.filter(Boolean)));
+
     // Verificar se professor existe
     const teacher = await this.prisma.teacher.findUnique({
       where: { id: teacherId },
@@ -282,35 +577,47 @@ export class TeacherSubjectsService {
     }
 
     // Verificar se todas as disciplinas existem e pertencem à mesma instituição
-    if (subjectIds.length > 0) {
+    if (uniqueSubjectIds.length > 0) {
       const subjects = await this.prisma.subject.findMany({
         where: {
-          id: { in: subjectIds },
+          id: { in: uniqueSubjectIds },
           institutionId: teacher.user.institutionId,
         },
       });
 
-      if (subjects.length !== subjectIds.length) {
+      if (subjects.length !== uniqueSubjectIds.length) {
         throw new NotFoundException(
           'Uma ou mais disciplinas não foram encontradas ou não pertencem à instituição',
         );
       }
     }
 
-    // Deletar vínculos existentes
-    await this.prisma.teacherSubject.deleteMany({
+    const currentLinks = await this.prisma.teacherSubject.findMany({
       where: { teacherId },
+      select: { subjectId: true },
     });
+    const removedSubjectIds = currentLinks
+      .map((link) => link.subjectId)
+      .filter((subjectId) => !uniqueSubjectIds.includes(subjectId));
 
-    // Criar novos vínculos
-    if (subjectIds.length > 0) {
-      await this.prisma.teacherSubject.createMany({
-        data: subjectIds.map((subjectId) => ({
-          teacherId,
-          subjectId,
-        })),
-      });
+    for (const subjectId of removedSubjectIds) {
+      await this.assertTeacherSubjectCanBeRemoved(teacherId, subjectId);
     }
+
+    await this.prisma.$transaction(async (transaction) => {
+      await transaction.teacherSubject.deleteMany({
+        where: { teacherId },
+      });
+
+      if (uniqueSubjectIds.length > 0) {
+        await transaction.teacherSubject.createMany({
+          data: uniqueSubjectIds.map((subjectId) => ({
+            teacherId,
+            subjectId,
+          })),
+        });
+      }
+    });
 
     return this.findAllByTeacher(teacherId);
   }
@@ -353,6 +660,18 @@ export class TeacherSubjectsService {
       }
     }
 
+    const currentLinks = await this.prisma.teacherSubject.findMany({
+      where: { subjectId },
+      select: { teacherId: true },
+    });
+    const removedTeacherIds = currentLinks
+      .map((link) => link.teacherId)
+      .filter((teacherId) => !uniqueTeacherIds.includes(teacherId));
+
+    for (const teacherId of removedTeacherIds) {
+      await this.assertTeacherSubjectCanBeRemoved(teacherId, subjectId);
+    }
+
     await this.prisma.$transaction(async (transaction) => {
       await transaction.teacherSubject.deleteMany({ where: { subjectId } });
 
@@ -380,6 +699,8 @@ export class TeacherSubjectsService {
       throw new NotFoundException('Vínculo não encontrado');
     }
 
+    await this.assertTeacherSubjectCanBeRemoved(teacherId, subjectId);
+
     return this.prisma.teacherSubject.delete({
       where: {
         teacherId_subjectId: {
@@ -399,8 +720,6 @@ export class TeacherSubjectsService {
       throw new NotFoundException('Vínculo não encontrado');
     }
 
-    return this.prisma.teacherSubject.delete({
-      where: { id },
-    });
+    return this.remove(teacherSubject.teacherId, teacherSubject.subjectId);
   }
 }

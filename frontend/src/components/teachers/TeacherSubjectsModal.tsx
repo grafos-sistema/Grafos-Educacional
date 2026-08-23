@@ -18,6 +18,7 @@ interface TeacherSubjectsModalProps {
   onClose: () => void;
   teacherId: string | null;
   teacherName?: string;
+  removeOnly?: boolean;
 }
 
 export function TeacherSubjectsModal({
@@ -25,6 +26,7 @@ export function TeacherSubjectsModal({
   onClose,
   teacherId,
   teacherName,
+  removeOnly = true,
 }: TeacherSubjectsModalProps) {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
@@ -71,6 +73,7 @@ export function TeacherSubjectsModal({
 
   const toggleSubject = (subjectId: string) => {
     setSelectedSubjectIds((current) => {
+      if (removeOnly && !current.has(subjectId)) return current;
       const next = new Set(current);
       if (next.has(subjectId)) next.delete(subjectId);
       else next.add(subjectId);
@@ -109,7 +112,9 @@ export function TeacherSubjectsModal({
       title="Disciplinas do professor"
       description={teacherName
         ? canManage
-          ? `Selecione as disciplinas que ${teacherName} pode ministrar.`
+          ? removeOnly
+            ? `Revise as disciplinas de ${teacherName}. Novas disciplinas são distribuídas na página da disciplina; aqui você pode remover um vínculo existente.`
+            : `Selecione as disciplinas que ${teacherName} pode ministrar.`
           : `Disciplinas atribuídas a ${teacherName}.`
         : undefined}
       size="lg"
@@ -117,7 +122,9 @@ export function TeacherSubjectsModal({
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm text-gray-500 dark:text-gray-400">
             {canManage
-              ? `${selectedSubjectIds.size} disciplina(s) selecionada(s)`
+              ? removeOnly
+                ? `${selectedSubjectIds.size} disciplina(s) atualmente vinculada(s)`
+                : `${selectedSubjectIds.size} disciplina(s) selecionada(s)`
               : 'Somente consulta'}
           </span>
           <div className="flex gap-3">
@@ -172,7 +179,7 @@ export function TeacherSubjectsModal({
                     type="checkbox"
                     checked={checked}
                     onChange={() => toggleSubject(subject.id)}
-                    disabled={!canManage || saveMutation.isPending}
+                    disabled={!canManage || (removeOnly && !checked) || saveMutation.isPending}
                     className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                   <span

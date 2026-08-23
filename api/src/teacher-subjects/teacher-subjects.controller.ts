@@ -18,6 +18,7 @@ import { TeacherSubjectsService } from './teacher-subjects.service';
 import {
   CreateTeacherSubjectDto,
   BulkCreateTeacherSubjectDto,
+  DistributeSubjectDto,
   TeacherSubjectResponseDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -83,6 +84,26 @@ export class TeacherSubjectsController {
   })
   async getBySubject(@Param('subjectId') subjectId: string) {
     return this.teacherSubjectsService.findAllBySubject(subjectId);
+  }
+
+  @Post('subject/:subjectId/distribute')
+  @Roles(UserRole.COORDINATOR, UserRole.DIRECTOR)
+  @ApiOperation({
+    summary: 'Distribuir uma disciplina para um professor e várias turmas',
+  })
+  @ApiResponse({
+    status: 201,
+    description:
+      'Cria ou confirma o vínculo do professor com a disciplina e distribui a disciplina nas turmas selecionadas',
+  })
+  async distributeSubject(
+    @Param('subjectId') subjectId: string,
+    @Body() distributeDto: DistributeSubjectDto,
+  ) {
+    return this.teacherSubjectsService.distributeSubject(
+      subjectId,
+      distributeDto,
+    );
   }
 
   @Post('my-subjects')

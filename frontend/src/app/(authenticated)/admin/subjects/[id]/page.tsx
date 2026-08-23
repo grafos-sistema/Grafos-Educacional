@@ -1,45 +1,37 @@
-'use client';
+"use client";
 
-import { useRouter, useParams } from 'next/navigation';
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useRouter, useParams } from "next/navigation";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeftIcon,
   EyeIcon,
   PencilIcon,
   BookOpenIcon,
-  PlusIcon,
-} from '@heroicons/react/24/outline';
-import { subjectsService } from '@/services/subjects.service';
-import { teacherSubjectsService } from '@/services/teacher-subjects.service';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { SubjectTeachersModal } from '@/components/subjects/SubjectTeachersModal';
-import { SubjectClassesManager } from '@/components/subjects/SubjectClassesManager';
-import { useAuthStore } from '@/stores/authStore';
-import { UserRole } from '@/types/user.types';
+} from "@heroicons/react/24/outline";
+import { subjectsService } from "@/services/subjects.service";
+import { teacherSubjectsService } from "@/services/teacher-subjects.service";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { SubjectTeachersModal } from "@/components/subjects/SubjectTeachersModal";
+import { SubjectClassesManager } from "@/components/subjects/SubjectClassesManager";
 
 export default function SubjectDetailPage() {
   const router = useRouter();
   const params = useParams();
   const subjectId = params?.id as string;
-  const { user } = useAuthStore();
   const [isTeachersModalOpen, setIsTeachersModalOpen] = useState(false);
-  const currentRole = user?.activeProfile ?? user?.role;
-  const canManageTeacherLinks = [UserRole.COORDINATOR, UserRole.DIRECTOR].includes(
-    currentRole as UserRole,
-  );
 
   // Buscar disciplina
   const { data: subject, isLoading } = useQuery({
-    queryKey: ['subject', subjectId],
+    queryKey: ["subject", subjectId],
     queryFn: () => subjectsService.findOne(subjectId),
     enabled: !!subjectId,
   });
   const { data: subjectTeachers = [], isLoading: isLoadingTeachers } = useQuery(
     {
-      queryKey: ['subject-teachers', subjectId],
+      queryKey: ["subject-teachers", subjectId],
       queryFn: () => teacherSubjectsService.getBySubject(subjectId),
       enabled: Boolean(subjectId),
     },
@@ -64,7 +56,7 @@ export default function SubjectDetailPage() {
   }
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-BR');
+    return new Date(date).toLocaleDateString("pt-BR");
   };
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -72,7 +64,7 @@ export default function SubjectDetailPage() {
       <div className="mb-6">
         <Button
           variant="ghost"
-          onClick={() => router.push('/admin/subjects')}
+          onClick={() => router.push("/admin/subjects")}
           leftIcon={<ArrowLeftIcon className="h-5 w-5" />}
           className="mb-4"
         >
@@ -102,12 +94,12 @@ export default function SubjectDetailPage() {
           <div
             className="p-3 rounded-lg"
             style={{
-              backgroundColor: subject.color ? `${subject.color}20` : '#E5E7EB',
+              backgroundColor: subject.color ? `${subject.color}20` : "#E5E7EB",
             }}
           >
             <BookOpenIcon
               className="h-8 w-8"
-              style={{ color: subject.color || '#6B7280' }}
+              style={{ color: subject.color || "#6B7280" }}
             />
           </div>
           <div className="flex-1">
@@ -115,8 +107,8 @@ export default function SubjectDetailPage() {
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 {subject.name}
               </h2>
-              <Badge variant={subject.isActive ? 'success' : 'error'}>
-                {subject.isActive ? 'Ativo' : 'Inativo'}
+              <Badge variant={subject.isActive ? "success" : "error"}>
+                {subject.isActive ? "Ativo" : "Inativo"}
               </Badge>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
@@ -125,7 +117,7 @@ export default function SubjectDetailPage() {
                   Código
                 </label>
                 <span className="text-gray-900 dark:text-gray-100">
-                  {subject.code || '-'}
+                  {subject.code || "-"}
                 </span>
               </div>
             </div>
@@ -158,15 +150,13 @@ export default function SubjectDetailPage() {
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="info">{subjectTeachers.length}</Badge>
-            {canManageTeacherLinks && (
-              <Button
-                size="sm"
-                onClick={() => setIsTeachersModalOpen(true)}
-                leftIcon={<PlusIcon className="h-4 w-4" />}
-              >
-                Cadastrar professores
-              </Button>
-            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsTeachersModalOpen(true)}
+            >
+              Ver lista
+            </Button>
           </div>
         </div>
         {isLoadingTeachers ? (
@@ -183,7 +173,7 @@ export default function SubjectDetailPage() {
               const teacher = link.teacher?.user;
               const name = teacher
                 ? `${teacher.firstName} ${teacher.lastName}`.trim()
-                : 'Professor';
+                : "Professor";
               return (
                 <div
                   key={link.id}
@@ -208,7 +198,7 @@ export default function SubjectDetailPage() {
                       <p className="truncate text-sm text-gray-500 dark:text-gray-400">
                         {teacher?.email ||
                           teacher?.phone ||
-                          'Contato não informado'}
+                          "Contato não informado"}
                       </p>
                     </div>
                   </div>
@@ -216,9 +206,7 @@ export default function SubjectDetailPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() =>
-                        router.push(`/admin/users/${teacher.id}`)
-                      }
+                      onClick={() => router.push(`/admin/users/${teacher.id}`)}
                       aria-label={`Visualizar perfil de ${name}`}
                       title="Visualizar perfil"
                     >
@@ -268,6 +256,7 @@ export default function SubjectDetailPage() {
         onClose={() => setIsTeachersModalOpen(false)}
         subjectId={subjectId}
         subjectName={subject.name}
+        readOnly
       />
     </div>
   );

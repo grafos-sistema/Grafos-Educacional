@@ -1,19 +1,25 @@
-'use client';
+"use client";
 
-import { useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AcademicCapIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { classesService } from '@/services/classes.service';
-import { subjectsService } from '@/services/subjects.service';
-import { teacherSubjectsService } from '@/services/teacher-subjects.service';
-import { useAuthStore } from '@/stores/authStore';
-import { UserRole } from '@/types/user.types';
-import { Button } from '@/components/ui/Button';
-import { Select } from '@/components/ui/Select';
-import { Input } from '@/components/ui/Input';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { useToast } from '@/hooks/useToast';
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  AcademicCapIcon,
+  CheckCircleIcon,
+  MagnifyingGlassIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
+import { classesService } from "@/services/classes.service";
+import { subjectsService } from "@/services/subjects.service";
+import { teacherSubjectsService } from "@/services/teacher-subjects.service";
+import { usersService } from "@/services/users.service";
+import { useAuthStore } from "@/stores/authStore";
+import { UserRole } from "@/types/user.types";
+import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
+import { Input } from "@/components/ui/Input";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/hooks/useToast";
 
 interface SubjectClassesManagerProps {
   subjectId: string;
@@ -30,20 +36,22 @@ export function SubjectClassesManager({
   const toast = useToast();
   const { user } = useAuthStore();
   const currentRole = user?.activeProfile || user?.role;
-  const canManage = currentRole === UserRole.DIRECTOR || currentRole === UserRole.COORDINATOR;
-  const [classId, setClassId] = useState('');
-  const [teacherId, setTeacherId] = useState('');
-  const [weeklyHours, setWeeklyHours] = useState('');
+  const canManage =
+    currentRole === UserRole.DIRECTOR || currentRole === UserRole.COORDINATOR;
+  const [teacherId, setTeacherId] = useState("");
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
+  const [classSearch, setClassSearch] = useState("");
+  const [weeklyHours, setWeeklyHours] = useState("");
   const [removingLinkId, setRemovingLinkId] = useState<string | null>(null);
 
   const { data: subject, isLoading: loadingSubject } = useQuery({
-    queryKey: ['subject', subjectId],
+    queryKey: ["subject", subjectId],
     queryFn: () => subjectsService.findOne(subjectId),
     enabled: Boolean(subjectId),
   });
 
   const { data: classesData, isLoading: loadingClasses } = useQuery({
-    queryKey: ['classes', 'subject-class-manager', institutionId],
+    queryKey: ["classes", "subject-class-manager", institutionId],
     queryFn: () =>
       classesService.findAll({
         institutionId,
@@ -53,99 +61,145 @@ export function SubjectClassesManager({
     enabled: Boolean(institutionId),
   });
 
-  const { data: subjectTeachers = [], isLoading: loadingTeachers } = useQuery({
-    queryKey: ['teacher-subjects', 'subject', subjectId],
-    queryFn: () => teacherSubjectsService.getBySubject(subjectId),
-    enabled: Boolean(subjectId) && canManage,
+  const { data: teachersData, isLoading: loadingTeachers } = useQuery({
+    queryKey: ["subject-class-manager", "teachers", institutionId],
+    queryFn: () =>
+      usersService.findAll({
+        institutionId,
+        role: UserRole.TEACHER,
+        hasTeacherProfile: true,
+        isActive: true,
+        limit: 1000,
+      }),
+    enabled: canManage && Boolean(institutionId),
   });
 
-  const linkedClassIds = useMemo(
-    () => new Set((subject?.classSubjects ?? []).map((link) => link.class?.id).filter(Boolean)),
+  const assignedClassIds = useMemo(
+    () =>
+      new Set(
+        (subject?.classSubjects ?? [])
+          .filter((link) => Boolean(link.teacher?.id))
+          .map((link) => link.class?.id)
+          .filter((id): id is string => Boolean(id)),
+      ),
     [subject?.classSubjects],
   );
 
-  const availableClasses = useMemo(
-    () => [
-      { value: '', label: 'Selecione uma turma' },
-      ...(classesData?.data ?? [])
-        .filter((item) => !linkedClassIds.has(item.id))
-        .map((item) => ({
-          value: item.id,
-          label: [item.course?.name, item.name, item.shift].filter(Boolean).join(' • '),
-        })),
-    ],
-    [classesData?.data, linkedClassIds],
-  );
+  const availableClasses = useMemo(() => {
+    const normalizedSearch = classSearch.trim().toLocaleLowerCase();
+    return (classesData?.data ?? [])
+      .filter((item) => !assignedClassIds.has(item.id))
+      .filter((item) => {
+        if (!normalizedSearch) return true;
+        return [item.course?.name, item.name, item.grade, item.shift]
+          .filter(Boolean)
+          .join(" ")
+          .toLocaleLowerCase()
+          .includes(normalizedSearch);
+      });
+  }, [assignedClassIds, classSearch, classesData?.data]);
 
   const teacherOptions = useMemo(
     () => [
-      { value: '', label: 'Sem professor definido' },
-      ...subjectTeachers
-        .filter((item) => Boolean(item.teacher?.id))
-        .map((item) => ({
-          value: item.teacher!.id,
-          label: item.teacher?.user
-            ? `${item.teacher.user.firstName} ${item.teacher.user.lastName}`.trim()
-            : 'Professor',
+      { value: "", label: "Selecione o professor" },
+      ...(teachersData?.data ?? [])
+        .filter((teacher) => Boolean(teacher.teacherProfile?.id))
+        .map((teacher) => ({
+          value: teacher.teacherProfile!.id,
+          label: `${teacher.firstName} ${teacher.lastName}`.trim(),
         })),
     ],
-    [subjectTeachers],
+    [teachersData?.data],
   );
 
   const resetForm = () => {
-    setClassId('');
-    setTeacherId('');
-    setWeeklyHours('');
+    setTeacherId("");
+    setSelectedClassIds([]);
+    setClassSearch("");
+    setWeeklyHours("");
   };
 
   const invalidate = async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['subject', subjectId] }),
-      queryClient.invalidateQueries({ queryKey: ['subjects'] }),
-      queryClient.invalidateQueries({ queryKey: ['class-subjects'] }),
-      queryClient.invalidateQueries({ queryKey: ['teacher-classes'] }),
-      queryClient.invalidateQueries({ queryKey: ['classes'] }),
+      queryClient.invalidateQueries({ queryKey: ["subject", subjectId] }),
+      queryClient.invalidateQueries({ queryKey: ["subjects"] }),
+      queryClient.invalidateQueries({ queryKey: ["class-subjects"] }),
+      queryClient.invalidateQueries({ queryKey: ["teacher-classes"] }),
+      queryClient.invalidateQueries({ queryKey: ["classes"] }),
+      queryClient.invalidateQueries({ queryKey: ["teacher-subjects"] }),
+      queryClient.invalidateQueries({ queryKey: ["subject-teachers"] }),
     ]);
   };
 
-  const addMutation = useMutation({
+  const toggleClass = (classId: string) => {
+    setSelectedClassIds((current) =>
+      current.includes(classId)
+        ? current.filter((id) => id !== classId)
+        : [...current, classId],
+    );
+  };
+
+  const selectAllVisible = () => {
+    const visibleIds = availableClasses.map((item) => item.id);
+    setSelectedClassIds((current) => [...new Set([...current, ...visibleIds])]);
+  };
+
+  const clearVisible = () => {
+    const visibleIds = new Set(availableClasses.map((item) => item.id));
+    setSelectedClassIds((current) =>
+      current.filter((classId) => !visibleIds.has(classId)),
+    );
+  };
+
+  const distributeMutation = useMutation({
     mutationFn: () => {
       if (!canManage) {
-        throw new Error('Somente a Direção e a Coordenação podem vincular disciplinas às turmas.');
+        throw new Error(
+          "Somente a Direção e a Coordenação podem distribuir disciplinas.",
+        );
       }
-      if (!classId) throw new Error('Selecione uma turma para continuar.');
-      return classesService.addSubject({
-        classId,
+      if (!teacherId) throw new Error("Selecione o professor responsável.");
+      if (selectedClassIds.length === 0) {
+        throw new Error("Selecione pelo menos uma turma.");
+      }
+
+      return teacherSubjectsService.distributeSubject({
         subjectId,
-        teacherId: teacherId || undefined,
+        teacherId,
+        classIds: selectedClassIds,
         weeklyHours: weeklyHours ? Number(weeklyHours) : undefined,
       });
     },
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       await invalidate();
       resetForm();
-      toast.success('Disciplina vinculada à turma com sucesso!');
+      toast.success(result.message || "Distribuição salva com sucesso!");
     },
-    onError: (error: any) => toast.error(error?.message || 'Não foi possível vincular a disciplina.'),
+    onError: (error: any) =>
+      toast.error(error?.message || "Não foi possível salvar a distribuição."),
   });
 
   const removeMutation = useMutation({
     mutationFn: (linkId: string) => {
       if (!canManage) {
-        throw new Error('Somente a Direção e a Coordenação podem remover vínculos de disciplinas.');
+        throw new Error(
+          "Somente a Direção e a Coordenação podem remover vínculos.",
+        );
       }
       return classesService.removeSubject(linkId);
     },
     onSuccess: async () => {
       await invalidate();
       setRemovingLinkId(null);
-      toast.success('Vínculo removido da disciplina.');
+      toast.success("Vínculo removido da turma.");
     },
-    onError: (error: any) => toast.error(error?.message || 'Não foi possível remover o vínculo.'),
+    onError: (error: any) =>
+      toast.error(error?.message || "Não foi possível remover o vínculo."),
   });
 
-  const isLoading = loadingSubject || loadingClasses || (canManage && loadingTeachers);
-  const isBusy = addMutation.isPending || removeMutation.isPending;
+  const isLoading =
+    loadingSubject || loadingClasses || (canManage && loadingTeachers);
+  const isBusy = distributeMutation.isPending || removeMutation.isPending;
   const links = subject?.classSubjects ?? [];
 
   return (
@@ -154,12 +208,12 @@ export function SubjectClassesManager({
         <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Turmas com esta disciplina
+              Distribuição da disciplina
             </h2>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
               {canManage
-                ? `Defina em quais turmas ${subjectName ? `a disciplina ${subjectName}` : 'esta disciplina'} será ministrada e, se desejar, o professor responsável.`
-                : 'Consulte as turmas em que esta disciplina foi distribuída.'}
+                ? `Selecione o professor e uma ou várias turmas. O sistema cria automaticamente o vínculo de ${subjectName || "da disciplina"} e evita substituir outro professor já distribuído.`
+                : "Consulte as turmas e os professores responsáveis por esta disciplina."}
             </p>
           </div>
           <span className="rounded-full bg-primary-50 px-3 py-1 text-sm font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
@@ -168,51 +222,143 @@ export function SubjectClassesManager({
         </div>
 
         {canManage && (
-          <div className="mb-6 grid grid-cols-1 gap-4 rounded-xl border border-primary-100 bg-primary-50/40 p-4 dark:border-primary-900/40 dark:bg-primary-900/10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_140px_auto] lg:items-end">
-            <Select
-              label="Turma"
-              value={classId}
-              onChange={(event) => setClassId(event.target.value)}
-              options={availableClasses}
-              disabled={isLoading || isBusy}
-            />
-            <Select
-              label="Professor da disciplina"
-              value={teacherId}
-              onChange={(event) => setTeacherId(event.target.value)}
-              options={teacherOptions}
-              disabled={!classId || loadingTeachers || isBusy}
-            />
-            <Input
-              label="Horas/semana"
-              type="number"
-              min="1"
-              max="40"
-              value={weeklyHours}
-              onChange={(event) => setWeeklyHours(event.target.value)}
-              placeholder="Ex.: 4"
-              disabled={isBusy}
-            />
-            <Button
-              onClick={() => addMutation.mutate()}
-              isLoading={addMutation.isPending}
-              disabled={isLoading || isBusy || !classId}
-              className="w-full lg:w-auto"
-            >
-              Adicionar turma
-            </Button>
+          <div className="mb-6 rounded-xl border border-primary-100 bg-primary-50/40 p-4 dark:border-primary-900/40 dark:bg-primary-900/10">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_140px] lg:items-end">
+              <Select
+                label="Professor responsável"
+                value={teacherId}
+                onChange={(event) => setTeacherId(event.target.value)}
+                options={teacherOptions}
+                disabled={isLoading || isBusy}
+              />
+              <Input
+                label="Buscar turma"
+                value={classSearch}
+                onChange={(event) => setClassSearch(event.target.value)}
+                placeholder="Nome, curso, série ou turno"
+                leftIcon={
+                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                }
+                disabled={isLoading || isBusy}
+              />
+              <Input
+                label="Horas/semana"
+                type="number"
+                min="1"
+                max="40"
+                value={weeklyHours}
+                onChange={(event) => setWeeklyHours(event.target.value)}
+                placeholder="Ex.: 4"
+                disabled={isBusy}
+              />
+            </div>
+
+            <div className="mt-4 rounded-lg border border-white/80 bg-white p-3 dark:border-gray-700 dark:bg-gray-900/30">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    Turmas que receberão a disciplina
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {selectedClassIds.length} selecionada(s) de{" "}
+                    {availableClasses.length} disponível(is)
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAllVisible}
+                    disabled={
+                      isLoading || isBusy || availableClasses.length === 0
+                    }
+                  >
+                    Selecionar visíveis
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearVisible}
+                    disabled={isBusy || selectedClassIds.length === 0}
+                  >
+                    Limpar
+                  </Button>
+                </div>
+              </div>
+
+              {availableClasses.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-gray-300 p-4 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                  {classSearch
+                    ? "Nenhuma turma corresponde à busca."
+                    : "Todas as turmas ativas já estão distribuídas para esta disciplina."}
+                </p>
+              ) : (
+                <div className="grid max-h-60 grid-cols-1 gap-2 overflow-y-auto pr-1 md:grid-cols-2">
+                  {availableClasses.map((item) => {
+                    const checked = selectedClassIds.includes(item.id);
+                    const label = [item.course?.name, item.name, item.shift]
+                      .filter(Boolean)
+                      .join(" • ");
+                    return (
+                      <label
+                        key={item.id}
+                        className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+                          checked
+                            ? "border-emerald-300 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-900/20"
+                            : "border-gray-200 hover:border-emerald-200 dark:border-gray-700 dark:hover:border-emerald-800"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleClass(item.id)}
+                          disabled={isBusy}
+                          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium text-gray-900 dark:text-white">
+                            {label || item.name}
+                          </span>
+                          <span className="block text-xs text-gray-500 dark:text-gray-400">
+                            {item.grade || "Série não informada"}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <Button
+                type="button"
+                onClick={() => distributeMutation.mutate()}
+                isLoading={distributeMutation.isPending}
+                disabled={
+                  isLoading ||
+                  isBusy ||
+                  !teacherId ||
+                  selectedClassIds.length === 0
+                }
+              >
+                Distribuir disciplina
+              </Button>
+            </div>
           </div>
         )}
 
         {isLoading ? (
           <div className="flex justify-center py-8">
-            <LoadingSpinner size="md" text="Carregando turmas..." />
+            <LoadingSpinner size="md" text="Carregando distribuição..." />
           </div>
         ) : links.length === 0 ? (
           <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center dark:border-gray-700">
             <AcademicCapIcon className="mx-auto mb-3 h-10 w-10 text-gray-400" />
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Esta disciplina ainda não foi vinculada a nenhuma turma.
+              Esta disciplina ainda não foi distribuída para nenhuma turma.
             </p>
           </div>
         ) : (
@@ -222,37 +368,51 @@ export function SubjectClassesManager({
               const teacher = link.teacher?.user;
               const teacherName = teacher
                 ? `${teacher.firstName} ${teacher.lastName}`.trim()
-                : 'Professor não definido';
+                : "Professor não definido";
               return (
                 <div
                   key={link.id}
                   className="flex flex-col gap-3 rounded-xl border border-gray-200 p-4 dark:border-gray-700 md:flex-row md:items-center md:justify-between"
                 >
-                  <div className="min-w-0">
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {classInfo?.name ?? 'Turma'}
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {[classInfo?.course?.name, classInfo?.grade, classInfo?.shift]
-                        .filter(Boolean)
-                        .join(' • ') || 'Dados acadêmicos não informados'}
-                      {link.weeklyHours ? ` • ${link.weeklyHours}h/semana` : ''}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
                     {teacher?.avatar ? (
-                      <img src={teacher.avatar} alt="" className="h-9 w-9 rounded-full object-cover" />
+                      <img
+                        src={teacher.avatar}
+                        alt=""
+                        className="h-10 w-10 shrink-0 rounded-full object-cover"
+                      />
                     ) : (
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
                         {teacherName.charAt(0).toUpperCase()}
                       </span>
                     )}
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">{teacherName}</p>
-                      <p className="truncate text-xs text-gray-500 dark:text-gray-400">
-                        {teacher?.email || 'Sem contato informado'}
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {classInfo?.name ?? "Turma"}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {[
+                          classInfo?.course?.name,
+                          classInfo?.grade,
+                          classInfo?.shift,
+                        ]
+                          .filter(Boolean)
+                          .join(" • ") || "Dados acadêmicos não informados"}
+                        {link.weeklyHours
+                          ? ` • ${link.weeklyHours}h/semana`
+                          : ""}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        {teacherName}
+                        {teacher?.email ? ` • ${teacher.email}` : ""}
                       </p>
                     </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircleIcon
+                      className="h-5 w-5 text-emerald-600"
+                      aria-hidden="true"
+                    />
                     {canManage && (
                       <Button
                         variant="ghost"
@@ -275,9 +435,11 @@ export function SubjectClassesManager({
       <ConfirmDialog
         isOpen={Boolean(removingLinkId)}
         onClose={() => setRemovingLinkId(null)}
-        onConfirm={() => removingLinkId && removeMutation.mutate(removingLinkId)}
+        onConfirm={() =>
+          removingLinkId && removeMutation.mutate(removingLinkId)
+        }
         title="Remover disciplina da turma"
-        message="Este vínculo será removido. Os horários que usam essa disciplina podem precisar de revisão."
+        message="Este vínculo será removido. Os horários, notas e registros que dependem dele podem precisar de revisão."
         confirmText="Remover"
       />
     </>

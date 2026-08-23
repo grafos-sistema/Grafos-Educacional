@@ -1,6 +1,6 @@
-import { supabase } from '@/lib/supabase';
-import { fetchCurrentUserProfile } from '@/lib/auth-profile';
-import api from '@/lib/api';
+import { supabase } from "@/lib/supabase";
+import { fetchCurrentUserProfile } from "@/lib/auth-profile";
+import api from "@/lib/api";
 
 export interface TeacherSubject {
   id: string;
@@ -28,6 +28,23 @@ export interface TeacherSubject {
       avatar?: string | null;
     };
   };
+}
+
+export interface DistributeSubjectPayload {
+  subjectId: string;
+  teacherId: string;
+  classIds: string[];
+  weeklyHours?: number;
+}
+
+export interface DistributeSubjectResult {
+  teacherSubjectId: string;
+  subjectId: string;
+  teacherId: string;
+  classIds: string[];
+  created: number;
+  updated: number;
+  message: string;
 }
 
 type DbTeacherSubject = {
@@ -67,7 +84,7 @@ function mapTeacherSubject(row: DbTeacherSubject): TeacherSubject {
     updatedAt: row.updatedAt,
     subject: {
       id: row.subject?.id ?? row.subjectId,
-      name: row.subject?.name ?? '',
+      name: row.subject?.name ?? "",
       code: row.subject?.code ?? undefined,
       color: row.subject?.color ?? undefined,
       description: row.subject?.description ?? undefined,
@@ -89,7 +106,7 @@ export const teacherSubjectsService = {
     // regra de autorização no backend, isso evita que a listagem dependa de
     // uma política RLS diferente da usada nas demais telas do professor.
     const response = await api.get<DbTeacherSubject[]>(
-      '/teacher-subjects/my-subjects',
+      "/teacher-subjects/my-subjects",
     );
     return ((response as unknown as DbTeacherSubject[]) ?? []).map(
       mapTeacherSubject,
@@ -104,7 +121,7 @@ export const teacherSubjectsService = {
       const list = await teacherSubjectsService.getMySubjects();
       const existing = list.find((item) => item.subjectId === subjectId);
       if (!existing) {
-        throw new Error('Não foi possível adicionar a disciplina');
+        throw new Error("Não foi possível adicionar a disciplina");
       }
       return existing;
     }
@@ -112,7 +129,7 @@ export const teacherSubjectsService = {
     const list = await teacherSubjectsService.getMySubjects();
     const created = list.find((item) => item.subjectId === subjectId);
     if (!created) {
-      throw new Error('Não foi possível adicionar a disciplina');
+      throw new Error("Não foi possível adicionar a disciplina");
     }
     return created;
   },
@@ -125,19 +142,19 @@ export const teacherSubjectsService = {
     const teacherId = profile.teacherProfile?.id;
 
     if (!teacherId) {
-      throw new Error('Perfil de professor não encontrado');
+      throw new Error("Perfil de professor não encontrado");
     }
 
     const uniqueIds = Array.from(new Set(subjectIds)).filter(Boolean);
     if (uniqueIds.length === 0) {
-      return { created: 0, message: 'Nenhuma disciplina informada' };
+      return { created: 0, message: "Nenhuma disciplina informada" };
     }
 
     const { data: existing, error: existingError } = await supabase
-      .from('teacher_subjects')
-      .select('subjectId')
-      .eq('teacherId', teacherId)
-      .in('subjectId', uniqueIds);
+      .from("teacher_subjects")
+      .select("subjectId")
+      .eq("teacherId", teacherId)
+      .in("subjectId", uniqueIds);
 
     if (existingError) throw existingError;
 
@@ -149,7 +166,7 @@ export const teacherSubjectsService = {
     if (toCreate.length === 0) {
       return {
         created: 0,
-        message: 'Todas as disciplinas já estavam adicionadas',
+        message: "Todas as disciplinas já estavam adicionadas",
       };
     }
 
@@ -163,13 +180,13 @@ export const teacherSubjectsService = {
     }));
 
     const { error: insertError } = await supabase
-      .from('teacher_subjects')
+      .from("teacher_subjects")
       .insert(payload);
     if (insertError) throw insertError;
 
     return {
       created: toCreate.length,
-      message: 'Disciplinas adicionadas com sucesso',
+      message: "Disciplinas adicionadas com sucesso",
     };
   },
 
@@ -179,15 +196,15 @@ export const teacherSubjectsService = {
     const teacherId = profile.teacherProfile?.id;
 
     if (!teacherId) {
-      throw new Error('Perfil de professor não encontrado');
+      throw new Error("Perfil de professor não encontrado");
     }
 
     const uniqueIds = Array.from(new Set(subjectIds)).filter(Boolean);
 
     const { error: deleteError } = await supabase
-      .from('teacher_subjects')
+      .from("teacher_subjects")
       .delete()
-      .eq('teacherId', teacherId);
+      .eq("teacherId", teacherId);
 
     if (deleteError) throw deleteError;
 
@@ -202,7 +219,7 @@ export const teacherSubjectsService = {
       }));
 
       const { error: insertError } = await supabase
-        .from('teacher_subjects')
+        .from("teacher_subjects")
         .insert(payload);
 
       if (insertError) throw insertError;
@@ -217,14 +234,14 @@ export const teacherSubjectsService = {
     const teacherId = profile.teacherProfile?.id;
 
     if (!teacherId) {
-      throw new Error('Perfil de professor não encontrado');
+      throw new Error("Perfil de professor não encontrado");
     }
 
     const { error } = await supabase
-      .from('teacher_subjects')
+      .from("teacher_subjects")
       .delete()
-      .eq('teacherId', teacherId)
-      .eq('subjectId', subjectId);
+      .eq("teacherId", teacherId)
+      .eq("subjectId", subjectId);
 
     if (error) throw error;
   },
@@ -245,6 +262,22 @@ export const teacherSubjectsService = {
     );
     const data = response as unknown as DbTeacherSubject[];
     return (data ?? []).map(mapTeacherSubject);
+  },
+
+  // Direção/Coordenação: vincular professor, disciplina e várias turmas em uma operação
+  distributeSubject: async (
+    payload: DistributeSubjectPayload,
+  ): Promise<DistributeSubjectResult> => {
+    const response = await api.post<DistributeSubjectResult>(
+      `/teacher-subjects/subject/${payload.subjectId}/distribute`,
+      {
+        teacherId: payload.teacherId,
+        classIds: Array.from(new Set(payload.classIds)).filter(Boolean),
+        weeklyHours: payload.weeklyHours,
+      },
+    );
+
+    return response as unknown as DistributeSubjectResult;
   },
 
   // Admin: Sincronizar disciplinas de um professor
