@@ -156,7 +156,7 @@ export default function SubjectsPage() {
           >
             <EyeIcon className="h-5 w-5" />
           </button>
-          {currentRole === UserRole.COORDINATOR && (
+          {[UserRole.COORDINATOR, UserRole.DIRECTOR].includes(currentRole as UserRole) && (
             <button
               onClick={(e) => {
                 e.stopPropagation();

@@ -8,8 +8,6 @@ import {
   UserGroupIcon,
   ClockIcon,
   MagnifyingGlassIcon,
-  ExclamationTriangleIcon,
-  Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -17,7 +15,6 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { useState } from 'react';
-import Link from 'next/link';
 import { useTeacherClassSubjects } from '@/hooks/useTeacherClassSubjects';
 
 export default function MyClassesPage() {
@@ -71,7 +68,7 @@ export default function MyClassesPage() {
   );
 
   const isLoading = loadingSubjects;
-  const hasNoConfiguredSubjects = !loadingSubjects && teacherSubjects.length === 0;
+  const hasNoDistributedClasses = !loadingSubjects && teacherSubjects.length === 0;
 
   return (
     <div className="p-6">
@@ -89,33 +86,16 @@ export default function MyClassesPage() {
           Minhas Turmas
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Turmas disponíveis baseadas nas suas disciplinas configuradas
+          Turmas em que suas disciplinas foram distribuídas pela Direção ou Coordenação
         </p>
       </div>
 
-      {/* Alert if no subjects configured */}
-      {hasNoConfiguredSubjects && (
-        <div className="mb-6 rounded-lg bg-warning-50 p-4 border border-warning-200">
-          <div className="flex items-start">
-            <ExclamationTriangleIcon className="h-5 w-5 text-warning-400 mt-0.5" />
-            <div className="ml-3 flex-1">
-              <h3 className="text-sm font-medium text-warning-800">
-                Nenhuma disciplina configurada
-              </h3>
-              <p className="mt-1 text-sm text-warning-700">
-                Você precisa configurar quais disciplinas leciona para ver as turmas disponíveis.
-              </p>
-              <div className="mt-3">
-                <Link
-                  href="/professor/my-subjects"
-                  className="inline-flex items-center gap-2 text-sm font-medium text-warning-800 hover:text-warning-900"
-                >
-                  <Cog6ToothIcon className="h-4 w-4" />
-                  Configurar minhas disciplinas
-                </Link>
-              </div>
-            </div>
-          </div>
+      {hasNoDistributedClasses && (
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="font-medium">Nenhuma turma distribuída para você ainda.</p>
+          <p className="mt-1 text-amber-800">
+            A Direção ou a Coordenação precisa vincular suas disciplinas às turmas para que elas apareçam aqui.
+          </p>
         </div>
       )}
 
@@ -185,11 +165,6 @@ export default function MyClassesPage() {
             leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
           />
         </div>
-        <Link href="/professor/my-subjects">
-          <Button variant="secondary" leftIcon={<Cog6ToothIcon className="h-4 w-4" />}>
-            Configurar Disciplinas
-          </Button>
-        </Link>
       </div>
 
       {/* Lista de Turmas */}
@@ -309,21 +284,6 @@ export default function MyClassesPage() {
               </div>
             </div>
           ))}
-        </div>
-      ) : hasNoConfiguredSubjects ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
-          <Cog6ToothIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            Configure suas disciplinas
-          </h3>
-          <p className="text-gray-500 dark:text-gray-400 mb-4">
-            Selecione quais disciplinas você leciona para ver as turmas disponíveis
-          </p>
-          <Link href="/professor/my-subjects">
-            <Button leftIcon={<Cog6ToothIcon className="h-4 w-4" />}>
-              Configurar Disciplinas
-            </Button>
-          </Link>
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">

@@ -37,7 +37,7 @@ import { teacherSubjectsService } from '@/services/teacher-subjects.service';
    const { user } = useAuthStore();
    const currentRole = user?.activeProfile || user?.role;
    const canManageClassSubjects =
-     currentRole === UserRole.SUPER_ADMIN || currentRole === UserRole.COORDINATOR;
+     currentRole === UserRole.DIRECTOR || currentRole === UserRole.COORDINATOR;
 
    const [subjectId, setSubjectId] = useState('');
    const [teacherId, setTeacherId] = useState('');
@@ -124,7 +124,7 @@ import { teacherSubjectsService } from '@/services/teacher-subjects.service';
    const createMutation = useMutation({
      mutationFn: async () => {
        if (!canManageClassSubjects) {
-         throw new Error('Somente Super Admin e Coordenação podem vincular disciplinas às turmas.');
+         throw new Error('Somente a Direção e a Coordenação podem vincular disciplinas às turmas.');
        }
 
        if (!subjectId) {
@@ -151,7 +151,7 @@ import { teacherSubjectsService } from '@/services/teacher-subjects.service';
    const removeMutation = useMutation({
      mutationFn: (classSubjectId: string) => {
        if (!canManageClassSubjects) {
-         throw new Error('Somente Super Admin e Coordenação podem remover vínculos de disciplinas.');
+         throw new Error('Somente a Direção e a Coordenação podem remover vínculos de disciplinas.');
        }
 
        return classesService.removeSubject(classSubjectId);
@@ -277,6 +277,54 @@ import { teacherSubjectsService } from '@/services/teacher-subjects.service';
                  ) : null}
                </div>
              ))}
+           </div>
+         )}
+
+         {!loadingClassSubjects && classSubjects.length > 0 && (
+           <div className="mt-6 border-t border-gray-200 pt-5 dark:border-gray-700">
+             <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+               Professores da turma
+             </h3>
+             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+               Professores que possuem uma disciplina distribuída nesta turma.
+             </p>
+             <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+               {Array.from(
+                 new Map(
+                   classSubjects
+                     .filter((item) => item.teacher?.id)
+                     .map((item) => [item.teacher!.id, item.teacher!]),
+                 ).values(),
+               ).map((teacher) => {
+                 const name = `${teacher.firstName ?? ''} ${teacher.lastName ?? ''}`.trim();
+                 return (
+                   <div
+                     key={teacher.id}
+                     className="flex items-center gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700"
+                   >
+                     {teacher.avatar ? (
+                       <img
+                         src={teacher.avatar}
+                         alt=""
+                         className="h-9 w-9 rounded-full object-cover"
+                       />
+                     ) : (
+                       <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                         {name.charAt(0).toUpperCase() || 'P'}
+                       </span>
+                     )}
+                     <div className="min-w-0">
+                       <p className="truncate font-medium text-gray-900 dark:text-white">
+                         {name || 'Professor'}
+                       </p>
+                       <p className="truncate text-xs text-gray-500 dark:text-gray-400">
+                         {teacher.email || 'Contato não informado'}
+                       </p>
+                     </div>
+                   </div>
+                 );
+               })}
+             </div>
            </div>
          )}
        </div>

@@ -44,6 +44,7 @@ type ApiEnrollment = {
       lastName: string;
       email: string;
       cpf?: string | null;
+      avatar?: string | null;
     } | null;
   } | null;
 };
@@ -103,6 +104,7 @@ function mapEnrollment(row: ApiEnrollment): ClassEnrollment {
           lastName: row.student.user?.lastName ?? '',
           email: row.student.user?.email ?? '',
           cpf: row.student.user?.cpf ?? undefined,
+          avatar: row.student.user?.avatar ?? undefined,
         }
       : undefined,
   };

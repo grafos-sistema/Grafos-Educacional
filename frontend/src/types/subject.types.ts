@@ -8,6 +8,30 @@ export interface Subject {
   institutionId: string;
   createdAt: string;
   updatedAt: string;
+  classSubjects?: Array<{
+    id: string;
+    weeklyHours?: number | null;
+    class?: {
+      id: string;
+      name: string;
+      grade?: string;
+      section?: string | null;
+      shift?: string | null;
+      isActive?: boolean;
+      course?: { id: string; name: string } | null;
+    };
+    teacher?: {
+      id: string;
+      user?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email?: string | null;
+        phone?: string | null;
+        avatar?: string | null;
+      } | null;
+    } | null;
+  }>;
 }
 
 export interface CreateSubjectDto {

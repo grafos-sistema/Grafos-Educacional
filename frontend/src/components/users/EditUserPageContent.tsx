@@ -111,9 +111,6 @@ export function EditUserPageContent({
 
   const callerRole = activeProfile ?? currentUser?.role;
   const canManageTeacherAssignments = [
-    UserRole.SUPER_ADMIN_GLOBAL,
-    UserRole.SUPER_ADMIN,
-    UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
     UserRole.DIRECTOR,
   ].includes(callerRole as UserRole);
@@ -420,6 +417,11 @@ export function EditUserPageContent({
                           return {
                             id: index + 1,
                             linkId: p.id,
+                            // Keep the database relationship identifiers in the
+                            // form. The sync function can then update the same
+                            // parent even when CPF/e-mail are blank or changed.
+                            parentId: p.parentId,
+                            parentUserId: parentUser.id,
                             nome:
                               parentUser.name ||
                               `${parentUser.firstName || ''} ${parentUser.lastName || ''}`.trim() ||

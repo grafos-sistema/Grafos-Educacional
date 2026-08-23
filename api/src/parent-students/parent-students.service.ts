@@ -60,8 +60,10 @@ export class ParentStudentsService {
             user: {
               select: {
                 id: true,
+                name: true,
                 firstName: true,
                 lastName: true,
+                cpf: true,
                 email: true,
                 phone: true,
               },
@@ -126,9 +128,11 @@ export class ParentStudentsService {
             user: {
               select: {
                 id: true,
+                name: true,
                 firstName: true,
                 lastName: true,
                 email: true,
+                cpf: true,
                 phone: true,
               },
             },
@@ -202,8 +206,10 @@ export class ParentStudentsService {
             user: {
               select: {
                 id: true,
+                name: true,
                 firstName: true,
                 lastName: true,
+                cpf: true,
                 email: true,
                 phone: true,
                 whatsapp: true,

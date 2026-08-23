@@ -144,8 +144,45 @@ Deno.serve(async (req) => {
       let parentUserId: string | null = null;
       let parentProfileId: string | null = null;
 
+      // Prefer the existing relationship sent by the edit screen. This is
+      // essential for responsible records without e-mail/CPF: matching only
+      // by those fields could create a second parent and leave the old date
+      // disconnected from the student.
+      if (resp.linkId || resp.parentId) {
+        let linkQuery = supabase
+          .from("student_parents")
+          .select("id, parentId, parents!inner(id, userId)")
+          .eq("studentId", studentId);
+
+        if (resp.linkId) {
+          linkQuery = linkQuery.eq("id", resp.linkId);
+        } else {
+          linkQuery = linkQuery.eq("parentId", resp.parentId);
+        }
+
+        const { data: existingLink } = await linkQuery.maybeSingle();
+        const existingParent = (existingLink as any)?.parents;
+        if (existingParent) {
+          parentProfileId = existingParent.id;
+          parentUserId = existingParent.userId;
+        }
+      }
+
+      if (!parentUserId && resp.parentUserId) {
+        const { data: existingParent } = await supabase
+          .from("parents")
+          .select("id, userId")
+          .eq("id", resp.parentId)
+          .eq("userId", resp.parentUserId)
+          .maybeSingle();
+        if (existingParent) {
+          parentProfileId = existingParent.id;
+          parentUserId = existingParent.userId;
+        }
+      }
+
       // Tentar encontrar responsável existente por CPF (prioritário) ou email
-      if (resp.cpf || resp.email) {
+      if (!parentUserId && (resp.cpf || resp.email)) {
         let query = supabase
           .from("users")
           .select("id")
@@ -162,30 +199,37 @@ Deno.serve(async (req) => {
         const { data: existingParent } = await query.maybeSingle();
         if (existingParent) {
           parentUserId = existingParent.id;
+        }
+      }
 
-          // Atualizar dados do responsável existente
-          const { error: parentUpdateError } = await supabase
-            .from("users")
-            .update({
-              name: nomeCompleto,
-              firstName: primeiroNome,
-              lastName: ultimoNome,
-              phone: resp.celular ?? null,
-              whatsapp: resp.whatsapp ?? null,
-              birthDate: responsibleBirthDate,
-              updatedAt: now,
-            })
-            .eq("id", parentUserId);
+      // Independentemente de como o responsável foi localizado (vínculo,
+      // CPF ou e-mail), os dados pessoais precisam ser atualizados no mesmo
+      // usuário. Antes, a atualização só acontecia no caminho de CPF/e-mail;
+      // por isso a data preenchida em um vínculo já existente era perdida ao
+      // reabrir a edição.
+      if (parentUserId) {
+        const { error: parentUpdateError } = await supabase
+          .from("users")
+          .update({
+            name: nomeCompleto,
+            firstName: primeiroNome,
+            lastName: ultimoNome,
+            cpf: resp.cpf ?? undefined,
+            phone: resp.celular ?? null,
+            whatsapp: resp.whatsapp ?? null,
+            birthDate: responsibleBirthDate,
+            updatedAt: now,
+          })
+          .eq("id", parentUserId);
 
-          if (parentUpdateError) {
-            return json(
-              {
-                error: "failed_to_update_parent_user",
-                details: parentUpdateError.message,
-              },
-              500,
-            );
-          }
+        if (parentUpdateError) {
+          return json(
+            {
+              error: "failed_to_update_parent_user",
+              details: parentUpdateError.message,
+            },
+            500,
+          );
         }
       }
 
@@ -260,37 +304,40 @@ Deno.serve(async (req) => {
       }
 
       if (parentUserId) {
-        const { data: pProfile } = await supabase
-          .from("parents")
-          .select("id")
-          .eq("userId", parentUserId)
-          .maybeSingle();
-
-        if (pProfile) {
-          parentProfileId = pProfile.id;
-        } else {
-          parentProfileId = crypto.randomUUID();
-          const { error: parentProfileError } = await supabase
+        if (!parentProfileId) {
+          const { data: pProfile } = await supabase
             .from("parents")
-            .insert({
-              id: parentProfileId,
-              userId: parentUserId,
-              createdAt: now,
-              updatedAt: now,
-            });
+            .select("id")
+            .eq("userId", parentUserId)
+            .maybeSingle();
 
-          if (parentProfileError) {
-            return json(
-              {
-                error: "failed_to_create_parent_profile",
-                details: parentProfileError.message,
-              },
-              500,
-            );
+          if (pProfile) {
+            parentProfileId = pProfile.id;
+          } else {
+            parentProfileId = crypto.randomUUID();
+            const { error: parentProfileError } = await supabase
+              .from("parents")
+              .insert({
+                id: parentProfileId,
+                userId: parentUserId,
+                createdAt: now,
+                updatedAt: now,
+              });
+
+            if (parentProfileError) {
+              return json(
+                {
+                  error: "failed_to_create_parent_profile",
+                  details: parentProfileError.message,
+                },
+                500,
+              );
+            }
           }
         }
 
-        // Verificar se o vínculo já existe
+        // Verificar se o vínculo já existe e sempre atualizar seus dados,
+        // inclusive quando o vínculo veio da própria tela de edição.
         const { data: existingLink } = await supabase
           .from("student_parents")
           .select("id")
@@ -344,6 +391,7 @@ Deno.serve(async (req) => {
           }
         }
       }
+
     }
 
     // 3. Remove links that were deleted in the UI

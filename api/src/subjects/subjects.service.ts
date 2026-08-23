@@ -180,9 +180,12 @@ export class SubjectsService {
                 user: {
                   select: {
                     id: true,
+                    name: true,
                     firstName: true,
                     lastName: true,
                     email: true,
+                    phone: true,
+                    avatar: true,
                   },
                 },
               },
@@ -192,10 +195,18 @@ export class SubjectsService {
                 id: true,
                 name: true,
                 grade: true,
+                section: true,
+                shift: true,
+                isActive: true,
+                course: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
               },
             },
           },
-          take: 10,
         },
         _count: {
           select: {

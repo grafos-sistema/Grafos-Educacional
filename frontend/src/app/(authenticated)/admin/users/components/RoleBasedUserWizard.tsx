@@ -1698,9 +1698,8 @@ export function RoleBasedUserWizard({
                 {!canManageTeacherAssignments && (
                   <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
                     As disciplinas vinculadas ao professor estão disponíveis
-                    apenas para consulta nesta tela. A Coordenação, o
-                    Administrador da Instituição ou o Super Admin é responsável
-                    por incluir ou remover esses vínculos.
+                    apenas para consulta nesta tela. A Direção ou a Coordenação
+                    é responsável por incluir ou remover esses vínculos.
                   </div>
                 )}
 

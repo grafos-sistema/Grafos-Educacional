@@ -1,23 +1,35 @@
 'use client';
 
 import { useRouter, useParams } from 'next/navigation';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeftIcon,
   EyeIcon,
   PencilIcon,
   BookOpenIcon,
+  PlusIcon,
 } from '@heroicons/react/24/outline';
 import { subjectsService } from '@/services/subjects.service';
 import { teacherSubjectsService } from '@/services/teacher-subjects.service';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { SubjectTeachersModal } from '@/components/subjects/SubjectTeachersModal';
+import { SubjectClassesManager } from '@/components/subjects/SubjectClassesManager';
+import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/user.types';
 
 export default function SubjectDetailPage() {
   const router = useRouter();
   const params = useParams();
   const subjectId = params?.id as string;
+  const { user } = useAuthStore();
+  const [isTeachersModalOpen, setIsTeachersModalOpen] = useState(false);
+  const currentRole = user?.activeProfile ?? user?.role;
+  const canManageTeacherLinks = [UserRole.COORDINATOR, UserRole.DIRECTOR].includes(
+    currentRole as UserRole,
+  );
 
   // Buscar disciplina
   const { data: subject, isLoading } = useQuery({
@@ -54,7 +66,6 @@ export default function SubjectDetailPage() {
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('pt-BR');
   };
-
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -145,7 +156,18 @@ export default function SubjectDetailPage() {
               Professores vinculados a esta disciplina e seus dados de contato.
             </p>
           </div>
-          <Badge variant="info">{subjectTeachers.length}</Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="info">{subjectTeachers.length}</Badge>
+            {canManageTeacherLinks && (
+              <Button
+                size="sm"
+                onClick={() => setIsTeachersModalOpen(true)}
+                leftIcon={<PlusIcon className="h-4 w-4" />}
+              >
+                Cadastrar professores
+              </Button>
+            )}
+          </div>
         </div>
         {isLoadingTeachers ? (
           <div className="py-6">
@@ -210,6 +232,12 @@ export default function SubjectDetailPage() {
         )}
       </div>
 
+      <SubjectClassesManager
+        subjectId={subjectId}
+        institutionId={subject.institutionId}
+        subjectName={subject.name}
+      />
+
       {/* Informações do Sistema */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -234,6 +262,13 @@ export default function SubjectDetailPage() {
           </div>
         </div>
       </div>
+
+      <SubjectTeachersModal
+        isOpen={isTeachersModalOpen}
+        onClose={() => setIsTeachersModalOpen(false)}
+        subjectId={subjectId}
+        subjectName={subject.name}
+      />
     </div>
   );
 }

@@ -293,11 +293,11 @@ export class ClassesController {
 
   @Post(':classId/subjects')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.COORDINATOR)
+  @Roles(UserRole.DIRECTOR, UserRole.COORDINATOR)
   @ApiOperation({
     summary: 'Adicionar disciplina à turma',
     description:
-      'Apenas SUPER_ADMIN e COORDINATOR podem adicionar disciplina a uma turma específica',
+      'DIRECTOR e COORDINATOR podem adicionar disciplina a uma turma específica',
   })
   @ApiResponse({
     status: 201,
@@ -322,7 +322,7 @@ export class ClassesController {
 
   @Post(':classId/enrollments')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
   @ApiOperation({
     summary: 'Matricular aluno na turma',
     description:
@@ -345,7 +345,7 @@ export class ClassesController {
 
   @Delete(':classId/enrollments/:studentId')
   @UseGuards(InstitutionAdminGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR)
   @ApiOperation({
     summary: 'Remover matrícula do aluno',
     description: 'Remove a matrícula de um aluno específico da turma',

@@ -11,6 +11,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { subjectsService } from '@/services/subjects.service';
 import { teacherSubjectsService } from '@/services/teacher-subjects.service';
 import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/user.types';
 
 interface TeacherSubjectsModalProps {
   isOpen: boolean;
@@ -27,6 +28,8 @@ export function TeacherSubjectsModal({
 }: TeacherSubjectsModalProps) {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const currentRole = user?.activeProfile || user?.role;
+  const canManage = currentRole === UserRole.DIRECTOR || currentRole === UserRole.COORDINATOR;
   const [search, setSearch] = useState('');
   const [selectedSubjectIds, setSelectedSubjectIds] = useState<Set<string>>(new Set());
 
@@ -77,6 +80,7 @@ export function TeacherSubjectsModal({
 
   const saveMutation = useMutation({
     mutationFn: () => {
+      if (!canManage) throw new Error('Somente a Direção e a Coordenação podem alterar as disciplinas do professor.');
       if (!teacherId) throw new Error('Professor não encontrado.');
       return teacherSubjectsService.syncTeacherSubjects(
         teacherId,
@@ -103,24 +107,32 @@ export function TeacherSubjectsModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Disciplinas do professor"
-      description={teacherName ? `Selecione as disciplinas que ${teacherName} pode ministrar.` : undefined}
+      description={teacherName
+        ? canManage
+          ? `Selecione as disciplinas que ${teacherName} pode ministrar.`
+          : `Disciplinas atribuídas a ${teacherName}.`
+        : undefined}
       size="lg"
       footer={(
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            {selectedSubjectIds.size} disciplina(s) selecionada(s)
+            {canManage
+              ? `${selectedSubjectIds.size} disciplina(s) selecionada(s)`
+              : 'Somente consulta'}
           </span>
           <div className="flex gap-3">
             <Button variant="secondary" onClick={onClose} disabled={saveMutation.isPending}>
-              Cancelar
+              Fechar
             </Button>
-            <Button
-              onClick={() => saveMutation.mutate()}
-              isLoading={saveMutation.isPending}
-              disabled={isLoading || !teacherId}
-            >
-              Salvar disciplinas
-            </Button>
+            {canManage && (
+              <Button
+                onClick={() => saveMutation.mutate()}
+                isLoading={saveMutation.isPending}
+                disabled={isLoading || !teacherId}
+              >
+                Salvar disciplinas
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -160,7 +172,7 @@ export function TeacherSubjectsModal({
                     type="checkbox"
                     checked={checked}
                     onChange={() => toggleSubject(subject.id)}
-                    disabled={saveMutation.isPending}
+                    disabled={!canManage || saveMutation.isPending}
                     className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                   <span

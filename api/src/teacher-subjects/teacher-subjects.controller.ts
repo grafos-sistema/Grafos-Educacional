@@ -86,8 +86,8 @@ export class TeacherSubjectsController {
   }
 
   @Post('my-subjects')
-  @Roles(UserRole.TEACHER)
-  @ApiOperation({ summary: 'Adicionar disciplina às minhas disciplinas' })
+  @Roles(UserRole.COORDINATOR, UserRole.DIRECTOR)
+  @ApiOperation({ summary: 'Adicionar disciplina a um professor' })
   @ApiResponse({
     status: 201,
     description: 'Disciplina adicionada',
@@ -109,8 +109,8 @@ export class TeacherSubjectsController {
   }
 
   @Post('my-subjects/bulk')
-  @Roles(UserRole.TEACHER)
-  @ApiOperation({ summary: 'Adicionar múltiplas disciplinas' })
+  @Roles(UserRole.COORDINATOR, UserRole.DIRECTOR)
+  @ApiOperation({ summary: 'Adicionar múltiplas disciplinas a um professor' })
   @ApiResponse({
     status: 201,
     description: 'Disciplinas adicionadas',
@@ -131,8 +131,8 @@ export class TeacherSubjectsController {
   }
 
   @Put('my-subjects/sync')
-  @Roles(UserRole.TEACHER)
-  @ApiOperation({ summary: 'Sincronizar disciplinas (substitui todas)' })
+  @Roles(UserRole.COORDINATOR, UserRole.DIRECTOR)
+  @ApiOperation({ summary: 'Sincronizar disciplinas de um professor' })
   @ApiResponse({
     status: 200,
     description: 'Disciplinas sincronizadas',
@@ -157,8 +157,8 @@ export class TeacherSubjectsController {
   }
 
   @Delete('my-subjects/:subjectId')
-  @Roles(UserRole.TEACHER)
-  @ApiOperation({ summary: 'Remover disciplina das minhas disciplinas' })
+  @Roles(UserRole.COORDINATOR, UserRole.DIRECTOR)
+  @ApiOperation({ summary: 'Remover disciplina de um professor' })
   @ApiResponse({
     status: 200,
     description: 'Disciplina removida',
@@ -179,13 +179,7 @@ export class TeacherSubjectsController {
   }
 
   @Post('teacher/:teacherId')
-  @Roles(
-    UserRole.SUPER_ADMIN_GLOBAL,
-    UserRole.SUPER_ADMIN,
-    UserRole.INSTITUTION_ADMIN,
-    UserRole.COORDINATOR,
-    UserRole.DIRECTOR,
-  )
+  @Roles(UserRole.COORDINATOR, UserRole.DIRECTOR)
   @ApiOperation({ summary: 'Adicionar disciplina a um professor' })
   @ApiResponse({
     status: 201,
@@ -200,13 +194,7 @@ export class TeacherSubjectsController {
   }
 
   @Put('teacher/:teacherId/sync')
-  @Roles(
-    UserRole.SUPER_ADMIN_GLOBAL,
-    UserRole.SUPER_ADMIN,
-    UserRole.INSTITUTION_ADMIN,
-    UserRole.COORDINATOR,
-    UserRole.DIRECTOR,
-  )
+  @Roles(UserRole.COORDINATOR, UserRole.DIRECTOR)
   @ApiOperation({ summary: 'Sincronizar disciplinas de um professor' })
   @ApiResponse({
     status: 200,
@@ -224,13 +212,7 @@ export class TeacherSubjectsController {
   }
 
   @Put('subject/:subjectId/sync')
-  @Roles(
-    UserRole.SUPER_ADMIN_GLOBAL,
-    UserRole.SUPER_ADMIN,
-    UserRole.INSTITUTION_ADMIN,
-    UserRole.COORDINATOR,
-    UserRole.DIRECTOR,
-  )
+  @Roles(UserRole.COORDINATOR, UserRole.DIRECTOR)
   @ApiOperation({ summary: 'Sincronizar professores de uma disciplina' })
   @ApiResponse({
     status: 200,
@@ -248,13 +230,7 @@ export class TeacherSubjectsController {
   }
 
   @Delete('teacher/:teacherId/:subjectId')
-  @Roles(
-    UserRole.SUPER_ADMIN_GLOBAL,
-    UserRole.SUPER_ADMIN,
-    UserRole.INSTITUTION_ADMIN,
-    UserRole.COORDINATOR,
-    UserRole.DIRECTOR,
-  )
+  @Roles(UserRole.COORDINATOR, UserRole.DIRECTOR)
   @ApiOperation({ summary: 'Remover disciplina de um professor' })
   @ApiResponse({
     status: 200,
@@ -268,12 +244,7 @@ export class TeacherSubjectsController {
   }
 
   @Delete(':id')
-  @Roles(
-    UserRole.SUPER_ADMIN_GLOBAL,
-    UserRole.SUPER_ADMIN,
-    UserRole.INSTITUTION_ADMIN,
-    UserRole.COORDINATOR,
-  )
+  @Roles(UserRole.COORDINATOR, UserRole.DIRECTOR)
   @ApiOperation({ summary: 'Remover vínculo por ID' })
   @ApiResponse({
     status: 200,

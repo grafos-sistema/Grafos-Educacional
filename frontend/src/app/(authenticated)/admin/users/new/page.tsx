@@ -167,9 +167,6 @@ export function NewUserPageContent({
 
   const currentRole = watch('role');
   const canManageTeacherAssignments = [
-    UserRole.SUPER_ADMIN_GLOBAL,
-    UserRole.SUPER_ADMIN,
-    UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
     UserRole.DIRECTOR,
   ].includes((user?.activeProfile ?? user?.role) as UserRole);

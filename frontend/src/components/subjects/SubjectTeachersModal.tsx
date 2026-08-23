@@ -28,6 +28,8 @@ export function SubjectTeachersModal({
 }: SubjectTeachersModalProps) {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const currentRole = user?.activeProfile || user?.role;
+  const canManage = currentRole === UserRole.DIRECTOR || currentRole === UserRole.COORDINATOR;
   const [search, setSearch] = useState('');
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<Set<string>>(new Set());
 
@@ -84,6 +86,7 @@ export function SubjectTeachersModal({
 
   const saveMutation = useMutation({
     mutationFn: () => {
+      if (!canManage) throw new Error('Somente a Direção e a Coordenação podem alterar os professores.');
       if (!subjectId) throw new Error('Disciplina não encontrada.');
       return teacherSubjectsService.syncSubjectTeachers(
         subjectId,
@@ -111,24 +114,32 @@ export function SubjectTeachersModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Professores da disciplina"
-      description={subjectName ? `Selecione os professores habilitados para ${subjectName}.` : undefined}
+      description={subjectName
+        ? canManage
+          ? `Selecione os professores habilitados para ${subjectName}.`
+          : `Professores habilitados para ${subjectName}.`
+        : undefined}
       size="lg"
       footer={(
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            {selectedTeacherIds.size} professor(es) selecionado(s)
+            {canManage
+              ? `${selectedTeacherIds.size} professor(es) selecionado(s)`
+              : 'Somente consulta'}
           </span>
           <div className="flex gap-3">
             <Button variant="secondary" onClick={onClose} disabled={saveMutation.isPending}>
-              Cancelar
+              Fechar
             </Button>
-            <Button
-              onClick={() => saveMutation.mutate()}
-              isLoading={saveMutation.isPending}
-              disabled={isLoading || !subjectId}
-            >
-              Salvar professores
-            </Button>
+            {canManage && (
+              <Button
+                onClick={() => saveMutation.mutate()}
+                isLoading={saveMutation.isPending}
+                disabled={isLoading || !subjectId}
+              >
+                Salvar professores
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -170,7 +181,7 @@ export function SubjectTeachersModal({
                     type="checkbox"
                     checked={checked}
                     onChange={() => toggleTeacher(teacherId)}
-                    disabled={saveMutation.isPending}
+                    disabled={!canManage || saveMutation.isPending}
                     className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
                   />
                   {teacher.avatar ? (

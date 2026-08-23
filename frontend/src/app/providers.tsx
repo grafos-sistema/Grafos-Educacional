@@ -17,6 +17,13 @@ function AppToaster({ mounted }: { mounted: boolean }) {
       reverseOrder={false}
       containerStyle={{
         zIndex: 9999,
+        // O react-hot-toast usa inset: 16px por padrão. Como o container é
+        // fixo, isso não deve ocupar toda a altura da viewport nem criar uma
+        // área de rolagem falsa no shell autenticado.
+        inset: '16px 16px auto auto',
+        width: 'min(420px, calc(100vw - 32px))',
+        height: 'auto',
+        pointerEvents: 'none',
       }}
       toastOptions={{
         duration: 4000,

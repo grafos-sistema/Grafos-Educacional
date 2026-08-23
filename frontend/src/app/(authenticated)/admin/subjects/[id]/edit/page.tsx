@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { SubjectNameSelector } from '@/components/subjects/SubjectNameSelector';
 import { SubjectColorPicker } from '@/components/subjects/SubjectColorPicker';
+import { SubjectClassesManager } from '@/components/subjects/SubjectClassesManager';
 import {
   isCatalogSubject,
   normalizeSubjectCode,
@@ -304,6 +305,13 @@ export default function EditSubjectPage() {
               placeholder="Descreva a disciplina..."
             />
           </div>
+
+          {/* Distribuição da disciplina */}
+          <SubjectClassesManager
+            subjectId={subjectId}
+            institutionId={subject.institutionId}
+            subjectName={subject.name}
+          />
 
           {/* Cor */}
           <div>
