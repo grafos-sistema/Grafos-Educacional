@@ -18,11 +18,22 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/hooks/useToast";
 import { formatScheduleLoad } from "@/lib/schedule-load";
+import type { Subject } from "@/types/subject.types";
 
 interface SubjectClassesManagerProps {
   subjectId: string;
   institutionId: string;
   subjectName?: string;
+}
+
+type SubjectClassLink = NonNullable<Subject["classSubjects"]>[number];
+
+interface TeacherDistributionGroup {
+  key: string;
+  name: string;
+  email?: string | null;
+  avatar?: string | null;
+  links: SubjectClassLink[];
 }
 
 export function SubjectClassesManager({
@@ -171,6 +182,35 @@ export function SubjectClassesManager({
     loadingSubject || loadingClasses || (canManage && loadingTeachers);
   const isBusy = distributeMutation.isPending || removeMutation.isPending;
   const links = subject?.classSubjects ?? [];
+  const teacherGroups = useMemo<TeacherDistributionGroup[]>(() => {
+    const groups = new Map<string, TeacherDistributionGroup>();
+
+    links.forEach((link) => {
+      const teacher = link.teacher?.user;
+      const key = link.teacher?.id ?? "unassigned";
+      const name = teacher
+        ? `${teacher.firstName} ${teacher.lastName}`.trim()
+        : "Professor não definido";
+      const current = groups.get(key);
+
+      if (current) {
+        current.links.push(link);
+        return;
+      }
+
+      groups.set(key, {
+        key,
+        name,
+        email: teacher?.email,
+        avatar: teacher?.avatar,
+        links: [link],
+      });
+    });
+
+    return Array.from(groups.values()).sort((left, right) =>
+      left.name.localeCompare(right.name, "pt-BR"),
+    );
+  }, [links]);
 
   return (
     <>
@@ -372,73 +412,92 @@ export function SubjectClassesManager({
           </div>
         ) : (
           <div className="space-y-3">
-            {links.map((link) => {
-              const classInfo = link.class;
-              const teacher = link.teacher?.user;
-              const teacherName = teacher
-                ? `${teacher.firstName} ${teacher.lastName}`.trim()
-                : "Professor não definido";
+            {teacherGroups.map((group) => {
               return (
-                <div
-                  key={link.id}
-                  className="flex flex-col gap-3 rounded-xl border border-gray-200 p-4 dark:border-gray-700 md:flex-row md:items-center md:justify-between"
+                <details
+                  key={group.key}
+                  className="group rounded-xl border border-gray-200 dark:border-gray-700"
                 >
-                  <div className="flex min-w-0 items-start gap-3">
-                    {teacher?.avatar ? (
+                  <summary className="flex cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
+                    {group.avatar ? (
                       <img
-                        src={teacher.avatar}
+                        src={group.avatar}
                         alt=""
-                        className="h-10 w-10 shrink-0 rounded-full object-cover"
+                        className="h-11 w-11 shrink-0 rounded-full object-cover"
                       />
                     ) : (
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                        {teacherName.charAt(0).toUpperCase()}
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                        {group.name.charAt(0).toUpperCase()}
                       </span>
                     )}
-                    <div className="min-w-0">
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        {classInfo?.name ?? "Turma"}
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {[
-                          classInfo?.course?.name,
-                          classInfo?.grade,
-                          classInfo?.shift,
-                        ]
-                          .filter(Boolean)
-                          .join(" • ") || "Dados acadêmicos não informados"}
-                      </p>
-                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        {teacherName}
-                        {teacher?.email ? ` • ${teacher.email}` : ""}
-                      </p>
-                      <p className="mt-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                        Carga semanal:{" "}
-                        {formatScheduleLoad(
-                          link.scheduledMinutes,
-                          link.scheduledClassCount,
-                        )}
-                      </p>
-                    </div>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium text-gray-900 dark:text-white">
+                        {group.name}
+                      </span>
+                      <span className="block truncate text-xs text-gray-500 dark:text-gray-400">
+                        {group.email || "Contato não informado"}
+                      </span>
+                    </span>
+                    <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                      {group.links.length} turma(s)
+                    </span>
+                    <span className="text-xs text-gray-500 transition-transform group-open:rotate-180 dark:text-gray-400">
+                      ▼
+                    </span>
+                  </summary>
+
+                  <div className="space-y-2 border-t border-gray-100 p-3 dark:border-gray-700">
+                    {group.links.map((link) => {
+                      const classInfo = link.class;
+                      return (
+                        <div
+                          key={link.id}
+                          className="flex flex-col gap-3 rounded-lg bg-gray-50 p-3 dark:bg-gray-900/30 md:flex-row md:items-center md:justify-between"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {classInfo?.name ?? "Turma"}
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              {[
+                                classInfo?.course?.name,
+                                classInfo?.grade,
+                                classInfo?.shift,
+                              ]
+                                .filter(Boolean)
+                                .join(" • ") ||
+                                "Dados acadêmicos não informados"}
+                            </p>
+                            <p className="mt-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                              Carga semanal:{" "}
+                              {formatScheduleLoad(
+                                link.scheduledMinutes,
+                                link.scheduledClassCount,
+                              )}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CheckCircleIcon
+                              className="h-5 w-5 text-emerald-600"
+                              aria-hidden="true"
+                            />
+                            {canManage && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setRemovingLinkId(link.id)}
+                                leftIcon={<TrashIcon className="h-4 w-4" />}
+                                disabled={isBusy}
+                              >
+                                Remover
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircleIcon
-                      className="h-5 w-5 text-emerald-600"
-                      aria-hidden="true"
-                    />
-                    {canManage && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setRemovingLinkId(link.id)}
-                        leftIcon={<TrashIcon className="h-4 w-4" />}
-                        disabled={isBusy}
-                      >
-                        Remover
-                      </Button>
-                    )}
-                  </div>
-                </div>
+                </details>
               );
             })}
           </div>
