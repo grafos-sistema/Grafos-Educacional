@@ -49,6 +49,7 @@ export class TeacherSubjectsController {
 
   @Get('teacher/:teacherId')
   @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,

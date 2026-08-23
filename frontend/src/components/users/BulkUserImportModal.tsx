@@ -100,6 +100,7 @@ const STUDENT_HEADERS = [
   'responsavel_telefone_fixo',
   'parentesco',
   'responsavel_data_nascimento',
+  'responsavel_financeiro',
   'responsavel_contato_emergencia',
   'responsavel_notificacoes',
   'responsavel_pode_retirar',
@@ -194,6 +195,7 @@ const STUDENT_SAMPLE: ImportRow = {
   responsavel_telefone_fixo: '1131112222',
   parentesco: 'Mãe',
   responsavel_data_nascimento: '1982-06-18',
+  responsavel_financeiro: 'SIM',
   responsavel_contato_emergencia: 'SIM',
   responsavel_notificacoes: 'SIM',
   responsavel_pode_retirar: 'SIM',
@@ -662,6 +664,9 @@ export function BulkUserImportModal({
                 telefoneFixo: row.responsavel_telefone_fixo || undefined,
                 parentesco: row.parentesco || 'Responsável',
                 dataNascimento: row.responsavel_data_nascimento || undefined,
+                financeiro: ['SIM', 'S', 'TRUE', '1'].includes(
+                  row.responsavel_financeiro?.trim().toUpperCase() || '',
+                ),
                 contatoEmergencia: ['SIM', 'S', 'TRUE', '1'].includes(
                   row.responsavel_contato_emergencia?.trim().toUpperCase() ||
                     '',

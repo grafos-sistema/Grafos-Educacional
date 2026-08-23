@@ -667,52 +667,38 @@ export function RoleBasedUserWizard({
           }
         }
 
-        const directorUserIds = Array.from(
-          new Set(
-            (unitRows ?? [])
-              .map((row: any) => row.directorUserId)
-              .filter(Boolean) as string[],
-          ),
-        );
+        // A promoção não deve depender de o diretor já estar associado ao
+        // campo directorUserId de um anexo. O diretor pode ter sido criado
+        // primeiro e vinculado ao anexo depois.
+        const { data: userRows, error: userError } = await supabase
+          .from('users')
+          .select('id, firstName, lastName, email, institutionId')
+          .in('institutionId', scopeInstitutionIds)
+          .eq('role', UserRole.DIRECTOR)
+          .eq('isActive', true)
+          .order('firstName', { ascending: true });
 
-        if (directorUserIds.length > 0) {
-          const { data: userRows, error: userError } = await supabase
-            .from('users')
-            .select('id, firstName, lastName, email')
-            .in('id', directorUserIds)
-            .eq('isActive', true);
+        if (!cancelled && !userError) {
+          const unitByDirectorId = new Map<string, any>();
+          for (const row of (unitRows ?? []) as any[]) {
+            if (row.directorUserId && !unitByDirectorId.has(row.directorUserId)) {
+              unitByDirectorId.set(row.directorUserId, row);
+            }
+          }
 
-          if (!cancelled && !userError) {
-            const byId = new Map((userRows ?? []).map((u: any) => [u.id, u]));
-            const directorsList: Array<{
-              id: string;
-              name: string;
-              email?: string;
-              unitId?: string | null;
-              unitName?: string | null;
-            }> = [];
-            const seen = new Set<string>();
-
-            for (const row of (unitRows ?? []) as any[]) {
-              if (!row.directorUserId) continue;
-              if (seen.has(row.directorUserId)) continue;
-              const u = byId.get(row.directorUserId);
-              if (!u) continue;
-              seen.add(row.directorUserId);
-              directorsList.push({
-                id: row.directorUserId,
+          setAvailableDirectors(
+            (userRows ?? []).map((u: any) => {
+              const unit = unitByDirectorId.get(u.id);
+              return {
+                id: u.id,
                 name:
                   `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email,
                 email: u.email,
-                unitId: row.id ?? null,
-                unitName: row.name ?? null,
-              });
-            }
-
-            setAvailableDirectors(directorsList);
-          } else if (!cancelled) {
-            setAvailableDirectors([]);
-          }
+                unitId: unit?.id ?? null,
+                unitName: unit?.name ?? null,
+              };
+            }),
+          );
         } else if (!cancelled) {
           setAvailableDirectors([]);
         }

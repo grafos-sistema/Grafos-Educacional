@@ -155,6 +155,7 @@ export class TeachersController {
   @Get(':id/classes')
   @UseGuards(TeacherGuard)
   @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
@@ -192,6 +193,7 @@ export class TeachersController {
   @Get(':id/subjects')
   @UseGuards(TeacherGuard)
   @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
