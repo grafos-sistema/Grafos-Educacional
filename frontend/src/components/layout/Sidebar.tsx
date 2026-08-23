@@ -75,6 +75,7 @@ const institutionAdminSectionConfig: Array<{
   {
     title: 'Gestão Escolar',
     itemNames: [
+      'Acompanhamento',
       'Grade de Horários',
       'Comunicados',
       'Comunicação',
@@ -375,8 +376,9 @@ const navigation: NavItem[] = [
     name: 'Acompanhamento',
     baseRoute: '/monitoring',
     icon: ChartBarIcon,
-    roles: [UserRole.COORDINATOR],
+    roles: [UserRole.DIRECTOR, UserRole.COORDINATOR],
     pathMapping: {
+      [UserRole.DIRECTOR]: '/coordinator/monitoring',
       [UserRole.COORDINATOR]: '/coordinator/monitoring',
     },
   },
@@ -428,7 +430,7 @@ const navigation: NavItem[] = [
     icon: UserGroupIcon,
     roles: [UserRole.PARENT],
     pathMapping: {
-      [UserRole.PARENT]: '/responsaveis/children',
+      [UserRole.PARENT]: '/responsaveis/dashboard',
     },
   },
   {

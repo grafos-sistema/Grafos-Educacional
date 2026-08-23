@@ -12,6 +12,7 @@ import {
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/user.types';
 import { classesService } from '@/services/classes.service';
 import { usersService } from '@/services/users.service';
 import { gradesService } from '@/services/grades.service';
@@ -26,6 +27,10 @@ export default function CoordinatorMonitoringPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const [selectedClassId, setSelectedClassId] = useState('');
+  const dashboardRoute =
+    user?.activeProfile === UserRole.COORDINATOR
+      ? '/coordinator/dashboard'
+      : '/admin/dashboard';
 
   // Buscar turmas
   const { data: classesData, isLoading: loadingClasses } = useQuery({
@@ -153,7 +158,7 @@ export default function CoordinatorMonitoringPage() {
       <div className="mb-6">
         <Button
           variant="ghost"
-          onClick={() => router.push('/coordinator/dashboard')}
+          onClick={() => router.push(dashboardRoute)}
           leftIcon={<ArrowLeftIcon className="h-5 w-5" />}
           className="mb-4"
         >

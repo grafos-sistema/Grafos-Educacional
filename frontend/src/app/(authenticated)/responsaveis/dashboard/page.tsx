@@ -42,33 +42,50 @@ export default function PaisDashboard() {
     enabled: !!parentProfile?.parentProfile?.id,
   });
 
+  const openChildSection = (section: 'grades' | 'attendance' | 'schedule' | 'subjects') => {
+    const childId = selectedChildId ?? (children?.length === 1 ? children[0]?.student.id : undefined);
+
+    if (childId) {
+      const destination = section === 'subjects'
+        ? `/responsaveis/children/${childId}`
+        : `/responsaveis/children/${childId}/${section}`;
+      router.push(destination);
+      return;
+    }
+
+    document.getElementById('parent-children')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  };
+
   const quickActions = [
     {
       title: 'Boletim',
       description: 'Ver notas dos filhos',
       icon: ClipboardDocumentCheckIcon,
-      href: '/responsaveis/grades',
+      section: 'grades' as const,
       color: 'bg-green-500',
     },
     {
       title: 'Frequência',
       description: 'Acompanhar presença',
       icon: CalendarDaysIcon,
-      href: '/responsaveis/attendance',
+      section: 'attendance' as const,
       color: 'bg-blue-500',
     },
     {
       title: 'Horários',
       description: 'Ver grade de aulas',
       icon: BookOpenIcon,
-      href: '/responsaveis/schedule',
+      section: 'schedule' as const,
       color: 'bg-purple-500',
     },
     {
       title: 'Disciplinas',
       description: 'Matérias dos filhos',
       icon: AcademicCapIcon,
-      href: '/responsaveis/subjects',
+      section: 'subjects' as const,
       color: 'bg-orange-500',
     },
   ];
@@ -168,7 +185,7 @@ export default function PaisDashboard() {
             return (
               <button
                 key={action.title}
-                onClick={() => router.push(action.href)}
+                onClick={() => openChildSection(action.section)}
                 className="text-left bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 hover:shadow-md hover:-translate-y-0.5 transition-all group border border-gray-100 dark:border-gray-700"
               >
                 <div className={`inline-flex items-center justify-center w-12 h-12 rounded-lg ${action.color} mb-4 group-hover:scale-110 transition-transform`}>
@@ -210,7 +227,7 @@ export default function PaisDashboard() {
       )}
 
       {/* My Children */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+      <div id="parent-children" className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Meus Filhos
@@ -334,7 +351,10 @@ export default function PaisDashboard() {
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => router.push(`/responsaveis/children/${student.id}`)}
+                      onClick={() => {
+                        setSelectedChildId(student.id);
+                        router.push(`/responsaveis/children/${student.id}`);
+                      }}
                       className="flex-1"
                     >
                       Ver Detalhes
@@ -342,7 +362,10 @@ export default function PaisDashboard() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => router.push(`/responsaveis/children/${student.id}/grades`)}
+                      onClick={() => {
+                        setSelectedChildId(student.id);
+                        router.push(`/responsaveis/children/${student.id}/grades`);
+                      }}
                     >
                       Notas
                     </Button>
