@@ -36,13 +36,17 @@ RUN apk upgrade --no-cache \
   && npm install --prefix /tmp/npm-security --omit=dev --no-save \
       brace-expansion@5.0.9 \
       ip-address@10.5.0 \
+      tar@7.5.21 \
   && rm -rf \
       /usr/local/lib/node_modules/npm/node_modules/brace-expansion \
       /usr/local/lib/node_modules/npm/node_modules/ip-address \
+      /usr/local/lib/node_modules/npm/node_modules/tar \
   && cp -R /tmp/npm-security/node_modules/brace-expansion \
       /usr/local/lib/node_modules/npm/node_modules/brace-expansion \
   && cp -R /tmp/npm-security/node_modules/ip-address \
       /usr/local/lib/node_modules/npm/node_modules/ip-address \
+  && cp -R /tmp/npm-security/node_modules/tar \
+      /usr/local/lib/node_modules/npm/node_modules/tar \
   && npm cache clean --force \
   && rm -rf /root/.npm /tmp/*
 

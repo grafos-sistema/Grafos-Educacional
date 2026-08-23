@@ -29,8 +29,7 @@ export class ClassSubjectsController {
   @Roles(UserRole.DIRECTOR, UserRole.COORDINATOR)
   @ApiOperation({
     summary: 'Vincular disciplina à turma',
-    description:
-      'DIRECTOR e COORDINATOR podem vincular disciplinas a turmas',
+    description: 'DIRECTOR e COORDINATOR podem vincular disciplinas a turmas',
   })
   @ApiResponse({
     status: 201,
@@ -55,8 +54,7 @@ export class ClassSubjectsController {
   @Roles(UserRole.DIRECTOR, UserRole.COORDINATOR)
   @ApiOperation({
     summary: 'Remover disciplina da turma',
-    description:
-      'DIRECTOR e COORDINATOR podem remover disciplinas de turmas',
+    description: 'DIRECTOR e COORDINATOR podem remover disciplinas de turmas',
   })
   @ApiResponse({
     status: 200,
