@@ -653,7 +653,7 @@ export default function WorksheetsPage() {
                         }}
                         className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700"
                       >
-                        Visualizar
+                        Preview
                       </button>
                       <button
                         type="button"
@@ -664,7 +664,7 @@ export default function WorksheetsPage() {
                         }}
                         className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-700"
                       >
-                        Baixar PDF
+                        PDF
                       </button>
                       <button
                         type="button"
