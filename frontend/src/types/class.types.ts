@@ -41,7 +41,14 @@ export interface Class {
 
 export interface ClassSubject {
   id: string;
-  weeklyHours?: number;
+  scheduledMinutes?: number;
+  scheduledClassCount?: number;
+  schedules?: Array<{
+    id: string;
+    dayOfWeek: string;
+    startTime: string;
+    endTime: string;
+  }>;
   classId: string;
   subjectId: string;
   teacherId?: string;
@@ -120,7 +127,6 @@ export interface CreateClassSubjectDto {
   classId: string;
   subjectId: string;
   teacherId?: string;
-  weeklyHours?: number;
 }
 
 export interface CreateClassEnrollmentDto {

@@ -232,7 +232,9 @@ export class ClassesController {
         type: 'object',
         properties: {
           id: { type: 'string' },
-          weeklyHours: { type: 'number', nullable: true },
+          scheduledMinutes: { type: 'number' },
+          scheduledClassCount: { type: 'number' },
+          schedules: { type: 'array' },
           subject: { type: 'object' },
           teacher: { type: 'object' },
         },

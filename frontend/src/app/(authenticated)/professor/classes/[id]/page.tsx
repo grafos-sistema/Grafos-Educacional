@@ -13,6 +13,7 @@ import { useTeacherClassSubjects } from '@/hooks/useTeacherClassSubjects';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { formatScheduleLoad } from '@/lib/schedule-load';
 
 export default function ProfessorClassDetailsPage() {
   const router = useRouter();
@@ -151,7 +152,7 @@ export default function ProfessorClassDetailsPage() {
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     {assignment.subject?.code ? `Código: ${assignment.subject.code}` : 'Disciplina atribuída'}
-                    {assignment.weeklyHours ? ` • ${assignment.weeklyHours}h/semana` : ''}
+                    {` • ${formatScheduleLoad(assignment.scheduledMinutes, assignment.scheduledClassCount)}`}
                   </p>
                 </div>
               </div>

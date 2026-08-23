@@ -9,10 +9,10 @@ import { useAuthStore } from "@/stores/authStore";
 import { UserRole } from "@/types/user.types";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
-import { Input } from "@/components/ui/Input";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/hooks/useToast";
+import { formatScheduleLoad } from "@/lib/schedule-load";
 
 interface ClassSubjectsManagerProps {
   classId: string;
@@ -39,7 +39,6 @@ export function ClassSubjectsManager({
     currentRole === UserRole.DIRECTOR || currentRole === UserRole.COORDINATOR;
 
   const [subjectId, setSubjectId] = useState("");
-  const [weeklyHours, setWeeklyHours] = useState("");
   const [removingSubjectId, setRemovingSubjectId] = useState<string | null>(
     null,
   );
@@ -84,7 +83,6 @@ export function ClassSubjectsManager({
 
   const resetForm = () => {
     setSubjectId("");
-    setWeeklyHours("");
   };
 
   const invalidateClassSubjectQueries = async () => {
@@ -111,7 +109,6 @@ export function ClassSubjectsManager({
       return classesService.addSubject({
         classId,
         subjectId,
-        weeklyHours: weeklyHours ? Number(weeklyHours) : undefined,
       });
     },
     onSuccess: async () => {
@@ -169,19 +166,7 @@ export function ClassSubjectsManager({
               options={availableSubjectOptions}
               disabled={loadingSubjects || isBusy}
             />
-            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="w-full sm:max-w-[180px]">
-                <Input
-                  label="Horas/semana"
-                  type="number"
-                  min="1"
-                  max="40"
-                  value={weeklyHours}
-                  onChange={(event) => setWeeklyHours(event.target.value)}
-                  placeholder="Ex: 4"
-                  disabled={isBusy}
-                />
-              </div>
+            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-end">
               <Button
                 type="button"
                 onClick={() => createMutation.mutate()}
@@ -193,8 +178,8 @@ export function ClassSubjectsManager({
               </Button>
             </div>
             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              Depois, acesse a disciplina para escolher o professor e as turmas
-              em um único fluxo.
+              O professor e as turmas são definidos na página da disciplina. A
+              carga semanal aparece depois que os horários forem cadastrados.
             </p>
           </div>
         ) : null}
@@ -257,10 +242,10 @@ export function ClassSubjectsManager({
                         : "Não definido"}
                     </span>
                     <span>
-                      Carga semanal:{" "}
-                      {item.weeklyHours
-                        ? `${item.weeklyHours} hora(s)`
-                        : "Não definida"}
+                      Carga semanal: {formatScheduleLoad(
+                        item.scheduledMinutes,
+                        item.scheduledClassCount,
+                      )}
                     </span>
                   </div>
                 </div>

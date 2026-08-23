@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTeacherDto, UpdateTeacherDto } from './dto';
 import { UserRole } from '@prisma/client';
+import { calculateScheduleLoad } from '../common/utils/schedule-load';
 
 @Injectable()
 export class TeachersService {
@@ -165,15 +166,35 @@ export class TeachersService {
               classSubjects: true,
             },
           },
+          classSubjects: {
+            where: {
+              class: {
+                isActive: true,
+              },
+            },
+            select: {
+              schedules: {
+                select: {
+                  startTime: true,
+                  endTime: true,
+                },
+              },
+            },
+          },
         },
       }),
       this.prisma.teacher.count({ where }),
     ]);
 
+    const dataWithWorkload = data.map(({ classSubjects, ...teacher }) => ({
+      ...teacher,
+      ...calculateScheduleLoad(classSubjects.flatMap((item) => item.schedules)),
+    }));
+
     const totalPages = Math.ceil(total / limit);
 
     return {
-      data,
+      data: dataWithWorkload,
       meta: {
         total,
         page,
@@ -280,6 +301,15 @@ export class TeachersService {
             code: true,
           },
         },
+        schedules: {
+          select: {
+            id: true,
+            dayOfWeek: true,
+            startTime: true,
+            endTime: true,
+          },
+          orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+        },
       },
       orderBy: {
         createdAt: 'desc',
@@ -292,7 +322,7 @@ export class TeachersService {
       classId: cs.class.id,
       subjectId: cs.subject.id,
       teacherId,
-      weeklyHours: cs.weeklyHours,
+      ...calculateScheduleLoad(cs.schedules),
       class: cs.class,
       subject: cs.subject,
       assignmentType: 'subject',

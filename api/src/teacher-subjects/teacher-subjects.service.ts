@@ -445,9 +445,6 @@ export class TeacherSubjectsService {
         const existing = existingByClassId.get(classId);
         const data = {
           teacherId: distributeDto.teacherId,
-          ...(distributeDto.weeklyHours !== undefined
-            ? { weeklyHours: distributeDto.weeklyHours }
-            : {}),
         };
 
         if (existing) {

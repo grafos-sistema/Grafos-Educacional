@@ -27,6 +27,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ClassSubjectsManager } from '@/components/classes/ClassSubjectsManager';
 import { useToast } from '@/hooks/useToast';
 import { presentFriendlyError } from '@/lib/friendly-error';
+import { formatScheduleLoad } from '@/lib/schedule-load';
 import {
   DAYS_OF_WEEK,
   DAY_LABELS,
@@ -758,7 +759,11 @@ export default function SchedulesManagementPage() {
                             : 'Professor ainda não definido'}
                         </div>
                         <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          {item.weeklyHours ? `${item.weeklyHours} hora(s)/semana` : 'Carga semanal não informada'}
+                          Carga semanal:{' '}
+                          {formatScheduleLoad(
+                            item.scheduledMinutes,
+                            item.scheduledClassCount,
+                          )}
                         </div>
                       </div>
                     ))}

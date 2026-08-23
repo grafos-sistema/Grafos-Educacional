@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsUUID, IsNotEmpty, IsInt, IsOptional, Min } from 'class-validator';
+import { IsUUID, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class CreateClassSubjectDto {
   @ApiProperty({
@@ -26,14 +26,4 @@ export class CreateClassSubjectDto {
   @IsUUID()
   @IsOptional()
   teacherId?: string;
-
-  @ApiProperty({
-    description: 'Carga horária semanal (em horas)',
-    example: 4,
-    required: false,
-  })
-  @IsInt()
-  @IsOptional()
-  @Min(1)
-  weeklyHours?: number;
 }

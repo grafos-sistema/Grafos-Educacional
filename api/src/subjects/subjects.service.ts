@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSubjectDto, UpdateSubjectDto } from './dto';
+import { calculateScheduleLoad } from '../common/utils/schedule-load';
 
 @Injectable()
 export class SubjectsService {
@@ -206,6 +207,15 @@ export class SubjectsService {
                 },
               },
             },
+            schedules: {
+              select: {
+                id: true,
+                dayOfWeek: true,
+                startTime: true,
+                endTime: true,
+              },
+              orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+            },
           },
         },
         _count: {
@@ -223,7 +233,13 @@ export class SubjectsService {
       throw new NotFoundException('Disciplina não encontrada');
     }
 
-    return subject;
+    return {
+      ...subject,
+      classSubjects: subject.classSubjects.map((classSubject) => ({
+        ...classSubject,
+        ...calculateScheduleLoad(classSubject.schedules),
+      })),
+    };
   }
 
   /**

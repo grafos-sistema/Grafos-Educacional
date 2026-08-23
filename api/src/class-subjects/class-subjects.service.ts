@@ -12,8 +12,7 @@ export class ClassSubjectsService {
   constructor(private prisma: PrismaService) {}
 
   async create(createClassSubjectDto: CreateClassSubjectDto) {
-    const { classId, subjectId, teacherId, weeklyHours } =
-      createClassSubjectDto;
+    const { classId, subjectId, teacherId } = createClassSubjectDto;
 
     // Verificar se a turma existe
     const classExists = await this.prisma.class.findUnique({
@@ -110,10 +109,6 @@ export class ClassSubjectsService {
       data.teacher = {
         connect: { id: teacherId },
       };
-    }
-
-    if (weeklyHours !== undefined && weeklyHours !== null) {
-      data.weeklyHours = weeklyHours;
     }
 
     return this.prisma.classSubject.create({

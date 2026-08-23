@@ -26,6 +26,7 @@ import { Input } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Modal } from '@/components/ui/Modal';
 import { ClassSubjectsManager } from '@/components/classes/ClassSubjectsManager';
+import { formatScheduleLoad } from '@/lib/schedule-load';
 import {
   DAY_LABELS,
   DAYS_OF_WEEK,
@@ -621,8 +622,7 @@ export default function TeacherSchedulesPage() {
                             {item.subject?.name || item.assignmentLabel}
                           </div>
                           <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            {item.assignmentLabel}
-                            {item.weeklyHours ? ` • ${item.weeklyHours} hora(s)/semana` : ''}
+                            {item.assignmentLabel} • {formatScheduleLoad(item.scheduledMinutes, item.scheduledClassCount)}
                           </div>
                         </div>
                       </div>

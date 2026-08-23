@@ -10,7 +10,14 @@ export interface Subject {
   updatedAt: string;
   classSubjects?: Array<{
     id: string;
-    weeklyHours?: number | null;
+    scheduledMinutes?: number;
+    scheduledClassCount?: number;
+    schedules?: Array<{
+      id: string;
+      dayOfWeek: string;
+      startTime: string;
+      endTime: string;
+    }>;
     class?: {
       id: string;
       name: string;

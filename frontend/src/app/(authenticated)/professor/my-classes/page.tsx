@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { useState } from 'react';
 import { useTeacherClassSubjects } from '@/hooks/useTeacherClassSubjects';
+import { formatScheduleLoad } from '@/lib/schedule-load';
 
 export default function MyClassesPage() {
   const router = useRouter();
@@ -61,10 +62,15 @@ export default function MyClassesPage() {
     (acc: number, item: any) => acc + (item?.subjects?.length || 0),
     0
   );
-  const totalHours = classesWithSubjects.reduce(
+  const totalScheduledMinutes = classesWithSubjects.reduce(
     (acc: number, item: any) =>
-      acc + (item?.subjects?.reduce((sum: number, s: any) => sum + (s.weeklyHours || 0), 0) || 0),
-    0
+      acc + (item?.subjects?.reduce((sum: number, s: any) => sum + (s.scheduledMinutes || 0), 0) || 0),
+    0,
+  );
+  const totalScheduledClasses = classesWithSubjects.reduce(
+    (acc: number, item: any) =>
+      acc + (item?.subjects?.reduce((sum: number, s: any) => sum + (s.scheduledClassCount || 0), 0) || 0),
+    0,
   );
 
   const isLoading = loadingSubjects;
@@ -148,7 +154,7 @@ export default function MyClassesPage() {
             <div>
               <div className="text-sm text-gray-500 dark:text-gray-400">Carga Horária</div>
               <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {totalHours}h
+                {formatScheduleLoad(totalScheduledMinutes, totalScheduledClasses)}
               </div>
             </div>
           </div>
@@ -247,12 +253,10 @@ export default function MyClassesPage() {
                           )}
                         </div>
                       </div>
-                      {subject.weeklyHours && (
-                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                          <ClockIcon className="h-4 w-4" />
-                          {subject.weeklyHours}h/semana
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                        <ClockIcon className="h-4 w-4" />
+                        {formatScheduleLoad(subject.scheduledMinutes, subject.scheduledClassCount)}
+                      </div>
                     </button>
                   );
                 })}

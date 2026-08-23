@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateClassDto, UpdateClassDto } from './dto';
+import { calculateScheduleLoad } from '../common/utils/schedule-load';
 
 @Injectable()
 export class ClassesService {
@@ -416,6 +417,15 @@ export class ClassesService {
             },
           },
         },
+        schedules: {
+          select: {
+            id: true,
+            dayOfWeek: true,
+            startTime: true,
+            endTime: true,
+          },
+          orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+        },
       },
       orderBy: {
         subject: {
@@ -429,7 +439,7 @@ export class ClassesService {
       classId: cs.classId,
       subjectId: cs.subjectId,
       teacherId: cs.teacherId,
-      weeklyHours: cs.weeklyHours,
+      ...calculateScheduleLoad(cs.schedules),
       subject: cs.subject,
       teacher: cs.teacher,
     }));

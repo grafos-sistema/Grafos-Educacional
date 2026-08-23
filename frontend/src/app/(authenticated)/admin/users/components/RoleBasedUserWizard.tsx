@@ -38,6 +38,7 @@ import { BRAZILIAN_UF_OPTIONS } from '@/lib/constants/document-options';
 import { Gender, UserRole } from '@/types/user.types';
 import { AvatarCropModal } from '@/components/ui/AvatarCropModal';
 import { useCepAutofill } from '@/hooks/useCepAutofill';
+import { formatScheduleLoad } from '@/lib/schedule-load';
 
 export interface InstitutionOption {
   id: string;
@@ -85,7 +86,8 @@ interface TeacherClassSummary {
   subjectId: string;
   assignmentType?: string;
   assignmentLabel?: string;
-  weeklyHours?: number;
+  scheduledMinutes?: number;
+  scheduledClassCount?: number;
   class: {
     id: string;
     name: string;
@@ -1983,14 +1985,15 @@ export function RoleBasedUserWizard({
                             <span className="font-medium">Disciplina:</span>{' '}
                             {item.subject?.name || 'Professor Titular'}
                           </p>
-                          {item.weeklyHours ? (
-                            <p className="text-sm text-gray-700">
-                              <span className="font-medium">
-                                Carga semanal:
-                              </span>{' '}
-                              {item.weeklyHours}h
-                            </p>
-                          ) : null}
+                          <p className="text-sm text-gray-700">
+                            <span className="font-medium">
+                              Carga semanal:
+                            </span>{' '}
+                            {formatScheduleLoad(
+                              item.scheduledMinutes,
+                              item.scheduledClassCount,
+                            )}
+                          </p>
                         </div>
                       </div>
                     ))}

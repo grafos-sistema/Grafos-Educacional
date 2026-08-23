@@ -40,7 +40,14 @@ type DbClass = Omit<Class, 'course' | 'academicYear' | 'mainTeacher' | '_count'>
 
 type DbClassSubject = {
   id: string;
-  weeklyHours: number | null;
+  scheduledMinutes?: number;
+  scheduledClassCount?: number;
+  schedules?: Array<{
+    id: string;
+    dayOfWeek: string;
+    startTime: string;
+    endTime: string;
+  }>;
   classId: string;
   subjectId: string;
   teacherId: string | null;
@@ -128,7 +135,9 @@ function mapClassSubject(row: DbClassSubject): ClassSubject {
   const teacherUser = firstRelation(teacher?.user) ?? (teacher as any);
   return {
     id: row.id,
-    weeklyHours: row.weeklyHours ?? undefined,
+    scheduledMinutes: row.scheduledMinutes ?? 0,
+    scheduledClassCount: row.scheduledClassCount ?? row.schedules?.length ?? 0,
+    schedules: row.schedules ?? [],
     classId: row.classId,
     subjectId: row.subjectId,
     teacherId: row.teacherId ?? undefined,
@@ -268,12 +277,13 @@ export const classesService = {
     const created = (await api.post<any>(`/classes/${data.classId}/subjects`, {
       subjectId: data.subjectId,
       teacherId: data.teacherId || undefined,
-      weeklyHours: data.weeklyHours,
     })) as any;
 
     return {
       id: created.id,
-      weeklyHours: created.weeklyHours ?? undefined,
+      scheduledMinutes: created.scheduledMinutes ?? 0,
+      scheduledClassCount: created.scheduledClassCount ?? 0,
+      schedules: created.schedules ?? [],
       classId: created.classId,
       subjectId: created.subjectId,
       teacherId: created.teacherId ?? undefined,

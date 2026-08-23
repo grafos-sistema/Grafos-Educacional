@@ -7,12 +7,12 @@ import { toast } from 'react-hot-toast';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
-import { Input } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { classesService } from '@/services/classes.service';
 import { teacherSubjectsService } from '@/services/teacher-subjects.service';
 import { teachersService, type TeacherClass } from '@/services/teachers.service';
 import { useAuthStore } from '@/stores/authStore';
+import { formatScheduleLoad } from '@/lib/schedule-load';
 
 interface TeacherClassesModalProps {
   isOpen: boolean;
@@ -31,7 +31,6 @@ export function TeacherClassesModal({
   const queryClient = useQueryClient();
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
-  const [weeklyHours, setWeeklyHours] = useState('');
 
   const { data: classesData, isLoading: loadingClasses } = useQuery({
     queryKey: ['teacher-classes-modal', 'classes', user?.institutionId],
@@ -100,14 +99,12 @@ export function TeacherClassesModal({
         classId: selectedClassId,
         subjectId: selectedSubjectId,
         teacherId,
-        weeklyHours: weeklyHours ? Number(weeklyHours) : undefined,
       });
     },
     onSuccess: async () => {
       await refreshAssignmentQueries();
       setSelectedClassId('');
       setSelectedSubjectId('');
-      setWeeklyHours('');
       toast.success('Turma vinculada ao professor com sucesso!');
     },
     onError: (error: unknown) => {
@@ -148,10 +145,9 @@ export function TeacherClassesModal({
       <div className="space-y-5">
         <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-4 dark:border-blue-900/50 dark:bg-blue-900/20">
           <p className="text-sm text-blue-800 dark:text-blue-200">
-            Só aparecem as disciplinas previamente habilitadas para este professor. Escolha a turma,
-            a disciplina e, se desejar, informe a carga horária.
+            Só aparecem as disciplinas previamente habilitadas para este professor. Escolha a turma e a disciplina; a carga semanal será calculada pela grade.
           </p>
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
             <Select
               label="Turma"
               options={classOptions}
@@ -165,15 +161,6 @@ export function TeacherClassesModal({
               value={selectedSubjectId}
               onChange={(event) => setSelectedSubjectId(event.target.value)}
               disabled={isLoading || isMutating || teacherSubjects.length === 0}
-            />
-            <Input
-              label="Carga horária semanal"
-              type="number"
-              min={1}
-              value={weeklyHours}
-              onChange={(event) => setWeeklyHours(event.target.value)}
-              disabled={isMutating}
-              placeholder="Opcional"
             />
           </div>
           <div className="mt-3 flex justify-end">
@@ -217,7 +204,7 @@ export function TeacherClassesModal({
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {assignment.subject?.name || 'Disciplina'}
                     {assignment.class.shift ? ` • ${assignment.class.shift}` : ''}
-                    {assignment.weeklyHours ? ` • ${assignment.weeklyHours}h/semana` : ''}
+                    {` • ${formatScheduleLoad(assignment.scheduledMinutes, assignment.scheduledClassCount)}`}
                   </p>
                 </div>
                 <Button

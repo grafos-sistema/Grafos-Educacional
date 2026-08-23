@@ -5,21 +5,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AcademicCapIcon,
   CheckCircleIcon,
-  MagnifyingGlassIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { classesService } from "@/services/classes.service";
 import { subjectsService } from "@/services/subjects.service";
 import { teacherSubjectsService } from "@/services/teacher-subjects.service";
-import { usersService } from "@/services/users.service";
+import { teachersService } from "@/services/teachers.service";
 import { useAuthStore } from "@/stores/authStore";
 import { UserRole } from "@/types/user.types";
 import { Button } from "@/components/ui/Button";
-import { Select } from "@/components/ui/Select";
-import { Input } from "@/components/ui/Input";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/hooks/useToast";
+import { formatScheduleLoad } from "@/lib/schedule-load";
 
 interface SubjectClassesManagerProps {
   subjectId: string;
@@ -40,8 +38,6 @@ export function SubjectClassesManager({
     currentRole === UserRole.DIRECTOR || currentRole === UserRole.COORDINATOR;
   const [teacherId, setTeacherId] = useState("");
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
-  const [classSearch, setClassSearch] = useState("");
-  const [weeklyHours, setWeeklyHours] = useState("");
   const [removingLinkId, setRemovingLinkId] = useState<string | null>(null);
 
   const { data: subject, isLoading: loadingSubject } = useQuery({
@@ -64,10 +60,8 @@ export function SubjectClassesManager({
   const { data: teachersData, isLoading: loadingTeachers } = useQuery({
     queryKey: ["subject-class-manager", "teachers", institutionId],
     queryFn: () =>
-      usersService.findAll({
+      teachersService.findAll({
         institutionId,
-        role: UserRole.TEACHER,
-        hasTeacherProfile: true,
         isActive: true,
         limit: 1000,
       }),
@@ -86,37 +80,14 @@ export function SubjectClassesManager({
   );
 
   const availableClasses = useMemo(() => {
-    const normalizedSearch = classSearch.trim().toLocaleLowerCase();
-    return (classesData?.data ?? [])
-      .filter((item) => !assignedClassIds.has(item.id))
-      .filter((item) => {
-        if (!normalizedSearch) return true;
-        return [item.course?.name, item.name, item.grade, item.shift]
-          .filter(Boolean)
-          .join(" ")
-          .toLocaleLowerCase()
-          .includes(normalizedSearch);
-      });
-  }, [assignedClassIds, classSearch, classesData?.data]);
-
-  const teacherOptions = useMemo(
-    () => [
-      { value: "", label: "Selecione o professor" },
-      ...(teachersData?.data ?? [])
-        .filter((teacher) => Boolean(teacher.teacherProfile?.id))
-        .map((teacher) => ({
-          value: teacher.teacherProfile!.id,
-          label: `${teacher.firstName} ${teacher.lastName}`.trim(),
-        })),
-    ],
-    [teachersData?.data],
-  );
+    return (classesData?.data ?? []).filter(
+      (item) => !assignedClassIds.has(item.id),
+    );
+  }, [assignedClassIds, classesData?.data]);
 
   const resetForm = () => {
     setTeacherId("");
     setSelectedClassIds([]);
-    setClassSearch("");
-    setWeeklyHours("");
   };
 
   const invalidate = async () => {
@@ -167,7 +138,6 @@ export function SubjectClassesManager({
         subjectId,
         teacherId,
         classIds: selectedClassIds,
-        weeklyHours: weeklyHours ? Number(weeklyHours) : undefined,
       });
     },
     onSuccess: async (result) => {
@@ -223,34 +193,74 @@ export function SubjectClassesManager({
 
         {canManage && (
           <div className="mb-6 rounded-xl border border-primary-100 bg-primary-50/40 p-4 dark:border-primary-900/40 dark:bg-primary-900/10">
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_140px] lg:items-end">
-              <Select
-                label="Professor responsável"
-                value={teacherId}
-                onChange={(event) => setTeacherId(event.target.value)}
-                options={teacherOptions}
-                disabled={isLoading || isBusy}
-              />
-              <Input
-                label="Buscar turma"
-                value={classSearch}
-                onChange={(event) => setClassSearch(event.target.value)}
-                placeholder="Nome, curso, série ou turno"
-                leftIcon={
-                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-                }
-                disabled={isLoading || isBusy}
-              />
-              <Input
-                label="Horas/semana"
-                type="number"
-                min="1"
-                max="40"
-                value={weeklyHours}
-                onChange={(event) => setWeeklyHours(event.target.value)}
-                placeholder="Ex.: 4"
-                disabled={isBusy}
-              />
+            <div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                Professor responsável
+              </p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Escolha o professor que lecionará esta disciplina. A carga
+                semanal será calculada pela grade de horários.
+              </p>
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {(teachersData?.data ?? []).map((teacher) => {
+                  const profileId = teacher.teacherProfile!.id;
+                  const selected = teacherId === profileId;
+                  const name =
+                    `${teacher.firstName ?? ""} ${teacher.lastName ?? ""}`.trim() ||
+                    "Professor";
+                  return (
+                    <label
+                      key={profileId}
+                      className={`flex cursor-pointer items-center gap-3 rounded-xl border bg-white p-3 transition-colors dark:bg-gray-900/40 ${
+                        selected
+                          ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-100 dark:border-emerald-600 dark:bg-emerald-900/20 dark:ring-emerald-900/40"
+                          : "border-gray-200 hover:border-emerald-300 dark:border-gray-700 dark:hover:border-emerald-700"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="subject-teacher"
+                        value={profileId}
+                        checked={selected}
+                        onChange={() => setTeacherId(profileId)}
+                        disabled={isLoading || isBusy}
+                        className="h-4 w-4 border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      {teacher.avatar ? (
+                        <img
+                          src={teacher.avatar}
+                          alt=""
+                          className="h-11 w-11 shrink-0 rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                          {name.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-gray-900 dark:text-white">
+                          {name}
+                        </span>
+                        <span className="block truncate text-xs text-gray-500 dark:text-gray-400">
+                          {teacher.email || "Contato não informado"}
+                        </span>
+                        <span className="block truncate text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                          Carga atual:{" "}
+                          {formatScheduleLoad(
+                            teacher.scheduledMinutes,
+                            teacher.scheduledClassCount,
+                          )}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              {!loadingTeachers && (teachersData?.data ?? []).length === 0 && (
+                <p className="mt-3 rounded-lg border border-dashed border-gray-300 bg-white p-4 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-400">
+                  Nenhum professor ativo foi encontrado nesta instituição.
+                </p>
+              )}
             </div>
 
             <div className="mt-4 rounded-lg border border-white/80 bg-white p-3 dark:border-gray-700 dark:bg-gray-900/30">
@@ -274,7 +284,7 @@ export function SubjectClassesManager({
                       isLoading || isBusy || availableClasses.length === 0
                     }
                   >
-                    Selecionar visíveis
+                    Selecionar todas
                   </Button>
                   <Button
                     type="button"
@@ -290,9 +300,8 @@ export function SubjectClassesManager({
 
               {availableClasses.length === 0 ? (
                 <p className="rounded-lg border border-dashed border-gray-300 p-4 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                  {classSearch
-                    ? "Nenhuma turma corresponde à busca."
-                    : "Todas as turmas ativas já estão distribuídas para esta disciplina."}
+                  Todas as turmas ativas já estão distribuídas para esta
+                  disciplina.
                 </p>
               ) : (
                 <div className="grid max-h-60 grid-cols-1 gap-2 overflow-y-auto pr-1 md:grid-cols-2">
@@ -398,13 +407,17 @@ export function SubjectClassesManager({
                         ]
                           .filter(Boolean)
                           .join(" • ") || "Dados acadêmicos não informados"}
-                        {link.weeklyHours
-                          ? ` • ${link.weeklyHours}h/semana`
-                          : ""}
                       </p>
                       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                         {teacherName}
                         {teacher?.email ? ` • ${teacher.email}` : ""}
+                      </p>
+                      <p className="mt-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                        Carga semanal:{" "}
+                        {formatScheduleLoad(
+                          link.scheduledMinutes,
+                          link.scheduledClassCount,
+                        )}
                       </p>
                     </div>
                   </div>

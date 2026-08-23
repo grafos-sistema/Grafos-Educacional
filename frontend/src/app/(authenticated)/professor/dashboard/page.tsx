@@ -22,6 +22,7 @@ import { useTeacherClassSubjects } from '@/hooks/useTeacherClassSubjects';
 import BarChart from '@/components/charts/BarChart';
 import PieChart from '@/components/charts/PieChart';
 import { AttendanceStatus } from '@/types/attendance.types';
+import { formatScheduleLoad } from '@/lib/schedule-load';
 
 export default function ProfessorDashboard() {
   const router = useRouter();
@@ -32,6 +33,14 @@ export default function ProfessorDashboard() {
   } = useTeacherClassSubjects();
 
   const isLoading = loadingSubjects;
+  const scheduledMinutes = teacherSubjects.reduce(
+    (total, item) => total + (item.scheduledMinutes ?? 0),
+    0,
+  );
+  const scheduledClassCount = teacherSubjects.reduce(
+    (total, item) => total + (item.scheduledClassCount ?? 0),
+    0,
+  );
 
   // IDs para dependência
   const subjectIds = teacherSubjects?.map(s => s.id).sort().join(',') || '';
@@ -124,8 +133,8 @@ export default function ProfessorDashboard() {
     },
     {
       name: 'Carga Horária',
-      value: teacherSubjects?.reduce((acc, s) => acc + (s.weeklyHours || 0), 0) || 0,
-      subtitle: 'Horas/semana',
+      value: formatScheduleLoad(scheduledMinutes, scheduledClassCount),
+      subtitle: 'Calculada pela grade',
       icon: ClockIcon,
       color: 'bg-purple-500',
     },
@@ -439,7 +448,7 @@ export default function ProfessorDashboard() {
                     </div>
                     <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
                       {classSubject.class?.name}
-                      {classSubject.weeklyHours && ` • ${classSubject.weeklyHours}h/semana`}
+                      {` • ${formatScheduleLoad(classSubject.scheduledMinutes, classSubject.scheduledClassCount)}`}
                     </div>
                   </div>
                 </div>

@@ -3,11 +3,8 @@ import {
   ArrayMinSize,
   ArrayUnique,
   IsArray,
-  IsInt,
   IsNotEmpty,
-  IsOptional,
   IsUUID,
-  Min,
 } from 'class-validator';
 
 export class DistributeSubjectDto {
@@ -29,14 +26,4 @@ export class DistributeSubjectDto {
   @ArrayUnique()
   @IsUUID('4', { each: true })
   classIds: string[];
-
-  @ApiProperty({
-    description: 'Carga horária semanal aplicada às turmas selecionadas',
-    example: 4,
-    required: false,
-  })
-  @IsInt()
-  @IsOptional()
-  @Min(1)
-  weeklyHours?: number;
 }

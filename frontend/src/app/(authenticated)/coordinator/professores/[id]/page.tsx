@@ -23,6 +23,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
 import { TeacherSubjectsModal } from '@/components/teachers/TeacherSubjectsModal';
 import { TeacherClassesModal } from '@/components/teachers/TeacherClassesModal';
+import { formatScheduleLoad } from '@/lib/schedule-load';
 
 const genderLabels: Record<Gender, string> = {
   MALE: 'Masculino',
@@ -299,7 +300,7 @@ export default function CoordinatorTeacherDetailPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <AcademicCapIcon className="h-4 w-4" />
-                    <span>{item.weeklyHours ? `${item.weeklyHours}h/semana` : 'Carga horária não informada'}</span>
+                    <span>Carga semanal: {formatScheduleLoad(item.scheduledMinutes, item.scheduledClassCount)}</span>
                   </div>
                 </div>
               </div>

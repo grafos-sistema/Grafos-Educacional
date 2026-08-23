@@ -34,7 +34,6 @@ export interface DistributeSubjectPayload {
   subjectId: string;
   teacherId: string;
   classIds: string[];
-  weeklyHours?: number;
 }
 
 export interface DistributeSubjectResult {
@@ -273,7 +272,6 @@ export const teacherSubjectsService = {
       {
         teacherId: payload.teacherId,
         classIds: Array.from(new Set(payload.classIds)).filter(Boolean),
-        weeklyHours: payload.weeklyHours,
       },
     );
 

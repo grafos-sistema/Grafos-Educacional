@@ -33,6 +33,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useToast } from '@/hooks/useToast';
 import { OptimizedImage } from '@/components/performance/OptimizedImage';
 import { getUserEditRouteByRole } from '@/lib/user-route-utils';
+import { formatScheduleLoad } from '@/lib/schedule-load';
 import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
 import { StudentClassEnrollmentManager } from '@/components/classes/StudentClassEnrollmentManager';
 
@@ -680,11 +681,9 @@ export default function UserDetailPage() {
                           </div>
                         )}
                       </div>
-                      {tc.weeklyHours && (
-                        <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                          Carga horária: {tc.weeklyHours}h/semana
-                        </div>
-                      )}
+                      <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                        Carga semanal: {formatScheduleLoad(tc.scheduledMinutes, tc.scheduledClassCount)}
+                      </div>
                     </div>
                   </div>
                 </div>
