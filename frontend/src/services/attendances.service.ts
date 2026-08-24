@@ -10,7 +10,13 @@ import {
 import { PaginatedResponse } from '@/types/common.types';
 import { supabase } from '@/lib/supabase';
 
+const ATTENDANCE_MINIMAL_COLUMNS =
+  'id, date, status, notes, createdAt, updatedAt, studentId, classId, classSubjectId, teacherId';
+
 export const attendancesService = {
+  // Salvar frequência não precisa devolver toda a árvore de relacionamentos.
+  // A consulta aninhada de aluno, professor, turma e disciplina fazia o
+  // PostgREST reavaliar várias políticas RLS dentro da mesma transação.
   buildDateRangeFilters(filters?: AttendanceFilters) {
     const hasExactDate = typeof filters?.date === 'string' && filters.date.trim().length > 0;
     const hasStart = typeof filters?.startDate === 'string' && filters.startDate.trim().length > 0;
@@ -214,9 +220,7 @@ export const attendancesService = {
     const { data, error } = await supabase
       .from('attendances')
       .insert(payload)
-      .select(
-        'id, date, status, notes, createdAt, updatedAt, studentId, classId, classSubjectId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), class:classes(id, name, grade), classSubject:class_subjects(id, subject:subjects(id, name, code, color)), teacher:teachers(id, user:users(id, firstName, lastName, name))'
-      )
+      .select(ATTENDANCE_MINIMAL_COLUMNS)
       .single();
 
     if (error) throw error;
@@ -241,15 +245,12 @@ export const attendancesService = {
       updatedAt: now,
     }));
 
-    const { data, error } = await supabase
-      .from('attendances')
-      .insert(payload)
-      .select(
-        'id, date, status, notes, createdAt, updatedAt, studentId, classId, classSubjectId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), class:classes(id, name, grade), classSubject:class_subjects(id, subject:subjects(id, name, code, color)), teacher:teachers(id, user:users(id, firstName, lastName, name))'
-      );
+    // O retorno mínimo evita que cada aluno dispare joins e políticas RLS
+    // adicionais depois do INSERT. A tela só precisa saber se o lote salvou.
+    const { error } = await supabase.from('attendances').insert(payload);
 
     if (error) throw error;
-    return (data ?? []).map((row) => attendancesService.mapAttendance(row));
+    return [];
   },
 
   /**
@@ -262,9 +263,7 @@ export const attendancesService = {
       .from('attendances')
       .update({ ...dto, updatedAt: now })
       .eq('id', id)
-      .select(
-        'id, date, status, notes, createdAt, updatedAt, studentId, classId, classSubjectId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), class:classes(id, name, grade), classSubject:class_subjects(id, subject:subjects(id, name, code, color)), teacher:teachers(id, user:users(id, firstName, lastName, name))'
-      )
+      .select(ATTENDANCE_MINIMAL_COLUMNS)
       .single();
 
     if (error) throw error;
