@@ -39,6 +39,8 @@ import { Gender, UserRole } from '@/types/user.types';
 import { AvatarCropModal } from '@/components/ui/AvatarCropModal';
 import { useCepAutofill } from '@/hooks/useCepAutofill';
 import { formatScheduleLoad } from '@/lib/schedule-load';
+import { subjectsService } from '@/services/subjects.service';
+import { Pagination } from '@/components/ui/Pagination';
 
 export interface InstitutionOption {
   id: string;
@@ -138,7 +140,6 @@ const relationshipOptions = [
   { value: 'Outro', label: 'Outro' },
 ];
 
-const subjectCache = new Map<string, SubjectOption[]>();
 const studentCache = new Map<string, StudentOption[]>();
 
 function getInitialPasswordFromEmail(email?: string) {
@@ -324,16 +325,23 @@ function buildSteps(
   ];
 }
 
-function TabHeader({ step }: { step: StepDefinition }) {
+function TabHeader({
+  step,
+  rightContent,
+}: {
+  step: StepDefinition;
+  rightContent?: React.ReactNode;
+}) {
   return (
     <div className="border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
-      <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          {step.label}
+          <span className="block">{step.label}</span>
+          <span className="mt-1 block text-sm font-normal text-gray-500 dark:text-gray-400">
+            {step.subtitle}
+          </span>
         </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          {step.subtitle}
-        </p>
+        {rightContent}
       </div>
     </div>
   );
@@ -365,6 +373,8 @@ export function RoleBasedUserWizard({
 }: RoleBasedUserWizardProps) {
   const [activeStepId, setActiveStepId] = useState('identity');
   const [subjectOptions, setSubjectOptions] = useState<SubjectOption[]>([]);
+  const [subjectSearchTerm, setSubjectSearchTerm] = useState('');
+  const [subjectPage, setSubjectPage] = useState(1);
   const [studentOptions, setStudentOptions] = useState<StudentOption[]>([]);
   const [isLoadingDynamicOptions, setIsLoadingDynamicOptions] = useState(false);
   const [institutionSearchTerm, setInstitutionSearchTerm] = useState('');
@@ -570,25 +580,28 @@ export function RoleBasedUserWizard({
 
       try {
         if (role === UserRole.TEACHER) {
-          const cachedSubjects = subjectCache.get(cacheKey);
-          if (cachedSubjects) {
-            setSubjectOptions(cachedSubjects);
+          if (selectedInstitutionIds.length === 0) {
+            setSubjectOptions([]);
           } else {
-            const { data, error } = await supabase
-              .from('subjects')
-              .select('id, name, code, institutionId')
-              .in(
-                'institutionId',
-                selectedInstitutionIds.length > 0
-                  ? selectedInstitutionIds
-                  : [''],
-              )
-              .eq('isActive', true)
-              .order('name', { ascending: true });
+            const subjectResponses = await Promise.all(
+              selectedInstitutionIds.map((institutionId) =>
+                subjectsService.findAll({
+                  institutionId,
+                  isActive: true,
+                  page: 1,
+                  limit: 1000,
+                }),
+              ),
+            );
 
-            if (error) throw error;
-            const normalized = (data ?? []) as SubjectOption[];
-            subjectCache.set(cacheKey, normalized);
+            const normalized = Array.from(
+              new Map(
+                subjectResponses
+                  .flatMap((response) => response.data)
+                  .map((subject) => [subject.id, subject] as const),
+              ).values(),
+            ) as SubjectOption[];
+
             setSubjectOptions(normalized);
           }
         }
@@ -630,6 +643,7 @@ export function RoleBasedUserWizard({
         }
       } catch (error) {
         console.error('Erro ao carregar opcoes do wizard de usuario:', error);
+        if (role === UserRole.TEACHER) setSubjectOptions([]);
       } finally {
         setIsLoadingDynamicOptions(false);
       }
@@ -637,6 +651,49 @@ export function RoleBasedUserWizard({
 
     loadOptions();
   }, [role, selectedInstitutionIds]);
+
+  const filteredSubjectOptions = useMemo(() => {
+    const search = subjectSearchTerm.trim().toLocaleLowerCase();
+
+    return subjectOptions
+      .filter((subject) => {
+        if (!search) return true;
+        return [subject.name, subject.code]
+          .filter(Boolean)
+          .some((value) => value?.toLocaleLowerCase().includes(search));
+      })
+      .sort((first, second) => first.name.localeCompare(second.name, 'pt-BR'));
+  }, [subjectOptions, subjectSearchTerm]);
+
+  const subjectPagination = useMemo(() => {
+    const limit = 20;
+    const total = filteredSubjectOptions.length;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const page = Math.min(subjectPage, totalPages);
+    const start = (page - 1) * limit;
+
+    return {
+      data: filteredSubjectOptions.slice(start, start + limit),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    };
+  }, [filteredSubjectOptions, subjectPage]);
+
+  useEffect(() => {
+    setSubjectPage(1);
+  }, [role, selectedInstitutionIds, subjectSearchTerm]);
+
+  useEffect(() => {
+    if (subjectPage > subjectPagination.meta.totalPages) {
+      setSubjectPage(subjectPagination.meta.totalPages);
+    }
+  }, [subjectPage, subjectPagination.meta.totalPages]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1695,7 +1752,22 @@ export function RoleBasedUserWizard({
 
             {activeStep.id === 'subjects' && role === UserRole.TEACHER && (
               <div>
-                <TabHeader step={activeStep} />
+                <TabHeader
+                  step={activeStep}
+                  rightContent={
+                    <div className="w-full sm:w-72">
+                      <Input
+                        aria-label="Buscar disciplina"
+                        placeholder="Buscar disciplina pelo nome"
+                        value={subjectSearchTerm}
+                        onChange={(event) =>
+                          setSubjectSearchTerm(event.target.value)
+                        }
+                        leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
+                      />
+                    </div>
+                  }
+                />
 
                 {!canManageTeacherAssignments && (
                   <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
@@ -1713,9 +1785,14 @@ export function RoleBasedUserWizard({
                   <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-600 p-4 text-sm text-gray-500 dark:text-gray-400">
                     Nenhuma disciplina encontrada nas instituições selecionadas.
                   </div>
+                ) : filteredSubjectOptions.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-600 p-4 text-sm text-gray-500 dark:text-gray-400">
+                    Nenhuma disciplina corresponde à busca.
+                  </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {subjectOptions.map((subject) => {
+                  <>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    {subjectPagination.data.map((subject) => {
                       const isSelected = selectedSubjects.includes(subject.id);
                       const institutionName = availableInstitutions.find(
                         (item) => item.id === subject.institutionId,
@@ -1753,7 +1830,14 @@ export function RoleBasedUserWizard({
                         </label>
                       );
                     })}
-                  </div>
+                    </div>
+                    <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
+                      <Pagination
+                        meta={subjectPagination.meta}
+                        onPageChange={setSubjectPage}
+                      />
+                    </div>
+                  </>
                 )}
               </div>
             )}
