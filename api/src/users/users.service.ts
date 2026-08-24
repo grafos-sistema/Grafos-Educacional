@@ -881,7 +881,7 @@ export class UsersService {
   /**
    * Busca usuário por email (usado para autenticação)
    */
-  async findByEmail(email: string) {
+  findByEmail(email: string) {
     return this.prisma.user.findFirst({
       where: { email },
       include: {

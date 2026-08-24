@@ -26,7 +26,7 @@ export class SAEBDescriptorsController {
    * GET /saeb-descriptors
    */
   @Get()
-  async findAll(
+  findAll(
     @Query('subject') subject?: string,
     @Query('gradeLevel') gradeLevel?: string,
     @Query('skill') skill?: string,
@@ -53,7 +53,7 @@ export class SAEBDescriptorsController {
    */
   @Post()
   @Roles('INSTITUTION_ADMIN', 'SUPER_ADMIN')
-  async create(
+  create(
     @Body()
     data: {
       code: string;

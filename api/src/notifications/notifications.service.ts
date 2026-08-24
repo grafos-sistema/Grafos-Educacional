@@ -7,7 +7,7 @@ export class NotificationsService {
   constructor(private readonly prisma: PrismaService) {}
 
   // Criar notificação
-  async create(
+  create(
     userId: string,
     type: NotificationType,
     title: string,
@@ -75,7 +75,7 @@ export class NotificationsService {
   }
 
   // Notificação de aprovação (para o usuário)
-  async notifyUserApproved(
+  notifyUserApproved(
     userId: string,
     profileType: string,
     approvedById: string,
@@ -91,7 +91,7 @@ export class NotificationsService {
   }
 
   // Contar pendentes de aprovação
-  async getPendingApprovalsCount(institutionId: string) {
+  getPendingApprovalsCount(institutionId: string) {
     return this.prisma.user.count({
       where: {
         institutionId,
@@ -153,7 +153,7 @@ export class NotificationsService {
   }
 
   // Marcar como lida
-  async markAsRead(notificationId: string, userId: string) {
+  markAsRead(notificationId: string, userId: string) {
     return this.prisma.notification.updateMany({
       where: {
         id: notificationId,
@@ -167,7 +167,7 @@ export class NotificationsService {
   }
 
   // Marcar todas como lidas
-  async markAllAsRead(userId: string) {
+  markAllAsRead(userId: string) {
     return this.prisma.notification.updateMany({
       where: {
         userId,
@@ -181,7 +181,7 @@ export class NotificationsService {
   }
 
   // Contar não lidas
-  async getUnreadCount(userId: string) {
+  getUnreadCount(userId: string) {
     return this.prisma.notification.count({
       where: {
         userId,
@@ -191,7 +191,7 @@ export class NotificationsService {
   }
 
   // Deletar notificação
-  async remove(notificationId: string, userId: string) {
+  remove(notificationId: string, userId: string) {
     return this.prisma.notification.deleteMany({
       where: {
         id: notificationId,

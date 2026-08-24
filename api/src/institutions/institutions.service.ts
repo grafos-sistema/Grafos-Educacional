@@ -92,7 +92,7 @@ export class InstitutionsService {
   /**
    * Lista todas as instituições ativas (endpoint público)
    */
-  async findAllActive() {
+  findAllActive() {
     return this.prisma.institution.findMany({
       where: {
         isActive: true,

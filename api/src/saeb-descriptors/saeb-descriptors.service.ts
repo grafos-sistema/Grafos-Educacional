@@ -8,11 +8,7 @@ export class SAEBDescriptorsService {
   /**
    * Listar todos os descritores SAEB
    */
-  async findAll(filters?: {
-    subject?: string;
-    gradeLevel?: string;
-    skill?: string;
-  }) {
+  findAll(filters?: { subject?: string; gradeLevel?: string; skill?: string }) {
     const where: any = {};
 
     if (filters?.subject) {
@@ -57,7 +53,7 @@ export class SAEBDescriptorsService {
   /**
    * Criar descritor SAEB
    */
-  async create(data: {
+  create(data: {
     code: string;
     subject: string;
     skill: string;

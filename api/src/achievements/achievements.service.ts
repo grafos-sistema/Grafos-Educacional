@@ -13,7 +13,7 @@ export class AchievementsService {
   /**
    * Listar todos os badges disponíveis
    */
-  async getAllBadges() {
+  getAllBadges() {
     return this.prisma.badge.findMany({
       where: { isActive: true },
       orderBy: [{ rarity: 'desc' }, { points: 'desc' }],
@@ -23,7 +23,7 @@ export class AchievementsService {
   /**
    * Listar conquistas de um usuário
    */
-  async getUserAchievements(userId: string) {
+  getUserAchievements(userId: string) {
     return this.prisma.achievement.findMany({
       where: { userId },
       include: {

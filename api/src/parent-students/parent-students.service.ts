@@ -88,7 +88,7 @@ export class ParentStudentsService {
     return parentStudent;
   }
 
-  async findAll() {
+  findAll() {
     return this.prisma.studentParent.findMany({
       include: {
         parent: {

@@ -814,12 +814,16 @@ export class ExamsService {
         {} as Record<number, number>,
       );
 
+      const questionText =
+        'text' in examQuestion.question &&
+        typeof examQuestion.question.text === 'string'
+          ? `${examQuestion.question.text.substring(0, 100)}...`
+          : 'N/A';
+
       questionAnalytics.push({
         questionId: examQuestion.questionId,
         orderNumber: examQuestion.orderNumber,
-        questionText:
-          (examQuestion.question as any).text?.substring(0, 100) + '...' ||
-          'N/A',
+        questionText,
         saebDescriptor: examQuestion.question.saebDescriptor,
         totalAnswers,
         correctCount,

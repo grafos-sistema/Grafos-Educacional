@@ -153,11 +153,7 @@ export class ClassSubjectRequestsService {
   /**
    * Listar todas as solicitações com filtros
    */
-  async findAll(
-    institutionId?: string,
-    teacherId?: string,
-    status?: RequestStatus,
-  ) {
+  findAll(institutionId?: string, teacherId?: string, status?: RequestStatus) {
     const where: any = {};
 
     if (status) {

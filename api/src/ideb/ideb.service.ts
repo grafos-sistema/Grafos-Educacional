@@ -17,7 +17,7 @@ export class IDEBService {
   /**
    * Criar meta IDEB
    */
-  async createTarget(institutionId: string, dto: CreateIDEBTargetDto) {
+  createTarget(institutionId: string, dto: CreateIDEBTargetDto) {
     return this.prisma.iDEBTarget.create({
       data: {
         ...dto,
@@ -29,7 +29,7 @@ export class IDEBService {
   /**
    * Listar metas IDEB da instituição
    */
-  async getTargets(institutionId: string, year?: number, gradeLevel?: string) {
+  getTargets(institutionId: string, year?: number, gradeLevel?: string) {
     const where: any = { institutionId };
 
     if (year) {
@@ -64,7 +64,7 @@ export class IDEBService {
   /**
    * Atualizar meta IDEB
    */
-  async updateTarget(id: string, dto: UpdateIDEBTargetDto) {
+  updateTarget(id: string, dto: UpdateIDEBTargetDto) {
     return this.prisma.iDEBTarget.update({
       where: { id },
       data: dto,
@@ -74,7 +74,7 @@ export class IDEBService {
   /**
    * Deletar meta IDEB
    */
-  async deleteTarget(id: string) {
+  deleteTarget(id: string) {
     return this.prisma.iDEBTarget.delete({
       where: { id },
     });
@@ -152,11 +152,7 @@ export class IDEBService {
   /**
    * Listar indicadores IDEB
    */
-  async getIndicators(
-    institutionId: string,
-    year?: number,
-    gradeLevel?: string,
-  ) {
+  getIndicators(institutionId: string, year?: number, gradeLevel?: string) {
     const where: any = { institutionId };
 
     if (year) {
@@ -612,7 +608,7 @@ export class IDEBService {
 
       // Contabilizar status real dos alunos
       for (const enrollment of enrollments) {
-        const status = (enrollment as any).status; // EnrollmentStatus
+        const status = enrollment.status; // EnrollmentStatus
 
         if (status === 'APPROVED') {
           approvedStudents++;

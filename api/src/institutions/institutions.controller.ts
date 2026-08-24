@@ -70,7 +70,7 @@ Endpoint público para listar apenas instituições ativas.
       },
     },
   })
-  async getPublicInstitutions() {
+  getPublicInstitutions() {
     return this.institutionsService.findAllActive();
   }
 
