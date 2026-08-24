@@ -48,7 +48,7 @@ export function Header({ title }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-secondary-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
       {/* Municipality Logo and Name */}
-      <div className="flex items-center gap-3">
+      <div className="hidden items-center gap-3 lg:flex">
         {municipalityConfig.logo && (
           <Image
             src={municipalityConfig.logo}

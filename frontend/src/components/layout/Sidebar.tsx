@@ -662,7 +662,7 @@ export function Sidebar({
       {/* Mobile menu button */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-white border border-secondary-200 shadow-md hover:bg-secondary-50 transition-colors"
+        className="fixed left-4 top-4 z-50 inline-flex h-8 w-8 items-center justify-center border-0 bg-transparent p-0 text-secondary-700 shadow-none transition-colors hover:bg-transparent hover:text-secondary-900 focus:outline-none focus:ring-0 lg:hidden"
         aria-label="Toggle menu"
       >
         {isMobileMenuOpen ? (

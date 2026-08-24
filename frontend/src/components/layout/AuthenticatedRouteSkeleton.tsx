@@ -81,7 +81,7 @@ export function AuthenticatedShellSkeleton() {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between border-b border-secondary-200 bg-white px-4 shadow-sm sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
+          <div className="hidden items-center gap-3 lg:flex">
             <SkeletonBlock className="h-10 w-10 rounded-lg" />
             <div className="hidden space-y-2 md:block">
               <SkeletonBlock className="h-4 w-28" />
@@ -96,8 +96,8 @@ export function AuthenticatedShellSkeleton() {
         </header>
 
         <main id="main-content" className="flex-1 overflow-y-auto" tabIndex={-1}>
-          <div className="px-4 py-6 pt-16 sm:px-6 lg:px-8 lg:pt-6" suppressHydrationWarning>
-            <div className="mb-4 flex items-center gap-2">
+          <div className="px-4 py-4 sm:px-6 sm:py-6 lg:px-8" suppressHydrationWarning>
+            <div className="mb-4 hidden items-center gap-2 md:flex">
               <SkeletonBlock className="h-3 w-20" />
               <SkeletonBlock className="h-3 w-3 rounded-full" />
               <SkeletonBlock className="h-3 w-24" />

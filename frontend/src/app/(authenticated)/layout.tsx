@@ -142,7 +142,7 @@ function AuthenticatedLayoutShell({
             <Header />
 
             <main id="main-content" className="min-h-0 flex-1 overflow-y-auto overscroll-contain" tabIndex={-1}>
-              <div className="min-h-full py-6 px-4 sm:px-6 lg:px-8 pt-16 lg:pt-6" suppressHydrationWarning>
+              <div className="min-h-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8" suppressHydrationWarning>
                 <Breadcrumbs />
                 <AuthenticatedContent>{children}</AuthenticatedContent>
               </div>

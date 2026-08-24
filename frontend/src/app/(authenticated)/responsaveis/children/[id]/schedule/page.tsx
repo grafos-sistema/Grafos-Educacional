@@ -60,17 +60,17 @@ export default function ParentChildSchedulePage() {
   const isLoading = loadingChild || loadingSchedules;
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
+    <div className="p-4 sm:p-6">
+      <div className="mb-4 sm:mb-6">
         <Button
           variant="ghost"
           onClick={() => router.push('/responsaveis/children')}
           leftIcon={<ArrowLeftIcon className="h-5 w-5" />}
-          className="mb-4"
+          className="mb-3 sm:mb-4"
         >
           Voltar
         </Button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+        <h1 className="mb-1 text-2xl font-bold text-gray-900 dark:text-white sm:mb-2">
           Grade de Horários
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
