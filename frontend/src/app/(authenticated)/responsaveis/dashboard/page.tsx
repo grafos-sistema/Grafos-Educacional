@@ -27,12 +27,13 @@ export default function PaisDashboard() {
   const router = useRouter();
   const { user } = useAuthStore();
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+  const activeRole = user?.activeProfile ?? user?.role;
 
   // Buscar perfil completo do responsável para obter o ID do parent
   const { data: parentProfile, isLoading: loadingProfile } = useQuery({
     queryKey: ['parent-profile', user?.id],
     queryFn: () => usersService.findOne(user!.id),
-    enabled: !!user?.id && user?.role === UserRole.PARENT,
+    enabled: !!user?.id && activeRole === UserRole.PARENT,
   });
 
   // Buscar dados dos filhos (students) com informações de matrícula e desempenho

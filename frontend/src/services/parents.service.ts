@@ -37,16 +37,19 @@ class ParentsService {
    * Busca os filhos/alunos de um responsável
    */
   async getChildren(parentId: string): Promise<ParentStudent[]> {
-    const { data } = await api.get<ParentStudent[]>(`/parents/${parentId}/students`);
-    return data;
+    // O interceptor do cliente API já retorna response.data diretamente.
+    // Desestruturar { data } aqui descartava a lista e fazia o portal exibir
+    // "Nenhum filho cadastrado" mesmo quando o vínculo existia.
+    const response = await api.get<ParentStudent[]>(`/parents/${parentId}/students`);
+    return response as unknown as ParentStudent[];
   }
 
   /**
    * Busca dados de um responsável específico
    */
   async findOne(parentId: string) {
-    const { data } = await api.get(`/parents/${parentId}`);
-    return data;
+    const response = await api.get(`/parents/${parentId}`);
+    return response as unknown;
   }
 }
 

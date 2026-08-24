@@ -430,7 +430,7 @@ const navigation: NavItem[] = [
     icon: UserGroupIcon,
     roles: [UserRole.PARENT],
     pathMapping: {
-      [UserRole.PARENT]: '/responsaveis/dashboard',
+      [UserRole.PARENT]: '/responsaveis/children',
     },
   },
   {

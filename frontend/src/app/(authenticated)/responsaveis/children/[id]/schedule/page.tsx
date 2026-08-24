@@ -64,7 +64,7 @@ export default function ParentChildSchedulePage() {
       <div className="mb-6">
         <Button
           variant="ghost"
-          onClick={() => router.push('/responsaveis/dashboard')}
+          onClick={() => router.push('/responsaveis/children')}
           leftIcon={<ArrowLeftIcon className="h-5 w-5" />}
           className="mb-4"
         >
