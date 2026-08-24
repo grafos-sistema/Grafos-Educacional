@@ -269,6 +269,7 @@ export default function EditClassPage() {
 
       <ClassSubjectsManager
         classId={classId}
+        institutionId={classData.institutionId}
         description="Aqui o administrador já consegue vincular ou remover disciplinas da turma sem precisar entrar primeiro na visualização."
       />
 

@@ -20,6 +20,7 @@ interface ClassStudentsManagerProps {
   classId: string;
   institutionId?: string | null;
   maxStudents?: number | null;
+  readOnly?: boolean;
 }
 
 function userName(user: { firstName?: string; lastName?: string }) {
@@ -46,17 +47,20 @@ export function ClassStudentsManager({
   classId,
   institutionId,
   maxStudents,
+  readOnly = false,
 }: ClassStudentsManagerProps) {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const currentRole = user?.activeProfile ?? user?.role;
-  const canManageStudents = [
-    UserRole.SUPER_ADMIN_GLOBAL,
-    UserRole.SUPER_ADMIN,
-    UserRole.INSTITUTION_ADMIN,
-    UserRole.DIRECTOR,
-    UserRole.COORDINATOR,
-  ].includes(currentRole as UserRole);
+  const canManageStudents =
+    !readOnly &&
+    [
+      UserRole.SUPER_ADMIN_GLOBAL,
+      UserRole.SUPER_ADMIN,
+      UserRole.INSTITUTION_ADMIN,
+      UserRole.DIRECTOR,
+      UserRole.COORDINATOR,
+    ].includes(currentRole as UserRole);
   const [search, setSearch] = useState('');
 
   const { data: enrollmentData, isLoading: isLoadingEnrollments } = useQuery({
@@ -165,7 +169,9 @@ export function ClassStudentsManager({
               Alunos da turma
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Consulte os alunos matriculados e, pela Direção ou Coordenação, gerencie os vínculos.
+              {readOnly
+                ? 'Consulte os alunos matriculados nesta turma.'
+                : 'Consulte os alunos matriculados e, pela Direção ou Coordenação, gerencie os vínculos.'}
             </p>
           </div>
         </div>

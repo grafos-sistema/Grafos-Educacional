@@ -8,7 +8,6 @@ import { subjectsService } from "@/services/subjects.service";
 import { useAuthStore } from "@/stores/authStore";
 import { UserRole } from "@/types/user.types";
 import { Button } from "@/components/ui/Button";
-import { Select } from "@/components/ui/Select";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/hooks/useToast";
@@ -16,29 +15,35 @@ import { formatScheduleLoad } from "@/lib/schedule-load";
 
 interface ClassSubjectsManagerProps {
   classId: string;
+  institutionId?: string | null;
   title?: string;
   description?: string;
   emptyTitle?: string;
   emptyDescription?: string;
   compact?: boolean;
+  readOnly?: boolean;
 }
 
 export function ClassSubjectsManager({
   classId,
+  institutionId,
   title = "Disciplinas da Turma",
   description = "Vincule as disciplinas que esta turma irá cursar. A distribuição do professor é feita na página da disciplina.",
   emptyTitle = "Nenhuma disciplina vinculada",
   emptyDescription = "Adicione a primeira disciplina da turma para destravar horários e organização pedagógica.",
   compact = false,
+  readOnly = false,
 }: ClassSubjectsManagerProps) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const { user } = useAuthStore();
   const currentRole = user?.activeProfile || user?.role;
   const canManageClassSubjects =
-    currentRole === UserRole.DIRECTOR || currentRole === UserRole.COORDINATOR;
+    !readOnly &&
+    (currentRole === UserRole.DIRECTOR || currentRole === UserRole.COORDINATOR);
 
-  const [subjectId, setSubjectId] = useState("");
+  const scopeInstitutionId = institutionId ?? user?.institutionId;
+  const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
   const [removingSubjectId, setRemovingSubjectId] = useState<string | null>(
     null,
   );
@@ -51,14 +56,14 @@ export function ClassSubjectsManager({
     });
 
   const { data: subjectsData, isLoading: loadingSubjects } = useQuery({
-    queryKey: ["subjects", "class-subject-manager", user?.institutionId],
+    queryKey: ["subjects", "class-subject-manager", scopeInstitutionId],
     queryFn: () =>
       subjectsService.findAll({
-        institutionId: user?.institutionId,
+        institutionId: scopeInstitutionId,
         isActive: true,
         limit: 1000,
       }),
-    enabled: Boolean(user?.institutionId),
+    enabled: Boolean(scopeInstitutionId && canManageClassSubjects),
   });
 
   const linkedSubjectIds = useMemo(
@@ -66,23 +71,25 @@ export function ClassSubjectsManager({
     [classSubjects],
   );
 
-  const availableSubjectOptions = useMemo(
-    () => [
-      { value: "", label: "Selecione uma disciplina" },
-      ...((subjectsData?.data ?? [])
+  const availableSubjects = useMemo(
+    () =>
+      (subjectsData?.data ?? [])
         .filter((subject) => !linkedSubjectIds.has(subject.id))
         .map((subject) => ({
-          value: subject.id,
+          id: subject.id,
           label: subject.code
             ? `${subject.name} (${subject.code})`
             : subject.name,
-        })) ?? []),
-    ],
+        })),
     [linkedSubjectIds, subjectsData?.data],
   );
 
-  const resetForm = () => {
-    setSubjectId("");
+  const toggleSubject = (subjectId: string) => {
+    setSelectedSubjectIds((current) =>
+      current.includes(subjectId)
+        ? current.filter((id) => id !== subjectId)
+        : [...current, subjectId],
+    );
   };
 
   const invalidateClassSubjectQueries = async () => {
@@ -102,19 +109,22 @@ export function ClassSubjectsManager({
         );
       }
 
-      if (!subjectId) {
-        throw new Error("Selecione uma disciplina para continuar.");
+      if (selectedSubjectIds.length === 0) {
+        throw new Error("Selecione pelo menos uma disciplina para continuar.");
       }
 
-      return classesService.addSubject({
-        classId,
-        subjectId,
-      });
+      const createdLinks = [];
+      for (const subjectId of selectedSubjectIds) {
+        createdLinks.push(await classesService.addSubject({ classId, subjectId }));
+      }
+      return createdLinks;
     },
-    onSuccess: async () => {
+    onSuccess: async (createdLinks) => {
       await invalidateClassSubjectQueries();
-      toast.success("Disciplina vinculada à turma com sucesso!");
-      resetForm();
+      toast.success(
+        `${createdLinks.length} disciplina(s) vinculada(s) à turma com sucesso!`,
+      );
+      setSelectedSubjectIds([]);
     },
     onError: (error: any) => {
       toast.error(error?.message || "Erro ao vincular disciplina à turma.");
@@ -159,24 +169,58 @@ export function ClassSubjectsManager({
 
         {canManageClassSubjects ? (
           <div>
-            <Select
-              label="Disciplina"
-              value={subjectId}
-              onChange={(event) => setSubjectId(event.target.value)}
-              options={availableSubjectOptions}
-              disabled={loadingSubjects || isBusy}
-            />
+            <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+              Selecione as disciplinas da turma
+            </p>
+            {availableSubjects.length > 0 ? (
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {availableSubjects.map((subject) => {
+                  const isSelected = selectedSubjectIds.includes(subject.id);
+
+                  return (
+                    <label
+                      key={subject.id}
+                      className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-3 transition-colors ${
+                        isSelected
+                          ? "border-emerald-500 bg-emerald-50 dark:border-emerald-400 dark:bg-emerald-900/20"
+                          : "border-gray-200 hover:border-emerald-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-emerald-600 dark:hover:bg-gray-700/40"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSubject(subject.id)}
+                        disabled={isBusy}
+                        className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                        {subject.label}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                Todas as disciplinas ativas desta instituição já estão vinculadas a esta turma.
+              </p>
+            )}
             <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-end">
               <Button
                 type="button"
                 onClick={() => createMutation.mutate()}
                 isLoading={createMutation.isPending}
-                disabled={isBusy || !subjectId}
+                disabled={isBusy || selectedSubjectIds.length === 0}
                 className="w-full sm:w-auto"
               >
-                Vincular disciplina
+                Salvar disciplinas
               </Button>
             </div>
+            {selectedSubjectIds.length > 0 && (
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                {selectedSubjectIds.length} disciplina(s) selecionada(s). Elas serão salvas juntas.
+              </p>
+            )}
             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
               O professor e as turmas são definidos na página da disciplina. A
               carga semanal aparece depois que os horários forem cadastrados.
@@ -184,7 +228,7 @@ export function ClassSubjectsManager({
           </div>
         ) : null}
 
-        {(loadingClassSubjects || loadingSubjects) && (
+        {(loadingClassSubjects || (canManageClassSubjects && loadingSubjects)) && (
           <div className="flex justify-center py-8">
             <LoadingSpinner size="md" text="Carregando vínculos da turma..." />
           </div>

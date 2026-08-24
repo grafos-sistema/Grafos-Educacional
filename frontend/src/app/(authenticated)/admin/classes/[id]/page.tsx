@@ -60,7 +60,7 @@ export default function ClassDetailPage() {
             {classData.name}
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Gerencie a estrutura pedagógica da turma, a sala e os vínculos de disciplina com
+            Consulte a estrutura pedagógica da turma, a sala e os vínculos de disciplina com
             seus respectivos professores.
           </p>
         </div>
@@ -136,13 +136,16 @@ export default function ClassDetailPage() {
 
       <ClassSubjectsManager
         classId={classId}
-        description="Adicione aqui as disciplinas que pertencem a esta turma. Esse vínculo será usado tanto pela coordenação quanto pela grade de horários."
+        institutionId={classData.institutionId}
+        readOnly
+        description="Consulte as disciplinas que pertencem a esta turma e os respectivos professores. Para alterar os vínculos, abra a edição da turma."
       />
 
       <ClassStudentsManager
         classId={classId}
         institutionId={classData.institutionId}
         maxStudents={classData.maxStudents}
+        readOnly
       />
     </div>
   );
