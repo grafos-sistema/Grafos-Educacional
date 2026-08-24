@@ -6,7 +6,9 @@ import {
 } from 'class-validator';
 
 @ValidatorConstraint({ name: 'isBrazilianPhone', async: false })
-export class IsBrazilianPhoneConstraint implements ValidatorConstraintInterface {
+export class IsBrazilianPhoneConstraint
+  implements ValidatorConstraintInterface
+{
   validate(phone: string): boolean {
     if (!phone) return false;
 
