@@ -109,7 +109,11 @@ export default function ChildAttendancePage() {
 
     if (!acc[subjectId]) {
       acc[subjectId] = {
-        subject: attendance.classSubject?.subject,
+        subject: attendance.classSubject?.subject ?? {
+          id: attendance.classSubjectId,
+          name: 'Disciplina',
+          color: undefined,
+        },
         attendances: [],
         stats: {
           present: 0,
@@ -309,7 +313,7 @@ export default function ChildAttendancePage() {
         <div className="space-y-6">
           {Object.values(groupedAttendances).map((group: any) => (
             <div
-              key={group.subject.id}
+              key={group.subject?.id ?? 'subject'}
               className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden"
             >
               {/* Subject Header */}

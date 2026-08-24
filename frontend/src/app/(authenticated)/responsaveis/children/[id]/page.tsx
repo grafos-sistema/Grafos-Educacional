@@ -147,9 +147,19 @@ export default function ChildDetailsPage() {
           Voltar
         </Button>
         <div className="flex items-center gap-4 mb-4">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-2xl font-bold">
-            {child.firstName[0]}
-            {child.lastName[0]}
+          <div className="w-20 h-20 overflow-hidden rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-2xl font-bold">
+            {child.avatar ? (
+              <img
+                src={child.avatar}
+                alt={`Foto de ${child.firstName} ${child.lastName}`}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <>
+                {child.firstName?.[0]}
+                {child.lastName?.[0]}
+              </>
+            )}
           </div>
           <div className="flex-1">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">

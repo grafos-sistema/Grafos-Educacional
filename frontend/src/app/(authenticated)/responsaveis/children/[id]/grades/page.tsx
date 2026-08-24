@@ -122,9 +122,21 @@ export default function ChildGradesPage() {
     const key = `${subjectId}-${periodId}`;
 
     if (!acc[key]) {
+      const subject = grade.classSubject?.subject ?? {
+        id: grade.classSubjectId,
+        name: 'Disciplina',
+        color: undefined,
+      };
+      const period = grade.academicPeriod ?? {
+        id: grade.academicPeriodId,
+        name: 'Período acadêmico',
+        type: '',
+        orderNumber: 0,
+      };
+
       acc[key] = {
-        subject: grade.classSubject?.subject,
-        period: grade.academicPeriod,
+        subject,
+        period,
         grades: [],
         average: 0,
         totalWeight: 0,
@@ -278,7 +290,7 @@ export default function ChildGradesPage() {
         <div className="space-y-6">
           {Object.values(groupedGrades).map((group: any) => (
             <div
-              key={`${group.subject.id}-${group.period.id}`}
+              key={`${group.subject?.id ?? 'subject'}-${group.period?.id ?? 'period'}`}
               className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden"
             >
               {/* Subject Header */}

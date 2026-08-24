@@ -787,6 +787,21 @@ export class UsersService {
                 },
               },
             },
+            classEnrollments: {
+              where: { isActive: true },
+              orderBy: { enrollmentDate: 'desc' },
+              select: {
+                id: true,
+                classId: true,
+                status: true,
+                class: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
           },
         },
         parentProfile: {
