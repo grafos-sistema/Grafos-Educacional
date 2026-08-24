@@ -36,6 +36,15 @@ export class CreateAttendanceDto {
   classSubjectId: string;
 
   @ApiProperty({
+    description: 'ID da aula específica na grade horária',
+    example: '123e4567-e89b-12d3-a456-426614174002',
+    required: false,
+  })
+  @IsOptional()
+  @IsUUID('4', { message: 'ID da aula inválido' })
+  classScheduleId?: string;
+
+  @ApiProperty({
     description: 'ID do professor',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
@@ -74,4 +83,17 @@ export class CreateAttendanceDto {
     message: 'Observações não podem ter mais de 500 caracteres',
   })
   notes?: string;
+
+  @ApiProperty({
+    description:
+      'Justificativa exigida quando a direção ou coordenação lança fora da grade regular',
+    required: false,
+    maxLength: 500,
+  })
+  @IsOptional()
+  @IsString({ message: 'A justificativa deve ser um texto' })
+  @MaxLength(500, {
+    message: 'A justificativa não pode ter mais de 500 caracteres',
+  })
+  authorizationReason?: string;
 }

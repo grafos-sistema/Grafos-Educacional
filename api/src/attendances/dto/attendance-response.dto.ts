@@ -14,6 +14,18 @@ export class AttendanceResponseDto {
   @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000' })
   classSubjectId: string;
 
+  @ApiProperty({ nullable: true })
+  classScheduleId: string | null;
+
+  @ApiProperty({ nullable: true })
+  academicPeriodId: string | null;
+
+  @ApiProperty({ nullable: true })
+  authorizationReason: string | null;
+
+  @ApiProperty({ nullable: true })
+  authorizedById: string | null;
+
   @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000' })
   teacherId: string;
 

@@ -30,6 +30,7 @@ import {
 import { UserRole, AttendanceStatus } from '@prisma/client';
 import { Roles } from '../common/decorators/roles.decorator';
 import { SkipOwnership } from '../common/decorators/skip-ownership.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('attendances')
 @ApiBearerAuth()
@@ -38,7 +39,14 @@ export class AttendancesController {
   constructor(private readonly attendancesService: AttendancesService) {}
 
   @Post()
-  @Roles(UserRole.TEACHER)
+  @Roles(
+    UserRole.TEACHER,
+    UserRole.DIRECTOR,
+    UserRole.COORDINATOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.SUPER_ADMIN,
+    UserRole.SUPER_ADMIN_GLOBAL,
+  )
   @ApiOperation({
     summary: 'Registrar frequência individual',
     description: 'TEACHER pode registrar frequência de aluno individualmente',
@@ -54,12 +62,22 @@ export class AttendancesController {
     description: 'Já existe registro de frequência para esta data',
   })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
-  create(@Body() createAttendanceDto: CreateAttendanceDto) {
-    return this.attendancesService.create(createAttendanceDto);
+  create(
+    @Body() createAttendanceDto: CreateAttendanceDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.attendancesService.create(createAttendanceDto, user);
   }
 
   @Post('bulk')
-  @Roles(UserRole.TEACHER)
+  @Roles(
+    UserRole.TEACHER,
+    UserRole.DIRECTOR,
+    UserRole.COORDINATOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.SUPER_ADMIN,
+    UserRole.SUPER_ADMIN_GLOBAL,
+  )
   @ApiOperation({
     summary: 'Registrar frequência em lote',
     description:
@@ -85,15 +103,52 @@ export class AttendancesController {
     description: 'Já existem registros de frequência para esta data',
   })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
-  createBulk(@Body() bulkAttendanceDto: BulkAttendanceDto) {
-    return this.attendancesService.createBulk(bulkAttendanceDto);
+  createBulk(
+    @Body() bulkAttendanceDto: BulkAttendanceDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.attendancesService.createBulk(bulkAttendanceDto, user);
+  }
+
+  @Get('availability')
+  @SkipOwnership()
+  @Roles(
+    UserRole.TEACHER,
+    UserRole.DIRECTOR,
+    UserRole.COORDINATOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.SUPER_ADMIN,
+    UserRole.SUPER_ADMIN_GLOBAL,
+  )
+  @ApiOperation({
+    summary: 'Consultar aulas e períodos disponíveis para frequência',
+    description:
+      'Retorna os horários da disciplina e os bimestres do ano letivo da turma',
+  })
+  @ApiQuery({ name: 'classId', required: true, type: String })
+  @ApiQuery({ name: 'classSubjectId', required: true, type: String })
+  @ApiQuery({ name: 'teacherId', required: false, type: String })
+  getAvailability(
+    @Query('classId') classId: string,
+    @Query('classSubjectId') classSubjectId: string,
+    @Query('teacherId') teacherId: string | undefined,
+    @CurrentUser() user: any,
+  ) {
+    return this.attendancesService.getAvailability(
+      classId,
+      classSubjectId,
+      teacherId,
+      user,
+    );
   }
 
   @Get()
   @SkipOwnership()
   @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
     UserRole.INSTITUTION_ADMIN,
+    UserRole.DIRECTOR,
     UserRole.COORDINATOR,
     UserRole.TEACHER,
   )
@@ -164,6 +219,12 @@ export class AttendancesController {
     description: 'Filtrar por status',
     example: AttendanceStatus.PRESENT,
   })
+  @ApiQuery({
+    name: 'academicPeriodId',
+    required: false,
+    type: String,
+    description: 'Filtrar por bimestre/período acadêmico',
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista de frequências retornada com sucesso',
@@ -198,6 +259,7 @@ export class AttendancesController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('status') status?: AttendanceStatus,
+    @Query('academicPeriodId') academicPeriodId?: string,
   ) {
     return this.attendancesService.findAll(
       page,
@@ -209,14 +271,17 @@ export class AttendancesController {
       startDate,
       endDate,
       status,
+      academicPeriodId,
     );
   }
 
   @Get('student/:studentId/history')
   @SkipOwnership()
   @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
     UserRole.INSTITUTION_ADMIN,
+    UserRole.DIRECTOR,
     UserRole.COORDINATOR,
     UserRole.TEACHER,
     UserRole.STUDENT,
@@ -266,8 +331,10 @@ export class AttendancesController {
   @Get('report/:studentId')
   @SkipOwnership()
   @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
     UserRole.INSTITUTION_ADMIN,
+    UserRole.DIRECTOR,
     UserRole.COORDINATOR,
     UserRole.TEACHER,
     UserRole.STUDENT,
@@ -322,6 +389,7 @@ export class AttendancesController {
   @Get(':id')
   @SkipOwnership()
   @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
     UserRole.SUPER_ADMIN,
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
@@ -347,7 +415,14 @@ export class AttendancesController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.TEACHER)
+  @Roles(
+    UserRole.TEACHER,
+    UserRole.DIRECTOR,
+    UserRole.COORDINATOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.SUPER_ADMIN,
+    UserRole.SUPER_ADMIN_GLOBAL,
+  )
   @ApiParam({
     name: 'id',
     description: 'ID do registro de frequência',
@@ -368,12 +443,20 @@ export class AttendancesController {
   update(
     @Param('id') id: string,
     @Body() updateAttendanceDto: UpdateAttendanceDto,
+    @CurrentUser() user: any,
   ) {
-    return this.attendancesService.update(id, updateAttendanceDto);
+    return this.attendancesService.update(id, updateAttendanceDto, user);
   }
 
   @Delete(':id')
-  @Roles(UserRole.TEACHER)
+  @Roles(
+    UserRole.TEACHER,
+    UserRole.DIRECTOR,
+    UserRole.COORDINATOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.SUPER_ADMIN,
+    UserRole.SUPER_ADMIN_GLOBAL,
+  )
   @ApiParam({
     name: 'id',
     description: 'ID do registro de frequência',
@@ -390,14 +473,21 @@ export class AttendancesController {
   })
   @ApiResponse({ status: 404, description: 'Frequência não encontrada' })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
-  remove(@Param('id') id: string) {
-    return this.attendancesService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.attendancesService.remove(id, user);
   }
 
   @Get('class-subject/:classSubjectId')
   @UseInterceptors(CacheInterceptor)
   @CacheTTL(60000) // 1 minuto em milissegundos (reduzido para evitar dados desatualizados)
-  @Roles(UserRole.TEACHER, UserRole.COORDINATOR, UserRole.INSTITUTION_ADMIN)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.TEACHER,
+    UserRole.COORDINATOR,
+    UserRole.INSTITUTION_ADMIN,
+  )
   @SkipOwnership()
   @ApiParam({
     name: 'classSubjectId',

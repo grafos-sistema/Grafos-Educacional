@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { UserRole } from '@/types/user.types';
 import {
   ArrowLeftIcon,
   CheckIcon,
@@ -25,10 +24,16 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
-import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/hooks/useToast';
 import { useTeacherClassSubjects } from '@/hooks/useTeacherClassSubjects';
+
+const formatInputDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export default function AttendancePage() {
   const router = useRouter();
@@ -38,7 +43,8 @@ export default function AttendancePage() {
   const toast = useToast();
 
   const [selectedClassSubjectId, setSelectedClassSubjectId] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(formatInputDate(new Date()));
+  const [selectedClassScheduleId, setSelectedClassScheduleId] = useState('');
   const [attendanceData, setAttendanceData] = useState<
     Record<string, { status: AttendanceStatus; notes: string }>
   >({});
@@ -58,6 +64,7 @@ export default function AttendancePage() {
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
     classSubjectId: '',
+    academicPeriodId: '',
   });
 
   // Sincronizar filtro do histórico com a seleção da aba de registro
@@ -82,6 +89,73 @@ export default function AttendancePage() {
   }, [classSubjectIdFromUrl, teacherSubjects]);
 
   const selectedSubject = teacherSubjects?.find((s) => s.id === selectedClassSubjectId);
+  const teacherId = user?.teacherId || user?.teacherProfile?.id;
+
+  const getDayOfWeek = (dateString: string) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'][
+      new Date(year, month - 1, day).getDay()
+    ];
+  };
+
+  const isDateInsidePeriod = (dateString: string, period: { startDate: string; endDate: string }) => {
+    const date = dateString.slice(0, 10);
+    return date >= period.startDate.slice(0, 10) && date <= period.endDate.slice(0, 10);
+  };
+
+  const { data: attendanceAvailability, isLoading: loadingAvailability } = useQuery({
+    queryKey: ['attendance-availability', selectedSubject?.classId, selectedClassSubjectId, teacherId],
+    queryFn: () =>
+      attendancesService.getAvailability(
+        selectedSubject!.classId,
+        selectedClassSubjectId,
+        teacherId,
+      ),
+    enabled: !!selectedSubject?.classId && !!selectedClassSubjectId && !!teacherId,
+  });
+
+  const schedulesForSelectedDate = (attendanceAvailability?.schedules ?? []).filter(
+    (schedule) => schedule.dayOfWeek === getDayOfWeek(selectedDate),
+  );
+  const selectedPeriod = attendanceAvailability?.academicYear.periods.find((period) =>
+    isDateInsidePeriod(selectedDate, period),
+  );
+  const selectedSchedule = schedulesForSelectedDate.find(
+    (schedule) => schedule.id === selectedClassScheduleId,
+  );
+  const hasValidAttendanceSession =
+    !!selectedSubject &&
+    !!selectedPeriod &&
+    schedulesForSelectedDate.length > 0 &&
+    (schedulesForSelectedDate.length === 1 || !!selectedSchedule);
+
+  useEffect(() => {
+    if (schedulesForSelectedDate.length === 1) {
+      setSelectedClassScheduleId(schedulesForSelectedDate[0].id);
+      return;
+    }
+
+    if (!schedulesForSelectedDate.some((schedule) => schedule.id === selectedClassScheduleId)) {
+      setSelectedClassScheduleId('');
+    }
+  }, [selectedDate, attendanceAvailability, selectedClassScheduleId]);
+
+  const handleDateChange = (date: string) => {
+    if (!attendanceAvailability) {
+      setSelectedDate(date);
+      return;
+    }
+
+    const schedules = attendanceAvailability.schedules.filter(
+      (schedule) => schedule.dayOfWeek === getDayOfWeek(date),
+    );
+    if (schedules.length === 0) {
+      toast.warning('Não há aula desta disciplina neste dia. Escolha um dia previsto na grade.');
+      return;
+    }
+
+    setSelectedDate(date);
+  };
 
   const { data: enrollments, isLoading: loadingEnrollments } = useQuery({
     queryKey: ['class-enrollments-attendance', selectedSubject?.classId],
@@ -93,31 +167,64 @@ export default function AttendancePage() {
   });
 
   const { data: existingAttendances } = useQuery({
-    queryKey: ['existing-attendances', selectedSubject?.classId, selectedClassSubjectId, selectedDate],
+    queryKey: [
+      'existing-attendances',
+      selectedSubject?.classId,
+      selectedClassSubjectId,
+      selectedDate,
+      selectedClassScheduleId,
+    ],
     queryFn: async () => {
       if (!selectedSubject?.classId || !selectedClassSubjectId || !selectedDate) return [];
       const result = await attendancesService.getClassAttendanceByDate(
         selectedSubject.classId,
         selectedClassSubjectId,
-        selectedDate
+        selectedDate,
+        selectedClassScheduleId || undefined,
       );
       return result || [];
     },
-    enabled: !!selectedSubject?.classId && !!selectedClassSubjectId && !!selectedDate,
+    enabled: !!selectedSubject?.classId && !!selectedClassSubjectId && !!selectedDate && hasValidAttendanceSession,
+  });
+
+  const historySubject = teacherSubjects.find(
+    (subject) => subject.id === historyFilters.classSubjectId,
+  );
+  const { data: historyAvailability } = useQuery({
+    queryKey: [
+      'attendance-history-availability',
+      historySubject?.classId,
+      historyFilters.classSubjectId,
+      teacherId,
+    ],
+    queryFn: () =>
+      attendancesService.getAvailability(
+        historySubject!.classId,
+        historyFilters.classSubjectId,
+        teacherId,
+      ),
+    enabled: activeTab === 'history' && !!historySubject?.classId && !!historyFilters.classSubjectId && !!teacherId,
   });
 
   // Query para histórico de frequências
   const { data: historyData, isLoading: loadingHistory, refetch: refetchHistory } = useQuery({
-    queryKey: ['attendance-history', historyFilters.classSubjectId, historyFilters.month, historyFilters.year],
+    queryKey: [
+      'attendance-history',
+      historyFilters.classSubjectId,
+      historyFilters.month,
+      historyFilters.year,
+      historyFilters.academicPeriodId,
+    ],
     queryFn: async () => {
       if (!historyFilters.classSubjectId) return [];
 
       // Buscar todas as frequências da disciplina no período
-      const startDate = new Date(historyFilters.year, historyFilters.month - 1, 1).toISOString().split('T')[0];
-      const endDate = new Date(historyFilters.year, historyFilters.month, 0).toISOString().split('T')[0];
+      const startDate = formatInputDate(new Date(historyFilters.year, historyFilters.month - 1, 1));
+      const endDate = formatInputDate(new Date(historyFilters.year, historyFilters.month, 0));
 
       const result = await attendancesService.findAll({
         classSubjectId: historyFilters.classSubjectId,
+        academicPeriodId: historyFilters.academicPeriodId || undefined,
         startDate,
         endDate,
         limit: 1000,
@@ -152,6 +259,11 @@ export default function AttendancePage() {
 
   // Preencher dados existentes quando carregados OU pré-marcar todos como PRESENT
   useEffect(() => {
+    if (!hasValidAttendanceSession) {
+      setAttendanceData({});
+      return;
+    }
+
     if (existingAttendances && existingAttendances.length > 0) {
       // Carregar registros existentes
       const data: Record<string, { status: AttendanceStatus; notes: string }> = {};
@@ -176,15 +288,17 @@ export default function AttendancePage() {
       // Limpar dados quando não há alunos
       setAttendanceData({});
     }
-  }, [existingAttendances, enrollments]);
+  }, [existingAttendances, enrollments, hasValidAttendanceSession]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!selectedSubject || !user) return;
 
-      const teacherId = user.teacherId || user.teacherProfile?.id;
       if (!teacherId) {
         throw new Error('Perfil de professor não encontrado');
+      }
+      if (!hasValidAttendanceSession || !selectedClassScheduleId || !selectedPeriod) {
+        throw new Error('Selecione uma aula prevista na grade e um bimestre válido para esta data');
       }
 
       const attendances = Object.entries(attendanceData).map(([studentId, data]) => ({
@@ -202,6 +316,7 @@ export default function AttendancePage() {
         classId: selectedSubject.classId,
         classSubjectId: selectedClassSubjectId,
         teacherId,
+        classScheduleId: selectedClassScheduleId,
         attendances,
       });
     },
@@ -298,18 +413,24 @@ export default function AttendancePage() {
     excused: Object.values(attendanceData).filter((d) => d.status === AttendanceStatus.EXCUSED).length,
   };
 
-  const hasUnsavedChanges = Object.keys(attendanceData).length > 0;
+  const hasUnsavedChanges = hasValidAttendanceSession && Object.keys(attendanceData).length > 0;
 
-  // Processar dados do histórico - agrupar por data e adicionar horário
+  const historySchedules = (historyAvailability?.schedules ?? classSchedules) as ClassSchedule[];
+
+  // Cada sessão é uma combinação de data + horário da grade. Assim, duas
+  // aulas da mesma disciplina no mesmo dia aparecem como duas frequências.
   const historyByDate = historyData?.reduce((acc: any, att: any) => {
     const dateKey = new Date(att.date).toLocaleDateString('pt-BR');
     const dayOfWeek = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'][new Date(att.date).getDay()];
 
-    // Buscar horário da aula na grade
-    const scheduleForDay = classSchedules.find(s => s.dayOfWeek === dayOfWeek);
+    const scheduleForDay = att.classScheduleId
+      ? historySchedules.find((schedule) => schedule.id === att.classScheduleId)
+      : historySchedules.find((schedule) => schedule.dayOfWeek === dayOfWeek);
+    const sessionKey = `${dateKey}-${att.classScheduleId || 'legacy'}`;
 
-    if (!acc[dateKey]) {
-      acc[dateKey] = {
+    if (!acc[sessionKey]) {
+      acc[sessionKey] = {
+        key: sessionKey,
         date: att.date,
         dateFormatted: dateKey,
         dayOfWeek,
@@ -329,9 +450,9 @@ export default function AttendancePage() {
   ) : [];
 
   // Calcular aulas programadas vs realizadas
-  const scheduledClassesCount = classSchedules.length > 0
+  const scheduledClassesCount = historySchedules.length > 0
     ? classSchedulesService.calculateScheduledClasses(
-        classSchedules,
+        historySchedules,
         new Date(historyFilters.year, historyFilters.month - 1, 1),
         new Date(historyFilters.year, historyFilters.month, 0)
       )
@@ -401,12 +522,13 @@ export default function AttendancePage() {
           <>
             {/* Filters */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Select
                   label="Turma e Disciplina"
                   value={selectedClassSubjectId}
                   onChange={(e) => {
                     setSelectedClassSubjectId(e.target.value);
+                    setSelectedClassScheduleId('');
                     setAttendanceData({});
                   }}
                   required
@@ -419,16 +541,55 @@ export default function AttendancePage() {
                   ]}
                 />
 
-            <Input
-              type="date"
-              label="Data da Aula"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              leftIcon={<CalendarIcon className="h-5 w-5" />}
-              max={new Date().toISOString().split('T')[0]}
-              required
-            />
-          </div>
+                <Input
+                  type="date"
+                  label="Data da Aula"
+                  value={selectedDate}
+                  onChange={(e) => handleDateChange(e.target.value)}
+                  leftIcon={<CalendarIcon className="h-5 w-5" />}
+                  max={formatInputDate(new Date())}
+                  required
+                />
+
+                {schedulesForSelectedDate.length > 1 && (
+                  <Select
+                    label="Aula da grade"
+                    value={selectedClassScheduleId}
+                    onChange={(e) => setSelectedClassScheduleId(e.target.value)}
+                    required
+                    options={[
+                      { value: '', label: 'Selecione o horário...' },
+                      ...schedulesForSelectedDate.map((schedule) => ({
+                        value: schedule.id,
+                        label: `${schedule.startTime} às ${schedule.endTime}${schedule.room ? ` • ${schedule.room}` : ''}`,
+                      })),
+                    ]}
+                  />
+                )}
+              </div>
+
+              {selectedSubject && !loadingAvailability && (
+                <div className="mt-4 space-y-2">
+                  {schedulesForSelectedDate.length === 0 && (
+                    <div className="flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+                      <ExclamationTriangleIcon className="mt-0.5 h-5 w-5 flex-shrink-0" />
+                      <span>Não há aula desta disciplina neste dia. O professor só pode registrar frequência nos dias previstos na grade.</span>
+                    </div>
+                  )}
+                  {!selectedPeriod && (
+                    <div className="flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+                      <ExclamationTriangleIcon className="mt-0.5 h-5 w-5 flex-shrink-0" />
+                      <span>A data escolhida não pertence a um bimestre ativo do ano letivo desta turma.</span>
+                    </div>
+                  )}
+                  {selectedPeriod && schedulesForSelectedDate.length > 0 && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Bimestre: <strong>{selectedPeriod.name}</strong>
+                      {selectedSchedule && ` • Aula: ${selectedSchedule.startTime} às ${selectedSchedule.endTime}`}
+                    </p>
+                  )}
+                </div>
+              )}
 
           {selectedSubject && (
             <div className="mt-4 flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
@@ -471,6 +632,21 @@ export default function AttendancePage() {
         ) : loadingEnrollments ? (
           <div className="flex justify-center py-12">
             <LoadingSpinner size="lg" text="Carregando alunos..." />
+          </div>
+        ) : loadingAvailability ? (
+          <div className="flex justify-center py-12">
+            <LoadingSpinner size="lg" text="Verificando a grade e o bimestre..." />
+          </div>
+        ) : !hasValidAttendanceSession ? (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
+            <CalendarIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Frequência indisponível para esta data
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400">
+              Escolha um dia com aula na grade e dentro de um bimestre ativo.
+              {schedulesForSelectedDate.length > 1 && ' Selecione também o horário da aula.'}
+            </p>
           </div>
         ) : enrollments && enrollments.length > 0 ? (
           <>
@@ -861,12 +1037,16 @@ export default function AttendancePage() {
           <>
             {/* Filtros de histórico */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Select
                   label="Turma e Disciplina"
                   value={historyFilters.classSubjectId}
                   onChange={(e) =>
-                    setHistoryFilters({ ...historyFilters, classSubjectId: e.target.value })
+                    setHistoryFilters({
+                      ...historyFilters,
+                      classSubjectId: e.target.value,
+                      academicPeriodId: '',
+                    })
                   }
                   required
                   options={[
@@ -876,6 +1056,21 @@ export default function AttendancePage() {
                       label: `${subject.class?.name} - ${subject.subject?.name}`,
                     })) || []),
                   ]}
+                />
+                <Select
+                  label="Bimestre"
+                  value={historyFilters.academicPeriodId}
+                  onChange={(e) =>
+                    setHistoryFilters({ ...historyFilters, academicPeriodId: e.target.value })
+                  }
+                  options={[
+                    { value: '', label: 'Todos os bimestres' },
+                    ...(historyAvailability?.academicYear.periods.map((period) => ({
+                      value: period.id,
+                      label: period.name,
+                    })) ?? []),
+                  ]}
+                  disabled={!historyFilters.classSubjectId || !historyAvailability}
                 />
                 <Select
                   label="Mês"

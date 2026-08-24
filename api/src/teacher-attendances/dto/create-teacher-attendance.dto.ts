@@ -24,6 +24,14 @@ export class CreateTeacherAttendanceDto {
   classSubjectId: string;
 
   @ApiProperty({
+    description: 'ID da aula específica da grade horária',
+    required: false,
+  })
+  @IsOptional()
+  @IsUUID('4', { message: 'ID da aula inválido' })
+  classScheduleId?: string;
+
+  @ApiProperty({
     description: 'Data do registro de presença',
     example: '2024-01-20',
     type: String,

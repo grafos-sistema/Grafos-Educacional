@@ -164,11 +164,9 @@ export const classSchedulesService = {
     while (currentDate <= endDate) {
       const dayOfWeek = daysOfWeek[currentDate.getDay()];
 
-      // Verificar se há aula neste dia da semana
-      const hasClassThisDay = schedules.some(schedule => schedule.dayOfWeek === dayOfWeek);
-      if (hasClassThisDay) {
-        count++;
-      }
+      // Cada horário da grade representa uma aula distinta. Se o professor
+      // tiver duas aulas no mesmo dia, ambas precisam contar na frequência.
+      count += schedules.filter(schedule => schedule.dayOfWeek === dayOfWeek).length;
 
       // Avançar para o próximo dia
       currentDate.setDate(currentDate.getDate() + 1);

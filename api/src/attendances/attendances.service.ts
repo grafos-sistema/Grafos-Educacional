@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -10,10 +11,26 @@ import {
   BulkAttendanceDto,
   UpdateAttendanceDto,
 } from './dto';
-import { AttendanceStatus } from '@prisma/client';
+import { AttendanceStatus, DayOfWeek, UserRole } from '@prisma/client';
 import { RankingsService } from '../rankings/rankings.service';
 import { AchievementsService } from '../achievements/achievements.service';
 import { TeacherAttendancesService } from '../teacher-attendances/teacher-attendances.service';
+import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
+
+type AttendanceActor = Pick<
+  CurrentUserPayload,
+  'userId' | 'role' | 'teacherId' | 'institutionId'
+>;
+
+const DAY_OF_WEEK: DayOfWeek[] = [
+  DayOfWeek.SUNDAY,
+  DayOfWeek.MONDAY,
+  DayOfWeek.TUESDAY,
+  DayOfWeek.WEDNESDAY,
+  DayOfWeek.THURSDAY,
+  DayOfWeek.FRIDAY,
+  DayOfWeek.SATURDAY,
+];
 
 @Injectable()
 export class AttendancesService {
@@ -27,7 +44,10 @@ export class AttendancesService {
   /**
    * Cria registro de frequência individual
    */
-  async create(createAttendanceDto: CreateAttendanceDto) {
+  async create(
+    createAttendanceDto: CreateAttendanceDto,
+    actor: AttendanceActor,
+  ) {
     const {
       studentId,
       classId,
@@ -36,27 +56,34 @@ export class AttendancesService {
       date,
       status,
       notes,
+      classScheduleId,
+      authorizationReason,
     } = createAttendanceDto;
 
-    // Parse da data como local timezone
-    const [year, month, day] = date.split('-').map(Number);
-    const parsedDate = new Date(year, month - 1, day, 12, 0, 0, 0); // Meio-dia para evitar problemas de timezone
+    const parsedDate = this.parseLocalDate(date);
+    const session = await this.resolveSession(
+      classId,
+      classSubjectId,
+      teacherId,
+      date,
+      classScheduleId,
+      authorizationReason,
+      actor,
+    );
+    await this.validateStudentEnrollment(studentId, classId);
 
-    // Valida entidades relacionadas
-    await this.validateEntities(studentId, classId, classSubjectId, teacherId);
-
-    // Verifica se já existe registro de frequência para este aluno, disciplina e data
     const existingAttendance = await this.prisma.attendance.findFirst({
       where: {
         studentId,
         classSubjectId,
+        classScheduleId: session.schedule?.id ?? null,
         date: parsedDate,
       },
     });
 
     if (existingAttendance) {
       throw new ConflictException(
-        'Já existe registro de frequência para este aluno nesta disciplina e data',
+        'Já existe frequência deste aluno para esta aula e data',
       );
     }
 
@@ -69,6 +96,10 @@ export class AttendancesService {
         date: parsedDate,
         status,
         notes,
+        classScheduleId: session.schedule?.id ?? null,
+        academicPeriodId: session.period.id,
+        authorizationReason: session.authorizationReason,
+        authorizedById: session.authorizedById,
       },
       include: {
         student: {
@@ -146,51 +177,44 @@ export class AttendancesService {
   /**
    * Cria registros de frequência em lote
    */
-  async createBulk(bulkAttendanceDto: BulkAttendanceDto) {
-    const { classId, classSubjectId, teacherId, date, attendances } =
-      bulkAttendanceDto;
+  async createBulk(
+    bulkAttendanceDto: BulkAttendanceDto,
+    actor: AttendanceActor,
+  ) {
+    const {
+      classId,
+      classSubjectId,
+      teacherId,
+      date,
+      attendances,
+      classScheduleId,
+      authorizationReason,
+    } = bulkAttendanceDto;
+    const parsedDate = this.parseLocalDate(date);
+    const session = await this.resolveSession(
+      classId,
+      classSubjectId,
+      teacherId,
+      date,
+      classScheduleId,
+      authorizationReason,
+      actor,
+    );
 
-    // Parse da data como local timezone
-    const [year, month, day] = date.split('-').map(Number);
-
-    // Valida turma e disciplina
-    const classEntity = await this.prisma.class.findUnique({
-      where: { id: classId },
-    });
-
-    if (!classEntity) {
-      throw new NotFoundException('Turma não encontrada');
+    if (attendances.length === 0) {
+      throw new BadRequestException('Nenhuma frequência foi informada');
     }
 
-    const classSubject = await this.prisma.classSubject.findUnique({
-      where: { id: classSubjectId },
-    });
-
-    if (!classSubject) {
-      throw new NotFoundException('Disciplina não encontrada');
+    const studentIds = [...new Set(attendances.map((a) => a.studentId))];
+    if (studentIds.length !== attendances.length) {
+      throw new BadRequestException(
+        'Cada aluno deve aparecer apenas uma vez nesta aula',
+      );
     }
 
-    if (classSubject.classId !== classId) {
-      throw new BadRequestException('Disciplina não pertence à turma');
-    }
-
-    // Valida professor
-    const teacher = await this.prisma.teacher.findUnique({
-      where: { id: teacherId },
-    });
-
-    if (!teacher) {
-      throw new NotFoundException('Professor não encontrado');
-    }
-
-    // Valida que todos os alunos estão matriculados na turma
-    const studentIds = attendances.map((a) => a.studentId);
     const enrollments = await this.prisma.classEnrollment.findMany({
-      where: {
-        classId,
-        studentId: { in: studentIds },
-        isActive: true,
-      },
+      where: { classId, studentId: { in: studentIds }, isActive: true },
+      select: { studentId: true },
     });
 
     if (enrollments.length !== studentIds.length) {
@@ -199,14 +223,11 @@ export class AttendancesService {
       );
     }
 
-    // Remove registros existentes para esta data (permitir atualização)
-    // Parse da data como local timezone para evitar problemas de UTC
-    const parsedDate = new Date(year, month - 1, day, 12, 0, 0, 0); // Meio-dia para evitar problemas de timezone
-
     await this.prisma.attendance.deleteMany({
       where: {
         classSubjectId,
         date: parsedDate,
+        classScheduleId: session.schedule?.id ?? null,
         studentId: { in: studentIds },
       },
     });
@@ -223,6 +244,10 @@ export class AttendancesService {
             date: parsedDate,
             status: attendance.status,
             notes: attendance.notes,
+            classScheduleId: session.schedule?.id ?? null,
+            academicPeriodId: session.period.id,
+            authorizationReason: session.authorizationReason,
+            authorizedById: session.authorizedById,
           },
           include: {
             student: {
@@ -244,15 +269,18 @@ export class AttendancesService {
 
     // Registrar presença do professor automaticamente
     try {
-      await this.teacherAttendancesService.create({
-        teacherId,
-        classId,
-        classSubjectId,
-        date,
-      });
+      if (session.schedule) {
+        await this.teacherAttendancesService.create({
+          teacherId,
+          classId,
+          classSubjectId,
+          classScheduleId: session.schedule.id,
+          date,
+        });
+      }
     } catch (error) {
       // Ignorar apenas erro de unique constraint (registro já existe)
-      if (error.code !== 'P2002') {
+      if (error?.code !== 'P2002') {
         console.error('Erro ao registrar presença do professor:', error);
         // Não bloqueia o fluxo, mas registra o erro para investigação
       }
@@ -285,67 +313,257 @@ export class AttendancesService {
     };
   }
 
-  /**
-   * Valida entidades relacionadas
-   */
-  private async validateEntities(
-    studentId: string,
+  private parseLocalDate(date: string): Date {
+    const [year, month, day] = date.split('-').map(Number);
+    const parsedDate = new Date(year, month - 1, day, 12, 0, 0, 0);
+    if (
+      !year ||
+      !month ||
+      !day ||
+      parsedDate.getFullYear() !== year ||
+      parsedDate.getMonth() !== month - 1 ||
+      parsedDate.getDate() !== day
+    ) {
+      throw new BadRequestException('Data da aula inválida');
+    }
+    return parsedDate;
+  }
+
+  private dateKey(value: Date): string {
+    return [
+      value.getUTCFullYear(),
+      String(value.getUTCMonth() + 1).padStart(2, '0'),
+      String(value.getUTCDate()).padStart(2, '0'),
+    ].join('-');
+  }
+
+  private isAdministrator(role: UserRole): boolean {
+    const administratorRoles: UserRole[] = [
+      UserRole.SUPER_ADMIN_GLOBAL,
+      UserRole.SUPER_ADMIN,
+      UserRole.DIRECTOR,
+      UserRole.INSTITUTION_ADMIN,
+      UserRole.COORDINATOR,
+    ];
+    return administratorRoles.includes(role);
+  }
+
+  private async assertInstitutionAccess(
+    institutionId: string,
+    actor: AttendanceActor,
+  ) {
+    if (actor.role === UserRole.SUPER_ADMIN_GLOBAL) return;
+    if (actor.institutionId === institutionId) return;
+
+    const linked = await this.prisma.userInstitution.findFirst({
+      where: { userId: actor.userId, institutionId, isActive: true },
+    });
+    if (!linked) {
+      throw new ForbiddenException(
+        'Você não tem acesso à instituição desta turma',
+      );
+    }
+  }
+
+  private async resolveSession(
     classId: string,
     classSubjectId: string,
     teacherId: string,
-  ): Promise<void> {
-    // Valida aluno
-    const student = await this.prisma.student.findUnique({
-      where: { id: studentId },
-    });
-
-    if (!student) {
-      throw new NotFoundException('Aluno não encontrado');
-    }
-
-    // Valida turma
-    const classEntity = await this.prisma.class.findUnique({
-      where: { id: classId },
-    });
-
-    if (!classEntity) {
-      throw new NotFoundException('Turma não encontrada');
-    }
-
-    // Valida disciplina
+    date: string,
+    requestedScheduleId: string | undefined,
+    authorizationReason: string | undefined,
+    actor: AttendanceActor,
+  ) {
+    const parsedDate = this.parseLocalDate(date);
     const classSubject = await this.prisma.classSubject.findUnique({
       where: { id: classSubjectId },
+      include: {
+        class: {
+          select: {
+            id: true,
+            institutionId: true,
+            academicYearId: true,
+            academicYear: {
+              select: {
+                periods: {
+                  orderBy: { orderNumber: 'asc' },
+                },
+              },
+            },
+          },
+        },
+        teacher: { select: { id: true } },
+        schedules: {
+          select: {
+            id: true,
+            dayOfWeek: true,
+            startTime: true,
+            endTime: true,
+            room: true,
+          },
+        },
+      },
     });
 
     if (!classSubject) {
       throw new NotFoundException('Disciplina não encontrada');
     }
-
     if (classSubject.classId !== classId) {
       throw new BadRequestException('Disciplina não pertence à turma');
     }
+    await this.assertInstitutionAccess(classSubject.class.institutionId, actor);
 
-    // Valida professor
-    const teacher = await this.prisma.teacher.findUnique({
-      where: { id: teacherId },
-    });
-
-    if (!teacher) {
-      throw new NotFoundException('Professor não encontrado');
+    if (!classSubject.teacherId || classSubject.teacherId !== teacherId) {
+      throw new ForbiddenException(
+        'Este professor não está vinculado à disciplina desta turma',
+      );
+    }
+    if (actor.role === UserRole.TEACHER && actor.teacherId !== teacherId) {
+      throw new ForbiddenException(
+        'Você só pode registrar a frequência das suas próprias aulas',
+      );
     }
 
-    // Valida se aluno está matriculado na turma
-    const enrollment = await this.prisma.classEnrollment.findFirst({
-      where: {
-        studentId,
-        classId,
-        isActive: true,
-      },
+    const period = classSubject.class.academicYear.periods.find((item) => {
+      const start = this.dateKey(item.startDate);
+      const end = this.dateKey(item.endDate);
+      return date >= start && date <= end;
     });
+    if (!period) {
+      throw new BadRequestException(
+        'A data escolhida não pertence a nenhum período acadêmico da turma',
+      );
+    }
+    if (actor.role === UserRole.TEACHER && !period.isActive) {
+      throw new ForbiddenException(
+        'Este período acadêmico está encerrado. Solicite autorização à direção ou à coordenação',
+      );
+    }
 
+    const dayOfWeek = DAY_OF_WEEK[parsedDate.getDay()];
+    const schedulesOnDay = classSubject.schedules.filter(
+      (schedule) => schedule.dayOfWeek === dayOfWeek,
+    );
+    const requestedSchedule = requestedScheduleId
+      ? classSubject.schedules.find(
+          (schedule) => schedule.id === requestedScheduleId,
+        )
+      : undefined;
+
+    if (requestedScheduleId && !requestedSchedule) {
+      throw new BadRequestException(
+        'A aula selecionada não pertence a esta disciplina',
+      );
+    }
+
+    const schedule =
+      requestedSchedule ??
+      (schedulesOnDay.length === 1 ? schedulesOnDay[0] : undefined);
+    const isRegularSession = Boolean(
+      schedule && schedule.dayOfWeek === dayOfWeek,
+    );
+    const isException = !isRegularSession;
+
+    if (actor.role === UserRole.TEACHER && isException) {
+      throw new ForbiddenException(
+        'Você só pode registrar frequência no dia e horário em que tem aula nesta turma',
+      );
+    }
+    if (schedulesOnDay.length > 1 && !requestedSchedule && !isException) {
+      throw new BadRequestException(
+        'Há mais de uma aula desta disciplina neste dia. Selecione o horário específico',
+      );
+    }
+    const cleanReason = authorizationReason?.trim();
+    if (isException && !cleanReason) {
+      throw new ForbiddenException(
+        'Esta data está fora da grade regular. A direção ou a coordenação precisa informar uma justificativa',
+      );
+    }
+    if (isException && !this.isAdministrator(actor.role)) {
+      throw new ForbiddenException(
+        'Somente a direção ou a coordenação podem autorizar frequência fora da grade',
+      );
+    }
+
+    return {
+      schedule: schedule && isRegularSession ? schedule : undefined,
+      period,
+      authorizationReason: isException ? cleanReason : undefined,
+      authorizedById: isException ? actor.userId : undefined,
+    };
+  }
+
+  private async validateStudentEnrollment(studentId: string, classId: string) {
+    const enrollment = await this.prisma.classEnrollment.findFirst({
+      where: { studentId, classId, isActive: true },
+    });
     if (!enrollment) {
+      const student = await this.prisma.student.findUnique({
+        where: { id: studentId },
+        select: { id: true },
+      });
+      if (!student) throw new NotFoundException('Aluno não encontrado');
       throw new BadRequestException('Aluno não está matriculado na turma');
     }
+  }
+
+  async getAvailability(
+    classId: string,
+    classSubjectId: string,
+    requestedTeacherId: string | undefined,
+    actor: AttendanceActor,
+  ) {
+    const classSubject = await this.prisma.classSubject.findUnique({
+      where: { id: classSubjectId },
+      include: {
+        class: {
+          select: {
+            id: true,
+            name: true,
+            institutionId: true,
+            academicYear: {
+              select: {
+                id: true,
+                year: true,
+                periods: { orderBy: { orderNumber: 'asc' } },
+              },
+            },
+          },
+        },
+        subject: { select: { id: true, name: true } },
+        teacher: { select: { id: true } },
+        schedules: {
+          orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+        },
+      },
+    });
+    if (!classSubject || classSubject.classId !== classId) {
+      throw new NotFoundException('Turma ou disciplina não encontrada');
+    }
+    await this.assertInstitutionAccess(classSubject.class.institutionId, actor);
+    const teacherId = requestedTeacherId || classSubject.teacherId;
+    if (!teacherId || classSubject.teacherId !== teacherId) {
+      throw new ForbiddenException(
+        'O professor ainda não está vinculado a esta disciplina da turma',
+      );
+    }
+    if (actor.role === UserRole.TEACHER && actor.teacherId !== teacherId) {
+      throw new ForbiddenException(
+        'Você só pode consultar a disponibilidade das suas próprias aulas',
+      );
+    }
+    return {
+      class: {
+        id: classSubject.class.id,
+        name: classSubject.class.name,
+      },
+      classSubjectId,
+      teacherId,
+      academicYear: classSubject.class.academicYear,
+      subject: classSubject.subject,
+      schedules: classSubject.schedules,
+    };
   }
 
   /**
@@ -361,6 +579,7 @@ export class AttendancesService {
     startDate?: string,
     endDate?: string,
     status?: AttendanceStatus,
+    academicPeriodId?: string,
   ) {
     const skip = (page - 1) * limit;
     const where: any = {};
@@ -399,6 +618,10 @@ export class AttendancesService {
 
     if (status) {
       where.status = status;
+    }
+
+    if (academicPeriodId) {
+      where.academicPeriodId = academicPeriodId;
     }
 
     const [data, total] = await Promise.all([
@@ -603,6 +826,7 @@ export class AttendancesService {
           select: {
             id: true,
             name: true,
+            institutionId: true,
           },
         },
         classSubject: {
@@ -640,8 +864,21 @@ export class AttendancesService {
   /**
    * Atualiza registro de frequência
    */
-  async update(id: string, updateAttendanceDto: UpdateAttendanceDto) {
-    await this.findOne(id);
+  async update(
+    id: string,
+    updateAttendanceDto: UpdateAttendanceDto,
+    actor: AttendanceActor,
+  ) {
+    const existing = await this.findOne(id);
+    await this.assertInstitutionAccess(existing.class.institutionId, actor);
+    if (
+      actor.role === UserRole.TEACHER &&
+      actor.teacherId !== existing.teacherId
+    ) {
+      throw new ForbiddenException(
+        'Você só pode atualizar frequências das suas próprias aulas',
+      );
+    }
 
     return this.prisma.attendance.update({
       where: { id },
@@ -772,8 +1009,17 @@ export class AttendancesService {
   /**
    * Remove registro de frequência
    */
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, actor: AttendanceActor) {
+    const existing = await this.findOne(id);
+    await this.assertInstitutionAccess(existing.class.institutionId, actor);
+    if (
+      actor.role === UserRole.TEACHER &&
+      actor.teacherId !== existing.teacherId
+    ) {
+      throw new ForbiddenException(
+        'Você só pode remover frequências das suas próprias aulas',
+      );
+    }
 
     return this.prisma.attendance.delete({
       where: { id },

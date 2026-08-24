@@ -6,12 +6,14 @@ import {
   AttendanceFilters,
   AttendanceStats,
   AttendanceStatus,
+  AttendanceAvailability,
 } from '@/types/attendance.types';
 import { PaginatedResponse } from '@/types/common.types';
 import { supabase } from '@/lib/supabase';
+import api from '@/lib/api';
 
 const ATTENDANCE_MINIMAL_COLUMNS =
-  'id, date, status, notes, createdAt, updatedAt, studentId, classId, classSubjectId, teacherId';
+  'id, date, status, notes, createdAt, updatedAt, studentId, classId, classSubjectId, classScheduleId, academicPeriodId, authorizationReason, authorizedById, teacherId';
 
 export const attendancesService = {
   // Salvar frequência não precisa devolver toda a árvore de relacionamentos.
@@ -101,6 +103,10 @@ export const attendancesService = {
           }
         : undefined,
       classSubjectId: row.classSubjectId,
+      classScheduleId: row.classScheduleId ?? null,
+      academicPeriodId: row.academicPeriodId ?? null,
+      authorizationReason: row.authorizationReason ?? null,
+      authorizedById: row.authorizedById ?? null,
       classSubject: csSubject
         ? {
             id: cs.id,
@@ -139,7 +145,7 @@ export const attendancesService = {
     let query = supabase
       .from('attendances')
       .select(
-        'id, date, status, notes, createdAt, updatedAt, studentId, classId, classSubjectId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), class:classes(id, name, grade), classSubject:class_subjects(id, subject:subjects(id, name, code, color)), teacher:teachers(id, user:users(id, firstName, lastName, name))',
+        'id, date, status, notes, createdAt, updatedAt, studentId, classId, classSubjectId, classScheduleId, academicPeriodId, authorizationReason, authorizedById, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), class:classes(id, name, grade), classSubject:class_subjects(id, subject:subjects(id, name, code, color)), teacher:teachers(id, user:users(id, firstName, lastName, name))',
         { count: 'exact' }
       )
       .order('date', { ascending: false })
@@ -148,6 +154,8 @@ export const attendancesService = {
     if (filters?.studentId) query = query.eq('studentId', filters.studentId);
     if (filters?.classId) query = query.eq('classId', filters.classId);
     if (filters?.classSubjectId) query = query.eq('classSubjectId', filters.classSubjectId);
+    if (filters?.classScheduleId) query = query.eq('classScheduleId', filters.classScheduleId);
+    if (filters?.academicPeriodId) query = query.eq('academicPeriodId', filters.academicPeriodId);
     if (filters?.teacherId) query = query.eq('teacherId', filters.teacherId);
     if (filters?.status) query = query.eq('status', filters.status);
 
@@ -190,7 +198,7 @@ export const attendancesService = {
     const { data, error } = await supabase
       .from('attendances')
       .select(
-        'id, date, status, notes, createdAt, updatedAt, studentId, classId, classSubjectId, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), class:classes(id, name, grade), classSubject:class_subjects(id, subject:subjects(id, name, code, color)), teacher:teachers(id, user:users(id, firstName, lastName, name))'
+        'id, date, status, notes, createdAt, updatedAt, studentId, classId, classSubjectId, classScheduleId, academicPeriodId, authorizationReason, authorizedById, teacherId, student:students(id, user:users(id, firstName, lastName, name, avatar)), class:classes(id, name, grade), classSubject:class_subjects(id, subject:subjects(id, name, code, color)), teacher:teachers(id, user:users(id, firstName, lastName, name))'
       )
       .eq('id', id)
       .single();
@@ -203,27 +211,7 @@ export const attendancesService = {
    * Criar frequÃªncia individual
    */
   async create(dto: CreateAttendanceDto): Promise<Attendance> {
-    const now = new Date().toISOString();
-    const payload = {
-      id: crypto.randomUUID(),
-      date: dto.date,
-      status: dto.status,
-      notes: dto.notes ?? null,
-      studentId: dto.studentId,
-      classId: dto.classId,
-      classSubjectId: dto.classSubjectId,
-      teacherId: dto.teacherId,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    const { data, error } = await supabase
-      .from('attendances')
-      .insert(payload)
-      .select(ATTENDANCE_MINIMAL_COLUMNS)
-      .single();
-
-    if (error) throw error;
+    const data = await api.post<Attendance>('/attendances', dto);
     return attendancesService.mapAttendance(data);
   },
 
@@ -231,26 +219,11 @@ export const attendancesService = {
    * Criar frequÃªncias em lote (mÃºltiplos alunos de uma vez)
    */
   async createBulk(dto: BulkAttendanceDto): Promise<Attendance[]> {
-    const now = new Date().toISOString();
-    const payload = dto.attendances.map((item) => ({
-      id: crypto.randomUUID(),
-      date: dto.date,
-      status: item.status,
-      notes: item.notes ?? null,
-      studentId: item.studentId,
-      classId: dto.classId,
-      classSubjectId: dto.classSubjectId,
-      teacherId: dto.teacherId,
-      createdAt: now,
-      updatedAt: now,
-    }));
-
-    // O retorno mínimo evita que cada aluno dispare joins e políticas RLS
-    // adicionais depois do INSERT. A tela só precisa saber se o lote salvou.
-    const { error } = await supabase.from('attendances').insert(payload);
-
-    if (error) throw error;
-    return [];
+    const result = await api.post<{ attendances?: Attendance[] }>('/attendances/bulk', dto);
+    const attendances = Array.isArray(result)
+      ? result
+      : ((result as any)?.attendances ?? []);
+    return attendances.map((item: Attendance) => attendancesService.mapAttendance(item));
   },
 
   /**
@@ -300,16 +273,31 @@ export const attendancesService = {
   async getClassAttendanceByDate(
     classId: string,
     classSubjectId: string,
-    date: string
+    date: string,
+    classScheduleId?: string,
   ): Promise<Attendance[]> {
     const result = await attendancesService.findAll({
       classId,
       classSubjectId,
       date,
+      ...(classScheduleId ? { classScheduleId } : {}),
       page: 1,
       limit: 1000,
     });
     return result.data;
+  },
+
+  async getAvailability(
+    classId: string,
+    classSubjectId: string,
+    teacherId?: string,
+  ): Promise<AttendanceAvailability> {
+    const params = new URLSearchParams({ classId, classSubjectId });
+    if (teacherId) params.set('teacherId', teacherId);
+    const result = await api.get<AttendanceAvailability>(
+      `/attendances/availability?${params.toString()}`,
+    );
+    return result as unknown as AttendanceAvailability;
   },
 
   /**

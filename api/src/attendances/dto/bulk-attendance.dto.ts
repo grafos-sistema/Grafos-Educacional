@@ -9,6 +9,7 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  ArrayMinSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { AttendanceStatus } from '@prisma/client';
@@ -63,6 +64,15 @@ export class BulkAttendanceDto {
   classSubjectId: string;
 
   @ApiProperty({
+    description: 'ID da aula específica da grade que está sendo registrada',
+    example: '123e4567-e89b-12d3-a456-426614174002',
+    required: false,
+  })
+  @IsOptional()
+  @IsUUID('4', { message: 'ID da aula inválido' })
+  classScheduleId?: string;
+
+  @ApiProperty({
     description: 'ID do professor',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
@@ -78,6 +88,18 @@ export class BulkAttendanceDto {
   @IsNotEmpty({ message: 'Data é obrigatória' })
   @IsDateString({}, { message: 'Data inválida' })
   date: string;
+
+  @ApiProperty({
+    description: 'Justificativa para registrar em uma data sem aula regular',
+    required: false,
+    maxLength: 500,
+  })
+  @IsOptional()
+  @IsString({ message: 'A justificativa deve ser um texto' })
+  @MaxLength(500, {
+    message: 'A justificativa não pode ter mais de 500 caracteres',
+  })
+  authorizationReason?: string;
 
   @ApiProperty({
     description: 'Lista de frequências dos alunos',
@@ -96,6 +118,7 @@ export class BulkAttendanceDto {
     ],
   })
   @IsArray({ message: 'Lista de alunos deve ser um array' })
+  @ArrayMinSize(1, { message: 'Informe pelo menos um aluno' })
   @ValidateNested({ each: true })
   @Type(() => StudentAttendanceDto)
   attendances: StudentAttendanceDto[];

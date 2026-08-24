@@ -36,6 +36,10 @@ export interface Attendance {
   };
 
   classSubjectId: string;
+  classScheduleId?: string | null;
+  academicPeriodId?: string | null;
+  authorizationReason?: string | null;
+  authorizedById?: string | null;
   classSubject?: {
     id: string;
     subject: {
@@ -65,6 +69,8 @@ export interface CreateAttendanceDto {
   studentId: string;
   classId: string;
   classSubjectId: string;
+  classScheduleId?: string;
+  authorizationReason?: string;
   teacherId: string;
 }
 
@@ -77,6 +83,8 @@ export interface BulkAttendanceDto {
   date: string;
   classId: string;
   classSubjectId: string;
+  classScheduleId?: string;
+  authorizationReason?: string;
   teacherId: string;
   attendances: {
     studentId: string;
@@ -89,13 +97,42 @@ export interface AttendanceFilters {
   studentId?: string;
   classId?: string;
   classSubjectId?: string;
+  classScheduleId?: string;
   teacherId?: string;
   date?: string;
   startDate?: string;
   endDate?: string;
   status?: AttendanceStatus;
+  academicPeriodId?: string;
   page?: number;
   limit?: number;
+}
+
+export interface AttendanceAvailability {
+  class: { id: string; name: string };
+  classSubjectId: string;
+  teacherId: string;
+  subject: { id: string; name: string };
+  academicYear: {
+    id: string;
+    year: number;
+    periods: Array<{
+      id: string;
+      name: string;
+      type: string;
+      startDate: string;
+      endDate: string;
+      orderNumber: number;
+      isActive: boolean;
+    }>;
+  };
+  schedules: Array<{
+    id: string;
+    dayOfWeek: string;
+    startTime: string;
+    endTime: string;
+    room?: string | null;
+  }>;
 }
 
 export interface AttendanceStats {

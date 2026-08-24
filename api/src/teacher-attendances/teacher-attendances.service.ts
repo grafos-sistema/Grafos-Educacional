@@ -15,14 +15,17 @@ export class TeacherAttendancesService {
       dto.teacherId,
       dto.classId,
       dto.classSubjectId,
+      dto.classScheduleId,
     );
+
+    const date = this.parseLocalDate(dto.date);
 
     // Verificar se já existe registro para esta data
     const existing = await this.prisma.teacherAttendance.findFirst({
       where: {
         teacherId: dto.teacherId,
-        classSubjectId: dto.classSubjectId,
-        date: new Date(dto.date),
+        classScheduleId: dto.classScheduleId ?? null,
+        date,
       },
     });
 
@@ -37,7 +40,8 @@ export class TeacherAttendancesService {
         teacherId: dto.teacherId,
         classId: dto.classId,
         classSubjectId: dto.classSubjectId,
-        date: new Date(dto.date),
+        classScheduleId: dto.classScheduleId,
+        date,
         notes: dto.notes,
       },
       include: {
@@ -149,6 +153,7 @@ export class TeacherAttendancesService {
 
     // Transformar em lista de horários
     const schedule: Array<{
+      id: string;
       classId: string;
       className: string;
       classSubjectId: string;
@@ -164,6 +169,7 @@ export class TeacherAttendancesService {
     for (const cs of classSubjects) {
       for (const sched of cs.schedules) {
         schedule.push({
+          id: sched.id,
           classId: cs.class.id,
           className: cs.class.name,
           classSubjectId: cs.id,
@@ -226,6 +232,7 @@ export class TeacherAttendancesService {
     teacherId: string,
     classId: string,
     classSubjectId: string,
+    classScheduleId?: string,
   ): Promise<void> {
     // Verificar se professor está vinculado via ClassSubject
     const classSubject = await this.prisma.classSubject.findFirst({
@@ -236,31 +243,39 @@ export class TeacherAttendancesService {
       },
     });
 
-    if (classSubject) {
-      return; // Acesso autorizado
+    if (!classSubject) {
+      throw new ForbiddenException(
+        'Professor não está autorizado a registrar presença nesta turma/disciplina',
+      );
     }
 
-    // Verificar se professor tem a disciplina configurada (TeacherSubject)
-    const csWithSubject = await this.prisma.classSubject.findUnique({
-      where: { id: classSubjectId },
-      include: { subject: true },
-    });
-
-    if (csWithSubject) {
-      const teacherSubject = await this.prisma.teacherSubject.findFirst({
+    if (classScheduleId) {
+      const schedule = await this.prisma.classSchedule.findFirst({
         where: {
-          teacherId,
-          subjectId: csWithSubject.subjectId,
+          id: classScheduleId,
+          classId,
+          classSubjectId,
         },
       });
 
-      if (teacherSubject) {
-        return; // Acesso autorizado via TeacherSubject
+      if (!schedule) {
+        throw new ForbiddenException(
+          'O horário informado não pertence à turma e à disciplina selecionadas',
+        );
       }
     }
 
-    throw new ForbiddenException(
-      'Professor não está autorizado a registrar presença nesta turma/disciplina',
-    );
+    // A autorização deve vir do vínculo efetivo do professor com a disciplina
+    // daquela turma. Ter a disciplina no perfil, por si só, não concede acesso
+    // para lançar frequência em todas as turmas.
+  }
+
+  private parseLocalDate(value: string): Date {
+    const [year, month, day] = value.split('-').map(Number);
+    if (!year || !month || !day) {
+      throw new ForbiddenException('A data da frequência é inválida');
+    }
+
+    return new Date(Date.UTC(year, month - 1, day, 12));
   }
 }
