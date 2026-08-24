@@ -111,12 +111,12 @@ export default function AdminLoginPage() {
     hasError ? "border-red-500" : isFocused ? "border-[#0e7a3e] ring-[3px] ring-[#0e7a3e]/15" : "border-[#d7ddd9]";
 
   return (
-    <div className="flex w-full min-w-[1280px] h-screen overflow-hidden font-sans text-[#1a1f1c] bg-white">
+    <div className="flex min-h-screen w-full min-w-0 flex-col overflow-x-hidden bg-white font-sans text-[#1a1f1c] lg:h-screen lg:flex-row lg:overflow-hidden">
       {/* LEFT: login panel */}
-      <div className="flex-none w-[30%] min-w-[380px] bg-white flex flex-col justify-center gap-5 px-14 py-8 box-border relative overflow-y-auto">
+      <div className="relative flex w-full min-w-0 flex-none flex-col justify-start gap-5 overflow-y-auto bg-white px-4 py-6 sm:px-6 sm:py-8 lg:w-[30%] lg:min-w-[380px] lg:justify-center lg:px-14 lg:py-8">
         <Link
           href="/"
-          className="absolute top-8 left-14 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#0e7a3e] transition-colors group"
+          className="group mb-8 inline-flex items-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-[#0e7a3e] lg:absolute lg:left-14 lg:top-8 lg:mb-0"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-0.5 transition-transform">
             <line x1="19" y1="12" x2="5" y2="12"></line>
@@ -124,7 +124,7 @@ export default function AdminLoginPage() {
           </svg>
           Voltar para página inicial
         </Link>
-        <div className="mt-8 flex items-center gap-3.5">
+        <div className="mx-auto mt-2 flex w-full max-w-sm items-center gap-3.5 lg:mx-0 lg:mt-8 lg:max-w-none">
           <Image src="/login-logo.png" alt="Grafos" width={60} height={66} className="object-contain" />
           <div className="flex flex-col gap-0.5">
             <div className="text-[27px] font-extrabold text-[#0e7a3e] leading-none">Grafos</div>
@@ -132,7 +132,7 @@ export default function AdminLoginPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="mx-auto flex w-full max-w-sm flex-col gap-4 lg:mx-0 lg:max-w-none">
           {error && (
             <div className="rounded-lg bg-red-50 border border-red-200 p-3">
               <p className="text-sm text-red-700 font-medium">{error}</p>
@@ -142,7 +142,7 @@ export default function AdminLoginPage() {
           <label className="flex flex-col gap-2">
             <span className="text-sm font-bold">Email Institucional</span>
             <span
-              className={`flex items-center gap-2.5 border-[1.5px] rounded-lg px-3.5 h-12 bg-white transition-colors ${fieldBorder(
+              className={`flex min-w-0 items-center gap-2.5 rounded-lg border-[1.5px] bg-white px-3.5 h-12 transition-colors ${fieldBorder(
                 !!errors.email,
                 focused === "email"
               )}`}
@@ -157,7 +157,7 @@ export default function AdminLoginPage() {
                 placeholder="seu@email.com"
                 onFocus={() => setFocused("email")}
                 onBlur={() => setFocused("")}
-                className="border-none outline-none flex-1 text-[15px] bg-transparent font-sans"
+                className="min-w-0 flex-1 border-none bg-transparent font-sans text-[15px] outline-none"
               />
             </span>
             {errors.email && <span className="text-[12.5px] font-semibold text-red-600">{errors.email.message}</span>}
@@ -188,7 +188,7 @@ export default function AdminLoginPage() {
           <label className="flex flex-col gap-2">
             <span className="text-sm font-bold">Senha</span>
             <span
-              className={`flex items-center gap-2.5 border-[1.5px] rounded-lg px-3.5 h-12 bg-white transition-colors ${fieldBorder(
+              className={`flex min-w-0 items-center gap-2.5 rounded-lg border-[1.5px] bg-white px-3.5 h-12 transition-colors ${fieldBorder(
                 !!errors.password,
                 focused === "pw"
               )}`}
@@ -203,7 +203,7 @@ export default function AdminLoginPage() {
                 placeholder="••••••••••"
                 onFocus={() => setFocused("pw")}
                 onBlur={() => setFocused("")}
-                className="border-none outline-none flex-1 text-[15px] bg-transparent font-sans tracking-wide"
+                className="min-w-0 flex-1 border-none bg-transparent font-sans text-[15px] tracking-wide outline-none"
               />
               <button type="button" onClick={() => setShowPw((v) => !v)} className="border-none bg-transparent cursor-pointer p-0.5 flex" title="Mostrar senha">
                 {showPw ? (
@@ -249,7 +249,7 @@ export default function AdminLoginPage() {
           </button>
         </form>
 
-        <div className="flex gap-4 bg-[#eef6f0] border border-[#d9ebdf] rounded-[10px] px-[22px] py-5 mt-1.5">
+        <div className="mx-auto flex w-full max-w-sm gap-4 rounded-[10px] border border-[#d9ebdf] bg-[#eef6f0] px-[22px] py-5 mt-1.5 lg:mx-0 lg:max-w-none">
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#0e7a3e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="flex-none mt-0.5">
             <path d="M4 13 a8 8 0 0 1 16 0" />
             <rect x="2.5" y="13" width="4" height="6.5" rx="2" />
