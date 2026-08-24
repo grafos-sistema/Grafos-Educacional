@@ -426,10 +426,22 @@ export class GradesService {
       where.status = status;
     }
 
-    if (
-      currentUser?.role === UserRole.STUDENT ||
-      currentUser?.role === UserRole.PARENT
-    ) {
+    if (currentUser?.role === UserRole.PARENT) {
+      if (!currentUser.parentId) {
+        throw new ForbiddenException(
+          'Responsável sem vínculo de acesso configurado',
+        );
+      }
+
+      // O responsável só pode consultar notas de alunos vinculados ao
+      // próprio perfil, mesmo que tente trocar o studentId na URL.
+      where.student = {
+        parents: {
+          some: { parentId: currentUser.parentId },
+        },
+      };
+      where.isVisibleToStudents = true;
+    } else if (currentUser?.role === UserRole.STUDENT) {
       where.isVisibleToStudents = true;
     }
 

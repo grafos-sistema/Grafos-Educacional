@@ -99,6 +99,7 @@ export class GradesController {
     UserRole.INSTITUTION_ADMIN,
     UserRole.COORDINATOR,
     UserRole.TEACHER,
+    UserRole.PARENT,
   )
   @ApiOperation({
     summary: 'Listar notas',

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -33,35 +33,21 @@ export default function ChildGradesPage() {
     enabled: !!childId,
   });
 
-  // Buscar matrículas
-  const { data: enrollments } = useQuery({
-    queryKey: ['child-enrollments-grades', childId, child?.institutionId],
-    queryFn: async () => {
-      const response = await classesService.findAll({
-        institutionId: child?.institutionId,
-        limit: 100,
-      });
-
-      const allEnrollments = await Promise.all(
-        response.data.map(async (classItem) => {
-          try {
-            const enrollments = await classesService.getEnrollments(classItem.id);
-            return enrollments
-              .filter((e) => e.studentId === child?.studentProfile?.id)
-              .map((e) => ({
-                ...e,
-                class: classItem,
-              }));
-          } catch {
-            return [];
-          }
-        })
-      );
-
-      return allEnrollments.flat();
-    },
-    enabled: !!child?.studentProfile?.id && !!child?.institutionId,
-  });
+  // A matrícula ativa já é carregada junto do aluno pela API. Reconsultar
+  // classes/enrollments diretamente no Supabase fazia o RLS esconder o
+  // vínculo do responsável e deixava os filtros vazios.
+  const enrollments = child?.studentProfile?.classEnrollments ?? [];
+  const academicYearIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          enrollments
+            .map((enrollment) => enrollment.class?.academicYearId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ),
+    [enrollments],
+  );
 
   // Buscar disciplinas
   const { data: classSubjects } = useQuery({
@@ -72,7 +58,10 @@ export default function ChildGradesPage() {
       const allSubjects = await Promise.all(
         enrollments.map(async (enrollment) => {
           try {
-            const subjects = await classesService.getClassSubjects(enrollment.class.id);
+            const classId = enrollment.class?.id ?? enrollment.classId;
+            if (!classId) return [];
+
+            const subjects = await classesService.getClassSubjects(classId);
             return subjects.map((s) => ({
               ...s,
               class: enrollment.class,
@@ -90,14 +79,28 @@ export default function ChildGradesPage() {
 
   // Buscar períodos acadêmicos
   const { data: periods } = useQuery({
-    queryKey: ['academic-periods-child', child?.institutionId],
+    queryKey: ['academic-periods-child', academicYearIds],
     queryFn: async () => {
-      const response = await academicPeriodsService.findAll({
-        limit: 100,
+      const responses = await Promise.all(
+        academicYearIds.map((academicYearId) =>
+          academicPeriodsService.findAllFromApi({
+            academicYearId,
+            isActive: true,
+            limit: 100,
+          }),
+        ),
+      );
+
+      const uniquePeriods = new Map();
+      responses.forEach((response) => {
+        response.data.forEach((period) => uniquePeriods.set(period.id, period));
       });
-      return response.data;
+
+      return Array.from(uniquePeriods.values()).sort(
+        (a, b) => (a.orderNumber ?? 0) - (b.orderNumber ?? 0),
+      );
     },
-    enabled: !!child?.institutionId,
+    enabled: academicYearIds.length > 0,
   });
 
   // Buscar notas
@@ -110,7 +113,8 @@ export default function ChildGradesPage() {
       if (selectedPeriodId !== 'all') filters.academicPeriodId = selectedPeriodId;
       if (selectedSubjectId !== 'all') filters.classSubjectId = selectedSubjectId;
 
-      return await gradesService.getStudentGrades(child.studentProfile.id, filters);
+      const response = await gradesService.findAllFromApi(filters);
+      return response.data;
     },
     enabled: !!child?.studentProfile?.id,
   });
@@ -146,6 +150,10 @@ export default function ChildGradesPage() {
     acc[key].grades.push(grade);
     return acc;
   }, {} as Record<string, any>);
+
+  const uniqueClassSubjects = Array.from(
+    new Map((classSubjects ?? []).map((classSubject) => [classSubject.id, classSubject])).values(),
+  );
 
   // Calcular médias
   Object.keys(groupedGrades || {}).forEach((key) => {
@@ -233,10 +241,10 @@ export default function ChildGradesPage() {
             onChange={(e) => setSelectedSubjectId(e.target.value)}
             options={[
               { value: 'all', label: 'Todas as Disciplinas' },
-              ...(classSubjects?.map((cs) => ({
+              ...uniqueClassSubjects.map((cs) => ({
                 value: cs.id,
                 label: cs.subject?.name || '',
-              })) || []),
+              })),
             ]}
           />
         </div>
@@ -264,7 +272,7 @@ export default function ChildGradesPage() {
             <div className="text-sm text-gray-600 dark:text-gray-400">Disciplinas</div>
           </div>
           <div className="text-3xl font-bold text-gray-900 dark:text-white">
-            {classSubjects?.length || 0}
+            {uniqueClassSubjects.length}
           </div>
         </div>
 

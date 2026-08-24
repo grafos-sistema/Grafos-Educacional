@@ -11,7 +11,6 @@ import {
   AcademicCapIcon,
   ExclamationTriangleIcon,
   ListBulletIcon,
-  PrinterIcon,
   TableCellsIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
@@ -333,13 +332,6 @@ export default function TeacherSchedulesPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button
-              variant="secondary"
-              onClick={() => window.print()}
-              leftIcon={<PrinterIcon className="h-5 w-5" />}
-            >
-              Imprimir grade
-            </Button>
             {canManageClassSubjects && (
               <Button
                 variant="secondary"

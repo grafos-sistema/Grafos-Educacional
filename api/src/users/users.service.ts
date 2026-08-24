@@ -798,6 +798,7 @@ export class UsersService {
                   select: {
                     id: true,
                     name: true,
+                    academicYearId: true,
                   },
                 },
               },

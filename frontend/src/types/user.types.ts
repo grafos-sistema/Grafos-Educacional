@@ -66,6 +66,7 @@ export interface StudentProfile {
     class?: {
       id: string;
       name: string;
+      academicYearId: string;
     };
   }>;
 }

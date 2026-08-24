@@ -38,7 +38,7 @@ export default function ParentChildSchedulePage() {
     queryFn: async () => {
       if (!classId) return [];
       try {
-        return await classSchedulesService.getClassSchedules(classId);
+        return await classSchedulesService.getClassSchedulesFromApi(classId);
       } catch {
         return [];
       }
@@ -107,10 +107,18 @@ export default function ParentChildSchedulePage() {
           {/* Header com informações */}
           <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-sm p-6 mb-6 text-white">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <span className="text-3xl font-bold">
-                  {child?.firstName?.[0]}{child?.lastName?.[0]}
-                </span>
+              <div className="w-16 h-16 overflow-hidden rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                {child?.avatar ? (
+                  <img
+                    src={child.avatar}
+                    alt={`Foto de ${child.firstName} ${child.lastName}`}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="text-3xl font-bold">
+                    {child?.firstName?.[0]}{child?.lastName?.[0]}
+                  </span>
+                )}
               </div>
               <div>
                 <h2 className="text-2xl font-bold">
@@ -220,13 +228,6 @@ export default function ParentChildSchedulePage() {
               leftIcon={<BookOpenIcon className="h-5 w-5" />}
             >
               Ver Notas
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => window.print()}
-              leftIcon={<AcademicCapIcon className="h-5 w-5" />}
-            >
-              Imprimir Grade
             </Button>
           </div>
         </>
