@@ -47,7 +47,7 @@ export default function ChildAttendancePage() {
           try {
             const enrollments = await classesService.getEnrollments(classItem.id);
             return enrollments
-              .filter((e) => e.studentId === childId)
+              .filter((e) => e.studentId === child?.studentProfile?.id)
               .map((e) => ({
                 ...e,
                 class: classItem,
@@ -60,7 +60,7 @@ export default function ChildAttendancePage() {
 
       return allEnrollments.flat();
     },
-    enabled: !!childId && !!child?.institutionId,
+    enabled: !!child?.studentProfile?.id && !!child?.institutionId,
   });
 
   // Buscar disciplinas

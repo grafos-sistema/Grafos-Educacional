@@ -3,6 +3,7 @@ import api from '@/lib/api';
 export interface ParentStudent {
   student: {
     id: string;
+    userId: string;
     registrationNumber: string;
     firstName: string;
     lastName: string;

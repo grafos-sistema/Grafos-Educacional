@@ -36,7 +36,7 @@ export default function ChildDetailsPage() {
     queryKey: ['child-enrollments', childId],
     queryFn: async () => {
       const response = await classesService.findAll({
-        institutionId: user?.institutionId,
+        institutionId: child?.institutionId ?? user?.institutionId,
         limit: 100,
       });
 
@@ -45,7 +45,7 @@ export default function ChildDetailsPage() {
           try {
             const enrollments = await classesService.getEnrollments(classItem.id);
             return enrollments
-              .filter((e) => e.studentId === childId)
+              .filter((e) => e.studentId === child?.studentProfile?.id)
               .map((e) => ({
                 ...e,
                 class: classItem,
@@ -58,7 +58,7 @@ export default function ChildDetailsPage() {
 
       return allEnrollments.flat();
     },
-    enabled: !!childId && !!user?.institutionId,
+    enabled: !!child?.studentProfile?.id && !!(child?.institutionId ?? user?.institutionId),
   });
 
   // Buscar disciplinas das turmas

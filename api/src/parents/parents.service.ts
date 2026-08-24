@@ -391,6 +391,7 @@ export class ParentsService {
       return {
         student: {
           id: student.id,
+          userId: student.userId,
           registrationNumber: student.registrationNumber,
           firstName: student.user.firstName,
           lastName: student.user.lastName,

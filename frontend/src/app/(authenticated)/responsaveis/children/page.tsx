@@ -154,14 +154,14 @@ export default function ParentChildrenPage() {
                     variant="secondary"
                     size="sm"
                     className="flex-1"
-                    onClick={() => router.push(`/responsaveis/children/${student.id}`)}
+                    onClick={() => router.push(`/responsaveis/children/${student.userId}`)}
                   >
                     Ver detalhes
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => router.push(`/responsaveis/children/${student.id}/grades`)}
+                    onClick={() => router.push(`/responsaveis/children/${student.userId}/grades`)}
                   >
                     Notas
                   </Button>

@@ -44,7 +44,7 @@ export default function PaisDashboard() {
   });
 
   const openChildSection = (section: 'grades' | 'attendance' | 'schedule' | 'subjects') => {
-    const childId = selectedChildId ?? (children?.length === 1 ? children[0]?.student.id : undefined);
+    const childId = selectedChildId ?? (children?.length === 1 ? children[0]?.student.userId : undefined);
 
     if (childId) {
       const destination = section === 'subjects'
@@ -353,8 +353,8 @@ export default function PaisDashboard() {
                       variant="secondary"
                       size="sm"
                       onClick={() => {
-                        setSelectedChildId(student.id);
-                        router.push(`/responsaveis/children/${student.id}`);
+                        setSelectedChildId(student.userId);
+                        router.push(`/responsaveis/children/${student.userId}`);
                       }}
                       className="flex-1"
                     >
@@ -364,8 +364,8 @@ export default function PaisDashboard() {
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        setSelectedChildId(student.id);
-                        router.push(`/responsaveis/children/${student.id}/grades`);
+                        setSelectedChildId(student.userId);
+                        router.push(`/responsaveis/children/${student.userId}/grades`);
                       }}
                     >
                       Notas

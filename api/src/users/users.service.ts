@@ -132,6 +132,23 @@ export class UsersService {
       }
     }
 
+    if (currentUser.role === UserRole.PARENT) {
+      // Responsáveis podem consultar somente usuários dos alunos vinculados
+      // ao seu próprio perfil. O vínculo é conferido pelo grafo acadêmico,
+      // evitando que um ID de outro aluno seja usado para obter dados privados.
+      const linkedStudent = await this.prisma.studentParent.findFirst({
+        where: {
+          parent: { userId: currentUser.userId },
+          student: { userId: targetUser.id },
+        },
+        select: { id: true },
+      });
+
+      if (linkedStudent) {
+        return;
+      }
+    }
+
     throw new ForbiddenException('Acesso negado a este usuário');
   }
 
