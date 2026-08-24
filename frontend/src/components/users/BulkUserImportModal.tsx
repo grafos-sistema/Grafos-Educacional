@@ -13,8 +13,10 @@ import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { UserRole, type CreateUserDto } from '@/types/user.types';
 import { usersService } from '@/services/users.service';
+import { classesService } from '@/services/classes.service';
 import { institutionsService } from '@/services/institutions.service';
 import type { Institution } from '@/types/institution.types';
+import type { Class } from '@/types/class.types';
 import { getFriendlyErrorInfo } from '@/lib/friendly-error';
 
 type ImportRow = Record<string, string> & {
@@ -409,6 +411,52 @@ function institutionName(institution: Institution) {
   return institution.name || institution.slug;
 }
 
+function normalizeImportLookup(value: unknown) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('pt-BR')
+    .replace(/[ºª]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function resolveImportedClassId(row: ImportRow, classes: Class[]) {
+  const className = normalizeImportLookup(row.turma);
+  const courseName = normalizeImportLookup(row.curso);
+  const grade = normalizeImportLookup(row.serie);
+  const shift = normalizeImportLookup(row.turno);
+  const academicYear = normalizeImportLookup(row.ano_letivo);
+
+  if (!className || !courseName || !grade || !academicYear) return undefined;
+
+  const candidates = classes.filter((item) => {
+    const itemClassName = normalizeImportLookup(item.name);
+    const itemCourseName = normalizeImportLookup(item.course?.name);
+    const itemGrade = normalizeImportLookup(item.grade);
+    const itemShift = normalizeImportLookup(item.shift);
+    const itemAcademicYear = normalizeImportLookup(
+      item.academicYear?.year ?? item.academicYear?.name,
+    );
+
+    const classMatches =
+      itemClassName === className || itemClassName.endsWith(` ${className}`);
+    const yearMatches =
+      itemAcademicYear === academicYear || itemAcademicYear.includes(academicYear);
+
+    return (
+      item.isActive &&
+      classMatches &&
+      itemCourseName === courseName &&
+      itemGrade === grade &&
+      yearMatches &&
+      (!shift || itemShift === shift)
+    );
+  });
+
+  return candidates.length === 1 ? candidates[0].id : undefined;
+}
+
 export function BulkUserImportModal({
   isOpen,
   onClose,
@@ -428,6 +476,7 @@ export function BulkUserImportModal({
   const [institutionSearch, setInstitutionSearch] = useState('');
   const [institutionId, setInstitutionId] = useState('');
   const [unitId, setUnitId] = useState('');
+  const [classes, setClasses] = useState<Class[]>([]);
   const [mode, setMode] = useState<ImportMode | ''>(defaultMode);
   const [isLoading, setIsLoading] = useState(false);
   const [importProgress, setImportProgress] = useState<number | null>(null);
@@ -515,6 +564,27 @@ export function BulkUserImportModal({
       void loadInstitutions();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !institutionId) {
+      setClasses([]);
+      return;
+    }
+
+    let cancelled = false;
+    void classesService
+      .findAll({ institutionId, page: 1, limit: 500, isActive: true })
+      .then((response) => {
+        if (!cancelled) setClasses(response.data ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setClasses([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [institutionId, isOpen]);
 
   const selectInstitution = (institution: Institution) => {
     setInstitutionId(institution.id);
@@ -626,6 +696,7 @@ export function BulkUserImportModal({
       zipCode: row.cep || undefined,
       institutionId,
       unitId,
+      importSource: role === UserRole.STUDENT ? 'BULK_IMPORT' : undefined,
       specialization: row.especializacao || undefined,
       degree: row.formacao || undefined,
       registrationNumber: row.registro_profissional || undefined,
@@ -637,6 +708,10 @@ export function BulkUserImportModal({
       curso: row.curso || undefined,
       serie: row.serie || undefined,
       turma: row.turma || undefined,
+      turmaId:
+        role === UserRole.STUDENT
+          ? resolveImportedClassId(row, classes)
+          : undefined,
       turno: row.turno || undefined,
       dataMatricula: row.data_matricula || undefined,
       modalidade: row.modalidade || undefined,

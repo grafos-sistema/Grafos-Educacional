@@ -29,7 +29,12 @@ import { BulkUserImportModal } from '@/components/users/BulkUserImportModal';
 
 export default function AlunosPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const {
+    user,
+    institutionFilterAll,
+    institutionFilterIds,
+    institutionUnitFilterId,
+  } = useAuthStore();
   const activeRole = user?.activeProfile ?? user?.role;
   const [filters, setFilters] = useState<UsersFilterParams>({
     page: 1,
@@ -47,7 +52,13 @@ export default function AlunosPage() {
 
   // Buscar alunos
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['students', filters],
+    queryKey: [
+      'students',
+      filters,
+      institutionFilterAll,
+      institutionFilterIds,
+      institutionUnitFilterId,
+    ],
     queryFn: () => usersService.findAll(filters),
   });
 

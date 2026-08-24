@@ -56,7 +56,12 @@ const roleOptions = Object.entries(roleLabels)
 export default function UsersPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuthStore();
+  const {
+    user,
+    institutionFilterAll,
+    institutionFilterIds,
+    institutionUnitFilterId,
+  } = useAuthStore();
   const activeRole = user?.activeProfile ?? user?.role;
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 300);
@@ -127,7 +132,13 @@ export default function UsersPage() {
 
   // Buscar usuários
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['users', filters],
+    queryKey: [
+      'users',
+      filters,
+      institutionFilterAll,
+      institutionFilterIds,
+      institutionUnitFilterId,
+    ],
     queryFn: () => usersService.findAll(filters),
   });
 

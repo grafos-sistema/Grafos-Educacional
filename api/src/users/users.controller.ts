@@ -135,6 +135,13 @@ export class UsersController {
     example: 'id1,id2,id3',
   })
   @ApiQuery({
+    name: 'unitId',
+    required: false,
+    type: String,
+    description: 'Filtrar usuários vinculados a um anexo específico',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiQuery({
     name: 'isActive',
     required: false,
     type: Boolean,
@@ -173,6 +180,7 @@ export class UsersController {
     @Query('role') role?: UserRole,
     @Query('institutionId') institutionId?: string,
     @Query('institutionIds') institutionIds?: string,
+    @Query('unitId') unitId?: string,
     @Query('isActive') isActive?: boolean,
     @Query('hasTeacherProfile') hasTeacherProfile?: string,
     @Query('hasStudentProfile') hasStudentProfile?: string,
@@ -192,6 +200,7 @@ export class UsersController {
             .map((value) => value.trim())
             .filter(Boolean)
         : undefined,
+      unitId,
       isActive,
       hasTeacherProfile === 'true'
         ? true

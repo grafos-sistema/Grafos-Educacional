@@ -420,6 +420,7 @@ export class UsersService {
     role?: UserRole,
     institutionId?: string,
     institutionIds?: string[],
+    unitId?: string,
     isActive?: boolean,
     hasTeacherProfile?: boolean,
     hasStudentProfile?: boolean,
@@ -443,6 +444,56 @@ export class UsersService {
     }
 
     const isGlobalAdmin = currentUser.role === UserRole.SUPER_ADMIN_GLOBAL;
+
+    if (unitId) {
+      const requestedUnit = await this.prisma.institutionUnit.findUnique({
+        where: { id: unitId },
+        select: { institutionId: true, isActive: true },
+      });
+
+      if (!requestedUnit?.isActive) {
+        return {
+          data: [],
+          meta: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: page > 1,
+          },
+        };
+      }
+
+      if (!isGlobalAdmin) {
+        const unitIsAllowed = await this.prisma.userUnit.findFirst({
+          where: {
+            userId: currentUser.userId,
+            unitId,
+            isActive: true,
+          },
+          select: { id: true },
+        });
+
+        if (!unitIsAllowed) {
+          return {
+            data: [],
+            meta: {
+              total: 0,
+              page,
+              limit,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPreviousPage: page > 1,
+            },
+          };
+        }
+      }
+
+      where.userUnits = {
+        some: { unitId, isActive: true },
+      };
+    }
 
     if (!isGlobalAdmin) {
       const links = await this.prisma.userInstitution.findMany({

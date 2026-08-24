@@ -29,7 +29,12 @@ import { BulkUserImportModal } from '@/components/users/BulkUserImportModal';
 
 export default function ProfessoresPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const {
+    user,
+    institutionFilterAll,
+    institutionFilterIds,
+    institutionUnitFilterId,
+  } = useAuthStore();
   const activeRole = user?.activeProfile ?? user?.role;
   const [filters, setFilters] = useState<UsersFilterParams>({
     page: 1,
@@ -47,7 +52,13 @@ export default function ProfessoresPage() {
 
   // Buscar professores
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['teachers', filters],
+    queryKey: [
+      'teachers',
+      filters,
+      institutionFilterAll,
+      institutionFilterIds,
+      institutionUnitFilterId,
+    ],
     queryFn: () => usersService.findAll(filters),
   });
 

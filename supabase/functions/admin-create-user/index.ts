@@ -55,6 +55,7 @@ type CreateUserBody = {
   serie?: string | null;
   turma?: string | null;
   turmaId?: string | null;
+  importSource?: "BULK_IMPORT";
   modalidade?: string | null;
   turno?: string | null;
   dataMatricula?: string | null;
@@ -133,6 +134,79 @@ function isAtLeast18(value?: string | null) {
 
   if (birthdayNotReached) age -= 1;
   return age >= 18;
+}
+
+function normalizeClassLookup(value: unknown) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .replace(/[ºª]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+async function resolveBulkStudentClassId(
+  supabase: ReturnType<typeof createClient>,
+  body: CreateUserBody,
+  institutionId: string,
+) {
+  const className = normalizeClassLookup(body.turma);
+  const courseName = normalizeClassLookup(body.curso);
+  const grade = normalizeClassLookup(body.serie);
+  const shift = normalizeClassLookup(body.turno);
+  const academicYear = normalizeClassLookup(body.anoLetivo);
+
+  if (!className || !courseName || !grade || !academicYear) return null;
+
+  const { data: classes, error: classesError } = await supabase
+    .from("classes")
+    .select("id, name, grade, shift, courseId, academicYearId, isActive")
+    .eq("institutionId", institutionId)
+    .eq("isActive", true);
+  if (classesError) throw classesError;
+
+  const courseIds = Array.from(
+    new Set((classes ?? []).map((item: any) => item.courseId).filter(Boolean)),
+  );
+  const academicYearIds = Array.from(
+    new Set(
+      (classes ?? [])
+        .map((item: any) => item.academicYearId)
+        .filter(Boolean),
+    ),
+  );
+  if (courseIds.length === 0 || academicYearIds.length === 0) return null;
+  const [{ data: courses, error: coursesError }, { data: years, error: yearsError }] =
+    await Promise.all([
+      supabase.from("courses").select("id, name").in("id", courseIds),
+      supabase.from("academic_years").select("id, year, name").in("id", academicYearIds),
+    ]);
+  if (coursesError || yearsError) throw coursesError ?? yearsError;
+
+  const courseNames = new Map(
+    (courses ?? []).map((course: any) => [course.id, normalizeClassLookup(course.name)]),
+  );
+  const yearNames = new Map(
+    (years ?? []).map((year: any) => [
+      year.id,
+      normalizeClassLookup(year.year ?? year.name),
+    ]),
+  );
+
+  const candidates = (classes ?? []).filter((item: any) => {
+    const itemClassName = normalizeClassLookup(item.name);
+    const itemYear = yearNames.get(item.academicYearId) ?? "";
+    return (
+      (itemClassName === className || itemClassName.endsWith(` ${className}`)) &&
+      courseNames.get(item.courseId) === courseName &&
+      normalizeClassLookup(item.grade) === grade &&
+      (itemYear === academicYear || itemYear.includes(academicYear)) &&
+      (!shift || normalizeClassLookup(item.shift) === shift)
+    );
+  });
+
+  return candidates.length === 1 ? candidates[0].id : null;
 }
 
 async function callerCanAccessInstitution(
@@ -517,6 +591,41 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    let resolvedTurmaId = body?.turmaId?.trim() || null;
+    if (!resolvedTurmaId && body?.importSource === "BULK_IMPORT" && body?.turma) {
+      try {
+        resolvedTurmaId = await resolveBulkStudentClassId(
+          supabase,
+          body,
+          institutionId as string,
+        );
+      } catch (error) {
+        await cleanup();
+        return json(
+          {
+            error: "failed_to_resolve_student_class",
+            details:
+              error instanceof Error
+                ? error.message
+                : "Não foi possível localizar a turma da importação.",
+          },
+          500,
+        );
+      }
+
+      if (!resolvedTurmaId) {
+        await cleanup();
+        return json(
+          {
+            error: "student_class_not_found",
+            details:
+              "A turma informada na planilha não foi localizada para o curso, série, turno e ano letivo selecionados.",
+          },
+          400,
+        );
+      }
+    }
+
     const studentId = crypto.randomUUID();
 
     // Generate a registration number (simple fallback, should ideally use a sequence)
@@ -552,11 +661,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (body?.turmaId) {
+    if (resolvedTurmaId) {
       const { data: selectedClass, error: classLookupError } = await supabase
         .from("classes")
         .select("id, institutionId, isActive")
-        .eq("id", body.turmaId)
+        .eq("id", resolvedTurmaId)
         .maybeSingle();
 
       if (classLookupError || !selectedClass) {
@@ -590,7 +699,7 @@ Deno.serve(async (req: Request) => {
         .insert({
           id: crypto.randomUUID(),
           studentId,
-          classId: body.turmaId,
+          classId: resolvedTurmaId,
           enrollmentDate: body?.dataMatricula ?? now,
           isActive: true,
           createdAt: now,

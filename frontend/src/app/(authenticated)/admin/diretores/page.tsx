@@ -22,7 +22,12 @@ import { GlobalAdminInstitutionUnitFilter } from '@/components/users/GlobalAdmin
 
 export default function DiretoresPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const {
+    user,
+    institutionFilterAll,
+    institutionFilterIds,
+    institutionUnitFilterId,
+  } = useAuthStore();
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 300);
 
@@ -44,7 +49,13 @@ export default function DiretoresPage() {
   }, [debouncedSearch]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['directors', filters],
+    queryKey: [
+      'directors',
+      filters,
+      institutionFilterAll,
+      institutionFilterIds,
+      institutionUnitFilterId,
+    ],
     queryFn: () => usersService.findAll(filters),
   });
 
@@ -185,4 +196,3 @@ export default function DiretoresPage() {
     </div>
   );
 }
-

@@ -24,7 +24,12 @@ import { GlobalAdminInstitutionUnitFilter } from '@/components/users/GlobalAdmin
 
 export default function SecretariosPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const {
+    user,
+    institutionFilterAll,
+    institutionFilterIds,
+    institutionUnitFilterId,
+  } = useAuthStore();
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 300);
 
@@ -46,7 +51,13 @@ export default function SecretariosPage() {
   }, [debouncedSearch]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['secretaries', filters],
+    queryKey: [
+      'secretaries',
+      filters,
+      institutionFilterAll,
+      institutionFilterIds,
+      institutionUnitFilterId,
+    ],
     queryFn: () => usersService.findAll(filters),
   });
 

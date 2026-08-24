@@ -27,7 +27,12 @@ import { GlobalAdminInstitutionUnitFilter } from '@/components/users/GlobalAdmin
 
 export default function CoordenadoresPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const {
+    user,
+    institutionFilterAll,
+    institutionFilterIds,
+    institutionUnitFilterId,
+  } = useAuthStore();
   const [filters, setFilters] = useState<UsersFilterParams>({
     page: 1,
     limit: 20,
@@ -43,7 +48,13 @@ export default function CoordenadoresPage() {
 
   // Buscar coordenadores
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['coordinators', filters],
+    queryKey: [
+      'coordinators',
+      filters,
+      institutionFilterAll,
+      institutionFilterIds,
+      institutionUnitFilterId,
+    ],
     queryFn: () => usersService.findAll(filters),
   });
 

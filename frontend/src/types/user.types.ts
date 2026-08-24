@@ -229,6 +229,7 @@ export interface CreateUserDto {
   serie?: string;
   turma?: string;
   turmaId?: string;
+  importSource?: 'BULK_IMPORT';
   modalidade?: string;
   turno?: string;
   dataMatricula?: string;

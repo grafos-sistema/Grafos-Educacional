@@ -28,6 +28,7 @@ export interface UsersFilterParams {
   search?: string;
   role?: UserRole;
   institutionId?: string;
+  unitId?: string;
   includeAllInstitutions?: boolean;
   includeGlobalAdmins?: boolean;
   isActive?: boolean;
@@ -627,6 +628,10 @@ export const usersService = {
     } else if (isUuid(params.institutionId)) {
       apiParams.append('institutionId', params.institutionId);
     }
+    const apiUnitId = params.unitId ?? institutionUnitFilterId;
+    if (isUuid(apiUnitId)) {
+      apiParams.append('unitId', apiUnitId);
+    }
 
     if (!useSupabaseAsPrimary) {
       try {
@@ -699,7 +704,7 @@ export const usersService = {
     const excludeIds = new Set<string>();
 
     const effectiveInstitutionIds = effectiveIds;
-    const effectiveUnitId = institutionUnitFilterId;
+    const effectiveUnitId = params.unitId ?? institutionUnitFilterId;
 
     if (params.hasProfile === true) {
       includeIds = unionSets(teacherSet, studentSet, parentSet);
