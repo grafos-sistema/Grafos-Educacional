@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -16,7 +16,6 @@ import {
   BookOpenIcon,
   UserGroupIcon,
   MagnifyingGlassIcon,
-  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import { useAuthStore } from "@/stores/authStore";
 import { classesService } from "@/services/classes.service";
@@ -65,6 +64,11 @@ export default function AttendancePage() {
   >({});
   const [searchTerm, setSearchTerm] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [hasEditedAttendance, setHasEditedAttendance] = useState(false);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(
+    null,
+  );
 
   // Helper para formatar data corretamente (evitar problemas de timezone)
   const formatDateLocal = (dateString: string): string => {
@@ -325,6 +329,7 @@ export default function AttendancePage() {
     setPendingScheduleDate("");
     setShowScheduleModal(false);
     setAttendanceData({});
+    setHasEditedAttendance(false);
   };
 
   const handleSubjectChange = (subjectId: string) => {
@@ -340,6 +345,7 @@ export default function AttendancePage() {
     setPendingScheduleDate("");
     setShowScheduleModal(false);
     setAttendanceData({});
+    setHasEditedAttendance(false);
   };
 
   const { data: enrollments, isLoading: loadingEnrollments } = useQuery({
@@ -493,6 +499,7 @@ export default function AttendancePage() {
   useEffect(() => {
     if (!hasValidAttendanceSession) {
       setAttendanceData({});
+      setHasEditedAttendance(false);
       return;
     }
 
@@ -507,6 +514,7 @@ export default function AttendancePage() {
         };
       });
       setAttendanceData(data);
+      setHasEditedAttendance(false);
     } else if (enrollments && enrollments.length > 0) {
       // PRÉ-MARCAR TODOS COMO PRESENT (lógica de exceção)
       const data: Record<string, { status: AttendanceStatus; notes: string }> =
@@ -518,9 +526,11 @@ export default function AttendancePage() {
         };
       });
       setAttendanceData(data);
+      setHasEditedAttendance(false);
     } else {
       // Limpar dados quando não há alunos
       setAttendanceData({});
+      setHasEditedAttendance(false);
     }
   }, [existingAttendances, enrollments, hasValidAttendanceSession]);
 
@@ -577,6 +587,12 @@ export default function AttendancePage() {
           : "Frequências salvas com sucesso!",
       );
       setShowConfirmDialog(false);
+      setHasEditedAttendance(false);
+
+      const navigation = pendingNavigation;
+      setPendingNavigation(null);
+      setShowUnsavedDialog(false);
+      navigation?.();
     },
     onError: (error: any) => {
       const message =
@@ -589,6 +605,7 @@ export default function AttendancePage() {
   });
 
   const handleStatusChange = (studentId: string, status: AttendanceStatus) => {
+    setHasEditedAttendance(true);
     setAttendanceData((prev) => ({
       ...prev,
       [studentId]: {
@@ -599,6 +616,7 @@ export default function AttendancePage() {
   };
 
   const handleNotesChange = (studentId: string, notes: string) => {
+    setHasEditedAttendance(true);
     setAttendanceData((prev) => ({
       ...prev,
       [studentId]: {
@@ -618,6 +636,7 @@ export default function AttendancePage() {
       };
     });
     setAttendanceData(data);
+    setHasEditedAttendance(true);
     toast.info(`Todos os alunos marcados como "${getStatusLabel(status)}"`);
   };
 
@@ -675,7 +694,92 @@ export default function AttendancePage() {
   };
 
   const hasUnsavedChanges =
-    hasValidAttendanceSession && Object.keys(attendanceData).length > 0;
+    hasValidAttendanceSession &&
+    hasEditedAttendance &&
+    Object.keys(attendanceData).length > 0;
+
+  const requestNavigation = useCallback(
+    (action: () => void) => {
+      if (hasUnsavedChanges) {
+        setPendingNavigation(() => action);
+        setShowUnsavedDialog(true);
+        return;
+      }
+
+      action();
+    },
+    [hasUnsavedChanges],
+  );
+
+  const navigateToTab = (tab: "register" | "history" | "schedule") => {
+    if (activeTab === tab) return;
+    requestNavigation(() => setActiveTab(tab));
+  };
+
+  const closeUnsavedDialog = () => {
+    setShowUnsavedDialog(false);
+    setPendingNavigation(null);
+  };
+
+  const leaveWithoutSaving = () => {
+    const navigation = pendingNavigation;
+    setShowUnsavedDialog(false);
+    setPendingNavigation(null);
+    setAttendanceData({});
+    setHasEditedAttendance(false);
+    navigation?.();
+  };
+
+  const saveAndNavigate = () => {
+    if (!saveMutation.isPending) {
+      saveMutation.mutate();
+    }
+  };
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    const handleInternalNavigation = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      const target = event.target instanceof Element
+        ? event.target.closest("a")
+        : null;
+      const href = target?.getAttribute("href");
+      if (!target || !href || target.getAttribute("target") === "_blank") {
+        return;
+      }
+
+      const url = new URL(href, window.location.href);
+      if (url.origin !== window.location.origin || url.hash) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      requestNavigation(() => router.push(`${url.pathname}${url.search}`));
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("click", handleInternalNavigation, true);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("click", handleInternalNavigation, true);
+    };
+  }, [hasUnsavedChanges, requestNavigation, router]);
 
   type HistoryStudentRow = {
     studentId: string;
@@ -761,7 +865,9 @@ export default function AttendancePage() {
         <div className="mb-6">
           <Button
             variant="ghost"
-            onClick={() => router.push("/professor/dashboard")}
+            onClick={() =>
+              requestNavigation(() => router.push("/professor/dashboard"))
+            }
             leftIcon={<ArrowLeftIcon className="h-5 w-5" />}
             className="mb-4"
           >
@@ -779,7 +885,7 @@ export default function AttendancePage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm mb-6">
           <div className="flex border-b border-gray-200 dark:border-gray-700">
             <button
-              onClick={() => setActiveTab("register")}
+              onClick={() => navigateToTab("register")}
               className={`px-6 py-3 font-medium transition-colors ${
                 activeTab === "register"
                   ? "text-blue-600 border-b-2 border-blue-600"
@@ -789,7 +895,7 @@ export default function AttendancePage() {
               Registrar Frequência
             </button>
             <button
-              onClick={() => setActiveTab("schedule")}
+              onClick={() => navigateToTab("schedule")}
               className={`px-6 py-3 font-medium transition-colors ${
                 activeTab === "schedule"
                   ? "text-blue-600 border-b-2 border-blue-600"
@@ -799,7 +905,7 @@ export default function AttendancePage() {
               Grade de Horários
             </button>
             <button
-              onClick={() => setActiveTab("history")}
+              onClick={() => navigateToTab("history")}
               className={`px-6 py-3 font-medium transition-colors ${
                 activeTab === "history"
                   ? "text-blue-600 border-b-2 border-blue-600"
@@ -1173,9 +1279,9 @@ export default function AttendancePage() {
                                 key={enrollment.id}
                                 className="hover:bg-gray-50 dark:hover:bg-gray-700/30"
                               >
-                                <td className="whitespace-nowrap px-3 py-2">
-                                  <div className="flex items-center gap-3">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-xs font-semibold text-white">
+                                <td className="px-3 py-2">
+                                  <div className="flex min-w-0 items-center gap-3">
+                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-xs font-semibold text-white">
                                       {enrollment.student?.avatar ? (
                                         <>
                                           <img
@@ -1203,13 +1309,13 @@ export default function AttendancePage() {
                                         </span>
                                       )}
                                     </div>
-                                    <div>
-                                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                    <div className="min-w-0">
+                                      <div className="truncate text-sm font-medium text-gray-900 dark:text-white">
                                         {enrollment.student?.firstName}{" "}
                                         {enrollment.student?.lastName}
                                       </div>
-                                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                                        Matrícula: {enrollment.student?.registrationNumber || "Não informada"}
+                                      <div className="hidden text-xs text-gray-500 dark:text-gray-400 lg:block">
+                                        {enrollment.student?.registrationNumber || "Não informada"}
                                       </div>
                                       <div className="mt-2 flex flex-wrap gap-1.5 md:hidden">
                                         {Object.values(AttendanceStatus).map((s) => (
@@ -1292,12 +1398,6 @@ export default function AttendancePage() {
 
                 {/* Save Button */}
                 <div className="mt-6 flex justify-end gap-3">
-                  {hasUnsavedChanges && !saveMutation.isPending && (
-                    <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400 mr-auto">
-                      <ExclamationTriangleIcon className="h-5 w-5" />
-                      <span className="text-sm">Alterações não salvas</span>
-                    </div>
-                  )}
                   {saveMutation.isPending && (
                     <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mr-auto">
                       <LoadingSpinner size="sm" />
@@ -1308,6 +1408,7 @@ export default function AttendancePage() {
                     variant="secondary"
                     onClick={() => {
                       setAttendanceData({});
+                      setHasEditedAttendance(false);
                       toast.info("Frequências limpas");
                     }}
                     disabled={!hasUnsavedChanges || saveMutation.isPending}
@@ -1534,7 +1635,7 @@ export default function AttendancePage() {
           <>
             {/* Filtros de histórico */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
                 <Select
                   label="Turma"
                   value={historyFilters.classId}
@@ -1621,7 +1722,7 @@ export default function AttendancePage() {
                     !historyFilters.classSubjectId || !historyAvailability
                   }
                 />
-                <div className="flex items-end justify-end">
+                <div className="flex items-end justify-center">
                   <Button
                     variant="secondary"
                     size="sm"
@@ -1663,7 +1764,7 @@ export default function AttendancePage() {
                     <h3 className="font-semibold text-gray-900 dark:text-white">
                       Frequência dos alunos
                     </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                    <p className="hidden text-sm text-gray-500 dark:text-gray-400 lg:block">
                       Resultado do período selecionado para a turma e disciplina.
                     </p>
                   </div>
@@ -1751,6 +1852,36 @@ export default function AttendancePage() {
           </>
         )}
       </div>
+
+      <Modal
+        isOpen={showUnsavedDialog}
+        onClose={closeUnsavedDialog}
+        title="Frequência não salva"
+        description="Você fez alterações nesta frequência e ainda não salvou. O que deseja fazer?"
+        size="sm"
+        closeOnOverlayClick={false}
+      >
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={closeUnsavedDialog}
+          >
+            Continuar editando
+          </Button>
+          <Button type="button" variant="outline" onClick={leaveWithoutSaving}>
+            Sair sem salvar
+          </Button>
+          <Button
+            type="button"
+            onClick={saveAndNavigate}
+            disabled={saveMutation.isPending}
+            isLoading={saveMutation.isPending}
+          >
+            Salvar e sair
+          </Button>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={showScheduleModal}
