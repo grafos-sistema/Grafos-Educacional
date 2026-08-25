@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeftIcon,
   CheckIcon,
@@ -10,28 +10,33 @@ import {
   ClockIcon,
   DocumentCheckIcon,
   CalendarIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   BookOpenIcon,
   UserGroupIcon,
   MagnifyingGlassIcon,
   ExclamationTriangleIcon,
-} from '@heroicons/react/24/outline';
-import { useAuthStore } from '@/stores/authStore';
-import { classesService } from '@/services/classes.service';
-import { attendancesService } from '@/services/attendances.service';
-import { classSchedulesService, ClassSchedule } from '@/services/class-schedules.service';
-import { AttendanceStatus } from '@/types/attendance.types';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { Button } from '@/components/ui/Button';
-import { Select } from '@/components/ui/Select';
-import { Input } from '@/components/ui/Input';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { useToast } from '@/hooks/useToast';
-import { useTeacherClassSubjects } from '@/hooks/useTeacherClassSubjects';
+} from "@heroicons/react/24/outline";
+import { useAuthStore } from "@/stores/authStore";
+import { classesService } from "@/services/classes.service";
+import { attendancesService } from "@/services/attendances.service";
+import {
+  classSchedulesService,
+  ClassSchedule,
+} from "@/services/class-schedules.service";
+import { AttendanceStatus } from "@/types/attendance.types";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
+import { Input } from "@/components/ui/Input";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/hooks/useToast";
+import { useTeacherClassSubjects } from "@/hooks/useTeacherClassSubjects";
 
 const formatInputDate = (date: Date) => {
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
 
@@ -42,35 +47,46 @@ export default function AttendancePage() {
   const { user } = useAuthStore();
   const toast = useToast();
 
-  const [selectedClassSubjectId, setSelectedClassSubjectId] = useState('');
+  const [selectedClassSubjectId, setSelectedClassSubjectId] = useState("");
+  const [selectedClassId, setSelectedClassId] = useState("");
+  const [selectedSubjectId, setSelectedSubjectId] = useState("");
   const [selectedDate, setSelectedDate] = useState(formatInputDate(new Date()));
-  const [selectedClassScheduleId, setSelectedClassScheduleId] = useState('');
+  const [calendarMonth, setCalendarMonth] = useState(
+    () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+  );
+  const [selectedClassScheduleId, setSelectedClassScheduleId] = useState("");
   const [attendanceData, setAttendanceData] = useState<
     Record<string, { status: AttendanceStatus; notes: string }>
   >({});
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   // Helper para formatar data corretamente (evitar problemas de timezone)
   const formatDateLocal = (dateString: string): string => {
-    const [year, month, day] = dateString.split('-').map(Number);
+    const [year, month, day] = dateString.split("-").map(Number);
     const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString('pt-BR');
+    return date.toLocaleDateString("pt-BR");
   };
 
   // Estados para aba de histórico
-  const [activeTab, setActiveTab] = useState<'register' | 'history' | 'schedule'>('register');
+  const [activeTab, setActiveTab] = useState<
+    "register" | "history" | "schedule"
+  >("register");
   const [historyFilters, setHistoryFilters] = useState({
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
-    classSubjectId: '',
-    academicPeriodId: '',
+    classSubjectId: "",
+    academicPeriodId: "",
   });
 
   // Sincronizar filtro do histórico com a seleção da aba de registro
   useEffect(() => {
-    if (activeTab === 'history' && selectedClassSubjectId && !historyFilters.classSubjectId) {
-      setHistoryFilters(prev => ({
+    if (
+      activeTab === "history" &&
+      selectedClassSubjectId &&
+      !historyFilters.classSubjectId
+    ) {
+      setHistoryFilters((prev) => ({
         ...prev,
         classSubjectId: selectedClassSubjectId,
       }));
@@ -78,48 +94,147 @@ export default function AttendancePage() {
   }, [activeTab, selectedClassSubjectId, historyFilters.classSubjectId]);
 
   const { data: teacherSubjects = [] } = useTeacherClassSubjects();
-  const classSubjectIdFromUrl = searchParams.get('classSubjectId') || '';
+  const classSubjectIdFromUrl = searchParams.get("classSubjectId") || "";
 
   useEffect(() => {
     if (!classSubjectIdFromUrl || teacherSubjects.length === 0) return;
-    const hasMatchingSubject = teacherSubjects.some((subject) => subject.id === classSubjectIdFromUrl);
-    if (hasMatchingSubject) {
-      setSelectedClassSubjectId(classSubjectIdFromUrl);
+    const hasMatchingSubject = teacherSubjects.some(
+      (subject) => subject.id === classSubjectIdFromUrl,
+    );
+    const matchingSubject = teacherSubjects.find(
+      (subject) => subject.id === classSubjectIdFromUrl,
+    );
+    if (hasMatchingSubject && matchingSubject) {
+      setSelectedClassSubjectId(matchingSubject.id);
+      setSelectedClassId(matchingSubject.classId);
+      setSelectedSubjectId(
+        matchingSubject.subjectId || matchingSubject.subject?.id || "",
+      );
     }
   }, [classSubjectIdFromUrl, teacherSubjects]);
 
-  const selectedSubject = teacherSubjects?.find((s) => s.id === selectedClassSubjectId);
+  const selectedSubject = teacherSubjects?.find(
+    (s) => s.id === selectedClassSubjectId,
+  );
   const teacherId = user?.teacherId || user?.teacherProfile?.id;
 
+  const classOptions = useMemo(() => {
+    const classes = new Map<
+      string,
+      { id: string; name: string; grade: string }
+    >();
+    teacherSubjects.forEach((assignment) => {
+      if (!assignment.classId || classes.has(assignment.classId)) return;
+      classes.set(assignment.classId, {
+        id: assignment.classId,
+        name: assignment.class?.name || "Turma sem nome",
+        grade: assignment.class?.grade || "",
+      });
+    });
+    return Array.from(classes.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, "pt-BR"),
+    );
+  }, [teacherSubjects]);
+
+  const subjectOptions = useMemo(() => {
+    const subjects = new Map<string, { id: string; name: string }>();
+    teacherSubjects
+      .filter((assignment) => assignment.classId === selectedClassId)
+      .forEach((assignment) => {
+        const subjectId = assignment.subjectId || assignment.subject?.id;
+        if (!subjectId || subjects.has(subjectId)) return;
+        subjects.set(subjectId, {
+          id: subjectId,
+          name: assignment.subject?.name || "Disciplina sem nome",
+        });
+      });
+    return Array.from(subjects.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, "pt-BR"),
+    );
+  }, [selectedClassId, teacherSubjects]);
+
   const getDayOfWeek = (dateString: string) => {
-    const [year, month, day] = dateString.split('-').map(Number);
-    return ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'][
-      new Date(year, month - 1, day).getDay()
-    ];
+    const [year, month, day] = dateString.split("-").map(Number);
+    return [
+      "SUNDAY",
+      "MONDAY",
+      "TUESDAY",
+      "WEDNESDAY",
+      "THURSDAY",
+      "FRIDAY",
+      "SATURDAY",
+    ][new Date(year, month - 1, day).getDay()];
   };
 
-  const isDateInsidePeriod = (dateString: string, period: { startDate: string; endDate: string }) => {
+  const isDateInsidePeriod = (
+    dateString: string,
+    period: { startDate: string; endDate: string },
+  ) => {
     const date = dateString.slice(0, 10);
-    return date >= period.startDate.slice(0, 10) && date <= period.endDate.slice(0, 10);
+    return (
+      date >= period.startDate.slice(0, 10) &&
+      date <= period.endDate.slice(0, 10)
+    );
   };
 
-  const { data: attendanceAvailability, isLoading: loadingAvailability } = useQuery({
-    queryKey: ['attendance-availability', selectedSubject?.classId, selectedClassSubjectId, teacherId],
-    queryFn: () =>
-      attendancesService.getAvailability(
-        selectedSubject!.classId,
+  const todayKey = formatInputDate(new Date());
+
+  const getPeriodForDate = (dateString: string) =>
+    attendanceAvailability?.academicYear.periods
+      .slice()
+      .sort((a, b) => a.orderNumber - b.orderNumber)
+      .find((period) => isDateInsidePeriod(dateString, period));
+
+  const getSchedulesForDate = (dateString: string) =>
+    (attendanceAvailability?.schedules ?? []).filter(
+      (schedule) => schedule.dayOfWeek === getDayOfWeek(dateString),
+    );
+
+  const calendarDays = useMemo(() => {
+    const firstDay = new Date(
+      calendarMonth.getFullYear(),
+      calendarMonth.getMonth(),
+      1,
+    );
+    const lastDay = new Date(
+      calendarMonth.getFullYear(),
+      calendarMonth.getMonth() + 1,
+      0,
+    );
+    const gridStart = new Date(firstDay);
+    gridStart.setDate(firstDay.getDate() - firstDay.getDay());
+    const gridEnd = new Date(lastDay);
+    gridEnd.setDate(lastDay.getDate() + (6 - lastDay.getDay()));
+
+    const days: Date[] = [];
+    const cursor = new Date(gridStart);
+    while (cursor <= gridEnd) {
+      days.push(new Date(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return days;
+  }, [calendarMonth]);
+
+  const { data: attendanceAvailability, isLoading: loadingAvailability } =
+    useQuery({
+      queryKey: [
+        "attendance-availability",
+        selectedSubject?.classId,
         selectedClassSubjectId,
         teacherId,
-      ),
-    enabled: !!selectedSubject?.classId && !!selectedClassSubjectId && !!teacherId,
-  });
+      ],
+      queryFn: () =>
+        attendancesService.getAvailability(
+          selectedSubject!.classId,
+          selectedClassSubjectId,
+          teacherId,
+        ),
+      enabled:
+        !!selectedSubject?.classId && !!selectedClassSubjectId && !!teacherId,
+    });
 
-  const schedulesForSelectedDate = (attendanceAvailability?.schedules ?? []).filter(
-    (schedule) => schedule.dayOfWeek === getDayOfWeek(selectedDate),
-  );
-  const selectedPeriod = attendanceAvailability?.academicYear.periods.find((period) =>
-    isDateInsidePeriod(selectedDate, period),
-  );
+  const schedulesForSelectedDate = getSchedulesForDate(selectedDate);
+  const selectedPeriod = getPeriodForDate(selectedDate);
   const selectedSchedule = schedulesForSelectedDate.find(
     (schedule) => schedule.id === selectedClassScheduleId,
   );
@@ -135,8 +250,12 @@ export default function AttendancePage() {
       return;
     }
 
-    if (!schedulesForSelectedDate.some((schedule) => schedule.id === selectedClassScheduleId)) {
-      setSelectedClassScheduleId('');
+    if (
+      !schedulesForSelectedDate.some(
+        (schedule) => schedule.id === selectedClassScheduleId,
+      )
+    ) {
+      setSelectedClassScheduleId("");
     }
   }, [selectedDate, attendanceAvailability, selectedClassScheduleId]);
 
@@ -146,36 +265,69 @@ export default function AttendancePage() {
       return;
     }
 
-    const schedules = attendanceAvailability.schedules.filter(
-      (schedule) => schedule.dayOfWeek === getDayOfWeek(date),
-    );
+    const schedules = getSchedulesForDate(date);
     if (schedules.length === 0) {
-      toast.warning('Não há aula desta disciplina neste dia. Escolha um dia previsto na grade.');
+      toast.warning(
+        "Não há aula desta disciplina neste dia. Escolha um dia previsto na grade.",
+      );
+      return;
+    }
+
+    if (!getPeriodForDate(date)) {
+      toast.warning(
+        "A data escolhida não pertence a um bimestre do ano letivo desta turma.",
+      );
       return;
     }
 
     setSelectedDate(date);
+    setCalendarMonth(
+      new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, 1),
+    );
+  };
+
+  const handleClassChange = (classId: string) => {
+    setSelectedClassId(classId);
+    setSelectedSubjectId("");
+    setSelectedClassSubjectId("");
+    setSelectedClassScheduleId("");
+    setAttendanceData({});
+  };
+
+  const handleSubjectChange = (subjectId: string) => {
+    const assignment = teacherSubjects.find(
+      (item) =>
+        item.classId === selectedClassId &&
+        (item.subjectId === subjectId || item.subject?.id === subjectId),
+    );
+    setSelectedSubjectId(subjectId);
+    setSelectedClassSubjectId(assignment?.id || "");
+    setSelectedClassScheduleId("");
+    setAttendanceData({});
   };
 
   const { data: enrollments, isLoading: loadingEnrollments } = useQuery({
-    queryKey: ['class-enrollments-attendance', selectedSubject?.classId],
+    queryKey: ["class-enrollments-attendance", selectedSubject?.classId],
     queryFn: async () => {
       if (!selectedSubject?.classId) return [];
-      return await classesService.getEnrollmentsFromApi(selectedSubject.classId);
+      return await classesService.getEnrollmentsFromApi(
+        selectedSubject.classId,
+      );
     },
     enabled: !!selectedSubject?.classId,
   });
 
   const { data: existingAttendances } = useQuery({
     queryKey: [
-      'existing-attendances',
+      "existing-attendances",
       selectedSubject?.classId,
       selectedClassSubjectId,
       selectedDate,
       selectedClassScheduleId,
     ],
     queryFn: async () => {
-      if (!selectedSubject?.classId || !selectedClassSubjectId || !selectedDate) return [];
+      if (!selectedSubject?.classId || !selectedClassSubjectId || !selectedDate)
+        return [];
       const result = await attendancesService.getClassAttendanceByDate(
         selectedSubject.classId,
         selectedClassSubjectId,
@@ -184,7 +336,11 @@ export default function AttendancePage() {
       );
       return result || [];
     },
-    enabled: !!selectedSubject?.classId && !!selectedClassSubjectId && !!selectedDate && hasValidAttendanceSession,
+    enabled:
+      !!selectedSubject?.classId &&
+      !!selectedClassSubjectId &&
+      !!selectedDate &&
+      hasValidAttendanceSession,
   });
 
   const historySubject = teacherSubjects.find(
@@ -192,7 +348,7 @@ export default function AttendancePage() {
   );
   const { data: historyAvailability } = useQuery({
     queryKey: [
-      'attendance-history-availability',
+      "attendance-history-availability",
       historySubject?.classId,
       historyFilters.classSubjectId,
       teacherId,
@@ -203,13 +359,21 @@ export default function AttendancePage() {
         historyFilters.classSubjectId,
         teacherId,
       ),
-    enabled: activeTab === 'history' && !!historySubject?.classId && !!historyFilters.classSubjectId && !!teacherId,
+    enabled:
+      activeTab === "history" &&
+      !!historySubject?.classId &&
+      !!historyFilters.classSubjectId &&
+      !!teacherId,
   });
 
   // Query para histórico de frequências
-  const { data: historyData, isLoading: loadingHistory, refetch: refetchHistory } = useQuery({
+  const {
+    data: historyData,
+    isLoading: loadingHistory,
+    refetch: refetchHistory,
+  } = useQuery({
     queryKey: [
-      'attendance-history',
+      "attendance-history",
       historyFilters.classSubjectId,
       historyFilters.month,
       historyFilters.year,
@@ -219,8 +383,12 @@ export default function AttendancePage() {
       if (!historyFilters.classSubjectId) return [];
 
       // Buscar todas as frequências da disciplina no período
-      const startDate = formatInputDate(new Date(historyFilters.year, historyFilters.month - 1, 1));
-      const endDate = formatInputDate(new Date(historyFilters.year, historyFilters.month, 0));
+      const startDate = formatInputDate(
+        new Date(historyFilters.year, historyFilters.month - 1, 1),
+      );
+      const endDate = formatInputDate(
+        new Date(historyFilters.year, historyFilters.month, 0),
+      );
 
       const result = await attendancesService.findAll({
         classSubjectId: historyFilters.classSubjectId,
@@ -231,23 +399,25 @@ export default function AttendancePage() {
       });
 
       // O interceptor do axios já extrai response.data, então result É o array direto
-      return Array.isArray(result) ? result : (result.data || []);
+      return Array.isArray(result) ? result : result.data || [];
     },
-    enabled: activeTab === 'history' && !!historyFilters.classSubjectId,
-    refetchOnMount: 'always', // Sempre buscar dados atualizados ao montar
+    enabled: activeTab === "history" && !!historyFilters.classSubjectId,
+    refetchOnMount: "always", // Sempre buscar dados atualizados ao montar
   });
 
   // Query para grade de horários - busca TODOS os horários da turma
   const { data: allClassSchedules = [] } = useQuery({
-    queryKey: ['all-class-schedules', selectedSubject?.classId],
+    queryKey: ["all-class-schedules", selectedSubject?.classId],
     queryFn: async () => {
       if (!selectedSubject?.classId) return [];
       try {
-        const schedules = await classSchedulesService.getClassSchedules(selectedSubject.classId);
+        const schedules = await classSchedulesService.getClassSchedules(
+          selectedSubject.classId,
+        );
         // Garantir que sempre retorna um array
         return Array.isArray(schedules) ? schedules : [];
       } catch (error) {
-        console.error('Erro ao buscar grade de horários:', error);
+        console.error("Erro ao buscar grade de horários:", error);
         return [];
       }
     },
@@ -255,7 +425,9 @@ export default function AttendancePage() {
   });
 
   // Filtrar apenas os horários da disciplina selecionada para usar no histórico
-  const classSchedules = allClassSchedules.filter(s => s.classSubjectId === selectedClassSubjectId);
+  const classSchedules = allClassSchedules.filter(
+    (s) => s.classSubjectId === selectedClassSubjectId,
+  );
 
   // Preencher dados existentes quando carregados OU pré-marcar todos como PRESENT
   useEffect(() => {
@@ -266,21 +438,23 @@ export default function AttendancePage() {
 
     if (existingAttendances && existingAttendances.length > 0) {
       // Carregar registros existentes
-      const data: Record<string, { status: AttendanceStatus; notes: string }> = {};
+      const data: Record<string, { status: AttendanceStatus; notes: string }> =
+        {};
       existingAttendances.forEach((att: any) => {
         data[att.studentId] = {
           status: att.status,
-          notes: att.notes || '',
+          notes: att.notes || "",
         };
       });
       setAttendanceData(data);
     } else if (enrollments && enrollments.length > 0) {
       // PRÉ-MARCAR TODOS COMO PRESENT (lógica de exceção)
-      const data: Record<string, { status: AttendanceStatus; notes: string }> = {};
+      const data: Record<string, { status: AttendanceStatus; notes: string }> =
+        {};
       enrollments.forEach((enrollment) => {
         data[enrollment.studentId] = {
           status: AttendanceStatus.PRESENT,
-          notes: '',
+          notes: "",
         };
       });
       setAttendanceData(data);
@@ -295,20 +469,28 @@ export default function AttendancePage() {
       if (!selectedSubject || !user) return;
 
       if (!teacherId) {
-        throw new Error('Perfil de professor não encontrado');
+        throw new Error("Perfil de professor não encontrado");
       }
-      if (!hasValidAttendanceSession || !selectedClassScheduleId || !selectedPeriod) {
-        throw new Error('Selecione uma aula prevista na grade e um bimestre válido para esta data');
+      if (
+        !hasValidAttendanceSession ||
+        !selectedClassScheduleId ||
+        !selectedPeriod
+      ) {
+        throw new Error(
+          "Selecione uma aula prevista na grade e um bimestre válido para esta data",
+        );
       }
 
-      const attendances = Object.entries(attendanceData).map(([studentId, data]) => ({
-        studentId,
-        status: data.status,
-        notes: data.notes,
-      }));
+      const attendances = Object.entries(attendanceData).map(
+        ([studentId, data]) => ({
+          studentId,
+          status: data.status,
+          notes: data.notes,
+        }),
+      );
 
       if (attendances.length === 0) {
-        throw new Error('Nenhuma frequência foi marcada');
+        throw new Error("Nenhuma frequência foi marcada");
       }
 
       await attendancesService.createBulk({
@@ -322,16 +504,25 @@ export default function AttendancePage() {
     },
     onSuccess: () => {
       // Invalidar todas as queries relacionadas a frequências
-      queryClient.invalidateQueries({ queryKey: ['existing-attendances'] });
-      queryClient.invalidateQueries({ queryKey: ['attendance-history'] });
-      queryClient.invalidateQueries({ queryKey: ['class-enrollments-attendance'] });
+      queryClient.invalidateQueries({ queryKey: ["existing-attendances"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-history"] });
+      queryClient.invalidateQueries({
+        queryKey: ["class-enrollments-attendance"],
+      });
 
       const isUpdate = existingAttendances && existingAttendances.length > 0;
-      toast.success(isUpdate ? 'Frequências atualizadas com sucesso!' : 'Frequências salvas com sucesso!');
+      toast.success(
+        isUpdate
+          ? "Frequências atualizadas com sucesso!"
+          : "Frequências salvas com sucesso!",
+      );
       setShowConfirmDialog(false);
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.message || error.message || 'Erro ao salvar frequências';
+      const message =
+        error?.response?.data?.message ||
+        error.message ||
+        "Erro ao salvar frequências";
       toast.error(message);
       setShowConfirmDialog(false);
     },
@@ -342,7 +533,7 @@ export default function AttendancePage() {
       ...prev,
       [studentId]: {
         status,
-        notes: prev[studentId]?.notes || '',
+        notes: prev[studentId]?.notes || "",
       },
     }));
   };
@@ -358,11 +549,12 @@ export default function AttendancePage() {
   };
 
   const handleMarkAll = (status: AttendanceStatus) => {
-    const data: Record<string, { status: AttendanceStatus; notes: string }> = {};
+    const data: Record<string, { status: AttendanceStatus; notes: string }> =
+      {};
     enrollments?.forEach((enrollment) => {
       data[enrollment.studentId] = {
         status,
-        notes: attendanceData[enrollment.studentId]?.notes || '',
+        notes: attendanceData[enrollment.studentId]?.notes || "",
       };
     });
     setAttendanceData(data);
@@ -372,61 +564,80 @@ export default function AttendancePage() {
   const getStatusColor = (status: AttendanceStatus) => {
     switch (status) {
       case AttendanceStatus.PRESENT:
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-300';
+        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-300";
       case AttendanceStatus.ABSENT:
-        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-300';
+        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-300";
       case AttendanceStatus.LATE:
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-300';
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-300";
       case AttendanceStatus.EXCUSED:
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-blue-300';
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-blue-300";
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400 border-gray-300';
+        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400 border-gray-300";
     }
   };
 
   const getStatusLabel = (status: AttendanceStatus) => {
     switch (status) {
       case AttendanceStatus.PRESENT:
-        return 'Presente';
+        return "Presente";
       case AttendanceStatus.ABSENT:
-        return 'Ausente';
+        return "Ausente";
       case AttendanceStatus.LATE:
-        return 'Atrasado';
+        return "Atrasado";
       case AttendanceStatus.EXCUSED:
-        return 'Justificado';
+        return "Justificado";
       default:
-        return '';
+        return "";
     }
   };
 
   // Filtrar alunos pela busca
   const filteredEnrollments = enrollments?.filter((enrollment) => {
     if (!searchTerm) return true;
-    const fullName = `${enrollment.student?.firstName} ${enrollment.student?.lastName}`.toLowerCase();
+    const fullName =
+      `${enrollment.student?.firstName} ${enrollment.student?.lastName}`.toLowerCase();
     return fullName.includes(searchTerm.toLowerCase());
   });
 
   const stats = {
-    present: Object.values(attendanceData).filter((d) => d.status === AttendanceStatus.PRESENT).length,
-    absent: Object.values(attendanceData).filter((d) => d.status === AttendanceStatus.ABSENT).length,
-    late: Object.values(attendanceData).filter((d) => d.status === AttendanceStatus.LATE).length,
-    excused: Object.values(attendanceData).filter((d) => d.status === AttendanceStatus.EXCUSED).length,
+    present: Object.values(attendanceData).filter(
+      (d) => d.status === AttendanceStatus.PRESENT,
+    ).length,
+    absent: Object.values(attendanceData).filter(
+      (d) => d.status === AttendanceStatus.ABSENT,
+    ).length,
+    late: Object.values(attendanceData).filter(
+      (d) => d.status === AttendanceStatus.LATE,
+    ).length,
+    excused: Object.values(attendanceData).filter(
+      (d) => d.status === AttendanceStatus.EXCUSED,
+    ).length,
   };
 
-  const hasUnsavedChanges = hasValidAttendanceSession && Object.keys(attendanceData).length > 0;
+  const hasUnsavedChanges =
+    hasValidAttendanceSession && Object.keys(attendanceData).length > 0;
 
-  const historySchedules = (historyAvailability?.schedules ?? classSchedules) as ClassSchedule[];
+  const historySchedules = (historyAvailability?.schedules ??
+    classSchedules) as ClassSchedule[];
 
   // Cada sessão é uma combinação de data + horário da grade. Assim, duas
   // aulas da mesma disciplina no mesmo dia aparecem como duas frequências.
   const historyByDate = historyData?.reduce((acc: any, att: any) => {
-    const dateKey = new Date(att.date).toLocaleDateString('pt-BR');
-    const dayOfWeek = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'][new Date(att.date).getDay()];
+    const dateKey = new Date(att.date).toLocaleDateString("pt-BR");
+    const dayOfWeek = [
+      "SUNDAY",
+      "MONDAY",
+      "TUESDAY",
+      "WEDNESDAY",
+      "THURSDAY",
+      "FRIDAY",
+      "SATURDAY",
+    ][new Date(att.date).getDay()];
 
     const scheduleForDay = att.classScheduleId
       ? historySchedules.find((schedule) => schedule.id === att.classScheduleId)
       : historySchedules.find((schedule) => schedule.dayOfWeek === dayOfWeek);
-    const sessionKey = `${dateKey}-${att.classScheduleId || 'legacy'}`;
+    const sessionKey = `${dateKey}-${att.classScheduleId || "legacy"}`;
 
     if (!acc[sessionKey]) {
       acc[sessionKey] = {
@@ -445,18 +656,22 @@ export default function AttendancePage() {
     return acc;
   }, {});
 
-  const historyDates = historyByDate ? Object.values(historyByDate).sort((a: any, b: any) =>
-    new Date(b.date).getTime() - new Date(a.date).getTime()
-  ) : [];
+  const historyDates = historyByDate
+    ? Object.values(historyByDate).sort(
+        (a: any, b: any) =>
+          new Date(b.date).getTime() - new Date(a.date).getTime(),
+      )
+    : [];
 
   // Calcular aulas programadas vs realizadas
-  const scheduledClassesCount = historySchedules.length > 0
-    ? classSchedulesService.calculateScheduledClasses(
-        historySchedules,
-        new Date(historyFilters.year, historyFilters.month - 1, 1),
-        new Date(historyFilters.year, historyFilters.month, 0)
-      )
-    : 0;
+  const scheduledClassesCount =
+    historySchedules.length > 0
+      ? classSchedulesService.calculateScheduledClasses(
+          historySchedules,
+          new Date(historyFilters.year, historyFilters.month - 1, 1),
+          new Date(historyFilters.year, historyFilters.month, 0),
+        )
+      : 0;
 
   const givenClassesCount = historyDates.length;
 
@@ -467,7 +682,7 @@ export default function AttendancePage() {
         <div className="mb-6">
           <Button
             variant="ghost"
-            onClick={() => router.push('/professor/dashboard')}
+            onClick={() => router.push("/professor/dashboard")}
             leftIcon={<ArrowLeftIcon className="h-5 w-5" />}
             className="mb-4"
           >
@@ -485,31 +700,31 @@ export default function AttendancePage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm mb-6">
           <div className="flex border-b border-gray-200 dark:border-gray-700">
             <button
-              onClick={() => setActiveTab('register')}
+              onClick={() => setActiveTab("register")}
               className={`px-6 py-3 font-medium transition-colors ${
-                activeTab === 'register'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                activeTab === "register"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
               }`}
             >
               Registrar Frequência
             </button>
             <button
-              onClick={() => setActiveTab('schedule')}
+              onClick={() => setActiveTab("schedule")}
               className={`px-6 py-3 font-medium transition-colors ${
-                activeTab === 'schedule'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                activeTab === "schedule"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
               }`}
             >
               Grade de Horários
             </button>
             <button
-              onClick={() => setActiveTab('history')}
+              onClick={() => setActiveTab("history")}
               className={`px-6 py-3 font-medium transition-colors ${
-                activeTab === 'history'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                activeTab === "history"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
               }`}
             >
               Histórico
@@ -518,367 +733,580 @@ export default function AttendancePage() {
         </div>
 
         {/* Aba: Registrar Frequência */}
-        {activeTab === 'register' && (
+        {activeTab === "register" && (
           <>
             {/* Filters */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Select
-                  label="Turma e Disciplina"
-                  value={selectedClassSubjectId}
-                  onChange={(e) => {
-                    setSelectedClassSubjectId(e.target.value);
-                    setSelectedClassScheduleId('');
-                    setAttendanceData({});
-                  }}
+                  label="Turma"
+                  value={selectedClassId}
+                  onChange={(e) => handleClassChange(e.target.value)}
                   required
                   options={[
-                    { value: '', label: 'Selecione...' },
-                    ...(teacherSubjects?.map((subject) => ({
-                      value: subject.id,
-                      label: `${subject.class?.name} - ${subject.subject?.name}`,
-                    })) || []),
+                    { value: "", label: "Selecione a turma..." },
+                    ...classOptions.map((classItem) => ({
+                      value: classItem.id,
+                      label: classItem.grade
+                        ? `${classItem.name} • ${classItem.grade}`
+                        : classItem.name,
+                    })),
                   ]}
                 />
-
-                <Input
-                  type="date"
-                  label="Data da Aula"
-                  value={selectedDate}
-                  onChange={(e) => handleDateChange(e.target.value)}
-                  leftIcon={<CalendarIcon className="h-5 w-5" />}
-                  max={formatInputDate(new Date())}
+                <Select
+                  label="Disciplina"
+                  value={selectedSubjectId}
+                  onChange={(e) => handleSubjectChange(e.target.value)}
                   required
+                  disabled={!selectedClassId}
+                  options={[
+                    {
+                      value: "",
+                      label: selectedClassId
+                        ? "Selecione a disciplina..."
+                        : "Selecione uma turma primeiro",
+                    },
+                    ...subjectOptions.map((subject) => ({
+                      value: subject.id,
+                      label: subject.name,
+                    })),
+                  ]}
                 />
-
-                {schedulesForSelectedDate.length > 1 && (
-                  <Select
-                    label="Aula da grade"
-                    value={selectedClassScheduleId}
-                    onChange={(e) => setSelectedClassScheduleId(e.target.value)}
-                    required
-                    options={[
-                      { value: '', label: 'Selecione o horário...' },
-                      ...schedulesForSelectedDate.map((schedule) => ({
-                        value: schedule.id,
-                        label: `${schedule.startTime} às ${schedule.endTime}${schedule.room ? ` • ${schedule.room}` : ''}`,
-                      })),
-                    ]}
-                  />
-                )}
               </div>
+
+              {selectedClassSubjectId && (
+                <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/30">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-white">
+                        Escolha a data da aula
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Os dias com uma bolinha têm aula desta disciplina na
+                        grade.
+                      </p>
+                    </div>
+                    <CalendarIcon className="h-6 w-6 text-blue-600" />
+                  </div>
+
+                  {loadingAvailability ? (
+                    <div className="flex justify-center py-8">
+                      <LoadingSpinner
+                        size="md"
+                        text="Carregando calendário..."
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mb-3 flex items-center justify-between">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Mês anterior"
+                          onClick={() =>
+                            setCalendarMonth(
+                              new Date(
+                                calendarMonth.getFullYear(),
+                                calendarMonth.getMonth() - 1,
+                                1,
+                              ),
+                            )
+                          }
+                          leftIcon={<ChevronLeftIcon className="h-4 w-4" />}
+                        >
+                          <span className="sr-only">Mês anterior</span>
+                        </Button>
+                        <span className="font-semibold capitalize text-gray-900 dark:text-white">
+                          {calendarMonth.toLocaleDateString("pt-BR", {
+                            month: "long",
+                            year: "numeric",
+                          })}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Próximo mês"
+                          onClick={() =>
+                            setCalendarMonth(
+                              new Date(
+                                calendarMonth.getFullYear(),
+                                calendarMonth.getMonth() + 1,
+                                1,
+                              ),
+                            )
+                          }
+                          rightIcon={<ChevronRightIcon className="h-4 w-4" />}
+                        >
+                          <span className="sr-only">Próximo mês</span>
+                        </Button>
+                      </div>
+
+                      <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+                        {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map(
+                          (day) => (
+                            <span key={day} className="py-2">
+                              {day}
+                            </span>
+                          ),
+                        )}
+                      </div>
+                      <div className="grid grid-cols-7 gap-1">
+                        {calendarDays.map((day) => {
+                          const date = formatInputDate(day);
+                          const hasSchedule =
+                            getSchedulesForDate(date).length > 0;
+                          const hasPeriod = Boolean(getPeriodForDate(date));
+                          const isCurrentMonth =
+                            day.getMonth() === calendarMonth.getMonth();
+                          const isFuture = date > todayKey;
+                          const isSelected = date === selectedDate;
+                          const isSelectable =
+                            isCurrentMonth && hasSchedule && hasPeriod && !isFuture;
+
+                          return (
+                            <button
+                              key={date}
+                              type="button"
+                              disabled={!isSelectable}
+                              onClick={() => handleDateChange(date)}
+                              aria-label={`${day.toLocaleDateString("pt-BR")}${hasSchedule ? ", há aula na grade" : ", sem aula na grade"}`}
+                              className={`relative flex min-h-11 flex-col items-center justify-center rounded-lg text-sm transition-colors ${
+                                !isCurrentMonth
+                                  ? "text-gray-300 dark:text-gray-600"
+                                  : ""
+                              } ${
+                                isSelectable
+                                  ? "cursor-pointer text-gray-700 hover:bg-blue-50 hover:text-blue-700 dark:text-gray-200 dark:hover:bg-blue-900/30"
+                                  : "cursor-not-allowed text-gray-300 dark:text-gray-600"
+                              } ${isSelected && isSelectable ? "bg-blue-600 font-semibold text-white hover:bg-blue-700 hover:text-white" : ""}`}
+                            >
+                              <span>{day.getDate()}</span>
+                              {isCurrentMonth && hasSchedule && hasPeriod && (
+                                <span
+                                  className={`mt-0.5 h-1.5 w-1.5 rounded-full ${isSelected && isSelectable ? "bg-white" : "bg-blue-600"}`}
+                                  aria-hidden="true"
+                                />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500 dark:text-gray-400">
+                        <span className="inline-flex items-center gap-2">
+                          <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />{" "}
+                          Dia com aula
+                        </span>
+                        <span>Frequências só podem ser lançadas até hoje.</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
 
               {selectedSubject && !loadingAvailability && (
                 <div className="mt-4 space-y-2">
                   {schedulesForSelectedDate.length === 0 && (
                     <div className="flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
                       <ExclamationTriangleIcon className="mt-0.5 h-5 w-5 flex-shrink-0" />
-                      <span>Não há aula desta disciplina neste dia. O professor só pode registrar frequência nos dias previstos na grade.</span>
+                      <span>
+                        Não há aula desta disciplina neste dia. O professor só
+                        pode registrar frequência nos dias previstos na grade.
+                      </span>
                     </div>
                   )}
                   {!selectedPeriod && (
                     <div className="flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
                       <ExclamationTriangleIcon className="mt-0.5 h-5 w-5 flex-shrink-0" />
-                      <span>A data escolhida não pertence a um bimestre ativo do ano letivo desta turma.</span>
+                      <span>
+                        A data escolhida não pertence a um bimestre ativo do ano
+                        letivo desta turma.
+                      </span>
                     </div>
                   )}
                   {selectedPeriod && schedulesForSelectedDate.length > 0 && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Bimestre: <strong>{selectedPeriod.name}</strong>
-                      {selectedSchedule && ` • Aula: ${selectedSchedule.startTime} às ${selectedSchedule.endTime}`}
-                    </p>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                        Bimestre:{" "}
+                        <strong className="text-gray-900 dark:text-white">
+                          {selectedPeriod.name}
+                        </strong>
+                        {selectedSchedule && (
+                          <span className="block text-xs text-gray-500 dark:text-gray-400">
+                            Aula selecionada: {selectedSchedule.startTime} às{" "}
+                            {selectedSchedule.endTime}
+                            {selectedSchedule.room
+                              ? ` • ${selectedSchedule.room}`
+                              : ""}
+                          </span>
+                        )}
+                      </div>
+                      {schedulesForSelectedDate.length > 1 && (
+                        <Select
+                          label="Aula da grade"
+                          value={selectedClassScheduleId}
+                          onChange={(e) =>
+                            setSelectedClassScheduleId(e.target.value)
+                          }
+                          required
+                          options={[
+                            { value: "", label: "Selecione o horário..." },
+                            ...schedulesForSelectedDate.map((schedule) => ({
+                              value: schedule.id,
+                              label: `${schedule.startTime} às ${schedule.endTime}${schedule.room ? ` • ${schedule.room}` : ""}`,
+                            })),
+                          ]}
+                        />
+                      )}
+                    </div>
                   )}
                 </div>
               )}
 
-          {selectedSubject && (
-            <div className="mt-4 flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <div
-                className="p-2 rounded-lg"
-                style={{
-                  backgroundColor: selectedSubject.subject?.color
-                    ? `${selectedSubject.subject.color}20`
-                    : '#E5E7EB',
-                }}
-              >
-                <BookOpenIcon
-                  className="h-5 w-5"
-                  style={{ color: selectedSubject.subject?.color || '#6B7280' }}
-                />
-              </div>
-              <div>
-                <div className="font-medium text-gray-900 dark:text-white">
-                  {selectedSubject.class?.name}
-                </div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  {selectedSubject.subject?.name} • {enrollments?.length || 0} alunos
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Content */}
-        {!selectedClassSubjectId ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
-            <UserGroupIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Selecione uma turma
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400">
-              Escolha a turma e disciplina para lançar a frequência
-            </p>
-          </div>
-        ) : loadingEnrollments ? (
-          <div className="flex justify-center py-12">
-            <LoadingSpinner size="lg" text="Carregando alunos..." />
-          </div>
-        ) : loadingAvailability ? (
-          <div className="flex justify-center py-12">
-            <LoadingSpinner size="lg" text="Verificando a grade e o bimestre..." />
-          </div>
-        ) : !hasValidAttendanceSession ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
-            <CalendarIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Frequência indisponível para esta data
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400">
-              Escolha um dia com aula na grade e dentro de um bimestre ativo.
-              {schedulesForSelectedDate.length > 1 && ' Selecione também o horário da aula.'}
-            </p>
-          </div>
-        ) : enrollments && enrollments.length > 0 ? (
-          <>
-            {/* Aviso de pré-marcação */}
-            {enrollments && enrollments.length > 0 && !existingAttendances?.length && (
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-                <div className="flex items-start gap-3">
-                  <CheckIcon className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+              {selectedSubject && (
+                <div className="mt-4 flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <div
+                    className="p-2 rounded-lg"
+                    style={{
+                      backgroundColor: selectedSubject.subject?.color
+                        ? `${selectedSubject.subject.color}20`
+                        : "#E5E7EB",
+                    }}
+                  >
+                    <BookOpenIcon
+                      className="h-5 w-5"
+                      style={{
+                        color: selectedSubject.subject?.color || "#6B7280",
+                      }}
+                    />
+                  </div>
                   <div>
-                    <h4 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-1">
-                      Todos os alunos foram pré-marcados como PRESENTES
-                    </h4>
-                    <p className="text-sm text-blue-700 dark:text-blue-400">
-                      Revise a lista e altere o status dos alunos ausentes, atrasados ou justificados antes de salvar.
-                    </p>
+                    <div className="font-medium text-gray-900 dark:text-white">
+                      {selectedSubject.class?.name}
+                    </div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                      {selectedSubject.subject?.name} •{" "}
+                      {enrollments?.length || 0} alunos
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckIcon className="h-5 w-5 text-green-600" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Presentes</span>
-                </div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.present}</div>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <XMarkIcon className="h-5 w-5 text-red-600" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Ausentes</span>
-                </div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.absent}</div>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <ClockIcon className="h-5 w-5 text-yellow-600" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Atrasados</span>
-                </div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.late}</div>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <DocumentCheckIcon className="h-5 w-5 text-blue-600" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Justificados</span>
-                </div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.excused}</div>
-              </div>
+              )}
             </div>
 
-            {/* Actions */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6">
-              <div className="flex flex-col md:flex-row gap-4 items-center">
-                <Input
-                  placeholder="Buscar aluno por nome ou matrícula..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  leftIcon={<MagnifyingGlassIcon className="h-5 w-5" />}
-                  className="flex-1"
+            {/* Content */}
+            {!selectedClassSubjectId ? (
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
+                <UserGroupIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Selecione uma turma
+                </h3>
+                <p className="text-gray-500 dark:text-gray-400">
+                  Escolha a turma e disciplina para lançar a frequência
+                </p>
+              </div>
+            ) : loadingEnrollments ? (
+              <div className="flex justify-center py-12">
+                <LoadingSpinner size="lg" text="Carregando alunos..." />
+              </div>
+            ) : loadingAvailability ? (
+              <div className="flex justify-center py-12">
+                <LoadingSpinner
+                  size="lg"
+                  text="Verificando a grade e o bimestre..."
                 />
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => handleMarkAll(AttendanceStatus.PRESENT)}
-                    leftIcon={<CheckIcon className="h-4 w-4" />}
-                  >
-                    Todos Presentes
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleMarkAll(AttendanceStatus.ABSENT)}
-                    leftIcon={<XMarkIcon className="h-4 w-4" />}
-                  >
-                    Todos Ausentes
-                  </Button>
-                </div>
               </div>
-            </div>
+            ) : !hasValidAttendanceSession ? (
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
+                <CalendarIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Frequência indisponível para esta data
+                </h3>
+                <p className="text-gray-500 dark:text-gray-400">
+                  Escolha um dia com aula na grade e dentro de um bimestre
+                  ativo.
+                  {schedulesForSelectedDate.length > 1 &&
+                    " Selecione também o horário da aula."}
+                </p>
+              </div>
+            ) : enrollments && enrollments.length > 0 ? (
+              <>
+                {/* Aviso de pré-marcação */}
+                {enrollments &&
+                  enrollments.length > 0 &&
+                  !existingAttendances?.length && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+                      <div className="flex items-start gap-3">
+                        <CheckIcon className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-1">
+                            Todos os alunos foram pré-marcados como PRESENTES
+                          </h4>
+                          <p className="text-sm text-blue-700 dark:text-blue-400">
+                            Revise a lista e altere o status dos alunos
+                            ausentes, atrasados ou justificados antes de salvar.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-            {/* Student List */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 dark:bg-gray-700/50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                        Aluno
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                        Observações
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {filteredEnrollments && filteredEnrollments.length > 0 ? (
-                      filteredEnrollments.map((enrollment) => {
-                        const status = attendanceData[enrollment.studentId]?.status;
-                        return (
-                          <tr key={enrollment.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
-                                  {enrollment.student?.avatar ? (
-                                    <>
-                                      <img
-                                        src={enrollment.student.avatar}
-                                        alt={`Foto de ${enrollment.student.firstName} ${enrollment.student.lastName}`}
-                                        loading="lazy"
-                                        className="h-full w-full rounded-full object-cover"
-                                        onError={(event) => {
-                                          event.currentTarget.style.display = 'none';
-                                          event.currentTarget.nextElementSibling?.classList.remove('hidden');
-                                        }}
-                                      />
-                                      <span className="hidden">
-                                        {enrollment.student?.firstName?.[0]}
-                                        {enrollment.student?.lastName?.[0]}
-                                      </span>
-                                    </>
-                                  ) : (
-                                    <span>
-                                      {enrollment.student?.firstName?.[0]}
-                                      {enrollment.student?.lastName?.[0]}
-                                    </span>
-                                  )}
-                                </div>
-                                <div>
-                                  <div className="font-medium text-gray-900 dark:text-white">
-                                    {enrollment.student?.firstName} {enrollment.student?.lastName}
+                {/* Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckIcon className="h-5 w-5 text-green-600" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Presentes
+                      </span>
+                    </div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {stats.present}
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <XMarkIcon className="h-5 w-5 text-red-600" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Ausentes
+                      </span>
+                    </div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {stats.absent}
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <ClockIcon className="h-5 w-5 text-yellow-600" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Atrasados
+                      </span>
+                    </div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {stats.late}
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <DocumentCheckIcon className="h-5 w-5 text-blue-600" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Justificados
+                      </span>
+                    </div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {stats.excused}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6">
+                  <div className="flex flex-col md:flex-row gap-4 items-center">
+                    <Input
+                      placeholder="Buscar aluno por nome ou matrícula..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      leftIcon={<MagnifyingGlassIcon className="h-5 w-5" />}
+                      className="flex-1"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleMarkAll(AttendanceStatus.PRESENT)}
+                        leftIcon={<CheckIcon className="h-4 w-4" />}
+                      >
+                        Todos Presentes
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleMarkAll(AttendanceStatus.ABSENT)}
+                        leftIcon={<XMarkIcon className="h-4 w-4" />}
+                      >
+                        Todos Ausentes
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Student List */}
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 dark:bg-gray-700/50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                            Aluno
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                            Status
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                            Observações
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {filteredEnrollments &&
+                        filteredEnrollments.length > 0 ? (
+                          filteredEnrollments.map((enrollment) => {
+                            const status =
+                              attendanceData[enrollment.studentId]?.status;
+                            return (
+                              <tr
+                                key={enrollment.id}
+                                className="hover:bg-gray-50 dark:hover:bg-gray-700/30"
+                              >
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
+                                      {enrollment.student?.avatar ? (
+                                        <>
+                                          <img
+                                            src={enrollment.student.avatar}
+                                            alt={`Foto de ${enrollment.student.firstName} ${enrollment.student.lastName}`}
+                                            loading="lazy"
+                                            className="h-full w-full rounded-full object-cover"
+                                            onError={(event) => {
+                                              event.currentTarget.style.display =
+                                                "none";
+                                              event.currentTarget.nextElementSibling?.classList.remove(
+                                                "hidden",
+                                              );
+                                            }}
+                                          />
+                                          <span className="hidden">
+                                            {enrollment.student?.firstName?.[0]}
+                                            {enrollment.student?.lastName?.[0]}
+                                          </span>
+                                        </>
+                                      ) : (
+                                        <span>
+                                          {enrollment.student?.firstName?.[0]}
+                                          {enrollment.student?.lastName?.[0]}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div>
+                                      <div className="font-medium text-gray-900 dark:text-white">
+                                        {enrollment.student?.firstName}{" "}
+                                        {enrollment.student?.lastName}
+                                      </div>
+                                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                                        {enrollment.student?.email}
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                                    {enrollment.student?.email}
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex gap-2">
+                                    {Object.values(AttendanceStatus).map(
+                                      (s) => (
+                                        <button
+                                          key={s}
+                                          onClick={() =>
+                                            handleStatusChange(
+                                              enrollment.studentId,
+                                              s,
+                                            )
+                                          }
+                                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
+                                            status === s
+                                              ? getStatusColor(s)
+                                              : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 border-transparent hover:border-gray-300"
+                                          }`}
+                                        >
+                                          {getStatusLabel(s)}
+                                        </button>
+                                      ),
+                                    )}
                                   </div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex gap-2">
-                                {Object.values(AttendanceStatus).map((s) => (
-                                  <button
-                                    key={s}
-                                    onClick={() => handleStatusChange(enrollment.studentId, s)}
-                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
-                                      status === s
-                                        ? getStatusColor(s)
-                                        : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 border-transparent hover:border-gray-300'
-                                    }`}
-                                  >
-                                    {getStatusLabel(s)}
-                                  </button>
-                                ))}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <Input
-                                placeholder="Adicionar observação..."
-                                value={attendanceData[enrollment.studentId]?.notes || ''}
-                                onChange={(e) => handleNotesChange(enrollment.studentId, e.target.value)}
-                              />
+                                </td>
+                                <td className="px-6 py-4">
+                                  <Input
+                                    placeholder="Adicionar observação..."
+                                    value={
+                                      attendanceData[enrollment.studentId]
+                                        ?.notes || ""
+                                    }
+                                    onChange={(e) =>
+                                      handleNotesChange(
+                                        enrollment.studentId,
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td
+                              colSpan={3}
+                              className="px-6 py-12 text-center text-gray-500 dark:text-gray-400"
+                            >
+                              Nenhum aluno encontrado com "{searchTerm}"
                             </td>
                           </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan={3} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                          Nenhum aluno encontrado com "{searchTerm}"
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
-            {/* Save Button */}
-            <div className="mt-6 flex justify-end gap-3">
-              {hasUnsavedChanges && !saveMutation.isPending && (
-                <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400 mr-auto">
-                  <ExclamationTriangleIcon className="h-5 w-5" />
-                  <span className="text-sm">Alterações não salvas</span>
+                {/* Save Button */}
+                <div className="mt-6 flex justify-end gap-3">
+                  {hasUnsavedChanges && !saveMutation.isPending && (
+                    <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400 mr-auto">
+                      <ExclamationTriangleIcon className="h-5 w-5" />
+                      <span className="text-sm">Alterações não salvas</span>
+                    </div>
+                  )}
+                  {saveMutation.isPending && (
+                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mr-auto">
+                      <LoadingSpinner size="sm" />
+                      <span className="text-sm">Salvando frequências...</span>
+                    </div>
+                  )}
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setAttendanceData({});
+                      toast.info("Frequências limpas");
+                    }}
+                    disabled={!hasUnsavedChanges || saveMutation.isPending}
+                  >
+                    Limpar
+                  </Button>
+                  <Button
+                    onClick={() => setShowConfirmDialog(true)}
+                    disabled={!hasUnsavedChanges || saveMutation.isPending}
+                  >
+                    {saveMutation.isPending
+                      ? "Salvando..."
+                      : `Salvar Frequências (${Object.keys(attendanceData).length})`}
+                  </Button>
                 </div>
-              )}
-              {saveMutation.isPending && (
-                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mr-auto">
-                  <LoadingSpinner size="sm" />
-                  <span className="text-sm">Salvando frequências...</span>
-                </div>
-              )}
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setAttendanceData({});
-                  toast.info('Frequências limpas');
-                }}
-                disabled={!hasUnsavedChanges || saveMutation.isPending}
-              >
-                Limpar
-              </Button>
-              <Button
-                onClick={() => setShowConfirmDialog(true)}
-                disabled={!hasUnsavedChanges || saveMutation.isPending}
-              >
-                {saveMutation.isPending
-                  ? 'Salvando...'
-                  : `Salvar Frequências (${Object.keys(attendanceData).length})`}
-              </Button>
-            </div>
-          </>
-        ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
-            <UserGroupIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Nenhum aluno matriculado
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400">
-              Esta turma não possui alunos matriculados
-            </p>
-          </div>
-        )}
+              </>
+            ) : (
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
+                <UserGroupIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Nenhum aluno matriculado
+                </h3>
+                <p className="text-gray-500 dark:text-gray-400">
+                  Esta turma não possui alunos matriculados
+                </p>
+              </div>
+            )}
           </>
         )}
 
         {/* Aba: Grade de Horários */}
-        {activeTab === 'schedule' && (
+        {activeTab === "schedule" && (
           <>
             {/* Seleção de Turma/Disciplina */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
@@ -890,7 +1318,7 @@ export default function AttendancePage() {
                 }}
                 required
                 options={[
-                  { value: '', label: 'Selecione...' },
+                  { value: "", label: "Selecione..." },
                   ...(teacherSubjects?.map((subject) => ({
                     value: subject.id,
                     label: `${subject.class?.name} - ${subject.subject?.name}`,
@@ -907,7 +1335,8 @@ export default function AttendancePage() {
                   Selecione uma turma
                 </h3>
                 <p className="text-gray-500 dark:text-gray-400">
-                  Escolha a turma e disciplina para visualizar a grade de horários
+                  Escolha a turma e disciplina para visualizar a grade de
+                  horários
                 </p>
               </div>
             ) : allClassSchedules.length > 0 ? (
@@ -917,7 +1346,11 @@ export default function AttendancePage() {
                 </h3>
 
                 <div className="space-y-3">
-                  {Object.entries(classSchedulesService.getFormattedSchedules(allClassSchedules)).map(
+                  {Object.entries(
+                    classSchedulesService.getFormattedSchedules(
+                      allClassSchedules,
+                    ),
+                  ).map(
                     ([day, schedules]) =>
                       schedules.length > 0 && (
                         <div
@@ -929,7 +1362,11 @@ export default function AttendancePage() {
                               {classSchedulesService.getDayAbbreviation(day)}
                             </div>
                             <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                              {classSchedulesService.translateDayOfWeek(day).split('-')[0]}
+                              {
+                                classSchedulesService
+                                  .translateDayOfWeek(day)
+                                  .split("-")[0]
+                              }
                             </div>
                           </div>
                           <div className="flex-1 space-y-2">
@@ -937,9 +1374,20 @@ export default function AttendancePage() {
                               <div
                                 key={schedule.id}
                                 className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-lg border-l-4"
-                                style={{ borderLeftColor: schedule.classSubject?.subject?.color || '#6B7280' }}
+                                style={{
+                                  borderLeftColor:
+                                    schedule.classSubject?.subject?.color ||
+                                    "#6B7280",
+                                }}
                               >
-                                <ClockIcon className="h-5 w-5" style={{ color: schedule.classSubject?.subject?.color || '#6B7280' }} />
+                                <ClockIcon
+                                  className="h-5 w-5"
+                                  style={{
+                                    color:
+                                      schedule.classSubject?.subject?.color ||
+                                      "#6B7280",
+                                  }}
+                                />
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-1">
                                     <span className="font-semibold text-gray-900 dark:text-white">
@@ -948,8 +1396,13 @@ export default function AttendancePage() {
                                     <span
                                       className="px-2 py-0.5 rounded text-xs font-medium"
                                       style={{
-                                        backgroundColor: schedule.classSubject?.subject?.color ? `${schedule.classSubject.subject.color}20` : '#E5E7EB',
-                                        color: schedule.classSubject?.subject?.color || '#6B7280'
+                                        backgroundColor: schedule.classSubject
+                                          ?.subject?.color
+                                          ? `${schedule.classSubject.subject.color}20`
+                                          : "#E5E7EB",
+                                        color:
+                                          schedule.classSubject?.subject
+                                            ?.color || "#6B7280",
                                       }}
                                     >
                                       {schedule.classSubject?.subject?.name}
@@ -965,7 +1418,7 @@ export default function AttendancePage() {
                             ))}
                           </div>
                         </div>
-                      )
+                      ),
                   )}
                 </div>
 
@@ -991,7 +1444,11 @@ export default function AttendancePage() {
                         Disciplinas
                       </div>
                       <div className="text-2xl font-bold text-blue-900 dark:text-blue-300">
-                        {new Set(allClassSchedules.map(s => s.classSubjectId)).size}
+                        {
+                          new Set(
+                            allClassSchedules.map((s) => s.classSubjectId),
+                          ).size
+                        }
                       </div>
                     </div>
                     <div>
@@ -999,7 +1456,10 @@ export default function AttendancePage() {
                         Dias letivos
                       </div>
                       <div className="text-2xl font-bold text-blue-900 dark:text-blue-300">
-                        {new Set(allClassSchedules.map(s => s.dayOfWeek)).size}
+                        {
+                          new Set(allClassSchedules.map((s) => s.dayOfWeek))
+                            .size
+                        }
                       </div>
                     </div>
                     <div>
@@ -1007,12 +1467,16 @@ export default function AttendancePage() {
                         Total horas/semana
                       </div>
                       <div className="text-2xl font-bold text-blue-900 dark:text-blue-300">
-                        {allClassSchedules.reduce((acc, s) => {
-                          const start = s.startTime.split(':').map(Number);
-                          const end = s.endTime.split(':').map(Number);
-                          const hours = end[0] - start[0] + (end[1] - start[1]) / 60;
-                          return acc + hours;
-                        }, 0).toFixed(1)}h
+                        {allClassSchedules
+                          .reduce((acc, s) => {
+                            const start = s.startTime.split(":").map(Number);
+                            const end = s.endTime.split(":").map(Number);
+                            const hours =
+                              end[0] - start[0] + (end[1] - start[1]) / 60;
+                            return acc + hours;
+                          }, 0)
+                          .toFixed(1)}
+                        h
                       </div>
                     </div>
                   </div>
@@ -1033,7 +1497,7 @@ export default function AttendancePage() {
         )}
 
         {/* Aba: Histórico */}
-        {activeTab === 'history' && (
+        {activeTab === "history" && (
           <>
             {/* Filtros de histórico */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
@@ -1045,12 +1509,12 @@ export default function AttendancePage() {
                     setHistoryFilters({
                       ...historyFilters,
                       classSubjectId: e.target.value,
-                      academicPeriodId: '',
+                      academicPeriodId: "",
                     })
                   }
                   required
                   options={[
-                    { value: '', label: 'Selecione uma turma' },
+                    { value: "", label: "Selecione uma turma" },
                     ...(teacherSubjects?.map((subject) => ({
                       value: subject.id,
                       label: `${subject.class?.name} - ${subject.subject?.name}`,
@@ -1061,36 +1525,46 @@ export default function AttendancePage() {
                   label="Bimestre"
                   value={historyFilters.academicPeriodId}
                   onChange={(e) =>
-                    setHistoryFilters({ ...historyFilters, academicPeriodId: e.target.value })
+                    setHistoryFilters({
+                      ...historyFilters,
+                      academicPeriodId: e.target.value,
+                    })
                   }
                   options={[
-                    { value: '', label: 'Todos os bimestres' },
-                    ...(historyAvailability?.academicYear.periods.map((period) => ({
-                      value: period.id,
-                      label: period.name,
-                    })) ?? []),
+                    { value: "", label: "Todos os bimestres" },
+                    ...(historyAvailability?.academicYear.periods.map(
+                      (period) => ({
+                        value: period.id,
+                        label: period.name,
+                      }),
+                    ) ?? []),
                   ]}
-                  disabled={!historyFilters.classSubjectId || !historyAvailability}
+                  disabled={
+                    !historyFilters.classSubjectId || !historyAvailability
+                  }
                 />
                 <Select
                   label="Mês"
                   value={historyFilters.month.toString()}
                   onChange={(e) =>
-                    setHistoryFilters({ ...historyFilters, month: parseInt(e.target.value) })
+                    setHistoryFilters({
+                      ...historyFilters,
+                      month: parseInt(e.target.value),
+                    })
                   }
                   options={[
-                    { value: '1', label: 'Janeiro' },
-                    { value: '2', label: 'Fevereiro' },
-                    { value: '3', label: 'Março' },
-                    { value: '4', label: 'Abril' },
-                    { value: '5', label: 'Maio' },
-                    { value: '6', label: 'Junho' },
-                    { value: '7', label: 'Julho' },
-                    { value: '8', label: 'Agosto' },
-                    { value: '9', label: 'Setembro' },
-                    { value: '10', label: 'Outubro' },
-                    { value: '11', label: 'Novembro' },
-                    { value: '12', label: 'Dezembro' },
+                    { value: "1", label: "Janeiro" },
+                    { value: "2", label: "Fevereiro" },
+                    { value: "3", label: "Março" },
+                    { value: "4", label: "Abril" },
+                    { value: "5", label: "Maio" },
+                    { value: "6", label: "Junho" },
+                    { value: "7", label: "Julho" },
+                    { value: "8", label: "Agosto" },
+                    { value: "9", label: "Setembro" },
+                    { value: "10", label: "Outubro" },
+                    { value: "11", label: "Novembro" },
+                    { value: "12", label: "Dezembro" },
                   ]}
                 />
                 <Input
@@ -1098,7 +1572,10 @@ export default function AttendancePage() {
                   label="Ano"
                   value={historyFilters.year}
                   onChange={(e) =>
-                    setHistoryFilters({ ...historyFilters, year: parseInt(e.target.value) })
+                    setHistoryFilters({
+                      ...historyFilters,
+                      year: parseInt(e.target.value),
+                    })
                   }
                 />
               </div>
@@ -1110,7 +1587,7 @@ export default function AttendancePage() {
                     onClick={() => refetchHistory()}
                     disabled={loadingHistory}
                   >
-                    {loadingHistory ? 'Atualizando...' : 'Atualizar Dados'}
+                    {loadingHistory ? "Atualizando..." : "Atualizar Dados"}
                   </Button>
                 </div>
               )}
@@ -1181,21 +1658,27 @@ export default function AttendancePage() {
                       </div>
                       <div className="text-2xl font-bold text-purple-900 dark:text-purple-300">
                         {scheduledClassesCount > 0
-                          ? Math.round((givenClassesCount / scheduledClassesCount) * 100)
-                          : 0}%
+                          ? Math.round(
+                              (givenClassesCount / scheduledClassesCount) * 100,
+                            )
+                          : 0}
+                        %
                       </div>
                     </div>
                   </div>
-                  {scheduledClassesCount > 0 && givenClassesCount < scheduledClassesCount && (
-                    <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                      <div className="flex items-start gap-2">
-                        <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                        <div className="text-sm text-yellow-800 dark:text-yellow-300">
-                          <strong>Atenção:</strong> Há {scheduledClassesCount - givenClassesCount} aula(s) programada(s) sem frequência lançada neste período.
+                  {scheduledClassesCount > 0 &&
+                    givenClassesCount < scheduledClassesCount && (
+                      <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                          <div className="text-sm text-yellow-800 dark:text-yellow-300">
+                            <strong>Atenção:</strong> Há{" "}
+                            {scheduledClassesCount - givenClassesCount} aula(s)
+                            programada(s) sem frequência lançada neste período.
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </div>
 
                 {/* Lista de frequências por data */}
@@ -1213,10 +1696,13 @@ export default function AttendancePage() {
                           <div className="flex items-center gap-2 mt-1 text-sm text-gray-600 dark:text-gray-400">
                             <ClockIcon className="h-4 w-4" />
                             <span>
-                              {dateData.schedule.startTime} - {dateData.schedule.endTime}
+                              {dateData.schedule.startTime} -{" "}
+                              {dateData.schedule.endTime}
                             </span>
                             {dateData.schedule.room && (
-                              <span className="ml-2">• Sala: {dateData.schedule.room}</span>
+                              <span className="ml-2">
+                                • Sala: {dateData.schedule.room}
+                              </span>
                             )}
                           </div>
                         )}
@@ -1232,19 +1718,25 @@ export default function AttendancePage() {
                         <div className="text-2xl font-bold text-green-600">
                           {dateData.stats.present}
                         </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Presentes</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          Presentes
+                        </div>
                       </div>
                       <div className="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
                         <div className="text-2xl font-bold text-red-600">
                           {dateData.stats.absent}
                         </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Faltas</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          Faltas
+                        </div>
                       </div>
                       <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
                         <div className="text-2xl font-bold text-yellow-600">
                           {dateData.stats.late}
                         </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Atrasos</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          Atrasos
+                        </div>
                       </div>
                       <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                         <div className="text-2xl font-bold text-blue-600">
