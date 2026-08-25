@@ -737,7 +737,7 @@ export default function AttendancePage() {
           <>
             {/* Filters */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                 <Select
                   label="Turma"
                   value={selectedClassId}
@@ -772,10 +772,45 @@ export default function AttendancePage() {
                     })),
                   ]}
                 />
+                <Select
+                  label="Aula da grade"
+                  value={selectedClassScheduleId}
+                  onChange={(e) =>
+                    setSelectedClassScheduleId(e.target.value)
+                  }
+                  required
+                  disabled={
+                    !selectedClassSubjectId ||
+                    schedulesForSelectedDate.length <= 1
+                  }
+                  options={[
+                    {
+                      value: "",
+                      label: !selectedClassSubjectId
+                        ? "Selecione turma e disciplina"
+                        : schedulesForSelectedDate.length === 0
+                          ? "Selecione um dia com aula"
+                          : "Selecione o horário...",
+                    },
+                    ...schedulesForSelectedDate.map((schedule) => ({
+                      value: schedule.id,
+                      label: `${schedule.startTime} às ${schedule.endTime}${schedule.room ? ` • ${schedule.room}` : ""}`,
+                    })),
+                  ]}
+                />
+                <div className="flex min-h-[72px] flex-col justify-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-700/30">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                    Bimestre
+                  </span>
+                  <strong className="mt-1 text-sm text-gray-900 dark:text-white">
+                    {selectedPeriod?.name || "Selecione uma data de aula"}
+                  </strong>
+                </div>
               </div>
 
               {selectedClassSubjectId && (
-                <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/30">
+                <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/30">
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <div>
                       <h3 className="font-semibold text-gray-900 dark:text-white">
@@ -786,7 +821,6 @@ export default function AttendancePage() {
                         grade.
                       </p>
                     </div>
-                    <CalendarIcon className="h-6 w-6 text-blue-600" />
                   </div>
 
                   {loadingAvailability ? (
@@ -903,6 +937,64 @@ export default function AttendancePage() {
                       </div>
                     </>
                   )}
+                  </div>
+
+                  <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                    <div className="mb-4">
+                      <h3 className="font-semibold text-gray-900 dark:text-white">
+                        Resumo da frequência
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Acompanhe os registros da data selecionada.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-lg border border-green-100 bg-green-50 p-3 dark:border-green-900/40 dark:bg-green-900/20">
+                        <div className="flex items-center gap-2">
+                          <CheckIcon className="h-5 w-5 text-green-600" />
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            Presentes
+                          </span>
+                        </div>
+                        <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                          {stats.present}
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-red-100 bg-red-50 p-3 dark:border-red-900/40 dark:bg-red-900/20">
+                        <div className="flex items-center gap-2">
+                          <XMarkIcon className="h-5 w-5 text-red-600" />
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            Ausentes
+                          </span>
+                        </div>
+                        <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                          {stats.absent}
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-yellow-100 bg-yellow-50 p-3 dark:border-yellow-900/40 dark:bg-yellow-900/20">
+                        <div className="flex items-center gap-2">
+                          <ClockIcon className="h-5 w-5 text-yellow-600" />
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            Atrasados
+                          </span>
+                        </div>
+                        <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                          {stats.late}
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 dark:border-blue-900/40 dark:bg-blue-900/20">
+                        <div className="flex items-center gap-2">
+                          <DocumentCheckIcon className="h-5 w-5 text-blue-600" />
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            Justificados
+                          </span>
+                        </div>
+                        <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                          {stats.excused}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -926,71 +1018,6 @@ export default function AttendancePage() {
                       </span>
                     </div>
                   )}
-                  {selectedPeriod && schedulesForSelectedDate.length > 0 && (
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <div className="rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                        Bimestre:{" "}
-                        <strong className="text-gray-900 dark:text-white">
-                          {selectedPeriod.name}
-                        </strong>
-                        {selectedSchedule && (
-                          <span className="block text-xs text-gray-500 dark:text-gray-400">
-                            Aula selecionada: {selectedSchedule.startTime} às{" "}
-                            {selectedSchedule.endTime}
-                            {selectedSchedule.room
-                              ? ` • ${selectedSchedule.room}`
-                              : ""}
-                          </span>
-                        )}
-                      </div>
-                      {schedulesForSelectedDate.length > 1 && (
-                        <Select
-                          label="Aula da grade"
-                          value={selectedClassScheduleId}
-                          onChange={(e) =>
-                            setSelectedClassScheduleId(e.target.value)
-                          }
-                          required
-                          options={[
-                            { value: "", label: "Selecione o horário..." },
-                            ...schedulesForSelectedDate.map((schedule) => ({
-                              value: schedule.id,
-                              label: `${schedule.startTime} às ${schedule.endTime}${schedule.room ? ` • ${schedule.room}` : ""}`,
-                            })),
-                          ]}
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {selectedSubject && (
-                <div className="mt-4 flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                  <div
-                    className="p-2 rounded-lg"
-                    style={{
-                      backgroundColor: selectedSubject.subject?.color
-                        ? `${selectedSubject.subject.color}20`
-                        : "#E5E7EB",
-                    }}
-                  >
-                    <BookOpenIcon
-                      className="h-5 w-5"
-                      style={{
-                        color: selectedSubject.subject?.color || "#6B7280",
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900 dark:text-white">
-                      {selectedSubject.class?.name}
-                    </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                      {selectedSubject.subject?.name} •{" "}
-                      {enrollments?.length || 0} alunos
-                    </div>
-                  </div>
                 </div>
               )}
             </div>
@@ -1032,74 +1059,6 @@ export default function AttendancePage() {
               </div>
             ) : enrollments && enrollments.length > 0 ? (
               <>
-                {/* Aviso de pré-marcação */}
-                {enrollments &&
-                  enrollments.length > 0 &&
-                  !existingAttendances?.length && (
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-                      <div className="flex items-start gap-3">
-                        <CheckIcon className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <h4 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-1">
-                            Todos os alunos foram pré-marcados como PRESENTES
-                          </h4>
-                          <p className="text-sm text-blue-700 dark:text-blue-400">
-                            Revise a lista e altere o status dos alunos
-                            ausentes, atrasados ou justificados antes de salvar.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                {/* Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckIcon className="h-5 w-5 text-green-600" />
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        Presentes
-                      </span>
-                    </div>
-                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {stats.present}
-                    </div>
-                  </div>
-                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <XMarkIcon className="h-5 w-5 text-red-600" />
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        Ausentes
-                      </span>
-                    </div>
-                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {stats.absent}
-                    </div>
-                  </div>
-                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <ClockIcon className="h-5 w-5 text-yellow-600" />
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        Atrasados
-                      </span>
-                    </div>
-                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {stats.late}
-                    </div>
-                  </div>
-                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <DocumentCheckIcon className="h-5 w-5 text-blue-600" />
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        Justificados
-                      </span>
-                    </div>
-                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {stats.excused}
-                    </div>
-                  </div>
-                </div>
-
                 {/* Actions */}
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6">
                   <div className="flex flex-col md:flex-row gap-4 items-center">
