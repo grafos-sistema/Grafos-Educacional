@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeftIcon,
-  ArrowsUpDownIcon,
+  BackspaceIcon,
   CalendarDaysIcon,
   CalendarIcon,
   CheckCircleIcon,
@@ -497,18 +497,6 @@ export default function LessonPlansPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setStatusFilter('');
-                setSearchTerm('');
-                setStartDateFilter('');
-                setEndDateFilter('');
-                setSortBy('recentes');
-              }}
-            >
-              Limpar filtros
-            </Button>
             <Button onClick={handleNewPlan} leftIcon={<PlusIcon className="h-5 w-5" />}>
               Novo Plano
             </Button>
@@ -595,17 +583,35 @@ export default function LessonPlansPage() {
             onChange={(e) => setEndDateFilter(e.target.value)}
             leftIcon={<CalendarIcon className="h-5 w-5" />}
           />
-          <Select
-            label="Ordenação"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            options={[
-              { value: 'recentes', label: 'Atualizados recentemente' },
-              { value: 'pendentes', label: 'Pendentes primeiro' },
-              { value: 'inicio', label: 'Data de início' },
-              { value: 'titulo', label: 'Título A-Z' },
-            ]}
-          />
+          <div className="xl:col-span-2 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+            <Select
+              label="Ordenação"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              options={[
+                { value: 'recentes', label: 'Atualizados recentemente' },
+                { value: 'pendentes', label: 'Pendentes primeiro' },
+                { value: 'inicio', label: 'Data de início' },
+                { value: 'titulo', label: 'Título A-Z' },
+              ]}
+            />
+            <Button
+              variant="secondary"
+              aria-label="Limpar filtros"
+              title="Limpar filtros"
+              className="!min-w-10 !px-0"
+              onClick={() => {
+                setStatusFilter('');
+                setSearchTerm('');
+                setStartDateFilter('');
+                setEndDateFilter('');
+                setSortBy('recentes');
+              }}
+            >
+              <BackspaceIcon className="h-5 w-5" aria-hidden="true" />
+              <span className="sr-only">Limpar filtros</span>
+            </Button>
+          </div>
         </div>
       </div>
 

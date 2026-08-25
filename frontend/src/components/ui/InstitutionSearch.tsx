@@ -151,12 +151,12 @@ export const InstitutionSearch = forwardRef<HTMLInputElement, InstitutionSearchP
         {/* Input / Selected Display */}
         <div className="relative">
           <div
-            className={`relative flex items-center w-full rounded-xl border-2 transition-all ${
+            className={`relative flex items-center w-full rounded-[5px] border transition-all ${
               isOpen
                 ? 'border-primary-500 ring-2 ring-primary-100 dark:ring-primary-900'
                 : error
                 ? 'border-red-300 dark:border-red-600'
-                : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
+                : 'border-[#e3e5e9] dark:border-gray-600 hover:border-primary-400'
             } ${isLoading ? 'opacity-50' : ''}`}
           >
             {/* Ícone de busca */}

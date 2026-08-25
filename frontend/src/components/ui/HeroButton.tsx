@@ -58,7 +58,7 @@ export function Button({
 
   const baseClasses = cn(
     'inline-flex min-w-fit items-center justify-center gap-2 whitespace-nowrap',
-    '!rounded-lg border font-semibold leading-5 shadow-sm',
+    '!rounded-[5px] border font-semibold leading-5 shadow-sm',
     'transition-all duration-150 ease-out',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2',
     'disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none',

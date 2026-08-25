@@ -12,7 +12,7 @@ import {
   AcademicCapIcon,
   FunnelIcon,
   MagnifyingGlassIcon,
-  ArrowsUpDownIcon,
+  BackspaceIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '@/stores/authStore';
 import { lessonPlansService } from '@/services/lesson-plans.service';
@@ -308,7 +308,7 @@ export default function CoordinatorLessonPlansPage() {
           <FunnelIcon className="h-5 w-5 text-gray-500" />
           <span className="font-medium text-gray-900 dark:text-white">Filtros</span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
           <Select
             label="Status"
             value={statusFilter}
@@ -351,20 +351,23 @@ export default function CoordinatorLessonPlansPage() {
             value={endDateFilter}
             onChange={(e) => setEndDateFilter(e.target.value)}
           />
-          <Select
-            label="Ordenação"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            options={[
-              { value: 'pendentes', label: 'Pendentes primeiro' },
-              { value: 'recentes', label: 'Atualizados recentemente' },
-              { value: 'titulo', label: 'Título A-Z' },
-              { value: 'inicio', label: 'Data de início' },
-            ]}
-          />
-          <div className="md:col-span-2 xl:col-span-5 flex justify-end">
+          <div className="xl:col-span-2 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+            <Select
+              label="Ordenação"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              options={[
+                { value: 'pendentes', label: 'Pendentes primeiro' },
+                { value: 'recentes', label: 'Atualizados recentemente' },
+                { value: 'titulo', label: 'Título A-Z' },
+                { value: 'inicio', label: 'Data de início' },
+              ]}
+            />
             <Button
               variant="secondary"
+              aria-label="Limpar filtros"
+              title="Limpar filtros"
+              className="!min-w-10 !px-0"
               onClick={() => {
                 setStatusFilter('');
                 setSearchTerm('');
@@ -373,9 +376,9 @@ export default function CoordinatorLessonPlansPage() {
                 setEndDateFilter('');
                 setSortBy('pendentes');
               }}
-              leftIcon={<ArrowsUpDownIcon className="h-5 w-5" />}
             >
-              Limpar filtros
+              <BackspaceIcon className="h-5 w-5" aria-hidden="true" />
+              <span className="sr-only">Limpar filtros</span>
             </Button>
           </div>
         </div>

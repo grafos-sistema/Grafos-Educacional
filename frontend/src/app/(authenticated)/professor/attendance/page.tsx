@@ -12,6 +12,7 @@ import {
   CalendarIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ArrowPathIcon,
   BookOpenIcon,
   UserGroupIcon,
   MagnifyingGlassIcon,
@@ -401,6 +402,15 @@ export default function AttendancePage() {
       !!teacherId,
   });
 
+  const {
+    data: historyEnrollments = [],
+    isLoading: loadingHistoryEnrollments,
+  } = useQuery({
+    queryKey: ["attendance-history-enrollments", historyFilters.classId],
+    queryFn: () => classesService.getEnrollmentsFromApi(historyFilters.classId),
+    enabled: activeTab === "history" && !!historyFilters.classId,
+  });
+
   const historyPeriods = (historyAvailability?.academicYear.periods ?? [])
     .slice()
     .sort((a, b) => a.orderNumber - b.orderNumber);
@@ -667,67 +677,82 @@ export default function AttendancePage() {
   const hasUnsavedChanges =
     hasValidAttendanceSession && Object.keys(attendanceData).length > 0;
 
-  const historySchedules = (historyAvailability?.schedules ??
-    classSchedules) as ClassSchedule[];
+  type HistoryStudentRow = {
+    studentId: string;
+    name: string;
+    registrationNumber: string;
+    avatar?: string;
+    present: number;
+    absent: number;
+    late: number;
+    excused: number;
+    total: number;
+  };
 
-  // Cada sessão é uma combinação de data + horário da grade. Assim, duas
-  // aulas da mesma disciplina no mesmo dia aparecem como duas frequências.
-  const historyByDate = historyData?.reduce((acc: any, att: any) => {
-    const dateKey = new Date(att.date).toLocaleDateString("pt-BR");
-    const dayOfWeek = [
-      "SUNDAY",
-      "MONDAY",
-      "TUESDAY",
-      "WEDNESDAY",
-      "THURSDAY",
-      "FRIDAY",
-      "SATURDAY",
-    ][new Date(att.date).getDay()];
+  const historyStudentRows = useMemo<HistoryStudentRow[]>(() => {
+    const rows = new Map<string, HistoryStudentRow>();
 
-    const scheduleForDay = att.classScheduleId
-      ? historySchedules.find((schedule) => schedule.id === att.classScheduleId)
-      : historySchedules.find((schedule) => schedule.dayOfWeek === dayOfWeek);
-    const sessionKey = `${dateKey}-${att.classScheduleId || "legacy"}`;
+    const ensureRow = (
+      studentId: string,
+      profile?: {
+        firstName?: string;
+        lastName?: string;
+        registrationNumber?: string;
+        avatar?: string;
+      },
+    ) => {
+      if (!rows.has(studentId)) {
+        const name = `${profile?.firstName ?? ""} ${profile?.lastName ?? ""}`.trim();
+        rows.set(studentId, {
+          studentId,
+          name: name || "Aluno sem nome",
+          registrationNumber: profile?.registrationNumber || "Não informada",
+          avatar: profile?.avatar,
+          present: 0,
+          absent: 0,
+          late: 0,
+          excused: 0,
+          total: 0,
+        });
+      }
+      return rows.get(studentId)!;
+    };
 
-    if (!acc[sessionKey]) {
-      acc[sessionKey] = {
-        key: sessionKey,
-        date: att.date,
-        dateFormatted: dateKey,
-        dayOfWeek,
-        schedule: scheduleForDay,
-        attendances: [],
-        stats: { present: 0, absent: 0, late: 0, excused: 0, total: 0 },
-      };
-    }
-    const session = acc[sessionKey];
-    session.attendances.push(att);
-    const statusKey = String(att.status || "").toLowerCase();
-    if (statusKey in session.stats && statusKey !== "total") {
-      session.stats[statusKey]++;
-    }
-    session.stats.total++;
-    return acc;
-  }, {});
+    historyEnrollments.forEach((enrollment) => {
+      ensureRow(enrollment.studentId, enrollment.student);
+    });
 
-  const historyDates = historyByDate
-    ? Object.values(historyByDate).sort(
-        (a: any, b: any) =>
-          new Date(b.date).getTime() - new Date(a.date).getTime(),
-      )
-    : [];
+    (historyData ?? []).forEach((attendance: any) => {
+      const userProfile = attendance.student?.user;
+      const row = ensureRow(attendance.studentId, {
+        firstName: userProfile?.firstName,
+        lastName: userProfile?.lastName,
+        avatar: userProfile?.avatar,
+      });
+      const statusKey = String(attendance.status || "").toLowerCase() as
+        | "present"
+        | "absent"
+        | "late"
+        | "excused";
+      if (statusKey in row) {
+        row[statusKey] += 1;
+      }
+      row.total += 1;
+    });
 
-  // Calcular aulas programadas vs realizadas
-  const scheduledClassesCount =
-    historySchedules.length > 0
-      ? classSchedulesService.calculateScheduledClasses(
-          historySchedules,
-          new Date(historyStartDate || new Date()),
-          new Date(historyEndDate || new Date()),
-        )
-      : 0;
+    return Array.from(rows.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, "pt-BR"),
+    );
+  }, [historyData, historyEnrollments]);
 
-  const givenClassesCount = historyDates.length;
+  const historyOverallAverage = useMemo(() => {
+    const total = historyStudentRows.reduce((sum, row) => sum + row.total, 0);
+    const present = historyStudentRows.reduce(
+      (sum, row) => sum + row.present,
+      0,
+    );
+    return total > 0 ? Math.round((present / total) * 100) : 0;
+  }, [historyStudentRows]);
 
   return (
     <>
@@ -948,11 +973,16 @@ export default function AttendancePage() {
                         })}
                       </div>
 
-                      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500 dark:text-gray-400">
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-xs text-gray-500 dark:text-gray-400">
                         <span className="inline-flex items-center gap-2">
                           <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />{" "}
                           Dia com aula
                         </span>
+                        {dateWasChosen && selectedPeriod && (
+                          <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                            {selectedPeriod.name}
+                          </span>
+                        )}
                       </div>
 
                       {dateWasChosen && selectedPeriod && (
@@ -980,9 +1010,6 @@ export default function AttendancePage() {
                               ]}
                             />
                           </div>
-                          <span className="pb-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
-                            {selectedPeriod.name}
-                          </span>
                         </div>
                       )}
                     </>
@@ -1048,28 +1075,6 @@ export default function AttendancePage() {
                 </div>
               )}
 
-              {selectedSubject && !loadingAvailability && (
-                <div className="mt-4 space-y-2">
-                  {schedulesForSelectedDate.length === 0 && (
-                    <div className="flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
-                      <ExclamationTriangleIcon className="mt-0.5 h-5 w-5 flex-shrink-0" />
-                      <span>
-                        Não há aula desta disciplina neste dia. O professor só
-                        pode registrar frequência nos dias previstos na grade.
-                      </span>
-                    </div>
-                  )}
-                  {!selectedPeriod && (
-                    <div className="flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
-                      <ExclamationTriangleIcon className="mt-0.5 h-5 w-5 flex-shrink-0" />
-                      <span>
-                        A data escolhida não pertence a um bimestre ativo do ano
-                        letivo desta turma.
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
 
             {/* Content */}
@@ -1152,7 +1157,7 @@ export default function AttendancePage() {
                           <th className="px-3 py-2 text-left text-[11px] font-medium uppercase text-gray-500 dark:text-gray-400">
                             Status
                           </th>
-                          <th className="px-3 py-2 text-left text-[11px] font-medium uppercase text-gray-500 dark:text-gray-400">
+                          <th className="hidden px-3 py-2 text-left text-[11px] font-medium uppercase text-gray-500 dark:text-gray-400 md:table-cell">
                             Observações
                           </th>
                         </tr>
@@ -1206,10 +1211,28 @@ export default function AttendancePage() {
                                       <div className="text-xs text-gray-500 dark:text-gray-400">
                                         Matrícula: {enrollment.student?.registrationNumber || "Não informada"}
                                       </div>
+                                      <div className="mt-2 flex flex-wrap gap-1.5 md:hidden">
+                                        {Object.values(AttendanceStatus).map((s) => (
+                                          <button
+                                            key={s}
+                                            type="button"
+                                            onClick={() =>
+                                              handleStatusChange(enrollment.studentId, s)
+                                            }
+                                            className={`h-8 rounded-[5px] border px-2 text-[11px] font-medium transition-all ${
+                                              status === s
+                                                ? getStatusColor(s)
+                                                : "border-gray-200 bg-gray-100 text-gray-600 hover:border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-400"
+                                            }`}
+                                          >
+                                            {getStatusLabel(s)}
+                                          </button>
+                                        ))}
+                                      </div>
                                     </div>
                                   </div>
                                 </td>
-                                <td className="px-3 py-2">
+                                <td className="hidden px-3 py-2 md:table-cell">
                                   <div className="flex flex-wrap gap-1.5">
                                     {Object.values(AttendanceStatus).map(
                                       (s) => (
@@ -1221,7 +1244,7 @@ export default function AttendancePage() {
                                               s,
                                             )
                                           }
-                                          className={`h-8 rounded-md border px-2 text-[11px] font-medium transition-all ${
+                                          className={`h-8 rounded-[5px] border px-2 text-[11px] font-medium transition-all ${
                                             status === s
                                               ? getStatusColor(s)
                                               : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 border-transparent hover:border-gray-300"
@@ -1233,7 +1256,7 @@ export default function AttendancePage() {
                                     )}
                                   </div>
                                 </td>
-                                <td className="px-3 py-2">
+                                <td className="hidden px-3 py-2 md:table-cell">
                                   <Input
                                     placeholder="Adicionar observação..."
                                     value={
@@ -1511,7 +1534,7 @@ export default function AttendancePage() {
           <>
             {/* Filtros de histórico */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                 <Select
                   label="Turma"
                   value={historyFilters.classId}
@@ -1598,19 +1621,24 @@ export default function AttendancePage() {
                     !historyFilters.classSubjectId || !historyAvailability
                   }
                 />
-              </div>
-              {historyFilters.classSubjectId && (
-                <div className="mt-4 flex justify-end">
+                <div className="flex items-end justify-end">
                   <Button
                     variant="secondary"
                     size="sm"
+                    aria-label="Atualizar histórico"
+                    title="Atualizar histórico"
+                    className="!min-w-10 !px-0"
                     onClick={() => refetchHistory()}
-                    disabled={loadingHistory}
+                    disabled={!historyFilters.classSubjectId || loadingHistory}
+                    isLoading={loadingHistory}
                   >
-                    {loadingHistory ? "Atualizando..." : "Atualizar Dados"}
+                    {!loadingHistory && (
+                      <ArrowPathIcon className="h-5 w-5" aria-hidden="true" />
+                    )}
+                    <span className="sr-only">Atualizar histórico</span>
                   </Button>
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Conteúdo do histórico */}
@@ -1624,151 +1652,90 @@ export default function AttendancePage() {
                   Escolha a turma e disciplina para visualizar o histórico
                 </p>
               </div>
-            ) : loadingHistory ? (
+            ) : loadingHistory || loadingHistoryEnrollments ? (
               <div className="flex justify-center py-12">
                 <LoadingSpinner size="lg" text="Carregando histórico..." />
               </div>
-            ) : historyDates.length > 0 ? (
-              <div className="space-y-4">
-                {/* Resumo de aulas dadas vs programadas */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                    Resumo do Período
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <BookOpenIcon className="h-5 w-5 text-blue-600" />
-                        <span className="text-sm text-blue-700 dark:text-blue-400">
-                          Aulas Programadas
-                        </span>
-                      </div>
-                      <div className="text-2xl font-bold text-blue-900 dark:text-blue-300">
-                        {scheduledClassesCount}
-                      </div>
-                    </div>
-                    <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CheckIcon className="h-5 w-5 text-green-600" />
-                        <span className="text-sm text-green-700 dark:text-green-400">
-                          Aulas Realizadas
-                        </span>
-                      </div>
-                      <div className="text-2xl font-bold text-green-900 dark:text-green-300">
-                        {givenClassesCount}
-                      </div>
-                    </div>
-                    <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <ClockIcon className="h-5 w-5 text-yellow-600" />
-                        <span className="text-sm text-yellow-700 dark:text-yellow-400">
-                          Pendentes
-                        </span>
-                      </div>
-                      <div className="text-2xl font-bold text-yellow-900 dark:text-yellow-300">
-                        {Math.max(0, scheduledClassesCount - givenClassesCount)}
-                      </div>
-                    </div>
-                    <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <DocumentCheckIcon className="h-5 w-5 text-purple-600" />
-                        <span className="text-sm text-purple-700 dark:text-purple-400">
-                          Cumprimento
-                        </span>
-                      </div>
-                      <div className="text-2xl font-bold text-purple-900 dark:text-purple-300">
-                        {scheduledClassesCount > 0
-                          ? Math.round(
-                              (givenClassesCount / scheduledClassesCount) * 100,
-                            )
-                          : 0}
-                        %
-                      </div>
-                    </div>
+            ) : historyStudentRows.length > 0 ? (
+              <div className="overflow-hidden rounded-lg border border-[#e3e5e9] bg-white dark:border-gray-700 dark:bg-gray-800">
+                <div className="flex flex-col gap-3 border-b border-[#e3e5e9] px-4 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-gray-700">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white">
+                      Frequência dos alunos
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Resultado do período selecionado para a turma e disciplina.
+                    </p>
                   </div>
-                  {scheduledClassesCount > 0 &&
-                    givenClassesCount < scheduledClassesCount && (
-                      <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                        <div className="flex items-start gap-2">
-                          <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                          <div className="text-sm text-yellow-800 dark:text-yellow-300">
-                            <strong>Atenção:</strong> Há{" "}
-                            {scheduledClassesCount - givenClassesCount} aula(s)
-                            programada(s) sem frequência lançada neste período.
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                  <div className="text-left sm:text-right">
+                    <span className="block text-xs text-gray-500 dark:text-gray-400">
+                      Média geral da turma
+                    </span>
+                    <strong className="text-xl text-gray-900 dark:text-white">
+                      {historyOverallAverage}%
+                    </strong>
+                  </div>
                 </div>
-
-                {/* Lista de frequências por data */}
-                {historyDates.map((dateData: any) => (
-                  <div
-                    key={dateData.key}
-                    className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6"
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                          {dateData.dateFormatted}
-                        </h3>
-                        {dateData.schedule && (
-                          <div className="flex items-center gap-2 mt-1 text-sm text-gray-600 dark:text-gray-400">
-                            <ClockIcon className="h-4 w-4" />
-                            <span>
-                              {dateData.schedule.startTime} -{" "}
-                              {dateData.schedule.endTime}
-                            </span>
-                            {dateData.schedule.room && (
-                              <span className="ml-2">
-                                • Sala: {dateData.schedule.room}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                        <span>{dateData.stats.total} alunos registrados</span>
-                      </div>
-                    </div>
-
-                    {/* Estatísticas */}
-                    <div className="grid grid-cols-4 gap-4 mb-4">
-                      <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                        <div className="text-2xl font-bold text-green-600">
-                          {dateData.stats.present}
-                        </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
-                          Presentes
-                        </div>
-                      </div>
-                      <div className="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                        <div className="text-2xl font-bold text-red-600">
-                          {dateData.stats.absent}
-                        </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
-                          Faltas
-                        </div>
-                      </div>
-                      <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                        <div className="text-2xl font-bold text-yellow-600">
-                          {dateData.stats.late}
-                        </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
-                          Atrasos
-                        </div>
-                      </div>
-                      <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">
-                          {dateData.stats.excused}
-                        </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
-                          Justificados
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[760px] text-sm">
+                    <thead className="bg-gray-50 text-left text-[11px] uppercase text-gray-500 dark:bg-gray-700/50 dark:text-gray-400">
+                      <tr>
+                        <th className="px-4 py-3 font-medium">Aluno</th>
+                        <th className="px-4 py-3 font-medium">Matrícula</th>
+                        <th className="px-4 py-3 text-center font-medium">Presentes</th>
+                        <th className="px-4 py-3 text-center font-medium">Ausentes</th>
+                        <th className="px-4 py-3 text-center font-medium">Atrasados</th>
+                        <th className="px-4 py-3 text-center font-medium">Justificados</th>
+                        <th className="px-4 py-3 text-right font-medium">Frequência média</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                      {historyStudentRows.map((row) => {
+                        const initials = row.name
+                          .split(" ")
+                          .filter(Boolean)
+                          .slice(0, 2)
+                          .map((part) => part[0])
+                          .join("")
+                          .toUpperCase();
+                        const average = row.total
+                          ? Math.round((row.present / row.total) * 100)
+                          : null;
+                        return (
+                          <tr key={row.studentId} className="text-gray-700 dark:text-gray-200">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                {row.avatar ? (
+                                  <img
+                                    src={row.avatar}
+                                    alt={`Foto de ${row.name}`}
+                                    className="h-8 w-8 rounded-full object-cover"
+                                    loading="lazy"
+                                  />
+                                ) : (
+                                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                                    {initials || "A"}
+                                  </span>
+                                )}
+                                <span className="font-medium">{row.name}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
+                              {row.registrationNumber}
+                            </td>
+                            <td className="px-4 py-3 text-center">{row.present}</td>
+                            <td className="px-4 py-3 text-center">{row.absent}</td>
+                            <td className="px-4 py-3 text-center">{row.late}</td>
+                            <td className="px-4 py-3 text-center">{row.excused}</td>
+                            <td className="px-4 py-3 text-right font-semibold">
+                              {average === null ? "—" : `${average}%`}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             ) : (
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">

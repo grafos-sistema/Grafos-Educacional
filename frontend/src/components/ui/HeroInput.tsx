@@ -48,7 +48,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         tabIndex={-1}
         aria-label="Abrir seletor de data"
         className={`
-          absolute inset-y-1.5 right-2 flex h-auto items-center justify-center rounded-md px-2
+          absolute inset-y-1.5 right-2 flex h-auto items-center justify-center rounded-[5px] px-2
           text-gray-500 transition-colors
           ${disabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-gray-700 dark:hover:text-primary-400'}
         `}
@@ -142,15 +142,15 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             aria-describedby={describedBy}
             aria-required={required ? 'true' : undefined}
             className={`
-              block w-full h-12 rounded-lg
+              block w-full h-12 rounded-[5px]
               px-4 ${leftIcon ? 'pl-11' : ''} ${effectiveRightIcon ? 'pr-12' : ''}
               text-sm text-gray-900 dark:text-white
               placeholder:text-gray-400 dark:placeholder:text-gray-500
               bg-white dark:bg-gray-800
-              border-2
+              border
               ${error
                 ? 'border-red-500 dark:border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-900/30'
-                : 'border-gray-300 dark:border-gray-600 hover:border-primary-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-100 dark:focus:ring-primary-900/30'
+                : 'border-[#e3e5e9] dark:border-gray-600 hover:border-primary-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-100 dark:focus:ring-primary-900/30'
               }
               shadow-sm
               transition-all duration-200
