@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Input } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/hooks/useToast";
 import { useTeacherClassSubjects } from "@/hooks/useTeacherClassSubjects";
 
@@ -55,6 +56,9 @@ export default function AttendancePage() {
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   );
   const [selectedClassScheduleId, setSelectedClassScheduleId] = useState("");
+  const [dateWasChosen, setDateWasChosen] = useState(false);
+  const [pendingScheduleDate, setPendingScheduleDate] = useState("");
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [attendanceData, setAttendanceData] = useState<
     Record<string, { status: AttendanceStatus; notes: string }>
   >({});
@@ -73,11 +77,13 @@ export default function AttendancePage() {
     "register" | "history" | "schedule"
   >("register");
   const [historyFilters, setHistoryFilters] = useState({
-    month: new Date().getMonth() + 1,
-    year: new Date().getFullYear(),
+    classId: "",
+    subjectId: "",
     classSubjectId: "",
     academicPeriodId: "",
   });
+
+  const { data: teacherSubjects = [] } = useTeacherClassSubjects();
 
   // Sincronizar filtro do histórico com a seleção da aba de registro
   useEffect(() => {
@@ -86,14 +92,24 @@ export default function AttendancePage() {
       selectedClassSubjectId &&
       !historyFilters.classSubjectId
     ) {
+      const selectedAssignment = teacherSubjects.find(
+        (subject) => subject.id === selectedClassSubjectId,
+      );
       setHistoryFilters((prev) => ({
         ...prev,
+        classId: selectedAssignment?.classId || "",
+        subjectId:
+          selectedAssignment?.subjectId || selectedAssignment?.subject?.id || "",
         classSubjectId: selectedClassSubjectId,
       }));
     }
-  }, [activeTab, selectedClassSubjectId, historyFilters.classSubjectId]);
+  }, [
+    activeTab,
+    selectedClassSubjectId,
+    historyFilters.classSubjectId,
+    teacherSubjects,
+  ]);
 
-  const { data: teacherSubjects = [] } = useTeacherClassSubjects();
   const classSubjectIdFromUrl = searchParams.get("classSubjectId") || "";
 
   useEffect(() => {
@@ -234,11 +250,13 @@ export default function AttendancePage() {
     });
 
   const schedulesForSelectedDate = getSchedulesForDate(selectedDate);
+  const schedulesForPendingDate = getSchedulesForDate(pendingScheduleDate);
   const selectedPeriod = getPeriodForDate(selectedDate);
   const selectedSchedule = schedulesForSelectedDate.find(
     (schedule) => schedule.id === selectedClassScheduleId,
   );
   const hasValidAttendanceSession =
+    dateWasChosen &&
     !!selectedSubject &&
     !!selectedPeriod &&
     schedulesForSelectedDate.length > 0 &&
@@ -281,9 +299,20 @@ export default function AttendancePage() {
     }
 
     setSelectedDate(date);
+    setDateWasChosen(true);
+    setPendingScheduleDate(date);
+    setSelectedClassScheduleId("");
+    setShowScheduleModal(true);
     setCalendarMonth(
       new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, 1),
     );
+  };
+
+  const cancelScheduleSelection = () => {
+    setShowScheduleModal(false);
+    setDateWasChosen(false);
+    setPendingScheduleDate("");
+    setSelectedClassScheduleId("");
   };
 
   const handleClassChange = (classId: string) => {
@@ -291,6 +320,9 @@ export default function AttendancePage() {
     setSelectedSubjectId("");
     setSelectedClassSubjectId("");
     setSelectedClassScheduleId("");
+    setDateWasChosen(false);
+    setPendingScheduleDate("");
+    setShowScheduleModal(false);
     setAttendanceData({});
   };
 
@@ -303,6 +335,9 @@ export default function AttendancePage() {
     setSelectedSubjectId(subjectId);
     setSelectedClassSubjectId(assignment?.id || "");
     setSelectedClassScheduleId("");
+    setDateWasChosen(false);
+    setPendingScheduleDate("");
+    setShowScheduleModal(false);
     setAttendanceData({});
   };
 
@@ -366,6 +401,18 @@ export default function AttendancePage() {
       !!teacherId,
   });
 
+  const historyPeriods = (historyAvailability?.academicYear.periods ?? [])
+    .slice()
+    .sort((a, b) => a.orderNumber - b.orderNumber);
+  const selectedHistoryPeriod = historyPeriods.find(
+    (period) => period.id === historyFilters.academicPeriodId,
+  );
+  const historyStartDate =
+    selectedHistoryPeriod?.startDate || historyPeriods[0]?.startDate;
+  const historyEndDate =
+    selectedHistoryPeriod?.endDate ||
+    historyPeriods[historyPeriods.length - 1]?.endDate;
+
   // Query para histórico de frequências
   const {
     data: historyData,
@@ -375,20 +422,20 @@ export default function AttendancePage() {
     queryKey: [
       "attendance-history",
       historyFilters.classSubjectId,
-      historyFilters.month,
-      historyFilters.year,
       historyFilters.academicPeriodId,
+      historyStartDate,
+      historyEndDate,
     ],
     queryFn: async () => {
       if (!historyFilters.classSubjectId) return [];
 
       // Buscar todas as frequências da disciplina no período
-      const startDate = formatInputDate(
-        new Date(historyFilters.year, historyFilters.month - 1, 1),
-      );
-      const endDate = formatInputDate(
-        new Date(historyFilters.year, historyFilters.month, 0),
-      );
+      const startDate = historyStartDate
+        ? historyStartDate.slice(0, 10)
+        : formatInputDate(new Date());
+      const endDate = historyEndDate
+        ? historyEndDate.slice(0, 10)
+        : formatInputDate(new Date());
 
       const result = await attendancesService.findAll({
         classSubjectId: historyFilters.classSubjectId,
@@ -401,7 +448,10 @@ export default function AttendancePage() {
       // O interceptor do axios já extrai response.data, então result É o array direto
       return Array.isArray(result) ? result : result.data || [];
     },
-    enabled: activeTab === "history" && !!historyFilters.classSubjectId,
+    enabled:
+      activeTab === "history" &&
+      !!historyFilters.classSubjectId &&
+      !!historyAvailability,
     refetchOnMount: "always", // Sempre buscar dados atualizados ao montar
   });
 
@@ -650,9 +700,13 @@ export default function AttendancePage() {
         stats: { present: 0, absent: 0, late: 0, excused: 0, total: 0 },
       };
     }
-    acc[dateKey].attendances.push(att);
-    acc[dateKey].stats[att.status.toLowerCase()]++;
-    acc[dateKey].stats.total++;
+    const session = acc[sessionKey];
+    session.attendances.push(att);
+    const statusKey = String(att.status || "").toLowerCase();
+    if (statusKey in session.stats && statusKey !== "total") {
+      session.stats[statusKey]++;
+    }
+    session.stats.total++;
     return acc;
   }, {});
 
@@ -668,8 +722,8 @@ export default function AttendancePage() {
     historySchedules.length > 0
       ? classSchedulesService.calculateScheduledClasses(
           historySchedules,
-          new Date(historyFilters.year, historyFilters.month - 1, 1),
-          new Date(historyFilters.year, historyFilters.month, 0),
+          new Date(historyStartDate || new Date()),
+          new Date(historyEndDate || new Date()),
         )
       : 0;
 
@@ -677,7 +731,7 @@ export default function AttendancePage() {
 
   return (
     <>
-      <div className="p-6">
+      <div className="p-0 sm:p-6">
         {/* Header */}
         <div className="mb-6">
           <Button
@@ -737,7 +791,7 @@ export default function AttendancePage() {
           <>
             {/* Filters */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Select
                   label="Turma"
                   value={selectedClassId}
@@ -772,40 +826,6 @@ export default function AttendancePage() {
                     })),
                   ]}
                 />
-                <Select
-                  label="Aula da grade"
-                  value={selectedClassScheduleId}
-                  onChange={(e) =>
-                    setSelectedClassScheduleId(e.target.value)
-                  }
-                  required
-                  disabled={
-                    !selectedClassSubjectId ||
-                    schedulesForSelectedDate.length <= 1
-                  }
-                  options={[
-                    {
-                      value: "",
-                      label: !selectedClassSubjectId
-                        ? "Selecione turma e disciplina"
-                        : schedulesForSelectedDate.length === 0
-                          ? "Selecione um dia com aula"
-                          : "Selecione o horário...",
-                    },
-                    ...schedulesForSelectedDate.map((schedule) => ({
-                      value: schedule.id,
-                      label: `${schedule.startTime} às ${schedule.endTime}${schedule.room ? ` • ${schedule.room}` : ""}`,
-                    })),
-                  ]}
-                />
-                <div className="flex min-h-[72px] flex-col justify-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-700/30">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    Bimestre
-                  </span>
-                  <strong className="mt-1 text-sm text-gray-900 dark:text-white">
-                    {selectedPeriod?.name || "Selecione uma data de aula"}
-                  </strong>
-                </div>
               </div>
 
               {selectedClassSubjectId && (
@@ -895,7 +915,7 @@ export default function AttendancePage() {
                           const isCurrentMonth =
                             day.getMonth() === calendarMonth.getMonth();
                           const isFuture = date > todayKey;
-                          const isSelected = date === selectedDate;
+                          const isSelected = dateWasChosen && date === selectedDate;
                           const isSelectable =
                             isCurrentMonth && hasSchedule && hasPeriod && !isFuture;
 
@@ -933,63 +953,93 @@ export default function AttendancePage() {
                           <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />{" "}
                           Dia com aula
                         </span>
-                        <span>Frequências só podem ser lançadas até hoje.</span>
                       </div>
+
+                      {dateWasChosen && selectedPeriod && (
+                        <div className="mt-3 flex items-end gap-3 border-t border-gray-200 pt-3 dark:border-gray-700">
+                          <div className="min-w-0 flex-1">
+                            <Select
+                              label="Aula da grade"
+                              value={selectedClassScheduleId}
+                              onChange={(e) =>
+                                setSelectedClassScheduleId(e.target.value)
+                              }
+                              required
+                              options={[
+                                {
+                                  value: "",
+                                  label:
+                                    schedulesForSelectedDate.length > 0
+                                      ? "Selecione o horário..."
+                                      : "Nenhuma aula neste dia",
+                                },
+                                ...schedulesForSelectedDate.map((schedule) => ({
+                                  value: schedule.id,
+                                  label: `${schedule.startTime} às ${schedule.endTime}${schedule.room ? ` • ${schedule.room}` : ""}`,
+                                })),
+                              ]}
+                            />
+                          </div>
+                          <span className="pb-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                            {selectedPeriod.name}
+                          </span>
+                        </div>
+                      )}
                     </>
                   )}
                   </div>
 
-                  <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-                    <div className="mb-4">
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
+                  <div className="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+                    <div className="mb-3">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
                         Resumo da frequência
                       </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         Acompanhe os registros da data selecionada.
                       </p>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-lg border border-green-100 bg-green-50 p-3 dark:border-green-900/40 dark:bg-green-900/20">
-                        <div className="flex items-center gap-2">
-                          <CheckIcon className="h-5 w-5 text-green-600" />
-                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-800">
+                        <div className="flex items-center gap-1.5">
+                          <CheckIcon className="h-4 w-4 text-green-600" />
+                          <span className="text-xs text-gray-600 dark:text-gray-400">
                             Presentes
                           </span>
                         </div>
-                        <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                        <div className="mt-1 text-xl font-bold text-gray-900 dark:text-white">
                           {stats.present}
                         </div>
                       </div>
-                      <div className="rounded-lg border border-red-100 bg-red-50 p-3 dark:border-red-900/40 dark:bg-red-900/20">
-                        <div className="flex items-center gap-2">
-                          <XMarkIcon className="h-5 w-5 text-red-600" />
-                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                      <div className="rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-800">
+                        <div className="flex items-center gap-1.5">
+                          <XMarkIcon className="h-4 w-4 text-red-600" />
+                          <span className="text-xs text-gray-600 dark:text-gray-400">
                             Ausentes
                           </span>
                         </div>
-                        <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                        <div className="mt-1 text-xl font-bold text-gray-900 dark:text-white">
                           {stats.absent}
                         </div>
                       </div>
-                      <div className="rounded-lg border border-yellow-100 bg-yellow-50 p-3 dark:border-yellow-900/40 dark:bg-yellow-900/20">
-                        <div className="flex items-center gap-2">
-                          <ClockIcon className="h-5 w-5 text-yellow-600" />
-                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                      <div className="rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-800">
+                        <div className="flex items-center gap-1.5">
+                          <ClockIcon className="h-4 w-4 text-yellow-600" />
+                          <span className="text-xs text-gray-600 dark:text-gray-400">
                             Atrasados
                           </span>
                         </div>
-                        <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                        <div className="mt-1 text-xl font-bold text-gray-900 dark:text-white">
                           {stats.late}
                         </div>
                       </div>
-                      <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 dark:border-blue-900/40 dark:bg-blue-900/20">
-                        <div className="flex items-center gap-2">
-                          <DocumentCheckIcon className="h-5 w-5 text-blue-600" />
-                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                      <div className="rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-800">
+                        <div className="flex items-center gap-1.5">
+                          <DocumentCheckIcon className="h-4 w-4 text-blue-600" />
+                          <span className="text-xs text-gray-600 dark:text-gray-400">
                             Justificados
                           </span>
                         </div>
-                        <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                        <div className="mt-1 text-xl font-bold text-gray-900 dark:text-white">
                           {stats.excused}
                         </div>
                       </div>
@@ -1093,16 +1143,16 @@ export default function AttendancePage() {
                 {/* Student List */}
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full text-sm">
                       <thead className="bg-gray-50 dark:bg-gray-700/50">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                          <th className="px-3 py-2 text-left text-[11px] font-medium uppercase text-gray-500 dark:text-gray-400">
                             Aluno
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                          <th className="px-3 py-2 text-left text-[11px] font-medium uppercase text-gray-500 dark:text-gray-400">
                             Status
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                          <th className="px-3 py-2 text-left text-[11px] font-medium uppercase text-gray-500 dark:text-gray-400">
                             Observações
                           </th>
                         </tr>
@@ -1118,9 +1168,9 @@ export default function AttendancePage() {
                                 key={enrollment.id}
                                 className="hover:bg-gray-50 dark:hover:bg-gray-700/30"
                               >
-                                <td className="px-6 py-4 whitespace-nowrap">
+                                <td className="whitespace-nowrap px-3 py-2">
                                   <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-xs font-semibold text-white">
                                       {enrollment.student?.avatar ? (
                                         <>
                                           <img
@@ -1149,18 +1199,18 @@ export default function AttendancePage() {
                                       )}
                                     </div>
                                     <div>
-                                      <div className="font-medium text-gray-900 dark:text-white">
+                                      <div className="text-sm font-medium text-gray-900 dark:text-white">
                                         {enrollment.student?.firstName}{" "}
                                         {enrollment.student?.lastName}
                                       </div>
-                                      <div className="text-sm text-gray-500 dark:text-gray-400">
-                                        {enrollment.student?.email}
+                                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                                        Matrícula: {enrollment.student?.registrationNumber || "Não informada"}
                                       </div>
                                     </div>
                                   </div>
                                 </td>
-                                <td className="px-6 py-4">
-                                  <div className="flex gap-2">
+                                <td className="px-3 py-2">
+                                  <div className="flex flex-wrap gap-1.5">
                                     {Object.values(AttendanceStatus).map(
                                       (s) => (
                                         <button
@@ -1171,7 +1221,7 @@ export default function AttendancePage() {
                                               s,
                                             )
                                           }
-                                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
+                                          className={`h-8 rounded-md border px-2 text-[11px] font-medium transition-all ${
                                             status === s
                                               ? getStatusColor(s)
                                               : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 border-transparent hover:border-gray-300"
@@ -1183,7 +1233,7 @@ export default function AttendancePage() {
                                     )}
                                   </div>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-3 py-2">
                                   <Input
                                     placeholder="Adicionar observação..."
                                     value={
@@ -1196,6 +1246,7 @@ export default function AttendancePage() {
                                         e.target.value,
                                       )
                                     }
+                                    className="h-8 text-xs"
                                   />
                                 </td>
                               </tr>
@@ -1460,28 +1511,72 @@ export default function AttendancePage() {
           <>
             {/* Filtros de histórico */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <Select
-                  label="Turma e Disciplina"
-                  value={historyFilters.classSubjectId}
+                  label="Turma"
+                  value={historyFilters.classId}
                   onChange={(e) =>
                     setHistoryFilters({
                       ...historyFilters,
-                      classSubjectId: e.target.value,
+                      classId: e.target.value,
+                      subjectId: "",
+                      classSubjectId: "",
                       academicPeriodId: "",
                     })
                   }
                   required
                   options={[
                     { value: "", label: "Selecione uma turma" },
-                    ...(teacherSubjects?.map((subject) => ({
-                      value: subject.id,
-                      label: `${subject.class?.name} - ${subject.subject?.name}`,
-                    })) || []),
+                    ...classOptions.map((classItem) => ({
+                      value: classItem.id,
+                      label: classItem.grade
+                        ? `${classItem.name} • ${classItem.grade}`
+                        : classItem.name,
+                    })),
                   ]}
                 />
                 <Select
-                  label="Bimestre"
+                  label="Disciplina"
+                  value={historyFilters.subjectId}
+                  onChange={(e) => {
+                    const assignment = teacherSubjects.find(
+                      (subject) =>
+                        subject.classId === historyFilters.classId &&
+                        (subject.subjectId === e.target.value ||
+                          subject.subject?.id === e.target.value),
+                    );
+                    setHistoryFilters({
+                      ...historyFilters,
+                      subjectId: e.target.value,
+                      classSubjectId: assignment?.id || "",
+                      academicPeriodId: "",
+                    });
+                  }}
+                  options={[
+                    {
+                      value: "",
+                      label: historyFilters.classId
+                        ? "Selecione a disciplina"
+                        : "Selecione uma turma primeiro",
+                    },
+                    ...Array.from(
+                      new Map(
+                        teacherSubjects
+                          .filter(
+                            (subject) =>
+                              subject.classId === historyFilters.classId,
+                          )
+                          .map((subject) => [
+                            subject.subjectId || subject.subject?.id || "",
+                            subject.subject?.name || "Disciplina sem nome",
+                          ]),
+                      ).entries(),
+                    ).map(([value, label]) => ({ value, label })),
+                  ]}
+                  disabled={!historyFilters.classId}
+                />
+                <Select
+                  label="Período"
                   value={historyFilters.academicPeriodId}
                   onChange={(e) =>
                     setHistoryFilters({
@@ -1490,51 +1585,17 @@ export default function AttendancePage() {
                     })
                   }
                   options={[
-                    { value: "", label: "Todos os bimestres" },
-                    ...(historyAvailability?.academicYear.periods.map(
-                      (period) => ({
+                    { value: "", label: "Anual" },
+                    ...(historyAvailability?.academicYear.periods
+                      .slice()
+                      .sort((a, b) => a.orderNumber - b.orderNumber)
+                      .map((period) => ({
                         value: period.id,
                         label: period.name,
-                      }),
-                    ) ?? []),
+                      })) ?? []),
                   ]}
                   disabled={
                     !historyFilters.classSubjectId || !historyAvailability
-                  }
-                />
-                <Select
-                  label="Mês"
-                  value={historyFilters.month.toString()}
-                  onChange={(e) =>
-                    setHistoryFilters({
-                      ...historyFilters,
-                      month: parseInt(e.target.value),
-                    })
-                  }
-                  options={[
-                    { value: "1", label: "Janeiro" },
-                    { value: "2", label: "Fevereiro" },
-                    { value: "3", label: "Março" },
-                    { value: "4", label: "Abril" },
-                    { value: "5", label: "Maio" },
-                    { value: "6", label: "Junho" },
-                    { value: "7", label: "Julho" },
-                    { value: "8", label: "Agosto" },
-                    { value: "9", label: "Setembro" },
-                    { value: "10", label: "Outubro" },
-                    { value: "11", label: "Novembro" },
-                    { value: "12", label: "Dezembro" },
-                  ]}
-                />
-                <Input
-                  type="number"
-                  label="Ano"
-                  value={historyFilters.year}
-                  onChange={(e) =>
-                    setHistoryFilters({
-                      ...historyFilters,
-                      year: parseInt(e.target.value),
-                    })
                   }
                 />
               </div>
@@ -1643,7 +1704,7 @@ export default function AttendancePage() {
                 {/* Lista de frequências por data */}
                 {historyDates.map((dateData: any) => (
                   <div
-                    key={dateData.date}
+                    key={dateData.key}
                     className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6"
                   >
                     <div className="flex items-center justify-between mb-4">
@@ -1723,6 +1784,65 @@ export default function AttendancePage() {
           </>
         )}
       </div>
+
+      <Modal
+        isOpen={showScheduleModal}
+        onClose={cancelScheduleSelection}
+        title="Selecione um horário"
+        description={
+          pendingScheduleDate
+            ? `Escolha a aula da grade para ${formatDateLocal(pendingScheduleDate)}.`
+            : "Escolha a aula da grade para registrar a frequência."
+        }
+        size="sm"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={cancelScheduleSelection}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => setShowScheduleModal(false)}
+              disabled={!selectedClassScheduleId}
+            >
+              Continuar
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-2" role="listbox" aria-label="Aulas da grade">
+          {schedulesForPendingDate.map((schedule) => {
+            const isSelected = schedule.id === selectedClassScheduleId;
+            return (
+              <button
+                key={schedule.id}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => setSelectedClassScheduleId(schedule.id)}
+                className={`flex w-full items-center justify-between rounded-lg border px-3 py-3 text-left text-sm transition-colors ${
+                  isSelected
+                    ? "border-primary-600 bg-primary-50 text-primary-800 dark:border-primary-400 dark:bg-primary-900/20 dark:text-primary-200"
+                    : "border-gray-200 text-gray-700 hover:border-primary-300 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700"
+                }`}
+              >
+                <span className="font-medium">
+                  {schedule.startTime} às {schedule.endTime}
+                </span>
+                {schedule.room && (
+                  <span className="ml-3 text-xs text-gray-500 dark:text-gray-400">
+                    {schedule.room}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </Modal>
 
       {/* Confirm Dialog */}
       <ConfirmDialog

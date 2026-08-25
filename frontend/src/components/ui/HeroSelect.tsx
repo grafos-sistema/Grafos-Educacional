@@ -176,11 +176,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             setIsOpen((current) => !current);
           }}
           className={`
-            relative flex h-12 w-full items-center rounded-lg border-2 bg-white px-4 text-left shadow-sm transition-all duration-200
+            relative flex h-12 w-full items-center rounded-[5px] border bg-white px-4 text-left shadow-sm transition-all duration-200
             dark:bg-gray-800
             ${error
               ? 'border-red-500 focus:ring-4 focus:ring-red-100 dark:border-red-500 dark:focus:ring-red-900/30'
-              : 'border-gray-300 hover:border-primary-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-100 dark:border-gray-600 dark:focus:ring-primary-900/30'
+              : 'border-[#e3e5e9] hover:border-primary-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-100 dark:border-gray-600 dark:focus:ring-primary-900/30'
             }
             ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}
             ${className}
