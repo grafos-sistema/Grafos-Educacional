@@ -1255,15 +1255,16 @@ export default function AttendancePage() {
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                      <thead className="bg-gray-50 dark:bg-gray-700/50">
+                      <thead className="bg-gray-50 text-left text-[11px] uppercase text-gray-500 dark:bg-gray-700/50 dark:text-gray-400">
                         <tr>
-                          <th className="px-3 py-2 text-left text-[11px] font-medium uppercase text-gray-500 dark:text-gray-400">
-                            Aluno
+                          <th className="px-4 py-3 font-medium">Aluno</th>
+                          <th className="hidden px-4 py-3 font-medium md:table-cell">
+                            Matrícula
                           </th>
-                          <th className="px-3 py-2 text-left text-[11px] font-medium uppercase text-gray-500 dark:text-gray-400">
+                          <th className="hidden px-4 py-3 font-medium md:table-cell">
                             Status
                           </th>
-                          <th className="hidden px-3 py-2 text-left text-[11px] font-medium uppercase text-gray-500 dark:text-gray-400 md:table-cell">
+                          <th className="hidden px-4 py-3 font-medium md:table-cell">
                             Observações
                           </th>
                         </tr>
@@ -1279,7 +1280,7 @@ export default function AttendancePage() {
                                 key={enrollment.id}
                                 className="hover:bg-gray-50 dark:hover:bg-gray-700/30"
                               >
-                                <td className="px-3 py-2">
+                                <td className="px-4 py-3">
                                   <div className="flex min-w-0 items-center gap-3">
                                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-xs font-semibold text-white">
                                       {enrollment.student?.avatar ? (
@@ -1314,9 +1315,6 @@ export default function AttendancePage() {
                                         {enrollment.student?.firstName}{" "}
                                         {enrollment.student?.lastName}
                                       </div>
-                                      <div className="hidden text-xs text-gray-500 dark:text-gray-400 lg:block">
-                                        {enrollment.student?.registrationNumber || "Não informada"}
-                                      </div>
                                       <div className="mt-2 flex flex-wrap gap-1.5 md:hidden">
                                         {Object.values(AttendanceStatus).map((s) => (
                                           <button
@@ -1338,7 +1336,10 @@ export default function AttendancePage() {
                                     </div>
                                   </div>
                                 </td>
-                                <td className="hidden px-3 py-2 md:table-cell">
+                                <td className="hidden px-4 py-3 text-gray-500 dark:text-gray-400 md:table-cell">
+                                  {enrollment.student?.registrationNumber || "Não informada"}
+                                </td>
+                                <td className="hidden px-4 py-3 md:table-cell">
                                   <div className="flex flex-wrap gap-1.5">
                                     {Object.values(AttendanceStatus).map(
                                       (s) => (
@@ -1362,7 +1363,7 @@ export default function AttendancePage() {
                                     )}
                                   </div>
                                 </td>
-                                <td className="hidden px-3 py-2 md:table-cell">
+                                <td className="hidden px-4 py-3 md:table-cell">
                                   <Input
                                     placeholder="Adicionar observação..."
                                     value={
@@ -1384,7 +1385,7 @@ export default function AttendancePage() {
                         ) : (
                           <tr>
                             <td
-                              colSpan={3}
+                              colSpan={4}
                               className="px-6 py-12 text-center text-gray-500 dark:text-gray-400"
                             >
                               Nenhum aluno encontrado com "{searchTerm}"
@@ -1723,21 +1724,20 @@ export default function AttendancePage() {
                   }
                 />
                 <div className="flex items-end justify-center">
-                  <Button
-                    variant="secondary"
-                    size="sm"
+                  <button
+                    type="button"
                     aria-label="Atualizar histórico"
                     title="Atualizar histórico"
-                    className="!min-w-10 !px-0"
                     onClick={() => refetchHistory()}
                     disabled={!historyFilters.classSubjectId || loadingHistory}
-                    isLoading={loadingHistory}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-[5px] text-gray-500 transition-colors hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-200 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-400 dark:hover:text-primary-400 dark:focus:ring-primary-900/30"
                   >
-                    {!loadingHistory && (
-                      <ArrowPathIcon className="h-5 w-5" aria-hidden="true" />
-                    )}
+                    <ArrowPathIcon
+                      className={`h-5 w-5 ${loadingHistory ? "animate-spin" : ""}`}
+                      aria-hidden="true"
+                    />
                     <span className="sr-only">Atualizar histórico</span>
-                  </Button>
+                  </button>
                 </div>
               </div>
             </div>
@@ -1782,7 +1782,9 @@ export default function AttendancePage() {
                     <thead className="bg-gray-50 text-left text-[11px] uppercase text-gray-500 dark:bg-gray-700/50 dark:text-gray-400">
                       <tr>
                         <th className="px-4 py-3 font-medium">Aluno</th>
-                        <th className="px-4 py-3 font-medium">Matrícula</th>
+                        <th className="hidden px-4 py-3 font-medium md:table-cell">
+                          Matrícula
+                        </th>
                         <th className="px-4 py-3 text-center font-medium">Presentes</th>
                         <th className="px-4 py-3 text-center font-medium">Ausentes</th>
                         <th className="px-4 py-3 text-center font-medium">Atrasados</th>
@@ -1821,7 +1823,7 @@ export default function AttendancePage() {
                                 <span className="font-medium">{row.name}</span>
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
+                            <td className="hidden px-4 py-3 text-gray-500 dark:text-gray-400 md:table-cell">
                               {row.registrationNumber}
                             </td>
                             <td className="px-4 py-3 text-center">{row.present}</td>
