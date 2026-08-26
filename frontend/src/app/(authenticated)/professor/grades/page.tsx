@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { UserRole } from '@/types/user.types';
@@ -35,6 +35,55 @@ import { useToast } from '@/hooks/useToast';
 import { Tabs } from '@/components/ui/Tabs';
 import { useTeacherClassSubjects } from '@/hooks/useTeacherClassSubjects';
 
+const assessmentSlots = ['VA1', 'VA2', 'VA3', 'VA4'] as const;
+type AssessmentSlot = (typeof assessmentSlots)[number];
+type LaunchMode = 'direct' | 'detailed';
+
+type GradeEntry = {
+  directValue: string;
+  va1: string;
+  va2: string;
+  va3: string;
+  va4: string;
+  observations: string;
+};
+
+const createEmptyGradeEntry = (): GradeEntry => ({
+  directValue: '',
+  va1: '',
+  va2: '',
+  va3: '',
+  va4: '',
+  observations: '',
+});
+
+const slotToField: Record<AssessmentSlot, keyof Pick<GradeEntry, 'va1' | 'va2' | 'va3' | 'va4'>> = {
+  VA1: 'va1',
+  VA2: 'va2',
+  VA3: 'va3',
+  VA4: 'va4',
+};
+
+const normalizeAssessmentSlot = (examType?: string): AssessmentSlot | null => {
+  const normalized = examType?.trim().toUpperCase().replace(/\s+/g, '');
+  return assessmentSlots.includes(normalized as AssessmentSlot)
+    ? (normalized as AssessmentSlot)
+    : null;
+};
+
+const getFilledValues = (entry?: GradeEntry) =>
+  [entry?.va1, entry?.va2, entry?.va3, entry?.va4]
+    .filter((value): value is string => value !== undefined && value !== '')
+    .map(Number)
+    .filter((value) => Number.isFinite(value));
+
+const getDetailedAverage = (entry?: GradeEntry) => {
+  const values = getFilledValues(entry);
+  return values.length > 0
+    ? values.reduce((sum, value) => sum + value, 0) / values.length
+    : null;
+};
+
 export default function GradesPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -47,13 +96,8 @@ export default function GradesPage() {
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedClassSubjectId, setSelectedClassSubjectId] = useState('');
   const [selectedPeriodId, setSelectedPeriodId] = useState('');
-  const [examType, setExamType] = useState('Prova');
-  const [examDate, setExamDate] = useState(new Date().toISOString().split('T')[0]);
-  const [description, setDescription] = useState('');
-  const [weight, setWeight] = useState('1.0');
-  const [gradesData, setGradesData] = useState<
-    Record<string, { value: string; observations: string }>
-  >({});
+  const [launchMode, setLaunchMode] = useState<LaunchMode>('detailed');
+  const [gradesData, setGradesData] = useState<Record<string, GradeEntry>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
@@ -163,6 +207,57 @@ export default function GradesPage() {
 
   // Buscar notas lançadas (para aba de listagem)
   const teacherId = user?.teacherId || user?.teacherProfile?.id;
+  const {
+    data: currentGrades = [],
+    isLoading: loadingCurrentGrades,
+  } = useQuery({
+    queryKey: [
+      'grades-for-launch',
+      teacherId,
+      selectedClassSubjectId,
+      selectedPeriodId,
+    ],
+    queryFn: async () => {
+      if (!teacherId || !selectedClassSubjectId || !selectedPeriodId) return [];
+
+      const response = await gradesService.findAllFromApi({
+        teacherId,
+        classSubjectId: selectedClassSubjectId,
+        academicPeriodId: selectedPeriodId,
+        limit: 1000,
+      });
+      return response.data;
+    },
+    enabled: Boolean(teacherId && selectedClassSubjectId && selectedPeriodId),
+  });
+
+  useEffect(() => {
+    if (!selectedClassSubjectId || !selectedPeriodId || loadingCurrentGrades) return;
+
+    setGradesData(() => {
+      const nextGrades: Record<string, GradeEntry> = {};
+
+      currentGrades.forEach((grade) => {
+        const entry = nextGrades[grade.studentId] ?? createEmptyGradeEntry();
+        const slot = normalizeAssessmentSlot(grade.examType);
+
+        if (slot) {
+          entry[slotToField[slot]] = String(grade.value);
+        } else if (!entry.directValue) {
+          entry.directValue = String(grade.value);
+        }
+
+        if (!entry.observations && grade.observations) {
+          entry.observations = grade.observations;
+        }
+
+        nextGrades[grade.studentId] = entry;
+      });
+
+      return nextGrades;
+    });
+  }, [currentGrades, launchMode, loadingCurrentGrades, selectedClassSubjectId, selectedPeriodId]);
+
   const { data: launchedGrades, isLoading: loadingLaunchedGrades, refetch: refetchLaunchedGrades } = useQuery({
     queryKey: [
       'launched-grades',
@@ -247,28 +342,85 @@ export default function GradesPage() {
         throw new Error('Perfil de professor não encontrado');
       }
 
-      const grades = Object.entries(gradesData)
-        .filter(([_, data]) => data.value !== '')
+      const gradesBySlot = assessmentSlots.map((slot) => ({
+        examType: slot,
+        grades: Object.entries(gradesData)
+          .filter(([, data]) => data[slotToField[slot]] !== '')
+          .map(([studentId, data]) => ({
+            studentId,
+            value: parseFloat(data[slotToField[slot]]),
+            observations: data.observations,
+          })),
+      }));
+      const directGrades = Object.entries(gradesData)
+        .filter(([, data]) => data.directValue !== '')
         .map(([studentId, data]) => ({
           studentId,
-          value: parseFloat(data.value),
+          value: parseFloat(data.directValue),
           observations: data.observations,
         }));
 
-      if (grades.length === 0) {
+      const hasGrades = launchMode === 'detailed'
+        ? gradesBySlot.some(({ grades }) => grades.length > 0)
+        : directGrades.length > 0;
+
+      if (!hasGrades) {
         throw new Error('Nenhuma nota foi preenchida');
       }
 
-      await gradesService.createBulk({
-        examType,
-        examDate: examDate || undefined,
-        description: description || undefined,
-        weight: parseFloat(weight),
-        classSubjectId: selectedClassSubjectId,
-        academicPeriodId: selectedPeriodId,
-        teacherId,
-        grades,
-      });
+      const currentGradeIsSlot = (grade: (typeof currentGrades)[number]) =>
+        Boolean(normalizeAssessmentSlot(grade.examType));
+      const currentGradeIsDirect = (grade: (typeof currentGrades)[number]) =>
+        grade.examType.trim().toLowerCase() === 'média bimestral';
+
+      if (launchMode === 'detailed') {
+        const directGradesToRemove = currentGrades
+          .filter(currentGradeIsDirect)
+          .map((grade) => gradesService.remove(grade.id));
+        const emptySlotsToRemove = currentGrades
+          .filter(currentGradeIsSlot)
+          .filter((grade) => {
+            const slot = normalizeAssessmentSlot(grade.examType);
+            const field = slot ? slotToField[slot] : null;
+            return !field || gradesData[grade.studentId]?.[field] === '';
+          })
+          .map((grade) => gradesService.remove(grade.id));
+        await Promise.all(directGradesToRemove);
+        await Promise.all(emptySlotsToRemove);
+
+        await Promise.all(
+          gradesBySlot
+            .filter(({ grades }) => grades.length > 0)
+            .map(({ examType: slot, grades }) =>
+              gradesService.createBulk({
+                examType: slot,
+                weight: 1,
+                classSubjectId: selectedClassSubjectId,
+                academicPeriodId: selectedPeriodId,
+                teacherId,
+                grades,
+              }),
+            ),
+        );
+      } else {
+        const slotGradesToRemove = currentGrades
+          .filter(currentGradeIsSlot)
+          .map((grade) => gradesService.remove(grade.id));
+        const emptyDirectGradesToRemove = currentGrades
+          .filter(currentGradeIsDirect)
+          .filter((grade) => gradesData[grade.studentId]?.directValue === '')
+          .map((grade) => gradesService.remove(grade.id));
+        await Promise.all([...slotGradesToRemove, ...emptyDirectGradesToRemove]);
+
+        await gradesService.createBulk({
+          examType: 'Média Bimestral',
+          weight: 1,
+          classSubjectId: selectedClassSubjectId,
+          academicPeriodId: selectedPeriodId,
+          teacherId,
+          grades: directGrades,
+        });
+      }
     },
     onSuccess: () => {
       setShowConfirmDialog(false);
@@ -280,7 +432,7 @@ export default function GradesPage() {
       toast.success('Notas salvas com sucesso');
       // Limpar formulário
       setGradesData({});
-      setDescription('');
+      queryClient.invalidateQueries({ queryKey: ['grades-for-launch'] });
     },
     onError: (error: any) => {
       setShowConfirmDialog(false);
@@ -324,11 +476,16 @@ export default function GradesPage() {
     },
   });
 
-  const handleGradeChange = (studentId: string, value: string) => {
+  const handleGradeChange = (
+    studentId: string,
+    field: keyof Pick<GradeEntry, 'directValue' | 'va1' | 'va2' | 'va3' | 'va4'>,
+    value: string,
+  ) => {
     setGradesData((prev) => ({
       ...prev,
       [studentId]: {
-        value,
+        ...(prev[studentId] ?? createEmptyGradeEntry()),
+        [field]: value,
         observations: prev[studentId]?.observations || '',
       },
     }));
@@ -338,7 +495,7 @@ export default function GradesPage() {
     setGradesData((prev) => ({
       ...prev,
       [studentId]: {
-        value: prev[studentId]?.value || '',
+        ...(prev[studentId] ?? createEmptyGradeEntry()),
         observations,
       },
     }));
@@ -346,7 +503,6 @@ export default function GradesPage() {
 
   const handleClear = () => {
     setGradesData({});
-    setDescription('');
     toast.info('Todas as notas foram removidas');
   };
 
@@ -407,23 +563,37 @@ export default function GradesPage() {
     if (!searchTerm) return true;
     const fullName =
       `${enrollment.student?.firstName} ${enrollment.student?.lastName}`.toLowerCase();
-    return fullName.includes(searchTerm.toLowerCase());
+    const registrationNumber = enrollment.student?.registrationNumber?.toLowerCase() || '';
+    const normalizedSearch = searchTerm.toLowerCase();
+    return fullName.includes(normalizedSearch) || registrationNumber.includes(normalizedSearch);
   });
 
-  const hasUnsavedChanges = Object.values(gradesData).some((d) => d.value !== '');
+  const hasUnsavedChanges = Object.values(gradesData).some(
+    (entry) =>
+      entry.directValue !== '' ||
+      entry.va1 !== '' ||
+      entry.va2 !== '' ||
+      entry.va3 !== '' ||
+      entry.va4 !== '' ||
+      entry.observations !== '',
+  );
+
+  const currentAverages = Object.values(gradesData)
+    .map((entry) =>
+      launchMode === 'detailed'
+        ? getDetailedAverage(entry)
+        : entry.directValue === ''
+          ? null
+          : Number(entry.directValue),
+    )
+    .filter((value): value is number => value !== null && Number.isFinite(value));
 
   const stats = {
-    filled: Object.values(gradesData).filter((d) => d.value !== '').length,
+    filled: currentAverages.length,
     total: enrollments?.length || 0,
-    average:
-      Object.values(gradesData).filter((d) => d.value !== '').length > 0
-        ? (
-            Object.values(gradesData)
-              .filter((d) => d.value !== '')
-              .reduce((sum, d) => sum + parseFloat(d.value || '0'), 0) /
-            Object.values(gradesData).filter((d) => d.value !== '').length
-          ).toFixed(2)
-        : '0.00',
+    average: currentAverages.length > 0
+      ? (currentAverages.reduce((sum, value) => sum + value, 0) / currentAverages.length).toFixed(2)
+      : '0.00',
   };
 
   return (
@@ -434,9 +604,9 @@ export default function GradesPage() {
         onClose={() => setShowConfirmDialog(false)}
         onConfirm={() => saveMutation.mutate()}
         title="Confirmar salvamento"
-        message={`Você está prestes a salvar ${stats.filled} nota${
+        message={`Você está prestes a salvar ${stats.filled} média${
           stats.filled > 1 ? 's' : ''
-        } para ${examType}. Deseja continuar?`}
+        } ${launchMode === 'detailed' ? 'calculadas pelas VA preenchidas' : 'bimestrais'}. Deseja continuar?`}
         confirmText="Sim, salvar"
         cancelText="Cancelar"
       />
@@ -524,9 +694,9 @@ export default function GradesPage() {
               </div>
             )}
 
-            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center gap-3 bg-slate-50 px-4 py-3 dark:bg-slate-900/50">
-                <div className="grid flex-1 grid-cols-[minmax(0,1fr)_120px_minmax(0,1.5fr)] gap-4 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <div className="overflow-hidden rounded-lg border border-[#e0e0e0] dark:border-gray-700">
+              <div className="flex items-center gap-3 border-b border-[#e0e0e0] bg-[#f6f6f6] px-4 py-3 dark:border-gray-700 dark:bg-gray-700/50">
+                <div className="grid flex-1 grid-cols-[minmax(0,1fr)_120px_minmax(0,1.5fr)] gap-4 text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
                   <span>Aluno</span>
                   <span>Nota</span>
                   <span>Observações</span>
@@ -534,7 +704,7 @@ export default function GradesPage() {
                 <button
                   type="button"
                   onClick={() => setShowReviewSearch((current) => !current)}
-                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-white hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-white hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-100"
                   aria-label="Pesquisar aluno nas notas"
                   aria-expanded={showReviewSearch}
                 >
@@ -542,21 +712,21 @@ export default function GradesPage() {
                 </button>
               </div>
               {showReviewSearch && (
-                <div className="border-t border-slate-200 bg-slate-50 px-4 pb-3 dark:border-slate-700 dark:bg-slate-900/50">
+                <div className="border-b border-[#e0e0e0] bg-[#f6f6f6] px-4 pb-3 dark:border-gray-700 dark:bg-gray-700/50">
                   <div className="relative">
-                    <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                     <input
                       type="search"
                       autoFocus
                       value={reviewStudentSearch}
                       onChange={(event) => setReviewStudentSearch(event.target.value)}
                       placeholder="Pesquisar aluno..."
-                      className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
+                      className="w-full rounded-[5px] border border-[#e3e5e9] bg-white py-2 pl-9 pr-3 text-sm text-gray-900 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:focus:ring-primary-900/30"
                     />
                   </div>
                 </div>
               )}
-              <div className="divide-y divide-slate-200 dark:divide-slate-700">
+              <div>
                 {reviewGrades.length > 0 ? reviewGrades.map((grade: any) => {
                   const studentName = grade.student?.user?.name ||
                     `${grade.student?.user?.firstName || ''} ${grade.student?.user?.lastName || ''}`.trim() ||
@@ -572,7 +742,7 @@ export default function GradesPage() {
                   return (
                     <div
                       key={grade.id}
-                      className="grid grid-cols-[minmax(0,1fr)_120px_minmax(0,1.5fr)] items-center gap-4 px-4 py-3"
+                      className="grid grid-cols-[minmax(0,1fr)_120px_minmax(0,1.5fr)] items-center gap-4 border-b border-[#e0e0e0] px-4 py-3 text-sm odd:bg-[#fff] even:bg-[#f6f6f6] last:border-b-0 hover:bg-blue-50 dark:border-gray-700 dark:odd:bg-gray-800 dark:even:bg-gray-800/80 dark:hover:bg-gray-700/50"
                     >
                       <div className="flex min-w-0 items-center gap-3">
                         {grade.student?.user?.avatar ? (
@@ -586,23 +756,23 @@ export default function GradesPage() {
                             {initials}
                           </div>
                         )}
-                        <span className="truncate font-medium text-slate-900 dark:text-slate-100">
+                        <span className="truncate font-medium text-gray-900 dark:text-gray-100">
                           {studentName}
                         </span>
                       </div>
-                      <span className="font-semibold text-slate-900 dark:text-slate-100">
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
                         {Number(grade.value).toLocaleString('pt-BR', {
                           minimumFractionDigits: 1,
                           maximumFractionDigits: 2,
                         })}
                       </span>
-                      <span className="truncate text-sm text-slate-500 dark:text-slate-400">
+                      <span className="truncate text-sm text-gray-500 dark:text-gray-400">
                         {grade.observations || '—'}
                       </span>
                     </div>
                   );
                 }) : (
-                  <div className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                  <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                     Nenhum aluno encontrado para esta pesquisa.
                   </div>
                 )}
@@ -665,11 +835,16 @@ export default function GradesPage() {
       {/* Tab Content: Launch Grades */}
       {activeTab === 'launch' && (
         <>
-          {/* Configuration */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Configuração da Avaliação
-        </h2>
+      {/* Seleção do lançamento */}
+      <div className="mb-6 rounded-lg border border-[#e0e0e0] bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Lançamento de notas
+          </h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Selecione o bimestre e escolha entre informar a média ou detalhar pelas avaliações.
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <Select
@@ -740,75 +915,18 @@ export default function GradesPage() {
           />
 
           <Select
-            label="Tipo de Avaliação"
-            value={examType}
-            onChange={(e) => setExamType(e.target.value)}
-            required
+            label="Forma de lançamento"
+            value={launchMode}
+            onChange={(e) => {
+              setLaunchMode(e.target.value as LaunchMode);
+              setGradesData({});
+            }}
             options={[
-              { value: 'Prova', label: 'Prova' },
-              { value: 'Trabalho', label: 'Trabalho' },
-              { value: 'Participação', label: 'Participação' },
-              { value: 'Seminário', label: 'Seminário' },
-              { value: 'Projeto', label: 'Projeto' },
-              { value: 'Exercício', label: 'Exercício' },
-              { value: 'Simulado', label: 'Simulado' },
-              { value: 'Recuperação', label: 'Recuperação' },
+              { value: 'detailed', label: 'Detalhar por VA1 a VA4' },
+              { value: 'direct', label: 'Lançar média diretamente' },
             ]}
           />
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Input
-            type="date"
-            label="Data da Avaliação"
-            value={examDate}
-            onChange={(e) => setExamDate(e.target.value)}
-          />
-
-          <Input
-            type="number"
-            label="Peso"
-            value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-            min="0.1"
-            max="10"
-            step="0.1"
-            required
-          />
-
-          <Input
-            label="Descrição (opcional)"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Ex: Capítulo 3 - Equações"
-          />
-        </div>
-
-        {selectedSubject && selectedPeriodId && (
-          <div className="mt-4 flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-            <div
-              className="p-2 rounded-lg"
-              style={{
-                backgroundColor: selectedSubject.subject?.color
-                  ? `${selectedSubject.subject.color}20`
-                  : '#E5E7EB',
-              }}
-            >
-              <BookOpenIcon
-                className="h-5 w-5"
-                style={{ color: selectedSubject.subject?.color || '#6B7280' }}
-              />
-            </div>
-            <div className="flex-1">
-              <div className="font-medium text-gray-900 dark:text-white">
-                {selectedSubject.class?.name} - {selectedSubject.subject?.name}
-              </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                {examType} • Peso: {weight} • {enrollments?.length || 0} alunos
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Content */}
@@ -816,7 +934,7 @@ export default function GradesPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
           <AcademicCapIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            Configure a avaliação
+            Selecione o bimestre
           </h3>
           <p className="text-gray-500 dark:text-gray-400">
             Selecione a turma, disciplina e período acadêmico para lançar as notas
@@ -828,25 +946,27 @@ export default function GradesPage() {
         </div>
       ) : enrollments && enrollments.length > 0 ? (
         <>
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-              <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                Notas Lançadas
+          {/* Resumo */}
+          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="rounded-lg border border-[#e0e0e0] bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+              <div className="mb-1 text-sm text-gray-600 dark:text-gray-400">
+                Alunos com nota
               </div>
               <div className="text-2xl font-bold text-gray-900 dark:text-white">
                 {stats.filled} / {stats.total}
               </div>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-              <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Média Atual</div>
+            <div className="rounded-lg border border-[#e0e0e0] bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+              <div className="mb-1 text-sm text-gray-600 dark:text-gray-400">Média atual</div>
               <div className="text-2xl font-bold text-gray-900 dark:text-white">
                 {stats.average}
               </div>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-              <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Peso</div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{weight}</div>
+            <div className="rounded-lg border border-[#e0e0e0] bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+              <div className="mb-1 text-sm text-gray-600 dark:text-gray-400">Forma de lançamento</div>
+              <div className="text-lg font-bold text-gray-900 dark:text-white">
+                {launchMode === 'detailed' ? 'VA1 a VA4' : 'Média direta'}
+              </div>
             </div>
           </div>
 
@@ -859,93 +979,139 @@ export default function GradesPage() {
                 placeholder="Buscar aluno por nome ou matrícula..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full rounded-[5px] border border-[#e3e5e9] bg-white py-2 pl-10 pr-4 text-gray-900 placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-500 dark:focus:ring-primary-900/30"
               />
             </div>
           </div>
 
           {/* Student List */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+          <div className="overflow-hidden rounded-lg border border-[#e0e0e0] bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
             {filteredEnrollments && filteredEnrollments.length > 0 ? (
               <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 dark:bg-gray-700/50">
+                <table className="w-full min-w-[980px] text-sm">
+                  <thead className="border-b border-[#e0e0e0] bg-[#f6f6f6] text-left text-[11px] uppercase tracking-wide text-gray-700 dark:border-gray-700 dark:bg-gray-700/50 dark:text-gray-300">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Aluno
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
-                        Nota
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Observações
-                      </th>
+                      <th className="px-4 py-3 font-medium">Aluno</th>
+                      <th className="px-4 py-3 font-medium">Matrícula</th>
+                      {launchMode === 'detailed' ? (
+                        assessmentSlots.map((slot) => (
+                          <th key={slot} className="px-4 py-3 text-center font-medium">
+                            {slot}
+                          </th>
+                        ))
+                      ) : (
+                        <th className="px-4 py-3 text-center font-medium">Média bimestral</th>
+                      )}
+                      <th className="px-4 py-3 text-center font-medium">Média atual</th>
+                      <th className="px-4 py-3 font-medium">Situação</th>
+                      <th className="px-4 py-3 font-medium">Observações</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  <tbody>
                     {filteredEnrollments.map((enrollment) => {
-                    const gradeValue = gradesData[enrollment.studentId]?.value || '';
-                    const isApproved = gradeValue !== '' && parseFloat(gradeValue) >= 6;
-                    const isFailed = gradeValue !== '' && parseFloat(gradeValue) < 6;
+                      const entry = gradesData[enrollment.studentId] ?? createEmptyGradeEntry();
+                      const average = launchMode === 'detailed'
+                        ? getDetailedAverage(entry)
+                        : entry.directValue === ''
+                          ? null
+                          : Number(entry.directValue);
+                      const isApproved = average !== null && average >= 6;
+                      const isFailed = average !== null && average < 6;
+                      const studentName = `${enrollment.student?.firstName || ''} ${enrollment.student?.lastName || ''}`.trim();
 
-                    return (
-                      <tr
-                        key={enrollment.id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-700/30"
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-3">
-                            {enrollment.student?.avatar ? (
-                              <img
-                                src={enrollment.student.avatar}
-                                alt={`Foto de ${enrollment.student.firstName} ${enrollment.student.lastName}`}
-                                className="w-10 h-10 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
-                                {enrollment.student?.firstName?.[0]}
-                                {enrollment.student?.lastName?.[0]}
-                              </div>
-                            )}
-                            <div>
-                              <div className="font-medium text-gray-900 dark:text-white">
-                                {enrollment.student?.firstName}{' '}
-                                {enrollment.student?.lastName}
-                              </div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400">
-                                {enrollment.student?.email}
-                              </div>
+                      return (
+                        <tr
+                          key={enrollment.id}
+                          className="border-b border-[#e0e0e0] odd:bg-[#fff] even:bg-[#f6f6f6] hover:bg-blue-50 last:border-b-0 dark:border-gray-700 dark:odd:bg-gray-800 dark:even:bg-gray-800/80 dark:hover:bg-gray-700/50"
+                        >
+                          <td className="px-4 py-3 align-middle">
+                            <div className="flex min-w-[220px] items-center gap-3">
+                              {enrollment.student?.avatar ? (
+                                <img
+                                  src={enrollment.student.avatar}
+                                  alt={`Foto de ${studentName}`}
+                                  className="h-9 w-9 shrink-0 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-xs font-semibold text-white">
+                                  {enrollment.student?.firstName?.[0]}
+                                  {enrollment.student?.lastName?.[0]}
+                                </div>
+                              )}
+                              <span className="truncate font-medium text-gray-900 dark:text-white">
+                                {studentName || 'Aluno sem nome'}
+                              </span>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <Input
-                            type="number"
-                            placeholder="0.0"
-                            value={gradeValue}
-                            onChange={(e) => handleGradeChange(enrollment.studentId, e.target.value)}
-                            min="0"
-                            max="10"
-                            step="0.1"
-                            className={
-                              gradeValue !== ''
-                                ? isApproved
-                                  ? 'border-green-500 focus:border-green-500 focus:ring-green-500'
-                                  : 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                                : ''
-                            }
-                          />
-                        </td>
-                        <td className="px-6 py-4">
-                          <Input
-                            placeholder="Observação (opcional)..."
-                            value={gradesData[enrollment.studentId]?.observations || ''}
-                            onChange={(e) =>
-                              handleObservationsChange(enrollment.studentId, e.target.value)
-                            }
-                          />
-                        </td>
-                      </tr>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 dark:text-gray-300">
+                            {enrollment.student?.registrationNumber || 'Não informada'}
+                          </td>
+                          {launchMode === 'detailed' ? (
+                            assessmentSlots.map((slot) => {
+                              const field = slotToField[slot];
+                              return (
+                                <td key={slot} className="px-4 py-3 text-center align-middle">
+                                  <Input
+                                    type="number"
+                                    aria-label={`${slot} de ${studentName}`}
+                                    placeholder="—"
+                                    value={entry[field]}
+                                    onChange={(e) =>
+                                      handleGradeChange(enrollment.studentId, field, e.target.value)
+                                    }
+                                    min="0"
+                                    max="10"
+                                    step="0.1"
+                                    className="mx-auto w-20 text-center"
+                                  />
+                                </td>
+                              );
+                            })
+                          ) : (
+                            <td className="px-4 py-3 text-center align-middle">
+                              <Input
+                                type="number"
+                                aria-label={`Média bimestral de ${studentName}`}
+                                placeholder="—"
+                                value={entry.directValue}
+                                onChange={(e) =>
+                                  handleGradeChange(enrollment.studentId, 'directValue', e.target.value)
+                                }
+                                min="0"
+                                max="10"
+                                step="0.1"
+                                className="mx-auto w-24 text-center"
+                              />
+                            </td>
+                          )}
+                          <td className="px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">
+                            {average === null ? '—' : average.toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={
+                                isApproved
+                                  ? 'font-medium text-green-700 dark:text-green-400'
+                                  : isFailed
+                                    ? 'font-medium text-red-700 dark:text-red-400'
+                                    : 'text-gray-500 dark:text-gray-400'
+                              }
+                            >
+                              {isApproved ? 'Aprovado' : isFailed ? 'Reprovado' : 'Pendente'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <Input
+                              aria-label={`Observação de ${studentName}`}
+                              placeholder="Observação (opcional)..."
+                              value={entry.observations}
+                              onChange={(e) =>
+                                handleObservationsChange(enrollment.studentId, e.target.value)
+                              }
+                              className="min-w-[190px]"
+                            />
+                          </td>
+                        </tr>
                       );
                     })}
                   </tbody>
@@ -1144,31 +1310,13 @@ export default function GradesPage() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                           <div>
                             <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                              Tipo
+                              Avaliação
                             </div>
                             <div className="font-medium text-gray-900 dark:text-white">
                               {evaluation.examType}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                              Data
-                            </div>
-                            <div className="font-medium text-gray-900 dark:text-white">
-                              {evaluation.examDate
-                                ? new Date(evaluation.examDate).toLocaleDateString('pt-BR')
-                                : '-'}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                              Peso
-                            </div>
-                            <div className="font-medium text-gray-900 dark:text-white">
-                              {evaluation.weight}
                             </div>
                           </div>
                           <div>
@@ -1188,12 +1336,6 @@ export default function GradesPage() {
                             </div>
                           </div>
                         </div>
-
-                        {evaluation.description && (
-                          <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                            {evaluation.description}
-                          </div>
-                        )}
                       </div>
                     </div>
 

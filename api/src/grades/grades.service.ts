@@ -242,12 +242,27 @@ export class GradesService {
       );
     }
 
-    // Cria notas em transação
+    // Salva a nota da avaliação. Se a mesma VA já existir para o aluno,
+    // atualiza o registro para evitar duplicidade em novos salvamentos.
     const parsedExamDate = examDate ? new Date(examDate) : null;
-    const createdGrades = await this.prisma.$transaction(
-      grades.map((grade) =>
-        this.prisma.grade.create({
-          data: {
+    const savedGradeIds = await this.prisma.$transaction(
+      async (transaction) => {
+        const ids: string[] = [];
+
+        for (const grade of grades) {
+          const existingGrade = await transaction.grade.findFirst({
+            where: {
+              studentId: grade.studentId,
+              classSubjectId,
+              academicPeriodId,
+              teacherId,
+              examType,
+            },
+            orderBy: { updatedAt: 'desc' },
+            select: { id: true },
+          });
+
+          const data = {
             studentId: grade.studentId,
             classSubjectId,
             academicPeriodId,
@@ -258,63 +273,82 @@ export class GradesService {
             examDate: parsedExamDate,
             description,
             observations: grade.observations,
-            isVisibleToStudents: false,
+          };
+
+          const savedGrade = existingGrade
+            ? await transaction.grade.update({
+                where: { id: existingGrade.id },
+                data,
+              })
+            : await transaction.grade.create({
+                data: {
+                  ...data,
+                  isVisibleToStudents: false,
+                },
+              });
+
+          ids.push(savedGrade.id);
+        }
+
+        return ids;
+      },
+    );
+
+    const createdGrades = await this.prisma.grade.findMany({
+      where: { id: { in: savedGradeIds } },
+      include: {
+        student: {
+          select: {
+            id: true,
+            enrollmentNumber: true,
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
           },
-          include: {
-            student: {
-              select: {
-                id: true,
-                enrollmentNumber: true,
-                user: {
-                  select: {
-                    firstName: true,
-                    lastName: true,
-                  },
-                },
-              },
-            },
-            classSubject: {
-              select: {
-                id: true,
-                subject: {
-                  select: {
-                    id: true,
-                    name: true,
-                    code: true,
-                    color: true,
-                  },
-                },
-                class: {
-                  select: {
-                    id: true,
-                    name: true,
-                    grade: true,
-                  },
-                },
-              },
-            },
-            academicPeriod: {
+        },
+        classSubject: {
+          select: {
+            id: true,
+            subject: {
               select: {
                 id: true,
                 name: true,
-                orderNumber: true,
+                code: true,
+                color: true,
               },
             },
-            teacher: {
+            class: {
               select: {
                 id: true,
-                user: {
-                  select: {
-                    firstName: true,
-                    lastName: true,
-                  },
-                },
+                name: true,
+                grade: true,
               },
             },
           },
-        }),
-      ),
-    );
+        },
+        academicPeriod: {
+          select: {
+            id: true,
+            name: true,
+            orderNumber: true,
+          },
+        },
+        teacher: {
+          select: {
+            id: true,
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+      },
+    });
 
     return {
       total: createdGrades.length,
