@@ -84,6 +84,17 @@ const getDetailedAverage = (entry?: GradeEntry) => {
     : null;
 };
 
+const clampGradeValue = (value: string) => {
+  if (value === '') return '';
+
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return '';
+  if (numericValue > 10) return '10';
+  if (numericValue < 0) return '0';
+
+  return value;
+};
+
 export default function GradesPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -481,11 +492,13 @@ export default function GradesPage() {
     field: keyof Pick<GradeEntry, 'directValue' | 'va1' | 'va2' | 'va3' | 'va4'>,
     value: string,
   ) => {
+    const normalizedValue = clampGradeValue(value);
+
     setGradesData((prev) => ({
       ...prev,
       [studentId]: {
         ...(prev[studentId] ?? createEmptyGradeEntry()),
-        [field]: value,
+        [field]: normalizedValue,
         observations: prev[studentId]?.observations || '',
       },
     }));
