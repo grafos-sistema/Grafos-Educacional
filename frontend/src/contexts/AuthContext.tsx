@@ -139,22 +139,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authService.login(credentials);
       const currentPath = window.location.pathname;
 
-      if (
-        response.user.role === 'SUPER_ADMIN_GLOBAL' &&
-        currentPath !== '/security' &&
-        currentPath !== '/documentacao/login'
-      ) {
+      if (response.user.role === 'SUPER_ADMIN_GLOBAL' && currentPath !== '/security') {
         try {
           await authService.logout();
         } catch {
-          // Mesmo sem conseguir invalidar remotamente, bloqueia o acesso localmente
+          // Mesmo sem conseguir invalidar remotamente, bloqueia o acesso localmente.
         }
 
         clearCurrentUserProfileCache();
         storeLogout();
-        throw new Error(
-          'O Super Admin Global deve acessar exclusivamente pela rota /security.',
-        );
+        router.replace('/security');
+        setLoading(false);
+        return;
       }
 
       // Store user and tokens

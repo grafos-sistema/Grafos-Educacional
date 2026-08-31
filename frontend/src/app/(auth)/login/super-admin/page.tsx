@@ -47,7 +47,8 @@ export default function SuperAdminLoginPage() {
       setIsLoading(true);
 
       if (pathname !== '/security') {
-        throw new Error('O acesso global deve ser feito exclusivamente pela rota /security.');
+        router.replace('/security');
+        return;
       }
 
       const response = await authService.login(data);
