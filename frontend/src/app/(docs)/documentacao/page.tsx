@@ -373,7 +373,7 @@ export default function DocumentationPage() {
                 className="group flex max-w-[45%] items-center gap-2 text-left text-slate-400 transition hover:text-white disabled:invisible"
               >
                 <ChevronLeftIcon className="h-4 w-4 shrink-0" />
-                <span><span className="block text-[11px] text-slate-500">Anterior</span>{previous?.title}</span>
+                <span>{previous?.title}</span>
               </button>
               <button
                 type="button"
@@ -381,7 +381,7 @@ export default function DocumentationPage() {
                 onClick={() => next && selectSection(next.id)}
                 className="group flex max-w-[45%] items-center gap-2 text-right text-[#79d695] transition hover:text-white disabled:invisible"
               >
-                <span><span className="block text-[11px] text-slate-500">Próximo</span>{next?.title}</span>
+                <span>{next?.title}</span>
                 <ChevronRightIcon className="h-4 w-4 shrink-0" />
               </button>
             </div>
