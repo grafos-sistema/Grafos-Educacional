@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -58,6 +59,13 @@ export class EvaluationsService {
       );
     }
 
+    const isExam = dto.type.trim().toLocaleLowerCase('pt-BR') === 'prova';
+    if (isExam && !dto.examDate) {
+      throw new BadRequestException(
+        'Informe a data da prova para que ela seja divulgada aos alunos',
+      );
+    }
+
     await this.assertInstitutionAccess(
       classSubject.class.institutionId,
       currentUser,
@@ -88,7 +96,7 @@ export class EvaluationsService {
       : EvaluationStatus.PENDING_APPROVAL;
 
     try {
-      return await this.prisma.evaluation.create({
+      const evaluation = await this.prisma.evaluation.create({
         data: {
           title: dto.title.trim(),
           type: dto.type.trim(),
@@ -108,6 +116,12 @@ export class EvaluationsService {
         },
         include: this.includeRelations(),
       });
+
+      if (status === EvaluationStatus.APPROVED) {
+        await this.createExamEvent(evaluation);
+      }
+
+      return evaluation;
     } catch (error: any) {
       if (error?.code === 'P2002') {
         throw new ConflictException(
@@ -171,7 +185,7 @@ export class EvaluationsService {
       );
     }
 
-    return this.prisma.evaluation.update({
+    const approvedEvaluation = await this.prisma.evaluation.update({
       where: { id },
       data: {
         status: EvaluationStatus.APPROVED,
@@ -181,6 +195,9 @@ export class EvaluationsService {
       },
       include: this.includeRelations(),
     });
+
+    await this.createExamEvent(approvedEvaluation);
+    return approvedEvaluation;
   }
 
   async reject(
@@ -243,7 +260,13 @@ export class EvaluationsService {
         },
       },
       academicPeriod: {
-        select: { id: true, name: true, orderNumber: true, type: true },
+        select: {
+          id: true,
+          name: true,
+          orderNumber: true,
+          type: true,
+          academicYearId: true,
+        },
       },
       createdBy: {
         select: { id: true, name: true, firstName: true, lastName: true },
@@ -252,5 +275,48 @@ export class EvaluationsService {
         select: { id: true, name: true, firstName: true, lastName: true },
       },
     } as const;
+  }
+
+  private async createExamEvent(evaluation: {
+    id: string;
+    title: string;
+    type: string;
+    description: string | null;
+    examDate: Date | null;
+    classSubject: {
+      class: { id: string; name: string };
+      subject: { name: string };
+    };
+    academicPeriod: { academicYearId: string };
+  }) {
+    if (
+      evaluation.type.trim().toLocaleLowerCase('pt-BR') !== 'prova' ||
+      !evaluation.examDate
+    ) {
+      return;
+    }
+
+    const dateOnly = evaluation.examDate.toISOString().slice(0, 10);
+    const startDate = new Date(`${dateOnly}T12:00:00.000Z`);
+    const endDate = new Date(`${dateOnly}T23:59:59.999Z`);
+
+    await this.prisma.event.create({
+      data: {
+        title: evaluation.title,
+        description:
+          evaluation.description ??
+          `Prova de ${evaluation.classSubject.subject.name} da turma ${evaluation.classSubject.class.name}.`,
+        type: 'EXAM',
+        startDate,
+        endDate,
+        academicYearId: evaluation.academicPeriod.academicYearId,
+        location: 'Sala de aula',
+        isAllDay: true,
+        color: '#DC2626',
+        isGeneral: false,
+        audienceRoles: ['STUDENTS'],
+        classIds: [evaluation.classSubject.class.id],
+      },
+    });
   }
 }

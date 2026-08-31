@@ -22,7 +22,6 @@ interface ClassStudentsManagerProps {
   maxStudents?: number | null;
   readOnly?: boolean;
 }
-
 function userName(user: { firstName?: string; lastName?: string }) {
   return `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'Aluno';
 }
@@ -70,6 +69,17 @@ export function ClassStudentsManager({
     enabled: Boolean(classId),
   });
 
+  const { data: activeInstitutionEnrollments, isLoading: isLoadingInstitutionEnrollments } = useQuery({
+    queryKey: ['active-institution-enrollments', institutionId],
+    queryFn: () =>
+      enrollmentsService.findAll({
+        institutionId: institutionId as string,
+        isActive: true,
+        limit: 1000,
+      }),
+    enabled: Boolean(institutionId && canManageStudents),
+  });
+
   const { data: studentsData, isLoading: isLoadingStudents } = useQuery({
     queryKey: ['class-student-options', institutionId],
     queryFn: () =>
@@ -87,6 +97,15 @@ export function ClassStudentsManager({
     () => new Set(enrollments.map((item) => item.studentId)),
     [enrollments],
   );
+  const enrolledInAnotherClassStudentIds = useMemo(
+    () =>
+      new Set(
+        (activeInstitutionEnrollments?.data ?? [])
+          .filter((enrollment) => enrollment.classId !== classId)
+          .map((enrollment) => enrollment.studentId),
+      ),
+    [activeInstitutionEnrollments?.data, classId],
+  );
   const availableStudents = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
     if (!normalizedSearch) return [];
@@ -95,7 +114,8 @@ export function ClassStudentsManager({
       .filter(
         (student) =>
           student.studentProfile?.id &&
-          !enrolledStudentIds.has(student.studentProfile.id),
+          !enrolledStudentIds.has(student.studentProfile.id) &&
+          !enrolledInAnotherClassStudentIds.has(student.studentProfile.id),
       )
       .filter((student) =>
         `${student.firstName} ${student.lastName} ${student.email} ${student.cpf ?? ''}`
@@ -106,7 +126,7 @@ export function ClassStudentsManager({
         userName(left).localeCompare(userName(right), 'pt-BR'),
       )
       .slice(0, 8);
-  }, [enrolledStudentIds, search, studentsData?.data]);
+  }, [enrolledInAnotherClassStudentIds, enrolledStudentIds, search, studentsData?.data]);
 
   const createMutation = useMutation({
     mutationFn: (studentId: string) =>
@@ -118,6 +138,9 @@ export function ClassStudentsManager({
         }),
         queryClient.invalidateQueries({ queryKey: ['class', classId] }),
         queryClient.invalidateQueries({ queryKey: ['classes'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['active-institution-enrollments', institutionId],
+        }),
         queryClient.invalidateQueries({
           queryKey: ['student-class-enrollment', studentId],
         }),
@@ -143,6 +166,9 @@ export function ClassStudentsManager({
         }),
         queryClient.invalidateQueries({ queryKey: ['class', classId] }),
         queryClient.invalidateQueries({ queryKey: ['classes'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['active-institution-enrollments', institutionId],
+        }),
       ]);
       toast.success('Aluno removido da turma com sucesso!');
     },
@@ -155,7 +181,8 @@ export function ClassStudentsManager({
     },
   });
 
-  const isLoading = isLoadingEnrollments || isLoadingStudents;
+  const isLoading =
+    isLoadingEnrollments || isLoadingInstitutionEnrollments || isLoadingStudents;
   const isFull = Boolean(maxStudents && enrollments.length >= maxStudents);
   const isBusy = createMutation.isPending || removeMutation.isPending;
 

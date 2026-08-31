@@ -19,6 +19,22 @@ export interface AcademicYearsFilterParams {
   isActive?: boolean;
 }
 
+type AcademicYearApiResponse = AcademicYear & {
+  _count?: {
+    periods?: number;
+  };
+};
+function normalizeAcademicYear(academicYear: AcademicYearApiResponse): AcademicYear {
+  return {
+    ...academicYear,
+    periodsCount:
+      academicYear.periodsCount ??
+      academicYear._count?.periods ??
+      academicYear.periods?.length ??
+      0,
+  };
+}
+
 const DIRECTOR_UNIT_COLUMNS =
   'id, institutionId, name, code, slug, type, managerName, directorUserId, address, numero, complemento, city, state, zipCode, phone, email, isActive, createdAt, updatedAt';
 
@@ -59,7 +75,7 @@ export const academicYearsService = {
   async findAll(params: AcademicYearsFilterParams = {}): Promise<PaginatedAcademicYears> {
     const page = params.page ?? 1;
     const limit = params.limit ?? 10;
-    return (await api.get<PaginatedAcademicYears>('/academic-years', {
+    const response = (await api.get<PaginatedAcademicYears>('/academic-years', {
       params: {
         page,
         limit,
@@ -67,7 +83,14 @@ export const academicYearsService = {
         year: params.year,
         isActive: params.isActive,
       },
-    })) as unknown as PaginatedAcademicYears;
+    })) as unknown as PaginatedAcademicYears & {
+      data: AcademicYearApiResponse[];
+    };
+
+    return {
+      ...response,
+      data: response.data.map(normalizeAcademicYear),
+    };
   },
 
   /**
