@@ -141,7 +141,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (
         response.user.role === 'SUPER_ADMIN_GLOBAL' &&
-        currentPath !== '/security'
+        currentPath !== '/security' &&
+        currentPath !== '/documentacao/login'
       ) {
         try {
           await authService.logout();
@@ -190,7 +191,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const redirectPath =
           from && from !== '/login'
             ? from
-            : getRedirectPathByRole(response.user.role);
+            : currentPath === '/documentacao/login'
+              ? '/documentacao'
+              : getRedirectPathByRole(response.user.role);
         router.push(redirectPath);
       }
 

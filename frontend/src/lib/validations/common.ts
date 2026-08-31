@@ -99,9 +99,8 @@ export const dateSchema = z.string().regex(
 export const futureDateSchema = z.string().refine(
   (date) => {
     const inputDate = new Date(date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return inputDate >= today;
+    const today = new Date().toISOString().split('T')[0];
+    return !Number.isNaN(inputDate.getTime()) && inputDate.toISOString().split('T')[0] >= today;
   },
   { message: 'Data deve ser hoje ou no futuro' }
 );
@@ -110,9 +109,8 @@ export const futureDateSchema = z.string().refine(
 export const pastDateSchema = z.string().refine(
   (date) => {
     const inputDate = new Date(date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return inputDate <= today;
+    const today = new Date().toISOString().split('T')[0];
+    return !Number.isNaN(inputDate.getTime()) && inputDate.toISOString().split('T')[0] <= today;
   },
   { message: 'Data deve ser hoje ou no passado' }
 );

@@ -58,6 +58,7 @@ export interface Grade {
   };
 
   teacherId: string;
+  evaluationId?: string;
   teacher?: {
     id: string;
     user: {
@@ -81,6 +82,7 @@ export interface CreateGradeDto {
   classSubjectId: string;
   academicPeriodId: string;
   teacherId: string;
+  evaluationId?: string;
 }
 
 export interface UpdateGradeDto {
@@ -102,6 +104,7 @@ export interface BulkGradeDto {
   classSubjectId: string;
   academicPeriodId: string;
   teacherId: string;
+  evaluationId?: string;
   grades: {
     studentId: string;
     value: number;

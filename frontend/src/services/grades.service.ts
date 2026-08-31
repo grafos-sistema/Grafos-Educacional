@@ -75,6 +75,7 @@ export const gradesService = {
           }
         : undefined,
       teacherId: row.teacherId,
+      evaluationId: row.evaluationId ?? undefined,
       teacher: row.teacher
         ? {
             id: row.teacher.id,

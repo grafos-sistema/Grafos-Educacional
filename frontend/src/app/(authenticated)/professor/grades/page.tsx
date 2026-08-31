@@ -24,6 +24,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { classesService } from '@/services/classes.service';
 import { academicPeriodsService } from '@/services/academic-periods.service';
 import { gradesService } from '@/services/grades.service';
+import { evaluationsService } from '@/services/evaluations.service';
 import { GradeStatus } from '@/types/grade.types';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
@@ -37,10 +38,7 @@ import { useTeacherClassSubjects } from '@/hooks/useTeacherClassSubjects';
 
 const assessmentSlots = ['VA1', 'VA2', 'VA3', 'VA4'] as const;
 type AssessmentSlot = (typeof assessmentSlots)[number];
-type LaunchMode = 'direct' | 'detailed';
-
 type GradeEntry = {
-  directValue: string;
   va1: string;
   va2: string;
   va3: string;
@@ -49,7 +47,6 @@ type GradeEntry = {
 };
 
 const createEmptyGradeEntry = (): GradeEntry => ({
-  directValue: '',
   va1: '',
   va2: '',
   va3: '',
@@ -107,10 +104,15 @@ export default function GradesPage() {
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedClassSubjectId, setSelectedClassSubjectId] = useState('');
   const [selectedPeriodId, setSelectedPeriodId] = useState('');
-  const [launchMode, setLaunchMode] = useState<LaunchMode>('detailed');
   const [gradesData, setGradesData] = useState<Record<string, GradeEntry>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showProposalModal, setShowProposalModal] = useState(false);
+  const [proposalSlot, setProposalSlot] = useState<AssessmentSlot>('VA1');
+  const [proposalTitle, setProposalTitle] = useState('');
+  const [proposalType, setProposalType] = useState('Prova');
+  const [proposalDescription, setProposalDescription] = useState('');
+  const [proposalExamDate, setProposalExamDate] = useState('');
 
   // States for listing tab
   const [listFilterClassId, setListFilterClassId] = useState('');
@@ -254,8 +256,6 @@ export default function GradesPage() {
 
         if (slot) {
           entry[slotToField[slot]] = String(grade.value);
-        } else if (!entry.directValue) {
-          entry.directValue = String(grade.value);
         }
 
         if (!entry.observations && grade.observations) {
@@ -267,7 +267,47 @@ export default function GradesPage() {
 
       return nextGrades;
     });
-  }, [currentGrades, launchMode, loadingCurrentGrades, selectedClassSubjectId, selectedPeriodId]);
+  }, [currentGrades, loadingCurrentGrades, selectedClassSubjectId, selectedPeriodId]);
+
+  const { data: approvedEvaluations = [], isLoading: loadingEvaluations } = useQuery({
+    queryKey: ['approved-evaluations', selectedClassSubjectId, selectedPeriodId],
+    queryFn: () => evaluationsService.findAll({
+      classSubjectId: selectedClassSubjectId,
+      academicPeriodId: selectedPeriodId,
+      status: 'APPROVED',
+    }),
+    enabled: Boolean(selectedClassSubjectId && selectedPeriodId),
+  });
+
+  const evaluationsBySlot = useMemo(
+    () => new Map(approvedEvaluations.map((evaluation) => [evaluation.slot, evaluation])),
+    [approvedEvaluations],
+  );
+
+  const proposalMutation = useMutation({
+    mutationFn: () => evaluationsService.create({
+      title: proposalTitle.trim(),
+      type: proposalType,
+      slot: proposalSlot,
+      classSubjectId: selectedClassSubjectId,
+      academicPeriodId: selectedPeriodId,
+      description: proposalDescription.trim() || undefined,
+      examDate: proposalExamDate || undefined,
+      maxValue: 10,
+      countsTowardsAverage: true,
+    }),
+    onSuccess: () => {
+      setShowProposalModal(false);
+      setProposalTitle('');
+      setProposalDescription('');
+      setProposalExamDate('');
+      queryClient.invalidateQueries({ queryKey: ['approved-evaluations'] });
+      toast.success('Avaliação enviada para aprovação da direção ou coordenação.');
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Não foi possível enviar a avaliação para aprovação.');
+    },
+  });
 
   const { data: launchedGrades, isLoading: loadingLaunchedGrades, refetch: refetchLaunchedGrades } = useQuery({
     queryKey: [
@@ -363,17 +403,7 @@ export default function GradesPage() {
             observations: data.observations,
           })),
       }));
-      const directGrades = Object.entries(gradesData)
-        .filter(([, data]) => data.directValue !== '')
-        .map(([studentId, data]) => ({
-          studentId,
-          value: parseFloat(data.directValue),
-          observations: data.observations,
-        }));
-
-      const hasGrades = launchMode === 'detailed'
-        ? gradesBySlot.some(({ grades }) => grades.length > 0)
-        : directGrades.length > 0;
+      const hasGrades = gradesBySlot.some(({ grades }) => grades.length > 0);
 
       if (!hasGrades) {
         throw new Error('Nenhuma nota foi preenchida');
@@ -381,57 +411,26 @@ export default function GradesPage() {
 
       const currentGradeIsSlot = (grade: (typeof currentGrades)[number]) =>
         Boolean(normalizeAssessmentSlot(grade.examType));
-      const currentGradeIsDirect = (grade: (typeof currentGrades)[number]) =>
-        grade.examType.trim().toLowerCase() === 'média bimestral';
+      await Promise.all(currentGrades.filter(currentGradeIsSlot).map((grade) => gradesService.remove(grade.id)));
 
-      if (launchMode === 'detailed') {
-        const directGradesToRemove = currentGrades
-          .filter(currentGradeIsDirect)
-          .map((grade) => gradesService.remove(grade.id));
-        const emptySlotsToRemove = currentGrades
-          .filter(currentGradeIsSlot)
-          .filter((grade) => {
-            const slot = normalizeAssessmentSlot(grade.examType);
-            const field = slot ? slotToField[slot] : null;
-            return !field || gradesData[grade.studentId]?.[field] === '';
-          })
-          .map((grade) => gradesService.remove(grade.id));
-        await Promise.all(directGradesToRemove);
-        await Promise.all(emptySlotsToRemove);
-
-        await Promise.all(
-          gradesBySlot
-            .filter(({ grades }) => grades.length > 0)
-            .map(({ examType: slot, grades }) =>
-              gradesService.createBulk({
-                examType: slot,
-                weight: 1,
-                classSubjectId: selectedClassSubjectId,
-                academicPeriodId: selectedPeriodId,
-                teacherId,
-                grades,
-              }),
-            ),
-        );
-      } else {
-        const slotGradesToRemove = currentGrades
-          .filter(currentGradeIsSlot)
-          .map((grade) => gradesService.remove(grade.id));
-        const emptyDirectGradesToRemove = currentGrades
-          .filter(currentGradeIsDirect)
-          .filter((grade) => gradesData[grade.studentId]?.directValue === '')
-          .map((grade) => gradesService.remove(grade.id));
-        await Promise.all([...slotGradesToRemove, ...emptyDirectGradesToRemove]);
-
-        await gradesService.createBulk({
-          examType: 'Média Bimestral',
-          weight: 1,
-          classSubjectId: selectedClassSubjectId,
-          academicPeriodId: selectedPeriodId,
-          teacherId,
-          grades: directGrades,
-        });
-      }
+      await Promise.all(
+        gradesBySlot
+          .filter(({ grades }) => grades.length > 0)
+          .map(({ examType: slot, grades }) => {
+            const evaluation = evaluationsBySlot.get(slot);
+            return gradesService.createBulk({
+              examType: slot,
+              evaluationId: evaluation?.id,
+              examDate: evaluation?.examDate,
+              description: evaluation?.title,
+              weight: 1,
+              classSubjectId: selectedClassSubjectId,
+              academicPeriodId: selectedPeriodId,
+              teacherId,
+              grades,
+            });
+          }),
+      );
     },
     onSuccess: () => {
       setShowConfirmDialog(false);
@@ -489,7 +488,7 @@ export default function GradesPage() {
 
   const handleGradeChange = (
     studentId: string,
-    field: keyof Pick<GradeEntry, 'directValue' | 'va1' | 'va2' | 'va3' | 'va4'>,
+    field: keyof Pick<GradeEntry, 'va1' | 'va2' | 'va3' | 'va4'>,
     value: string,
   ) => {
     const normalizedValue = clampGradeValue(value);
@@ -525,6 +524,12 @@ export default function GradesPage() {
       return;
     }
     setShowConfirmDialog(true);
+  };
+
+  const openProposalModal = () => {
+    const nextAvailableSlot = assessmentSlots.find((slot) => !evaluationsBySlot.has(slot));
+    setProposalSlot(nextAvailableSlot ?? 'VA1');
+    setShowProposalModal(true);
   };
 
   const openReview = (evaluation: any, mode: 'view' | 'publish' = 'view') => {
@@ -583,7 +588,6 @@ export default function GradesPage() {
 
   const hasUnsavedChanges = Object.values(gradesData).some(
     (entry) =>
-      entry.directValue !== '' ||
       entry.va1 !== '' ||
       entry.va2 !== '' ||
       entry.va3 !== '' ||
@@ -593,11 +597,7 @@ export default function GradesPage() {
 
   const currentAverages = Object.values(gradesData)
     .map((entry) =>
-      launchMode === 'detailed'
-        ? getDetailedAverage(entry)
-        : entry.directValue === ''
-          ? null
-          : Number(entry.directValue),
+      getDetailedAverage(entry),
     )
     .filter((value): value is number => value !== null && Number.isFinite(value));
 
@@ -619,10 +619,75 @@ export default function GradesPage() {
         title="Confirmar salvamento"
         message={`Você está prestes a salvar ${stats.filled} média${
           stats.filled > 1 ? 's' : ''
-        } ${launchMode === 'detailed' ? 'calculadas pelas VA preenchidas' : 'bimestrais'}. Deseja continuar?`}
+        } calculadas somente pelas VAs preenchidas. Deseja continuar?`}
         confirmText="Sim, salvar"
         cancelText="Cancelar"
       />
+
+      <Modal
+        isOpen={showProposalModal}
+        onClose={() => setShowProposalModal(false)}
+        title="Propor avaliação"
+        description="A proposta ficará bloqueada para lançamento até ser aprovada pela direção ou coordenação."
+        size="lg"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setShowProposalModal(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => proposalMutation.mutate()}
+              disabled={!proposalTitle.trim() || proposalMutation.isPending}
+              isLoading={proposalMutation.isPending}
+            >
+              Enviar proposta
+            </Button>
+          </div>
+        }
+      >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Select
+            label="VA"
+            value={proposalSlot}
+            onChange={(event) => setProposalSlot(event.target.value as AssessmentSlot)}
+            options={assessmentSlots.map((slot) => ({
+              value: slot,
+              label: evaluationsBySlot.has(slot) ? `${slot} (já cadastrada)` : slot,
+              disabled: evaluationsBySlot.has(slot),
+            }))}
+          />
+          <Select
+            label="Tipo"
+            value={proposalType}
+            onChange={(event) => setProposalType(event.target.value)}
+            options={['Prova', 'Atividade', 'Trabalho', 'Projeto', 'Seminário', 'Outro'].map((type) => ({
+              value: type,
+              label: type,
+            }))}
+          />
+          <Input
+            label="Título da avaliação"
+            value={proposalTitle}
+            onChange={(event) => setProposalTitle(event.target.value)}
+            placeholder="Ex.: Trabalho de Ciências"
+            required
+          />
+          <Input
+            label="Data (opcional)"
+            type="date"
+            value={proposalExamDate}
+            onChange={(event) => setProposalExamDate(event.target.value)}
+          />
+          <div className="sm:col-span-2">
+            <Input
+              label="Descrição (opcional)"
+              value={proposalDescription}
+              onChange={(event) => setProposalDescription(event.target.value)}
+              placeholder="Conteúdos ou orientações para a aprovação"
+            />
+          </div>
+        </div>
+      </Modal>
 
       <ConfirmDialog
         isOpen={showDeleteDialog}
@@ -850,14 +915,25 @@ export default function GradesPage() {
         <>
       {/* Seleção do lançamento */}
       <div className="mb-6 rounded-lg border border-[#e0e0e0] bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Lançamento de notas
-          </h2>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Selecione o bimestre e escolha entre informar a média ou detalhar pelas avaliações.
-          </p>
-        </div>
+         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+           <div>
+             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+               Lançamento de notas
+             </h2>
+             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+               Selecione o bimestre e informe a nota consolidada de cada VA aplicada.
+             </p>
+           </div>
+           <Button
+             variant="secondary"
+             size="sm"
+             leftIcon={<PlusIcon className="h-4 w-4" />}
+             onClick={openProposalModal}
+             disabled={!selectedClassSubjectId || !selectedPeriodId}
+           >
+             Propor avaliação
+           </Button>
+         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <Select
@@ -927,19 +1003,12 @@ export default function GradesPage() {
             ]}
           />
 
-          <Select
-            label="Forma de lançamento"
-            value={launchMode}
-            onChange={(e) => {
-              setLaunchMode(e.target.value as LaunchMode);
-              setGradesData({});
-            }}
-            options={[
-              { value: 'detailed', label: 'Detalhar por VA1 a VA4' },
-              { value: 'direct', label: 'Lançar média diretamente' },
-            ]}
-          />
         </div>
+        {selectedPeriodId && !loadingEvaluations && approvedEvaluations.length === 0 && (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Ainda não há uma avaliação VA aprovada para este período. A direção ou coordenação precisa cadastrá-la antes do lançamento.
+          </p>
+        )}
       </div>
 
       {/* Content */}
@@ -976,9 +1045,9 @@ export default function GradesPage() {
               </div>
             </div>
             <div className="rounded-lg border border-[#e0e0e0] bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-              <div className="mb-1 text-sm text-gray-600 dark:text-gray-400">Forma de lançamento</div>
+              <div className="mb-1 text-sm text-gray-600 dark:text-gray-400">Regra do bimestre</div>
               <div className="text-lg font-bold text-gray-900 dark:text-white">
-                {launchMode === 'detailed' ? 'VA1 a VA4' : 'Média direta'}
+                Média das VAs preenchidas
               </div>
             </div>
           </div>
@@ -1006,15 +1075,11 @@ export default function GradesPage() {
                     <tr>
                       <th className="px-4 py-3 font-medium">Aluno</th>
                       <th className="px-4 py-3 font-medium">Matrícula</th>
-                      {launchMode === 'detailed' ? (
-                        assessmentSlots.map((slot) => (
-                          <th key={slot} className="px-4 py-3 text-center font-medium">
-                            {slot}
-                          </th>
-                        ))
-                      ) : (
-                        <th className="px-4 py-3 text-center font-medium">Média bimestral</th>
-                      )}
+                      {assessmentSlots.map((slot) => (
+                        <th key={slot} className="px-4 py-3 text-center font-medium">
+                          {slot}
+                        </th>
+                      ))}
                       <th className="px-4 py-3 text-center font-medium">Média atual</th>
                       <th className="px-4 py-3 font-medium">Situação</th>
                       <th className="px-4 py-3 font-medium">Observações</th>
@@ -1023,11 +1088,7 @@ export default function GradesPage() {
                   <tbody>
                     {filteredEnrollments.map((enrollment) => {
                       const entry = gradesData[enrollment.studentId] ?? createEmptyGradeEntry();
-                      const average = launchMode === 'detailed'
-                        ? getDetailedAverage(entry)
-                        : entry.directValue === ''
-                          ? null
-                          : Number(entry.directValue);
+                      const average = getDetailedAverage(entry);
                       const isApproved = average !== null && average >= 6;
                       const isFailed = average !== null && average < 6;
                       const studentName = `${enrollment.student?.firstName || ''} ${enrollment.student?.lastName || ''}`.trim();
@@ -1059,44 +1120,28 @@ export default function GradesPage() {
                           <td className="px-4 py-3 text-gray-600 dark:text-gray-300">
                             {enrollment.student?.registrationNumber || 'Não informada'}
                           </td>
-                          {launchMode === 'detailed' ? (
-                            assessmentSlots.map((slot) => {
-                              const field = slotToField[slot];
-                              return (
-                                <td key={slot} className="px-4 py-3 text-center align-middle">
-                                  <Input
-                                    type="number"
-                                    aria-label={`${slot} de ${studentName}`}
-                                    placeholder="—"
-                                    value={entry[field]}
-                                    onChange={(e) =>
-                                      handleGradeChange(enrollment.studentId, field, e.target.value)
-                                    }
-                                    min="0"
-                                    max="10"
-                                    step="0.1"
-                                    className="mx-auto w-20 text-center"
-                                  />
-                                </td>
-                              );
-                            })
-                          ) : (
-                            <td className="px-4 py-3 text-center align-middle">
-                              <Input
-                                type="number"
-                                aria-label={`Média bimestral de ${studentName}`}
-                                placeholder="—"
-                                value={entry.directValue}
-                                onChange={(e) =>
-                                  handleGradeChange(enrollment.studentId, 'directValue', e.target.value)
-                                }
-                                min="0"
-                                max="10"
-                                step="0.1"
-                                className="mx-auto w-24 text-center"
-                              />
-                            </td>
-                          )}
+                          {assessmentSlots.map((slot) => {
+                            const field = slotToField[slot];
+                            const evaluation = evaluationsBySlot.get(slot);
+                            return (
+                              <td key={slot} className="px-4 py-3 text-center align-middle">
+                                <Input
+                                  type="number"
+                                  aria-label={`${slot} de ${studentName}`}
+                                  placeholder={evaluation ? '—' : 'Sem avaliação'}
+                                  value={entry[field]}
+                                  onChange={(e) =>
+                                    handleGradeChange(enrollment.studentId, field, e.target.value)
+                                  }
+                                  disabled={!evaluation}
+                                  min="0"
+                                  max="10"
+                                  step="0.1"
+                                  className="mx-auto w-20 text-center"
+                                />
+                              </td>
+                            );
+                          })}
                           <td className="px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">
                             {average === null ? '—' : average.toFixed(2)}
                           </td>

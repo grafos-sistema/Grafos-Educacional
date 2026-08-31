@@ -31,6 +31,7 @@ export class GradesService {
       classSubjectId,
       academicPeriodId,
       teacherId,
+      evaluationId,
       value,
       weight,
       examType,
@@ -47,6 +48,12 @@ export class GradesService {
       teacherId,
       currentUser,
     );
+    await this.validateEvaluation(
+      evaluationId,
+      classSubjectId,
+      academicPeriodId,
+      examType,
+    );
 
     const grade = await this.prisma.grade.create({
       data: {
@@ -54,6 +61,7 @@ export class GradesService {
         classSubjectId,
         academicPeriodId,
         teacherId,
+        evaluationId: evaluationId ?? null,
         value,
         weight: weight || 1.0,
         examType,
@@ -165,6 +173,7 @@ export class GradesService {
       classSubjectId,
       academicPeriodId,
       teacherId,
+      evaluationId,
       examType,
       weight,
       examDate,
@@ -211,6 +220,13 @@ export class GradesService {
       );
     }
 
+    const evaluation = await this.validateEvaluation(
+      evaluationId,
+      classSubjectId,
+      academicPeriodId,
+      examType,
+    );
+
     // Valida período letivo
     const academicPeriod = await this.prisma.academicPeriod.findUnique({
       where: { id: academicPeriodId },
@@ -256,7 +272,9 @@ export class GradesService {
               classSubjectId,
               academicPeriodId,
               teacherId,
-              examType,
+              OR: evaluationId
+                ? [{ evaluationId }, { evaluationId: null, examType }]
+                : [{ evaluationId: null, examType }],
             },
             orderBy: { updatedAt: 'desc' },
             select: { id: true },
@@ -267,11 +285,12 @@ export class GradesService {
             classSubjectId,
             academicPeriodId,
             teacherId,
+            evaluationId: evaluationId ?? null,
             value: grade.value,
-            weight: weight || 1.0,
+            weight: evaluation ? 1.0 : weight || 1.0,
             examType,
             examDate: parsedExamDate,
-            description,
+            description: description ?? evaluation?.title,
             observations: grade.observations,
           };
 
@@ -359,6 +378,49 @@ export class GradesService {
   /**
    * Valida entidades relacionadas
    */
+  private async validateEvaluation(
+    evaluationId: string | undefined,
+    classSubjectId: string,
+    academicPeriodId: string,
+    examType: string,
+  ) {
+    if (!evaluationId) return null;
+
+    const evaluation = await this.prisma.evaluation.findUnique({
+      where: { id: evaluationId },
+      select: {
+        id: true,
+        classSubjectId: true,
+        academicPeriodId: true,
+        slot: true,
+        status: true,
+        title: true,
+      },
+    });
+
+    if (!evaluation) {
+      throw new NotFoundException('Avaliação não encontrada');
+    }
+
+    if (evaluation.status !== 'APPROVED') {
+      throw new ForbiddenException(
+        'Esta avaliação ainda não foi aprovada pela direção ou coordenação',
+      );
+    }
+
+    if (
+      evaluation.classSubjectId !== classSubjectId ||
+      evaluation.academicPeriodId !== academicPeriodId ||
+      evaluation.slot !== examType
+    ) {
+      throw new BadRequestException(
+        'A avaliação não corresponde à turma, ao período ou à VA informados',
+      );
+    }
+
+    return evaluation;
+  }
+
   private async validateEntities(
     studentId: string,
     classSubjectId: string,

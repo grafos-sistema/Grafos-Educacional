@@ -27,6 +27,7 @@ import { TeacherAttendancesModule } from './teacher-attendances/teacher-attendan
 import { LessonContentsModule } from './lesson-contents/lesson-contents.module';
 import { LessonPlansModule } from './lesson-plans/lesson-plans.module';
 import { GradesModule } from './grades/grades.module';
+import { EvaluationsModule } from './evaluations/evaluations.module';
 import { AssignmentsModule } from './assignments/assignments.module';
 import { ObservationsModule } from './observations/observations.module';
 import { QuestionCategoriesModule } from './question-categories/question-categories.module';
@@ -96,6 +97,7 @@ import { TenantScopeGuard } from './auth/guards/tenant-scope.guard';
     LessonContentsModule,
     LessonPlansModule,
     GradesModule,
+    EvaluationsModule,
     AssignmentsModule,
     ObservationsModule,
     QuestionCategoriesModule,

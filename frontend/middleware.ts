@@ -18,6 +18,7 @@ const publicRoutes = [
   '/institutions', // Public institution selection page for municipality deployments
   '/register', // Public registration page
   '/pending-approval',
+  '/documentacao/login',
 ];
 
 // Auth routes that should redirect to dashboard if already logged in
@@ -39,21 +40,31 @@ const sharedAuthenticatedRoutes = ['/perfil', '/configuracoes'];
 
 // Role-based route access
 const roleRoutes: Record<string, string[]> = {
-  SUPER_ADMIN_GLOBAL: ['/super-admin', '/admin', '/coordinator', '/professor', '/aluno', '/responsaveis', '/communication'],
-  SUPER_ADMIN: ['/super-admin', '/admin', '/coordinator', '/professor', '/aluno', '/responsaveis', '/communication'],
-  DIRECTOR: ['/admin', '/super-admin/questions', '/communication'],
-  INSTITUTION_ADMIN: ['/admin', '/coordinator', '/professor', '/aluno', '/responsaveis', '/communication'],
+  SUPER_ADMIN_GLOBAL: ['/super-admin', '/admin', '/coordinator', '/professor', '/aluno', '/responsaveis', '/communication', '/documentacao'],
+  SUPER_ADMIN: ['/super-admin', '/admin', '/coordinator', '/professor', '/aluno', '/responsaveis', '/communication', '/documentacao'],
+  DIRECTOR: ['/admin', '/super-admin/questions', '/communication', '/documentacao'],
+  INSTITUTION_ADMIN: ['/admin', '/coordinator', '/professor', '/aluno', '/responsaveis', '/communication', '/documentacao'],
   // A coordenação usa as telas de disciplinas e turmas compartilhadas com a
   // administração. As permissões de criação/edição continuam sendo validadas
   // pela API, mas o middleware precisa permitir a navegação até essas telas.
-  COORDINATOR: ['/coordinator', '/admin/subjects', '/admin/classes', '/professor', '/aluno', '/communication'],
-  TEACHER: ['/professor', '/communication'],
+  COORDINATOR: ['/coordinator', '/admin/subjects', '/admin/classes', '/professor', '/aluno', '/communication', '/documentacao'],
+  TEACHER: ['/professor', '/communication', '/documentacao'],
   STUDENT: ['/aluno', '/communication'],
   PARENT: ['/responsaveis', '/communication'],
 };
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const incomingPathname = request.nextUrl.pathname;
+  const configuredDocsHost = process.env.DOCS_HOST || process.env.NEXT_PUBLIC_DOCS_HOST;
+  const requestHost = request.headers.get('host')?.split(':')[0];
+  const isDocsHost = Boolean(configuredDocsHost && requestHost === configuredDocsHost);
+  const pathname = isDocsHost
+    ? incomingPathname === '/'
+      ? '/documentacao'
+      : incomingPathname.startsWith('/documentacao')
+        ? incomingPathname
+        : `/documentacao${incomingPathname}`
+    : incomingPathname;
 
   if (
     pathname === '/sw.js' ||
@@ -85,6 +96,9 @@ export function middleware(request: NextRequest) {
     // Store the attempted URL to redirect back after login
     const loginUrl = new URL('/', request.url);
     loginUrl.searchParams.set('from', pathname);
+    if (isDocsHost) {
+      loginUrl.pathname = '/documentacao/login';
+    }
     return NextResponse.redirect(loginUrl);
   }
 
@@ -104,6 +118,12 @@ export function middleware(request: NextRequest) {
       const redirectPath = getRedirectPathByRole(userRole);
       return NextResponse.redirect(new URL(redirectPath, request.url));
     }
+  }
+
+  if (isDocsHost) {
+    const rewriteUrl = request.nextUrl.clone();
+    rewriteUrl.pathname = pathname;
+    return NextResponse.rewrite(rewriteUrl);
   }
 
   return NextResponse.next();

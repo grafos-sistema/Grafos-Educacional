@@ -17,6 +17,9 @@ export class GradeResponseDto {
   @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000' })
   teacherId: string;
 
+  @ApiProperty({ nullable: true, required: false })
+  evaluationId: string | null;
+
   @ApiProperty({ example: 8.5 })
   value: number;
 

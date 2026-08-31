@@ -307,6 +307,18 @@ const navigation: NavItem[] = [
     },
   },
   {
+    name: 'Avaliações',
+    baseRoute: '/evaluations',
+    icon: ClipboardDocumentListIcon,
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR],
+    pathMapping: {
+      [UserRole.SUPER_ADMIN]: '/admin/evaluations',
+      [UserRole.DIRECTOR]: '/admin/evaluations',
+      [UserRole.INSTITUTION_ADMIN]: '/admin/evaluations',
+      [UserRole.COORDINATOR]: '/coordinator/evaluations',
+    },
+  },
+  {
     name: 'Frequência',
     baseRoute: '/attendance',
     icon: CalendarIcon,

@@ -45,6 +45,21 @@ enum GradeStatus {
   FINAL
 }
 
+enum EvaluationStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+enum AssessmentSlot {
+  VA1
+  VA2
+  VA3
+  VA4
+}
+
 enum AssignmentStatus {
   PENDING
   SUBMITTED
@@ -161,6 +176,7 @@ model Institution {
   activities         Activity[]
   rankings           Ranking[]
   exams              Exam[]
+  evaluations        Evaluation[]
   idebTargets        IDEBTarget[]
   idebIndicators     IDEBIndicator[]
   userInstitutions   UserInstitution[] // Usuários vinculados (múltiplas instituições)
@@ -273,6 +289,8 @@ model User {
   sentNotifications    Notification[]        @relation("SentNotifications")
   lessonPlansCreated   LessonPlan[]          @relation("LessonPlanCreatedBy")
   lessonPlansApproved  LessonPlan[]          @relation("LessonPlanApprovedBy")
+  createdEvaluations   Evaluation[]          @relation("EvaluationCreatedBy")
+  approvedEvaluations  Evaluation[]          @relation("EvaluationApprovedBy")
   createdQuestions     Question[]
   reviewedRequests     ClassSubjectRequest[] @relation("ReviewedRequests")
 
@@ -569,6 +587,7 @@ model AcademicPeriod {
 
   // Relations
   grades      Grade[]
+  evaluations Evaluation[]
   lessonPlans LessonPlan[]
   attendances Attendance[]
 
@@ -711,6 +730,7 @@ model ClassSubject {
   grades             Grade[]
   lessonPlans        LessonPlan[]
   assignments        Assignment[]
+  evaluations        Evaluation[]
 
   @@unique([classId, subjectId])
   @@index([classId])
@@ -886,6 +906,42 @@ model LessonPlan {
 // GRADES & ASSESSMENTS
 // ==========================================
 
+model Evaluation {
+  id                    String           @id @default(uuid())
+  title                 String
+  type                  String
+  slot                  AssessmentSlot
+  description           String?          @db.Text
+  examDate              DateTime?
+  maxValue              Float            @default(10)
+  countsTowardsAverage  Boolean          @default(true)
+  status                EvaluationStatus @default(DRAFT)
+  rejectionReason       String?          @db.Text
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  approvedAt            DateTime?
+
+  institutionId         String
+  institution           Institution      @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  classSubjectId        String
+  classSubject          ClassSubject     @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  academicPeriodId      String
+  academicPeriod        AcademicPeriod   @relation(fields: [academicPeriodId], references: [id], onDelete: Cascade)
+  createdById            String
+  createdBy              User             @relation("EvaluationCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  approvedById           String?
+  approvedBy             User?            @relation("EvaluationApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  grades                Grade[]
+
+  @@index([institutionId])
+  @@index([classSubjectId, academicPeriodId])
+  @@index([status])
+  @@index([createdById])
+  @@unique([classSubjectId, academicPeriodId, slot])
+  @@map("evaluations")
+}
+
 model Grade {
   id                  String      @id @default(uuid())
   value               Float // Nota
@@ -909,6 +965,8 @@ model Grade {
   academicPeriod   AcademicPeriod @relation(fields: [academicPeriodId], references: [id], onDelete: Cascade)
   teacherId        String
   teacher          Teacher        @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  evaluationId     String?
+  evaluation       Evaluation?    @relation(fields: [evaluationId], references: [id], onDelete: SetNull)
 
   @@index([studentId])
   @@index([classSubjectId])
@@ -917,6 +975,7 @@ model Grade {
   @@index([studentId, classSubjectId]) // Composite index for dashboard queries
   @@index([classSubjectId, academicPeriodId, studentId])
   @@index([classSubjectId, status]) // Composite index for filtering by subject and status
+  @@index([evaluationId])
   @@map("grades")
 }
 

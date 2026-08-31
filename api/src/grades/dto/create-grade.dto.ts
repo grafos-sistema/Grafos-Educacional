@@ -45,6 +45,15 @@ export class CreateGradeDto {
   teacherId: string;
 
   @ApiProperty({
+    description: 'ID da avaliação VA cadastrada para a turma e o período',
+    required: false,
+    nullable: true,
+  })
+  @IsOptional()
+  @IsUUID('4', { message: 'ID da avaliação inválido' })
+  evaluationId?: string;
+
+  @ApiProperty({
     description: 'Valor da nota',
     example: 8.5,
     minimum: 0,

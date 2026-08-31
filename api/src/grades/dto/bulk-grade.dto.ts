@@ -72,6 +72,15 @@ export class BulkGradeDto {
   teacherId: string;
 
   @ApiProperty({
+    description: 'ID da avaliação VA cadastrada para a turma e o período',
+    required: false,
+    nullable: true,
+  })
+  @IsOptional()
+  @IsUUID('4', { message: 'ID da avaliação inválido' })
+  evaluationId?: string;
+
+  @ApiProperty({
     description: 'Tipo de avaliação',
     example: 'Prova Bimestral',
     maxLength: 100,
