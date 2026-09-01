@@ -164,6 +164,7 @@ const navigation: NavItem[] = [
     baseRoute: '/dashboard',
     icon: HomeIcon,
     roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT],
+    excludedOriginalRoles: [UserRole.SUPER_ADMIN_GLOBAL],
     pathMapping: {
       [UserRole.SUPER_ADMIN]: '/admin/dashboard',
       [UserRole.DIRECTOR]: '/admin/dashboard',
@@ -311,6 +312,7 @@ const navigation: NavItem[] = [
     baseRoute: '/evaluations',
     icon: ClipboardDocumentListIcon,
     roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR],
+    excludedOriginalRoles: [UserRole.SUPER_ADMIN_GLOBAL],
     pathMapping: {
       [UserRole.SUPER_ADMIN]: '/admin/evaluations',
       [UserRole.DIRECTOR]: '/admin/evaluations',
@@ -333,6 +335,7 @@ const navigation: NavItem[] = [
     baseRoute: '/rankings',
     icon: TrophyIcon,
     roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER, UserRole.STUDENT],
+    excludedOriginalRoles: [UserRole.SUPER_ADMIN_GLOBAL],
     pathMapping: {
       [UserRole.SUPER_ADMIN]: '/admin/rankings',
       [UserRole.DIRECTOR]: '/admin/rankings',
@@ -347,6 +350,7 @@ const navigation: NavItem[] = [
     baseRoute: '/questions',
     icon: ClipboardDocumentListIcon,
     roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.TEACHER],
+    excludedOriginalRoles: [UserRole.SUPER_ADMIN_GLOBAL],
     pathMapping: {
       [UserRole.SUPER_ADMIN]: '/super-admin/questions',
       [UserRole.DIRECTOR]: '/super-admin/questions',
@@ -358,6 +362,7 @@ const navigation: NavItem[] = [
     baseRoute: '/question-categories',
     icon: BookOpenIcon,
     roles: [UserRole.SUPER_ADMIN],
+    excludedOriginalRoles: [UserRole.SUPER_ADMIN_GLOBAL],
     pathMapping: {
       [UserRole.SUPER_ADMIN]: '/super-admin/question-categories',
     },
@@ -399,6 +404,7 @@ const navigation: NavItem[] = [
     baseRoute: '/schedules',
     icon: TableCellsIcon,
     roles: [UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.COORDINATOR, UserRole.INSTITUTION_ADMIN],
+    excludedOriginalRoles: [UserRole.SUPER_ADMIN_GLOBAL],
     pathMapping: {
       [UserRole.SUPER_ADMIN]: '/admin/teacher-schedules',
       [UserRole.DIRECTOR]: '/admin/teacher-schedules',
@@ -473,6 +479,7 @@ const navigation: NavItem[] = [
     baseRoute: '/communication',
     icon: BellIcon,
     roles: [UserRole.SUPER_ADMIN_GLOBAL, UserRole.SUPER_ADMIN, UserRole.DIRECTOR, UserRole.INSTITUTION_ADMIN, UserRole.COORDINATOR, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT],
+    excludedOriginalRoles: [UserRole.SUPER_ADMIN_GLOBAL],
     pathMapping: {
       [UserRole.SUPER_ADMIN_GLOBAL]: '/communication',
       [UserRole.SUPER_ADMIN]: '/communication',
