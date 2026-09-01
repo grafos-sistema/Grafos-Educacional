@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/user.types';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -93,6 +94,12 @@ export default function ResetPasswordPage() {
       setSuccessMessage('Senha atualizada com sucesso. Voce ja pode entrar com a nova senha.');
 
       if (isAuthenticatedPasswordChange) {
+        const currentUser = useAuthStore.getState().user;
+        const loginRoute =
+          currentUser?.role === UserRole.SUPER_ADMIN_GLOBAL
+            ? '/security'
+            : '/login/gestao';
+
         // A troca obrigatória conclui o primeiro acesso. Encerrar a sessão
         // evita que o usuário continue com a sessão inicial e força um novo
         // login usando a senha recém-definida.
@@ -100,7 +107,7 @@ export default function ResetPasswordPage() {
         clearAuthStore();
 
         window.setTimeout(() => {
-          router.replace('/login/gestao');
+          router.replace(loginRoute);
         }, 1200);
       } else if (hasAuthenticatedSession) {
         window.setTimeout(() => {

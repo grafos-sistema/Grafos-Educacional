@@ -65,6 +65,11 @@ export default function SuperAdminLoginPage() {
         throw new Error('Somente usuarios globais autorizados podem acessar /security.');
       }
 
+      if (currentUser.mustChangePassword) {
+        router.replace('/reset-password');
+        return;
+      }
+
       router.replace('/super-admin/dashboard');
     } catch (err: unknown) {
       setError(

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   useState,
@@ -8,15 +8,21 @@ import {
   type ChangeEvent,
   type DragEvent,
   type ReactNode,
-} from 'react';
-import { useRouter } from 'next/navigation';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'react-hot-toast';
-import { UseFormReturn } from 'react-hook-form';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
-import { MaskedInput, masks, formatCPF } from '@/components/ui/MaskedInput';
-import { Button } from '@/components/ui/Button';
+} from "react";
+import { useRouter } from "next/navigation";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-hot-toast";
+import { UseFormReturn } from "react-hook-form";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import {
+  MaskedInput,
+  masks,
+  formatCPF,
+  removeMask,
+  validateCPF,
+} from "@/components/ui/MaskedInput";
+import { Button } from "@/components/ui/Button";
 import {
   PlusIcon,
   TrashIcon,
@@ -32,119 +38,119 @@ import {
   CameraIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
-} from '@heroicons/react/24/outline';
-import { observationsService } from '@/services/observations.service';
-import { useAuthStore } from '@/stores/authStore';
-import { BRAZILIAN_UF_OPTIONS } from '@/lib/constants/document-options';
-import { Gender, UserRole } from '@/types/user.types';
-import { AvatarCropModal } from '@/components/ui/AvatarCropModal';
-import { Modal } from '@/components/ui/Modal';
-import { Dropdown } from '@/components/ui/HeroDropdown';
-import { presentFriendlyError } from '@/lib/friendly-error';
-import { supabase } from '@/lib/supabase';
-import { useCepAutofill } from '@/hooks/useCepAutofill';
-import { coursesService } from '@/services/courses.service';
-import { academicYearsService } from '@/services/academic-years.service';
-import { classesService } from '@/services/classes.service';
+} from "@heroicons/react/24/outline";
+import { observationsService } from "@/services/observations.service";
+import { useAuthStore } from "@/stores/authStore";
+import { BRAZILIAN_UF_OPTIONS } from "@/lib/constants/document-options";
+import { Gender, UserRole } from "@/types/user.types";
+import { AvatarCropModal } from "@/components/ui/AvatarCropModal";
+import { Modal } from "@/components/ui/Modal";
+import { Dropdown } from "@/components/ui/HeroDropdown";
+import { presentFriendlyError } from "@/lib/friendly-error";
+import { supabase } from "@/lib/supabase";
+import { useCepAutofill } from "@/hooks/useCepAutofill";
+import { coursesService } from "@/services/courses.service";
+import { academicYearsService } from "@/services/academic-years.service";
+import { classesService } from "@/services/classes.service";
 import {
   classShiftOptions,
   getClassSeriesOptions,
-} from '@/lib/constants/class-options';
-import { parseStudentTagList } from '@/lib/student-form-utils';
+} from "@/lib/constants/class-options";
+import { parseStudentTagList } from "@/lib/student-form-utils";
 import {
   STUDENT_DOCUMENT_DEFINITIONS,
   type PendingStudentDocumentUpload,
   type StudentDocumentKey,
-} from '@/types/student-document.types';
+} from "@/types/student-document.types";
 
 const tabs = [
   {
-    id: 'pessoais',
-    label: 'Dados Pessoais',
+    id: "pessoais",
+    label: "Dados Pessoais",
     icon: UserIcon,
-    subtitle: 'Informações básicas do aluno',
+    subtitle: "Informações básicas do aluno",
   },
   {
-    id: 'matricula',
-    label: 'Matrícula',
+    id: "matricula",
+    label: "Matrícula",
     icon: AcademicCapIcon,
-    subtitle: 'Dados acadêmicos e de matrícula',
+    subtitle: "Dados acadêmicos e de matrícula",
   },
   {
-    id: 'endereco',
-    label: 'Endereço',
+    id: "endereco",
+    label: "Endereço",
     icon: MapPinIcon,
-    subtitle: 'Endereço residencial do aluno',
+    subtitle: "Endereço residencial do aluno",
   },
   {
-    id: 'contato',
-    label: 'Contato',
+    id: "contato",
+    label: "Contato",
     icon: PhoneIcon,
-    subtitle: 'Informações de contato do aluno',
+    subtitle: "Informações de contato do aluno",
   },
   {
-    id: 'responsaveis',
-    label: 'Responsáveis',
+    id: "responsaveis",
+    label: "Responsáveis",
     icon: UserGroupIcon,
-    subtitle: 'Responsáveis legais pelo aluno',
+    subtitle: "Responsáveis legais pelo aluno",
   },
   {
-    id: 'saude',
-    label: 'Saúde',
+    id: "saude",
+    label: "Saúde",
     icon: HeartIcon,
-    subtitle: 'Informações de saúde e prontuário',
+    subtitle: "Informações de saúde e prontuário",
   },
   {
-    id: 'transporte',
-    label: 'Transporte',
+    id: "transporte",
+    label: "Transporte",
     icon: TruckIcon,
-    subtitle: 'Transporte escolar utilizado',
+    subtitle: "Transporte escolar utilizado",
   },
   {
-    id: 'documentos',
-    label: 'Documentos',
+    id: "documentos",
+    label: "Documentos",
     icon: DocumentTextIcon,
-    subtitle: 'Documentos do aluno',
+    subtitle: "Documentos do aluno",
   },
   {
-    id: 'acesso',
-    label: 'Acesso',
+    id: "acesso",
+    label: "Acesso",
     icon: ShieldCheckIcon,
-    subtitle: 'Senha e credenciais do aluno',
+    subtitle: "Senha e credenciais do aluno",
   },
 ];
 
 const genderOptions = [
-  { value: Gender.MALE, label: 'Masculino' },
-  { value: Gender.FEMALE, label: 'Feminino' },
-  { value: Gender.OTHER, label: 'Outro' },
-  { value: Gender.NOT_INFORMED, label: 'Não informado' },
+  { value: Gender.MALE, label: "Masculino" },
+  { value: Gender.FEMALE, label: "Feminino" },
+  { value: Gender.OTHER, label: "Outro" },
+  { value: Gender.NOT_INFORMED, label: "Não informado" },
 ];
 
 const situationOptions = [
-  { value: 'ATIVO', label: 'Ativo' },
-  { value: 'INATIVO', label: 'Inativo' },
-  { value: 'TRANSFERIDO', label: 'Transferido' },
-  { value: 'TRANCADO', label: 'Trancado' },
-  { value: 'CONCLUIDO', label: 'Concluído' },
+  { value: "ATIVO", label: "Ativo" },
+  { value: "INATIVO", label: "Inativo" },
+  { value: "TRANSFERIDO", label: "Transferido" },
+  { value: "TRANCADO", label: "Trancado" },
+  { value: "CONCLUIDO", label: "Concluído" },
 ];
 
 const responsibleRelationshipOptions = [
-  'Pai',
-  'Mãe',
-  'Padrasto',
-  'Madrasta',
-  'Tio',
-  'Tia',
-  'Avô',
-  'Avó',
-  'Primo',
-  'Prima',
-  'Irmão',
-  'Irmã',
+  "Pai",
+  "Mãe",
+  "Padrasto",
+  "Madrasta",
+  "Tio",
+  "Tia",
+  "Avô",
+  "Avó",
+  "Primo",
+  "Prima",
+  "Irmão",
+  "Irmã",
 ].map((value) => ({ value, label: value }));
 
-const adultRequiredRelationships = new Set(['Primo', 'Prima', 'Irmão', 'Irmã']);
+const adultRequiredRelationships = new Set(["Primo", "Prima", "Irmão", "Irmã"]);
 
 function hasMinimumAge(birthDate: string, minimumAge: number) {
   const date = new Date(`${birthDate}T00:00:00`);
@@ -166,14 +172,13 @@ interface StudentFormTabsProps {
     name: string;
   }>;
   isLoadingInstitutions?: boolean;
-  mode?: 'create' | 'edit';
-  generatedInitialPassword?: string;
+  mode?: "create" | "edit";
   passwordField?: React.ReactNode;
   studentProfileId?: string;
 }
 
 type StudentObservationType =
-  'POSITIVE' | 'NEUTRAL' | 'ATTENTION' | 'DISCIPLINARY';
+  "POSITIVE" | "NEUTRAL" | "ATTENTION" | "DISCIPLINARY";
 
 type StudentObservation = {
   id: string;
@@ -200,22 +205,16 @@ const observationTypeOptions: Array<{
   value: StudentObservationType;
   label: string;
 }> = [
-  { value: 'POSITIVE', label: 'Positiva' },
-  { value: 'NEUTRAL', label: 'Neutra' },
-  { value: 'ATTENTION', label: 'Atenção' },
-  { value: 'DISCIPLINARY', label: 'Disciplinar' },
+  { value: "POSITIVE", label: "Positiva" },
+  { value: "NEUTRAL", label: "Neutra" },
+  { value: "ATTENTION", label: "Atenção" },
+  { value: "DISCIPLINARY", label: "Disciplinar" },
 ];
 
-function getInitialPasswordFromEmail(email?: string) {
-  if (!email) return '';
-  const [localPart] = email.trim().toLowerCase().split('@');
-  return localPart ? `${localPart}@Grafos` : '';
-}
-
 const STUDENT_DOCUMENT_ACCEPTED_TYPES = [
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
 ];
 
 const MAX_STUDENT_DOCUMENT_SIZE = 5 * 1024 * 1024;
@@ -268,7 +267,7 @@ function TagInput({
   onChange: (value: string[]) => void;
   placeholder?: string;
 }) {
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState("");
 
   const addTag = (rawValue: string) => {
     const nextValue = rawValue.trim();
@@ -278,7 +277,7 @@ function TagInput({
       (item) => item.toLocaleLowerCase() === nextValue.toLocaleLowerCase(),
     );
     if (!exists) onChange([...value, nextValue]);
-    setDraft('');
+    setDraft("");
   };
 
   return (
@@ -308,11 +307,11 @@ function TagInput({
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ',') {
+              if (event.key === "Enter" || event.key === ",") {
                 event.preventDefault();
                 addTag(draft);
               } else if (
-                event.key === 'Backspace' &&
+                event.key === "Backspace" &&
                 !draft &&
                 value.length > 0
               ) {
@@ -321,7 +320,7 @@ function TagInput({
             }}
             onBlur={() => addTag(draft)}
             placeholder={
-              value.length === 0 ? placeholder : 'Digite e pressione Enter'
+              value.length === 0 ? placeholder : "Digite e pressione Enter"
             }
             className="min-w-[150px] flex-1 border-0 bg-transparent p-0 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-white"
           />
@@ -338,13 +337,12 @@ export function StudentFormTabs({
   form,
   availableInstitutions,
   isLoadingInstitutions = false,
-  mode = 'create',
-  generatedInitialPassword = '',
+  mode = "create",
   passwordField,
   studentProfileId,
 }: StudentFormTabsProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('pessoais');
+  const [activeTab, setActiveTab] = useState("pessoais");
   const {
     register,
     formState: { errors },
@@ -358,28 +356,28 @@ export function StudentFormTabs({
   const currentRole = currentUser?.activeProfile ?? currentUser?.role;
   const isDirector = currentRole === UserRole.DIRECTOR;
 
-  const usaTransporte = watch('usaTransporte');
-  const watchResponsaveis = watch('responsaveis');
-  const selectedInstitutionId = watch('institutionId');
-  const selectedAcademicYearName = watch('anoLetivo') as string | undefined;
-  const selectedCourseName = watch('curso') as string | undefined;
-  const selectedGrade = watch('serie') as string | undefined;
-  const selectedClassName = watch('turma') as string | undefined;
-  const selectedClassId = watch('turmaId') as string | undefined;
-  const selectedShift = watch('turno') as string | undefined;
-  const selectedPhoto = watch('photo');
-  const currentAvatar = watch('avatar');
-  const firstName = watch('firstName');
-  const lastName = watch('lastName');
-  const email = watch('email');
-  const cpf = watch('cpf');
-  const password = watch('password');
-  const bloodType = watch('tipoSanguineo');
-  const birthDate = watch('birthDate') as string | undefined;
-  const state = watch('state') as string | undefined;
-  const dataMatricula = watch('dataMatricula') as string | undefined;
-  const situacao = watch('situacao') as string | undefined;
-  const tipoTransporte = watch('tipoTransporte') as string | undefined;
+  const usaTransporte = watch("usaTransporte");
+  const watchResponsaveis = watch("responsaveis");
+  const selectedInstitutionId = watch("institutionId");
+  const selectedAcademicYearName = watch("anoLetivo") as string | undefined;
+  const selectedCourseName = watch("curso") as string | undefined;
+  const selectedGrade = watch("serie") as string | undefined;
+  const selectedClassName = watch("turma") as string | undefined;
+  const selectedClassId = watch("turmaId") as string | undefined;
+  const selectedShift = watch("turno") as string | undefined;
+  const selectedPhoto = watch("photo");
+  const currentAvatar = watch("avatar");
+  const firstName = watch("firstName");
+  const lastName = watch("lastName");
+  const email = watch("email");
+  const cpf = watch("cpf");
+  const password = watch("password");
+  const bloodType = watch("tipoSanguineo");
+  const birthDate = watch("birthDate") as string | undefined;
+  const state = watch("state") as string | undefined;
+  const dataMatricula = watch("dataMatricula") as string | undefined;
+  const situacao = watch("situacao") as string | undefined;
+  const tipoTransporte = watch("tipoTransporte") as string | undefined;
   const emergencyContacts = useMemo<
     Array<{ index: number; name: string; phone: string; selected: boolean }>
   >(
@@ -387,21 +385,21 @@ export function StudentFormTabs({
       (watchResponsaveis ?? [])
         .map((item: any, index: number) => ({
           index,
-          name: String(item?.nome ?? '').trim(),
-          phone: String(item?.celular ?? '').trim(),
+          name: String(item?.nome ?? "").trim(),
+          phone: String(item?.celular ?? "").trim(),
           selected: Boolean(item?.contatoEmergencia),
         }))
         .filter((item: { name: string }) => item.name),
     [watchResponsaveis],
   );
-  const watchedDocuments = watch('documents') as
+  const watchedDocuments = watch("documents") as
     PendingStudentDocumentUpload[] | undefined;
   const effectiveInstitutionId =
     selectedInstitutionId || currentUser?.institutionId;
 
   const { data: academicYearsData, isLoading: isLoadingAcademicYears } =
     useQuery({
-      queryKey: ['student-form-academic-years', effectiveInstitutionId],
+      queryKey: ["student-form-academic-years", effectiveInstitutionId],
       queryFn: () =>
         academicYearsService.findAll({
           institutionId: effectiveInstitutionId,
@@ -412,7 +410,7 @@ export function StudentFormTabs({
     });
 
   const { data: coursesData, isLoading: isLoadingCourses } = useQuery({
-    queryKey: ['student-form-courses', effectiveInstitutionId],
+    queryKey: ["student-form-courses", effectiveInstitutionId],
     queryFn: () =>
       coursesService.findAll({
         institutionId: effectiveInstitutionId,
@@ -426,7 +424,7 @@ export function StudentFormTabs({
     () =>
       (academicYearsData?.data ?? []).find(
         (item) =>
-          String(item.year) === String(selectedAcademicYearName ?? '') ||
+          String(item.year) === String(selectedAcademicYearName ?? "") ||
           item.name === selectedAcademicYearName,
       ),
     [academicYearsData?.data, selectedAcademicYearName],
@@ -442,7 +440,7 @@ export function StudentFormTabs({
 
   const { data: classesData, isLoading: isLoadingClasses } = useQuery({
     queryKey: [
-      'student-form-classes',
+      "student-form-classes",
       effectiveInstitutionId,
       selectedAcademicYear?.id,
       selectedCourse?.id,
@@ -470,7 +468,7 @@ export function StudentFormTabs({
       ),
     );
     return [
-      { value: '', label: 'Selecione a série/ano' },
+      { value: "", label: "Selecione a série/ano" },
       ...grades.map((grade) => ({ value: grade, label: grade })),
     ];
   }, [classesData?.data, selectedCourse?.level]);
@@ -480,10 +478,10 @@ export function StudentFormTabs({
       (item) => !selectedGrade || item.grade === selectedGrade,
     );
     return [
-      { value: '', label: 'Selecione uma turma' },
+      { value: "", label: "Selecione uma turma" },
       ...classes.map((item) => ({
         value: item.id,
-        label: `${item.name}${item.shift ? ` • ${item.shift}` : ''}`,
+        label: `${item.name}${item.shift ? ` • ${item.shift}` : ""}`,
       })),
     ];
   }, [classesData?.data, selectedGrade]);
@@ -496,23 +494,23 @@ export function StudentFormTabs({
       (item) => item.name === selectedClassName,
     );
     if (matchingClass) {
-      setValue('turmaId', matchingClass.id, { shouldDirty: false });
+      setValue("turmaId", matchingClass.id, { shouldDirty: false });
     }
   }, [classesData?.data, selectedClassId, selectedClassName, setValue]);
 
   const { fillAddressFromCep } = useCepAutofill({
     form,
     fields: {
-      zipCode: 'zipCode',
-      address: 'address',
-      city: 'city',
-      state: 'state',
-      bairro: 'bairro',
-      complemento: 'complemento',
+      zipCode: "zipCode",
+      address: "address",
+      city: "city",
+      state: "state",
+      bairro: "bairro",
+      complemento: "complemento",
     },
   });
   const [selectedObservationId, setSelectedObservationId] = useState<
-    string | 'new' | null
+    string | "new" | null
   >(null);
   const [observationDraft, setObservationDraft] = useState<{
     title: string;
@@ -520,9 +518,9 @@ export function StudentFormTabs({
     type: StudentObservationType;
     isPrivate: boolean;
   }>({
-    title: '',
-    description: '',
-    type: 'NEUTRAL',
+    title: "",
+    description: "",
+    type: "NEUTRAL",
     isPrivate: false,
   });
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
@@ -540,11 +538,11 @@ export function StudentFormTabs({
   const [selectedUploadedDocument, setSelectedUploadedDocument] =
     useState<PendingStudentDocumentUpload | null>(null);
   const [documentActionLoading, setDocumentActionLoading] = useState<
-    'view' | 'download' | null
+    "view" | "download" | null
   >(null);
 
   const [responsaveis, setResponsaveis] = useState(() => {
-    const initial = form.getValues('responsaveis');
+    const initial = form.getValues("responsaveis");
     return initial && initial.length > 0
       ? initial.map((r: any, i: number) => ({ id: r.id || i + 1 }))
       : [{ id: 1 }];
@@ -556,10 +554,10 @@ export function StudentFormTabs({
       currentUser?.institutionId &&
       selectedInstitutionId !== currentUser.institutionId
     ) {
-      setValue('institutionId', currentUser.institutionId, {
+      setValue("institutionId", currentUser.institutionId, {
         shouldValidate: true,
       });
-      setValue('institutionIds', [currentUser.institutionId], {
+      setValue("institutionIds", [currentUser.institutionId], {
         shouldValidate: true,
       });
     }
@@ -593,8 +591,8 @@ export function StudentFormTabs({
     );
     if (!selectedInstitution) return;
 
-    if (form.getValues('escola') !== selectedInstitution.name) {
-      setValue('escola', selectedInstitution.name, { shouldValidate: true });
+    if (form.getValues("escola") !== selectedInstitution.name) {
+      setValue("escola", selectedInstitution.name, { shouldValidate: true });
     }
   }, [availableInstitutions, form, selectedInstitutionId, setValue]);
 
@@ -602,7 +600,7 @@ export function StudentFormTabs({
     const resolveSelectedFile = () => {
       if (!selectedPhoto) return null;
       if (
-        typeof FileList !== 'undefined' &&
+        typeof FileList !== "undefined" &&
         selectedPhoto instanceof FileList
       ) {
         return selectedPhoto.item(0);
@@ -624,25 +622,25 @@ export function StudentFormTabs({
     };
   }, [selectedPhoto]);
 
-  const photoRegister = register('photo');
+  const photoRegister = register("photo");
   const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextFile = event.target.files?.[0];
     if (!nextFile) return;
-    if (!nextFile.type.startsWith('image/')) {
-      event.target.value = '';
-      toast.error('Selecione um arquivo de imagem válido.');
+    if (!nextFile.type.startsWith("image/")) {
+      event.target.value = "";
+      toast.error("Selecione um arquivo de imagem válido.");
       return;
     }
     setPendingPhotoFile(nextFile);
     setIsCropModalOpen(true);
-    event.target.value = '';
+    event.target.value = "";
   };
 
   const handleDeletePhoto = () => {
-    setValue('avatar', null as never, { shouldDirty: true });
-    setValue('photo', undefined as never, { shouldDirty: true });
-    if (photoInputRef.current) photoInputRef.current.value = '';
-    toast.success('Foto removida. Salve o cadastro para confirmar.');
+    setValue("avatar", null as never, { shouldDirty: true });
+    setValue("photo", undefined as never, { shouldDirty: true });
+    if (photoInputRef.current) photoInputRef.current.value = "";
+    toast.success("Foto removida. Salve o cadastro para confirmar.");
   };
 
   const canManageObservations = useMemo(
@@ -656,15 +654,15 @@ export function StudentFormTabs({
 
   const { data: observations = [], isLoading: isLoadingObservations } =
     useQuery({
-      queryKey: ['student-observations-inline', studentProfileId],
+      queryKey: ["student-observations-inline", studentProfileId],
       queryFn: async () =>
         (await observationsService.findByStudent(
           studentProfileId as string,
         )) as unknown as StudentObservation[],
       enabled:
-        mode === 'edit' &&
+        mode === "edit" &&
         Boolean(studentProfileId) &&
-        activeTab === 'observacoes',
+        activeTab === "observacoes",
       retry: false,
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
@@ -672,23 +670,23 @@ export function StudentFormTabs({
     });
 
   useEffect(() => {
-    if (mode !== 'edit' || !studentProfileId) return;
+    if (mode !== "edit" || !studentProfileId) return;
     if (selectedObservationId) return;
     if (observations.length === 0) return;
     setSelectedObservationId(observations[0].id);
   }, [mode, observations, selectedObservationId, studentProfileId]);
 
   const selectedObservation =
-    selectedObservationId && selectedObservationId !== 'new'
+    selectedObservationId && selectedObservationId !== "new"
       ? (observations.find((item) => item.id === selectedObservationId) ?? null)
       : null;
 
   useEffect(() => {
-    if (selectedObservationId === 'new') {
+    if (selectedObservationId === "new") {
       setObservationDraft({
-        title: '',
-        description: '',
-        type: 'NEUTRAL',
+        title: "",
+        description: "",
+        type: "NEUTRAL",
         isPrivate: false,
       });
       return;
@@ -697,9 +695,9 @@ export function StudentFormTabs({
     if (!selectedObservation) return;
 
     setObservationDraft({
-      title: selectedObservation.title ?? '',
-      description: selectedObservation.description ?? '',
-      type: selectedObservation.type ?? 'NEUTRAL',
+      title: selectedObservation.title ?? "",
+      description: selectedObservation.description ?? "",
+      type: selectedObservation.type ?? "NEUTRAL",
       isPrivate: Boolean(selectedObservation.isPrivate),
     });
   }, [selectedObservation, selectedObservationId]);
@@ -708,7 +706,7 @@ export function StudentFormTabs({
     mutationFn: async () => {
       if (!studentProfileId)
         throw new Error(
-          'Aluno ainda não possui perfil para receber observações.',
+          "Aluno ainda não possui perfil para receber observações.",
         );
       return observationsService.create({
         studentId: studentProfileId,
@@ -720,15 +718,15 @@ export function StudentFormTabs({
     },
     onSuccess: (createdObservation: any) => {
       queryClient.invalidateQueries({
-        queryKey: ['student-observations-inline', studentProfileId],
+        queryKey: ["student-observations-inline", studentProfileId],
       });
       setSelectedObservationId(createdObservation.id);
-      toast.success('Anotação salva com sucesso.');
+      toast.success("Anotação salva com sucesso.");
     },
     onError: (error: any) => {
       presentFriendlyError(
         error,
-        'Nao foi possivel salvar a anotacao agora. Tente novamente.',
+        "Nao foi possivel salvar a anotacao agora. Tente novamente.",
       );
     },
   });
@@ -736,7 +734,7 @@ export function StudentFormTabs({
   const updateObservationMutation = useMutation({
     mutationFn: async () => {
       if (!selectedObservation)
-        throw new Error('Selecione uma anotação para atualizar.');
+        throw new Error("Selecione uma anotação para atualizar.");
       return observationsService.update(selectedObservation.id, {
         title: observationDraft.title.trim(),
         description: observationDraft.description.trim(),
@@ -746,29 +744,27 @@ export function StudentFormTabs({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['student-observations-inline', studentProfileId],
+        queryKey: ["student-observations-inline", studentProfileId],
       });
-      toast.success('Anotação atualizada com sucesso.');
+      toast.success("Anotação atualizada com sucesso.");
     },
     onError: (error: any) => {
       presentFriendlyError(
         error,
-        'Nao foi possivel atualizar a anotacao agora. Tente novamente.',
+        "Nao foi possivel atualizar a anotacao agora. Tente novamente.",
       );
     },
   });
 
   const activeIndex = tabs.findIndex((tab) => tab.id === activeTab);
-  const activeObservationTab = tabs.find((tab) => tab.id === 'observacoes');
-  const activeAccessTab = tabs.find((tab) => tab.id === 'acesso');
+  const activeObservationTab = tabs.find((tab) => tab.id === "observacoes");
+  const activeAccessTab = tabs.find((tab) => tab.id === "acesso");
   const studentDisplayName =
-    [firstName, lastName].filter(Boolean).join(' ').trim() || 'Novo aluno';
-  const resolvedAvatarSrc = photoPreviewUrl || currentAvatar || '';
-  const studentSummary = cpf?.trim() ? formatCPF(cpf.trim()) : '';
+    [firstName, lastName].filter(Boolean).join(" ").trim() || "Novo aluno";
+  const resolvedAvatarSrc = photoPreviewUrl || currentAvatar || "";
+  const studentSummary = cpf?.trim() ? formatCPF(cpf.trim()) : "";
   const bloodTypeBadge =
-    bloodType && bloodType !== 'NAO_INFORMADO' ? bloodType : null;
-  const resolvedInitialPassword =
-    generatedInitialPassword || getInitialPasswordFromEmail(email);
+    bloodType && bloodType !== "NAO_INFORMADO" ? bloodType : null;
   const documentDefinitionsByKey = useMemo(
     () =>
       new Map(
@@ -792,13 +788,13 @@ export function StudentFormTabs({
       return {
         key: definition.key,
         label: definition.label,
-        fileName: document?.fileName ?? '',
+        fileName: document?.fileName ?? "",
         path: document?.path,
         mimeType: document?.mimeType,
         size: document?.size,
         uploadedAt: document?.uploadedAt,
         file: document?.file,
-        status: document?.status ?? 'PENDING',
+        status: document?.status ?? "PENDING",
       } satisfies PendingStudentDocumentUpload;
     });
   }, [watchedDocuments]);
@@ -810,30 +806,30 @@ export function StudentFormTabs({
   const documentOptionsForPicker =
     pendingDocuments.length > 0 ? pendingDocuments : resolvedDocuments;
   const hasLocalDocuments = resolvedDocuments.some(
-    (document) => document.status === 'LOCAL',
+    (document) => document.status === "LOCAL",
   );
 
   const formatObservationDate = (value?: string) => {
-    if (!value) return 'Sem data';
+    if (!value) return "Sem data";
 
     const parsedDate = new Date(value);
-    if (Number.isNaN(parsedDate.getTime())) return 'Sem data';
+    if (Number.isNaN(parsedDate.getTime())) return "Sem data";
 
-    return parsedDate.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
+    return parsedDate.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     });
   };
 
   const getObservationAuthor = (observation?: StudentObservation | null) =>
     observation?.teacher?.user?.name ||
     observation?.teacher?.user?.email ||
-    'Autor não identificado';
+    "Autor não identificado";
 
   const upsertStudentDocument = (document: PendingStudentDocumentUpload) => {
-    const currentDocuments = Array.isArray(getValues('documents'))
-      ? (getValues('documents') as PendingStudentDocumentUpload[])
+    const currentDocuments = Array.isArray(getValues("documents"))
+      ? (getValues("documents") as PendingStudentDocumentUpload[])
       : [];
 
     const nextDocuments = sortStudentDocuments([
@@ -841,7 +837,7 @@ export function StudentFormTabs({
       document,
     ]);
 
-    setValue('documents', nextDocuments, {
+    setValue("documents", nextDocuments, {
       shouldDirty: true,
       shouldValidate: true,
     });
@@ -849,12 +845,12 @@ export function StudentFormTabs({
 
   const validateStudentDocumentFile = (file: File) => {
     if (!STUDENT_DOCUMENT_ACCEPTED_TYPES.includes(file.type)) {
-      toast.error('Envie um arquivo em PDF, JPG ou PNG.');
+      toast.error("Envie um arquivo em PDF, JPG ou PNG.");
       return false;
     }
 
     if (file.size > MAX_STUDENT_DOCUMENT_SIZE) {
-      toast.error('Cada documento pode ter no máximo 5MB.');
+      toast.error("Cada documento pode ter no máximo 5MB.");
       return false;
     }
 
@@ -869,7 +865,7 @@ export function StudentFormTabs({
       return;
     }
 
-    const label = documentDefinitionsByKey.get(documentKey) ?? 'Documento';
+    const label = documentDefinitionsByKey.get(documentKey) ?? "Documento";
 
     upsertStudentDocument({
       key: documentKey,
@@ -878,7 +874,7 @@ export function StudentFormTabs({
       mimeType: file.type,
       size: file.size,
       uploadedAt: new Date().toISOString(),
-      status: 'LOCAL',
+      status: "LOCAL",
       file,
     });
 
@@ -886,9 +882,9 @@ export function StudentFormTabs({
     setSelectedDocumentKey(null);
 
     toast.success(
-      mode === 'create'
-        ? 'Documento separado para envio. Ao salvar o aluno, o arquivo sera anexado.'
-        : 'Documento pronto para envio. Salve as alteracoes para concluir o anexo.',
+      mode === "create"
+        ? "Documento separado para envio. Ao salvar o aluno, o arquivo sera anexado."
+        : "Documento pronto para envio. Salve as alteracoes para concluir o anexo.",
     );
   };
 
@@ -916,12 +912,12 @@ export function StudentFormTabs({
   const handleDocumentInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextFile = event.target.files?.[0];
     if (!nextFile || !selectedDocumentKey) {
-      event.target.value = '';
+      event.target.value = "";
       return;
     }
 
     handleDocumentFileSelection(nextFile, selectedDocumentKey);
-    event.target.value = '';
+    event.target.value = "";
   };
 
   const handleDocumentDrop = (event: DragEvent<HTMLDivElement>) => {
@@ -932,7 +928,7 @@ export function StudentFormTabs({
     if (droppedFiles.length === 0) return;
 
     if (droppedFiles.length > 1) {
-      toast.error('Envie um documento por vez para escolher o tipo correto.');
+      toast.error("Envie um documento por vez para escolher o tipo correto.");
       return;
     }
 
@@ -942,7 +938,7 @@ export function StudentFormTabs({
   const handleExistingDocumentAction = (
     document: PendingStudentDocumentUpload,
   ) => {
-    if (document.status === 'UPLOADED' && document.path) {
+    if (document.status === "UPLOADED" && document.path) {
       setSelectedUploadedDocument(document);
       return;
     }
@@ -954,11 +950,11 @@ export function StudentFormTabs({
     document: PendingStudentDocumentUpload,
   ) => {
     if (!document.path) {
-      throw new Error('O caminho do anexo nao foi encontrado.');
+      throw new Error("O caminho do anexo nao foi encontrado.");
     }
 
     const { data, error } = await supabase.storage
-      .from('student-documents')
+      .from("student-documents")
       .download(document.path);
 
     if (error) {
@@ -971,16 +967,16 @@ export function StudentFormTabs({
   const handleViewUploadedDocument = async () => {
     if (!selectedUploadedDocument) return;
 
-    setDocumentActionLoading('view');
+    setDocumentActionLoading("view");
 
     try {
       const blob = await loadUploadedDocumentBlob(selectedUploadedDocument);
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener,noreferrer');
+      window.open(url, "_blank", "noopener,noreferrer");
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
       setSelectedUploadedDocument(null);
     } catch (error) {
-      presentFriendlyError(error, 'Nao foi possivel abrir o anexo agora.');
+      presentFriendlyError(error, "Nao foi possivel abrir o anexo agora.");
     } finally {
       setDocumentActionLoading(null);
     }
@@ -989,12 +985,12 @@ export function StudentFormTabs({
   const handleDownloadUploadedDocument = async () => {
     if (!selectedUploadedDocument) return;
 
-    setDocumentActionLoading('download');
+    setDocumentActionLoading("download");
 
     try {
       const blob = await loadUploadedDocumentBlob(selectedUploadedDocument);
       const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
       link.download =
         selectedUploadedDocument.fileName ||
@@ -1005,18 +1001,18 @@ export function StudentFormTabs({
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
       setSelectedUploadedDocument(null);
     } catch (error) {
-      presentFriendlyError(error, 'Nao foi possivel baixar o anexo agora.');
+      presentFriendlyError(error, "Nao foi possivel baixar o anexo agora.");
     } finally {
       setDocumentActionLoading(null);
     }
   };
 
   const handleStartNewObservation = () => {
-    setSelectedObservationId('new');
+    setSelectedObservationId("new");
     setObservationDraft({
-      title: '',
-      description: '',
-      type: 'NEUTRAL',
+      title: "",
+      description: "",
+      type: "NEUTRAL",
       isPrivate: false,
     });
   };
@@ -1026,11 +1022,11 @@ export function StudentFormTabs({
       !observationDraft.title.trim() ||
       !observationDraft.description.trim()
     ) {
-      toast.error('Preencha o título e a mensagem da anotação.');
+      toast.error("Preencha o título e a mensagem da anotação.");
       return;
     }
 
-    if (selectedObservationId === 'new') {
+    if (selectedObservationId === "new") {
       await createObservationMutation.mutateAsync();
       return;
     }
@@ -1092,29 +1088,29 @@ export function StudentFormTabs({
                 ...(resolvedAvatarSrc
                   ? [
                       {
-                        key: 'view-photo',
-                        label: 'Visualizar foto',
+                        key: "view-photo",
+                        label: "Visualizar foto",
                         onClick: () =>
                           window.open(
                             resolvedAvatarSrc,
-                            '_blank',
-                            'noopener,noreferrer',
+                            "_blank",
+                            "noopener,noreferrer",
                           ),
                       },
                     ]
                   : []),
                 {
-                  key: 'change-photo',
-                  label: resolvedAvatarSrc ? 'Trocar foto' : 'Adicionar foto',
+                  key: "change-photo",
+                  label: resolvedAvatarSrc ? "Trocar foto" : "Adicionar foto",
                   onClick: () => photoInputRef.current?.click(),
                 },
                 ...(resolvedAvatarSrc
                   ? [
                       {
-                        key: 'delete-photo',
-                        label: 'Excluir foto',
+                        key: "delete-photo",
+                        label: "Excluir foto",
                         onClick: handleDeletePhoto,
-                        color: 'danger' as const,
+                        color: "danger" as const,
                       },
                     ]
                   : []),
@@ -1137,7 +1133,7 @@ export function StudentFormTabs({
                 {studentDisplayName}
               </p>
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {studentSummary || 'xxx.xxx.xxx-xx'}
+                {studentSummary || "xxx.xxx.xxx-xx"}
               </p>
             </div>
           </div>
@@ -1153,12 +1149,12 @@ export function StudentFormTabs({
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-3 text-left px-4 py-3 rounded-r-lg text-sm font-medium transition-colors whitespace-nowrap border-l-4 ${
                     isActive
-                      ? 'bg-primary-50/80 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400 border-primary-600 shadow-sm'
-                      : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800 border-transparent'
+                      ? "bg-primary-50/80 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400 border-primary-600 shadow-sm"
+                      : "text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800 border-transparent"
                   }`}
                 >
                   <Icon
-                    className={`h-5 w-5 shrink-0 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400'}`}
+                    className={`h-5 w-5 shrink-0 ${isActive ? "text-primary-600 dark:text-primary-400" : "text-gray-400"}`}
                   />
                   {tab.label}
                 </button>
@@ -1170,7 +1166,7 @@ export function StudentFormTabs({
         <div className="min-w-0 flex-1 self-start rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
           <div className="relative p-6 md:p-8 xl:p-10">
             <div className="w-full">
-              {activeTab === 'pessoais' && (
+              {activeTab === "pessoais" && (
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <TabHeader tab={tabs[0]} />
 
@@ -1178,8 +1174,8 @@ export function StudentFormTabs({
                     <div className="md:col-span-2 lg:col-span-2">
                       <Input
                         label="Nome *"
-                        {...register('firstName', {
-                          required: 'Nome obrigatório',
+                        {...register("firstName", {
+                          required: "Nome obrigatório",
                         })}
                         error={errors.firstName?.message as string}
                       />
@@ -1187,24 +1183,24 @@ export function StudentFormTabs({
                     <div className="md:col-span-1 lg:col-span-2">
                       <Input
                         label="Sobrenome *"
-                        {...register('lastName', {
-                          required: 'Sobrenome obrigatório',
+                        {...register("lastName", {
+                          required: "Sobrenome obrigatório",
                         })}
                         error={errors.lastName?.message as string}
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <Input label="Nome Social" {...register('socialName')} />
+                      <Input label="Nome Social" {...register("socialName")} />
                     </div>
                     <Input
                       label="Data de Nascimento *"
                       type="date"
-                      {...register('birthDate', {
-                        required: 'Data obrigatória',
+                      {...register("birthDate", {
+                        required: "Data obrigatória",
                       })}
-                      value={birthDate ?? ''}
+                      value={birthDate ?? ""}
                       onChange={(event) =>
-                        setValue('birthDate', event.target.value, {
+                        setValue("birthDate", event.target.value, {
                           shouldDirty: true,
                           shouldValidate: true,
                         })
@@ -1214,9 +1210,9 @@ export function StudentFormTabs({
                     <Select
                       label="Sexo *"
                       options={genderOptions}
-                      value={form.watch('gender') ?? Gender.NOT_INFORMED}
+                      value={form.watch("gender") ?? Gender.NOT_INFORMED}
                       onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                        form.setValue('gender', e.target.value as Gender, {
+                        form.setValue("gender", e.target.value as Gender, {
                           shouldDirty: true,
                           shouldValidate: true,
                         })
@@ -1227,8 +1223,21 @@ export function StudentFormTabs({
                       label="CPF"
                       mask={masks.cpf}
                       maskChar={null}
-                      value={cpf ?? ''}
-                      {...register('cpf')}
+                      value={cpf ?? ""}
+                      {...register("cpf", {
+                        required:
+                          mode === "create"
+                            ? "CPF é obrigatório para gerar a senha inicial"
+                            : false,
+                        validate: (value) => {
+                          if (!value) return true;
+                          if (removeMask(value).length !== 11)
+                            return "CPF deve conter 11 dígitos";
+                          if (!validateCPF(value)) return "CPF inválido";
+                          return true;
+                        },
+                      })}
+                      error={errors.cpf?.message as string}
                       placeholder="000.000.000-00"
                     />
                   </div>
@@ -1236,23 +1245,23 @@ export function StudentFormTabs({
               )}
 
               {/* MATRICULA */}
-              {activeTab === 'matricula' && (
+              {activeTab === "matricula" && (
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <TabHeader tab={tabs[1]} />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input
                       label="Matrícula"
-                      {...register('registrationNumber')}
+                      {...register("registrationNumber")}
                       disabled
                       placeholder="Gerada automaticamente"
                     />
                     <Select
                       label="Situação"
                       options={situationOptions}
-                      {...register('situacao')}
-                      value={situacao ?? 'ATIVO'}
+                      {...register("situacao")}
+                      value={situacao ?? "ATIVO"}
                       onChange={(event: ChangeEvent<HTMLSelectElement>) =>
-                        setValue('situacao', event.target.value, {
+                        setValue("situacao", event.target.value, {
                           shouldDirty: true,
                           shouldValidate: true,
                         })
@@ -1267,13 +1276,13 @@ export function StudentFormTabs({
                           {availableInstitutions.find(
                             (institution) =>
                               institution.id === effectiveInstitutionId,
-                          )?.name || 'Instituição vinculada ao diretor'}
+                          )?.name || "Instituição vinculada ao diretor"}
                         </div>
                       </div>
                     ) : (
                       <Select
                         label="Escola *"
-                        value={selectedInstitutionId || ''}
+                        value={selectedInstitutionId || ""}
                         onChange={(event: ChangeEvent<HTMLSelectElement>) => {
                           const nextInstitutionId = event.target.value;
                           const selectedInstitution =
@@ -1281,29 +1290,29 @@ export function StudentFormTabs({
                               (institution) =>
                                 institution.id === nextInstitutionId,
                             );
-                          setValue('institutionId', nextInstitutionId, {
+                          setValue("institutionId", nextInstitutionId, {
                             shouldDirty: true,
                             shouldValidate: true,
                           });
                           setValue(
-                            'institutionIds',
+                            "institutionIds",
                             nextInstitutionId ? [nextInstitutionId] : [],
                             { shouldDirty: true, shouldValidate: true },
                           );
-                          setValue('escola', selectedInstitution?.name ?? '', {
+                          setValue("escola", selectedInstitution?.name ?? "", {
                             shouldDirty: true,
                             shouldValidate: true,
                           });
-                          setValue('anoLetivo', '', { shouldDirty: true });
-                          setValue('curso', '', { shouldDirty: true });
-                          setValue('serie', '', { shouldDirty: true });
-                          setValue('turma', '', { shouldDirty: true });
-                          setValue('turmaId', '', { shouldDirty: true });
+                          setValue("anoLetivo", "", { shouldDirty: true });
+                          setValue("curso", "", { shouldDirty: true });
+                          setValue("serie", "", { shouldDirty: true });
+                          setValue("turma", "", { shouldDirty: true });
+                          setValue("turmaId", "", { shouldDirty: true });
                         }}
                         error={errors.institutionId?.message as string}
                         disabled={isLoadingInstitutions}
                         options={[
-                          { value: '', label: 'Selecione uma escola...' },
+                          { value: "", label: "Selecione uma escola..." },
                           ...availableInstitutions.map((institution) => ({
                             value: institution.id,
                             label: institution.name,
@@ -1313,33 +1322,33 @@ export function StudentFormTabs({
                     )}
                     <input
                       type="hidden"
-                      {...register('institutionId', {
-                        required: 'Obrigatório',
+                      {...register("institutionId", {
+                        required: "Obrigatório",
                       })}
                     />
-                    <input type="hidden" {...register('escola')} />
+                    <input type="hidden" {...register("escola")} />
                     <Select
                       label="Ano Letivo *"
                       options={[
                         {
-                          value: '',
+                          value: "",
                           label: isLoadingAcademicYears
-                            ? 'Carregando anos letivos...'
-                            : 'Selecione o ano letivo',
+                            ? "Carregando anos letivos..."
+                            : "Selecione o ano letivo",
                         },
                         ...(academicYearsData?.data ?? []).map((item) => ({
                           value: String(item.year),
                           label: item.name || String(item.year),
                         })),
                       ]}
-                      value={selectedAcademicYearName ?? ''}
+                      value={selectedAcademicYearName ?? ""}
                       onChange={(event) => {
-                        setValue('anoLetivo', event.target.value, {
+                        setValue("anoLetivo", event.target.value, {
                           shouldDirty: true,
                           shouldValidate: true,
                         });
-                        setValue('turma', '', { shouldDirty: true });
-                        setValue('turmaId', '', { shouldDirty: true });
+                        setValue("turma", "", { shouldDirty: true });
+                        setValue("turmaId", "", { shouldDirty: true });
                       }}
                       disabled={
                         isLoadingAcademicYears || !effectiveInstitutionId
@@ -1349,66 +1358,66 @@ export function StudentFormTabs({
                       label="Curso *"
                       options={[
                         {
-                          value: '',
+                          value: "",
                           label: isLoadingCourses
-                            ? 'Carregando cursos...'
-                            : 'Selecione o curso',
+                            ? "Carregando cursos..."
+                            : "Selecione o curso",
                         },
                         ...(coursesData?.data ?? []).map((item) => ({
                           value: item.name,
                           label: item.name,
                         })),
                       ]}
-                      value={selectedCourseName ?? ''}
+                      value={selectedCourseName ?? ""}
                       onChange={(event) => {
-                        setValue('curso', event.target.value, {
+                        setValue("curso", event.target.value, {
                           shouldDirty: true,
                           shouldValidate: true,
                         });
-                        setValue('serie', '', { shouldDirty: true });
-                        setValue('turma', '', { shouldDirty: true });
-                        setValue('turmaId', '', { shouldDirty: true });
+                        setValue("serie", "", { shouldDirty: true });
+                        setValue("turma", "", { shouldDirty: true });
+                        setValue("turmaId", "", { shouldDirty: true });
                       }}
                       disabled={isLoadingCourses || !effectiveInstitutionId}
                     />
                     <Select
                       label="Série/Ano *"
                       options={gradeOptions}
-                      value={selectedGrade ?? ''}
+                      value={selectedGrade ?? ""}
                       onChange={(event) => {
-                        setValue('serie', event.target.value, {
+                        setValue("serie", event.target.value, {
                           shouldDirty: true,
                           shouldValidate: true,
                         });
-                        setValue('turma', '', { shouldDirty: true });
-                        setValue('turmaId', '', { shouldDirty: true });
+                        setValue("turma", "", { shouldDirty: true });
+                        setValue("turmaId", "", { shouldDirty: true });
                       }}
                       disabled={!selectedCourse?.id || isLoadingClasses}
                     />
                     <Select
                       label="Turma *"
                       options={classOptions}
-                      value={selectedClassId ?? ''}
+                      value={selectedClassId ?? ""}
                       onChange={(event) => {
                         const nextClassId = event.target.value;
                         const nextClass = (classesData?.data ?? []).find(
                           (item) => item.id === nextClassId,
                         );
-                        setValue('turmaId', nextClassId, {
+                        setValue("turmaId", nextClassId, {
                           shouldDirty: true,
                           shouldValidate: true,
                         });
-                        setValue('turma', nextClass?.name ?? '', {
+                        setValue("turma", nextClass?.name ?? "", {
                           shouldDirty: true,
                           shouldValidate: true,
                         });
                         if (nextClass?.grade)
-                          setValue('serie', nextClass.grade, {
+                          setValue("serie", nextClass.grade, {
                             shouldDirty: true,
                             shouldValidate: true,
                           });
                         if (nextClass?.shift)
-                          setValue('turno', nextClass.shift, {
+                          setValue("turno", nextClass.shift, {
                             shouldDirty: true,
                             shouldValidate: true,
                           });
@@ -1441,9 +1450,9 @@ export function StudentFormTabs({
                             label: shift as string,
                           })),
                       ]}
-                      value={selectedShift ?? ''}
+                      value={selectedShift ?? ""}
                       onChange={(event) =>
-                        setValue('turno', event.target.value, {
+                        setValue("turno", event.target.value, {
                           shouldDirty: true,
                           shouldValidate: true,
                         })
@@ -1451,36 +1460,36 @@ export function StudentFormTabs({
                     />
                     <input
                       type="hidden"
-                      {...register('anoLetivo', { required: 'Obrigatório' })}
+                      {...register("anoLetivo", { required: "Obrigatório" })}
                     />
                     <input
                       type="hidden"
-                      {...register('curso', { required: 'Obrigatório' })}
+                      {...register("curso", { required: "Obrigatório" })}
                     />
                     <input
                       type="hidden"
-                      {...register('serie', { required: 'Obrigatório' })}
+                      {...register("serie", { required: "Obrigatório" })}
                     />
                     <input
                       type="hidden"
-                      {...register('turma', { required: 'Obrigatório' })}
+                      {...register("turma", { required: "Obrigatório" })}
                     />
-                    <input type="hidden" {...register('turmaId')} />
+                    <input type="hidden" {...register("turmaId")} />
                     <input
                       type="hidden"
-                      {...register('turno', { required: 'Obrigatório' })}
+                      {...register("turno", { required: "Obrigatório" })}
                     />
                     <Input
                       label="Data da Matrícula *"
                       type="date"
-                      {...register('dataMatricula', {
-                        required: 'Obrigatório',
+                      {...register("dataMatricula", {
+                        required: "Obrigatório",
                       })}
                       value={
-                        dataMatricula ?? new Date().toISOString().split('T')[0]
+                        dataMatricula ?? new Date().toISOString().split("T")[0]
                       }
                       onChange={(event) =>
-                        setValue('dataMatricula', event.target.value, {
+                        setValue("dataMatricula", event.target.value, {
                           shouldDirty: true,
                           shouldValidate: true,
                         })
@@ -1491,7 +1500,7 @@ export function StudentFormTabs({
               )}
 
               {/* ENDERECO */}
-              {activeTab === 'endereco' && (
+              {activeTab === "endereco" && (
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <TabHeader tab={tabs[2]} />
                   <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -1499,37 +1508,37 @@ export function StudentFormTabs({
                       label="CEP"
                       mask={masks.cep}
                       maskChar={null}
-                      {...register('zipCode', {
+                      {...register("zipCode", {
                         onBlur: async () => {
                           await fillAddressFromCep();
                           await trigger([
-                            'address',
-                            'city',
-                            'state',
-                            'bairro',
-                            'complemento',
+                            "address",
+                            "city",
+                            "state",
+                            "bairro",
+                            "complemento",
                           ]);
                         },
                       })}
                       placeholder="00000-000"
                     />
                     <div className="md:col-span-2 lg:col-span-3">
-                      <Input label="Logradouro" {...register('address')} />
+                      <Input label="Logradouro" {...register("address")} />
                     </div>
-                    <Input label="Número" {...register('numero')} />
-                    <Input label="Complemento" {...register('complemento')} />
-                    <Input label="Bairro" {...register('bairro')} />
-                    <Input label="Cidade" {...register('city')} />
+                    <Input label="Número" {...register("numero")} />
+                    <Input label="Complemento" {...register("complemento")} />
+                    <Input label="Bairro" {...register("bairro")} />
+                    <Input label="Cidade" {...register("city")} />
                     <Select
                       label="Estado"
                       options={[
-                        { value: '', label: 'Selecione a UF' },
+                        { value: "", label: "Selecione a UF" },
                         ...BRAZILIAN_UF_OPTIONS,
                       ]}
-                      {...register('state')}
-                      value={state ?? ''}
+                      {...register("state")}
+                      value={state ?? ""}
                       onChange={(event: ChangeEvent<HTMLSelectElement>) =>
-                        setValue('state', event.target.value, {
+                        setValue("state", event.target.value, {
                           shouldDirty: true,
                           shouldValidate: true,
                         })
@@ -1540,7 +1549,7 @@ export function StudentFormTabs({
               )}
 
               {/* CONTATO */}
-              {activeTab === 'contato' && (
+              {activeTab === "contato" && (
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <TabHeader tab={tabs[3]} />
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1548,33 +1557,33 @@ export function StudentFormTabs({
                       <Input
                         label="Email do Aluno"
                         type="email"
-                        {...register('email')}
+                        {...register("email")}
                       />
                     </div>
                     <MaskedInput
                       label="Celular"
                       mask={masks.phone}
                       maskChar={null}
-                      {...register('phone')}
+                      {...register("phone")}
                       placeholder="(00) 0 0000-0000"
                     />
                     <MaskedInput
                       label="Telefone Fixo"
                       mask={masks.phone}
                       maskChar={null}
-                      {...register('telefoneFixo')}
+                      {...register("telefoneFixo")}
                       placeholder="(00) 0000-0000"
                     />
                   </div>
                   <p className="text-sm text-gray-500 mt-4">
-                    Nota: O login do aluno no sistema será feito com este email
-                    e com uma senha padrão definida pela escola.
+                    Nota: no primeiro acesso, a senha do aluno será formada
+                    pelos 6 primeiros dígitos do CPF e deverá ser alterada.
                   </p>
                 </div>
               )}
 
               {/* RESPONSAVEIS */}
-              {activeTab === 'responsaveis' && (
+              {activeTab === "responsaveis" && (
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
                     <div>
@@ -1601,19 +1610,19 @@ export function StudentFormTabs({
                   {responsaveis.map((resp: { id: number }, index: number) => {
                     const responsavelAtual = watchResponsaveis?.[index];
                     const relationship = String(
-                      responsavelAtual?.parentesco ?? '',
+                      responsavelAtual?.parentesco ?? "",
                     );
                     const birthDateError = adultRequiredRelationships.has(
                       relationship,
                     )
                       ? (value: string) => {
                           if (!value) {
-                            return 'Informe a data de nascimento para confirmar que é maior de 18 anos.';
+                            return "Informe a data de nascimento para confirmar que é maior de 18 anos.";
                           }
 
                           return hasMinimumAge(value, 18)
                             ? true
-                            : 'Este parentesco exige que o responsável tenha 18 anos ou mais.';
+                            : "Este parentesco exige que o responsável tenha 18 anos ou mais.";
                         }
                       : undefined;
                     const emailObrigatorio = Boolean(
@@ -1621,8 +1630,8 @@ export function StudentFormTabs({
                       responsavelAtual?.podeRetirar,
                     );
                     const emailPlaceholder = emailObrigatorio
-                      ? 'Obrigatório quando for financeiro e puder retirar o aluno'
-                      : 'Opcional se for apenas responsável por retirar o aluno';
+                      ? "Obrigatório quando for financeiro e puder retirar o aluno"
+                      : "Opcional se for apenas responsável por retirar o aluno";
 
                     return (
                       <div
@@ -1657,18 +1666,18 @@ export function StudentFormTabs({
                             <Input
                               label="Nome completo *"
                               {...register(`responsaveis.${index}.nome`, {
-                                required: 'Nome do responsável é obrigatório',
+                                required: "Nome do responsável é obrigatório",
                               })}
                             />
                           </div>
                           <Select
                             label="Parentesco *"
                             options={[
-                              { value: '', label: 'Selecione o parentesco' },
+                              { value: "", label: "Selecione o parentesco" },
                               ...responsibleRelationshipOptions,
                             ]}
                             {...register(`responsaveis.${index}.parentesco`, {
-                              required: 'Selecione o parentesco',
+                              required: "Selecione o parentesco",
                             })}
                             value={relationship}
                             onChange={(event: ChangeEvent<HTMLSelectElement>) =>
@@ -1691,7 +1700,7 @@ export function StudentFormTabs({
                               { validate: birthDateError },
                             )}
                             value={String(
-                              responsavelAtual?.dataNascimento ?? '',
+                              responsavelAtual?.dataNascimento ?? "",
                             )}
                             onChange={(event) =>
                               setValue(
@@ -1706,7 +1715,7 @@ export function StudentFormTabs({
                             }
                             helperText={
                               adultRequiredRelationships.has(relationship)
-                                ? 'Obrigatória para irmão, irmã, primo ou prima e deve indicar 18 anos ou mais.'
+                                ? "Obrigatória para irmão, irmã, primo ou prima e deve indicar 18 anos ou mais."
                                 : undefined
                             }
                           />
@@ -1717,7 +1726,7 @@ export function StudentFormTabs({
                             {...register(`responsaveis.${index}.cpf`)}
                           />
                           <Input
-                            label={emailObrigatorio ? 'Email *' : 'Email'}
+                            label={emailObrigatorio ? "Email *" : "Email"}
                             id={`responsavel-email-${index}`}
                             type="email"
                             {...register(`responsaveis.${index}.email`, {
@@ -1730,11 +1739,11 @@ export function StudentFormTabs({
                                   responsavel?.podeRetirar,
                                 );
                                 const normalizedValue = String(
-                                  value ?? '',
+                                  value ?? "",
                                 ).trim();
 
                                 if (isRequired && !normalizedValue) {
-                                  return 'Email obrigatório para responsável financeiro que pode retirar o aluno';
+                                  return "Email obrigatório para responsável financeiro que pode retirar o aluno";
                                 }
 
                                 if (
@@ -1743,7 +1752,7 @@ export function StudentFormTabs({
                                     normalizedValue,
                                   )
                                 ) {
-                                  return 'Informe um email válido';
+                                  return "Informe um email válido";
                                 }
 
                                 return true;
@@ -1826,7 +1835,7 @@ export function StudentFormTabs({
 
                                 if (checked && currentCount >= 2) {
                                   toast.error(
-                                    'O aluno pode ter no máximo dois contatos de emergência.',
+                                    "O aluno pode ter no máximo dois contatos de emergência.",
                                   );
                                   return;
                                 }
@@ -1849,8 +1858,8 @@ export function StudentFormTabs({
                                   )
                                   .map((item: any) => String(item.nome).trim());
                                 setValue(
-                                  'contatoEmergencia',
-                                  nextContacts.join(' | '),
+                                  "contatoEmergencia",
+                                  nextContacts.join(" | "),
                                   { shouldDirty: true, shouldValidate: true },
                                 );
                               }}
@@ -1868,27 +1877,27 @@ export function StudentFormTabs({
               )}
 
               {/* SAUDE */}
-              {activeTab === 'saude' && (
+              {activeTab === "saude" && (
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <TabHeader tab={tabs[5]} />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Select
                       label="Tipo Sanguíneo"
                       options={[
-                        { value: 'A+', label: 'A+' },
-                        { value: 'A-', label: 'A-' },
-                        { value: 'B+', label: 'B+' },
-                        { value: 'B-', label: 'B-' },
-                        { value: 'AB+', label: 'AB+' },
-                        { value: 'AB-', label: 'AB-' },
-                        { value: 'O+', label: 'O+' },
-                        { value: 'O-', label: 'O-' },
-                        { value: 'NAO_INFORMADO', label: 'Não informado' },
+                        { value: "A+", label: "A+" },
+                        { value: "A-", label: "A-" },
+                        { value: "B+", label: "B+" },
+                        { value: "B-", label: "B-" },
+                        { value: "AB+", label: "AB+" },
+                        { value: "AB-", label: "AB-" },
+                        { value: "O+", label: "O+" },
+                        { value: "O-", label: "O-" },
+                        { value: "NAO_INFORMADO", label: "Não informado" },
                       ]}
-                      {...register('tipoSanguineo')}
-                      value={bloodType ?? 'NAO_INFORMADO'}
+                      {...register("tipoSanguineo")}
+                      value={bloodType ?? "NAO_INFORMADO"}
                       onChange={(event: ChangeEvent<HTMLSelectElement>) =>
-                        setValue('tipoSanguineo', event.target.value, {
+                        setValue("tipoSanguineo", event.target.value, {
                           shouldDirty: true,
                           shouldValidate: true,
                         })
@@ -1897,9 +1906,9 @@ export function StudentFormTabs({
                     <div className="md:col-span-2">
                       <TagInput
                         label="Convênio Médico"
-                        value={parseStudentTagList(watch('convenioMedico'))}
+                        value={parseStudentTagList(watch("convenioMedico"))}
                         onChange={(value) =>
-                          setValue('convenioMedico', value, {
+                          setValue("convenioMedico", value, {
                             shouldDirty: true,
                             shouldValidate: true,
                           })
@@ -1910,9 +1919,9 @@ export function StudentFormTabs({
                     <div className="md:col-span-2">
                       <TagInput
                         label="Alergias"
-                        value={parseStudentTagList(watch('alergias'))}
+                        value={parseStudentTagList(watch("alergias"))}
                         onChange={(value) =>
-                          setValue('alergias', value, {
+                          setValue("alergias", value, {
                             shouldDirty: true,
                             shouldValidate: true,
                           })
@@ -1923,9 +1932,9 @@ export function StudentFormTabs({
                     <div className="md:col-span-2">
                       <TagInput
                         label="Medicamentos de uso contínuo"
-                        value={parseStudentTagList(watch('medicamentos'))}
+                        value={parseStudentTagList(watch("medicamentos"))}
                         onChange={(value) =>
-                          setValue('medicamentos', value, {
+                          setValue("medicamentos", value, {
                             shouldDirty: true,
                             shouldValidate: true,
                           })
@@ -1937,10 +1946,10 @@ export function StudentFormTabs({
                       <TagInput
                         label="Necessidades especiais"
                         value={parseStudentTagList(
-                          watch('necessidadesEspeciais'),
+                          watch("necessidadesEspeciais"),
                         )}
                         onChange={(value) =>
-                          setValue('necessidadesEspeciais', value, {
+                          setValue("necessidadesEspeciais", value, {
                             shouldDirty: true,
                             shouldValidate: true,
                           })
@@ -1952,10 +1961,10 @@ export function StudentFormTabs({
                       <TagInput
                         label="Restrições alimentares"
                         value={parseStudentTagList(
-                          watch('restricoesAlimentares'),
+                          watch("restricoesAlimentares"),
                         )}
                         onChange={(value) =>
-                          setValue('restricoesAlimentares', value, {
+                          setValue("restricoesAlimentares", value, {
                             shouldDirty: true,
                             shouldValidate: true,
                           })
@@ -1983,7 +1992,7 @@ export function StudentFormTabs({
                                 {contact.name}
                               </span>
                               <span className="text-green-700 dark:text-green-300">
-                                {contact.phone || 'Telefone não informado'}
+                                {contact.phone || "Telefone não informado"}
                               </span>
                             </div>
                           ))}
@@ -1999,7 +2008,7 @@ export function StudentFormTabs({
                           variant="ghost"
                           size="sm"
                           onClick={() =>
-                            router.push('/admin/users/new?role=PARENT')
+                            router.push("/admin/users/new?role=PARENT")
                           }
                           leftIcon={<PlusIcon className="h-4 w-4" />}
                         >
@@ -2012,14 +2021,14 @@ export function StudentFormTabs({
               )}
 
               {/* TRANSPORTE */}
-              {activeTab === 'transporte' && (
+              {activeTab === "transporte" && (
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <TabHeader tab={tabs[6]} />
 
                   <label className="flex items-center gap-2 mb-4 cursor-pointer p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 w-max">
                     <input
                       type="checkbox"
-                      {...register('usaTransporte')}
+                      {...register("usaTransporte")}
                       className="h-5 w-5 rounded text-primary-600 focus:ring-primary-500 border-gray-300"
                     />
                     <span className="font-medium text-gray-900 dark:text-white">
@@ -2032,14 +2041,14 @@ export function StudentFormTabs({
                       <Select
                         label="Tipo de Transporte"
                         options={[
-                          { value: 'PRIVADO', label: 'Van/Ônibus Privado' },
-                          { value: 'PUBLICO', label: 'Transporte Público' },
-                          { value: 'PROPRIO', label: 'Próprio' },
+                          { value: "PRIVADO", label: "Van/Ônibus Privado" },
+                          { value: "PUBLICO", label: "Transporte Público" },
+                          { value: "PROPRIO", label: "Próprio" },
                         ]}
-                        {...register('tipoTransporte')}
-                        value={tipoTransporte ?? ''}
+                        {...register("tipoTransporte")}
+                        value={tipoTransporte ?? ""}
                         onChange={(event: ChangeEvent<HTMLSelectElement>) =>
-                          setValue('tipoTransporte', event.target.value, {
+                          setValue("tipoTransporte", event.target.value, {
                             shouldDirty: true,
                             shouldValidate: true,
                           })
@@ -2047,15 +2056,15 @@ export function StudentFormTabs({
                       />
                       <Input
                         label="Empresa/Viação"
-                        {...register('empresaTransporte')}
+                        {...register("empresaTransporte")}
                       />
                       <Input
                         label="Nome do Motorista"
-                        {...register('motoristaTransporte')}
+                        {...register("motoristaTransporte")}
                       />
                       <Input
                         label="Rota/Linha"
-                        {...register('rotaTransporte')}
+                        {...register("rotaTransporte")}
                       />
                     </div>
                   )}
@@ -2063,7 +2072,7 @@ export function StudentFormTabs({
               )}
 
               {/* DOCUMENTOS */}
-              {activeTab === 'documentos' && (
+              {activeTab === "documentos" && (
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <TabHeader tab={tabs[7]} />
                   <input
@@ -2079,7 +2088,7 @@ export function StudentFormTabs({
                     tabIndex={0}
                     onClick={() => openPendingDocumentsPicker()}
                     onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
+                      if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
                         openPendingDocumentsPicker();
                       }
@@ -2099,8 +2108,8 @@ export function StudentFormTabs({
                     onDrop={handleDocumentDrop}
                     className={`p-8 border-2 border-dashed rounded-xl text-center transition-colors cursor-pointer ${
                       isDocumentDropActive
-                        ? 'border-primary-400 bg-primary-50 dark:border-primary-500 dark:bg-primary-900/20'
-                        : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
+                        ? "border-primary-400 bg-primary-50 dark:border-primary-500 dark:bg-primary-900/20"
+                        : "border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
                     }`}
                   >
                     <div className="mx-auto flex justify-center mb-4 text-gray-400">
@@ -2128,19 +2137,19 @@ export function StudentFormTabs({
 
                   <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50/70 p-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
                     {hasLocalDocuments
-                      ? mode === 'create'
-                        ? 'Os documentos selecionados serao enviados assim que o aluno for salvo.'
-                        : 'Os documentos marcados como selecionados serao enviados ao salvar as alteracoes.'
-                      : 'Clique em um documento pendente para anexar diretamente ou use a area acima para escolher entre os pendentes.'}
+                      ? mode === "create"
+                        ? "Os documentos selecionados serao enviados assim que o aluno for salvo."
+                        : "Os documentos marcados como selecionados serao enviados ao salvar as alteracoes."
+                      : "Clique em um documento pendente para anexar diretamente ou use a area acima para escolher entre os pendentes."}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
                     {resolvedDocuments.map((document) => {
                       const isUploaded =
-                        document.status === 'UPLOADED' &&
+                        document.status === "UPLOADED" &&
                         Boolean(document.path);
                       const isLocal =
-                        document.status === 'LOCAL' && Boolean(document.file);
+                        document.status === "LOCAL" && Boolean(document.file);
 
                       return (
                         <button
@@ -2162,17 +2171,17 @@ export function StudentFormTabs({
                           <span
                             className={`shrink-0 rounded px-2 py-1 text-xs font-medium ${
                               isUploaded
-                                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
                                 : isLocal
-                                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                  : 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
+                                  ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                                  : "bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
                             }`}
                           >
                             {isUploaded
-                              ? 'Enviado'
+                              ? "Enviado"
                               : isLocal
-                                ? 'Selecionado'
-                                : 'Pendente'}
+                                ? "Selecionado"
+                                : "Pendente"}
                           </span>
                         </button>
                       );
@@ -2181,60 +2190,38 @@ export function StudentFormTabs({
                 </div>
               )}
 
-              {activeTab === 'acesso' && activeAccessTab && (
+              {activeTab === "acesso" && activeAccessTab && (
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <TabHeader tab={activeAccessTab} />
-                  {mode === 'create' ? (
+                  {mode === "create" ? (
                     <div className="space-y-4">
                       <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
                         <p className="text-sm font-medium text-gray-900 dark:text-white">
                           Primeiro acesso
                         </p>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {resolvedInitialPassword
-                            ? 'Se for o primeiro login do aluno, você pode preencher a senha inicial automaticamente com o início do email.'
-                            : 'Informe o email do aluno para liberar o preenchimento automático da senha inicial.'}
+                          Se a senha personalizada ficar em branco, o sistema
+                          usará os 6 primeiros dígitos do CPF como senha inicial
+                          e exigirá a troca no primeiro acesso.
                         </p>
-                        <div className="flex flex-wrap items-center gap-3">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            disabled={!resolvedInitialPassword}
-                            onClick={() => {
-                              if (!resolvedInitialPassword) return;
-                              setValue('password', resolvedInitialPassword, {
-                                shouldDirty: true,
-                                shouldValidate: true,
-                              });
-                            }}
-                          >
-                            É o primeiro acesso? Preencher senha
-                          </Button>
-                          {resolvedInitialPassword ? (
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              Senha sugerida:{' '}
-                              <strong>{resolvedInitialPassword}</strong>
-                            </span>
-                          ) : null}
-                        </div>
                       </div>
 
                       <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
                         <Input
-                          label="Senha inicial"
+                          label="Senha personalizada (opcional)"
                           type="text"
-                          value={password ?? ''}
+                          value={password ?? ""}
                           onChange={(event) =>
-                            setValue('password', event.target.value, {
+                            setValue("password", event.target.value, {
                               shouldDirty: true,
                               shouldValidate: true,
                             })
                           }
-                          placeholder="Clique no botão para preencher automaticamente"
+                          placeholder="Deixe em branco para usar os 6 primeiros dígitos do CPF"
                         />
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          No primeiro login, o aluno poderá trocar essa senha
-                          depois de acessar a conta.
+                          O aluno deverá trocar a senha inicial ao entrar pela
+                          primeira vez.
                         </p>
                       </div>
                     </div>
@@ -2260,11 +2247,11 @@ export function StudentFormTabs({
                 </div>
               )}
 
-              {activeTab === 'observacoes' && activeObservationTab && (
+              {activeTab === "observacoes" && activeObservationTab && (
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <TabHeader tab={activeObservationTab} />
 
-                  {mode === 'create' ? (
+                  {mode === "create" ? (
                     <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-600 p-4 text-sm text-gray-600 dark:text-gray-400">
                       As observações ficam disponíveis após salvar o aluno pela
                       primeira vez.
@@ -2316,8 +2303,8 @@ export function StudentFormTabs({
                                 }
                                 className={`w-full rounded-xl border p-4 text-left transition-colors ${
                                   selectedObservationId === observation.id
-                                    ? 'border-primary-300 bg-primary-50/80 dark:bg-primary-900/20'
-                                    : 'border-gray-200 dark:border-gray-700 hover:border-primary-200'
+                                    ? "border-primary-300 bg-primary-50/80 dark:bg-primary-900/20"
+                                    : "border-gray-200 dark:border-gray-700 hover:border-primary-200"
                                 }`}
                               >
                                 <div className="flex items-start justify-between gap-3">
@@ -2383,17 +2370,17 @@ export function StudentFormTabs({
                               <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4">
                                 <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                                   <span>
-                                    Autor:{' '}
+                                    Autor:{" "}
                                     {selectedObservation
                                       ? getObservationAuthor(
                                           selectedObservation,
                                         )
                                       : currentUser?.firstName ||
                                         currentUser?.email ||
-                                        'Você'}
+                                        "Você"}
                                   </span>
                                   <span>
-                                    Data:{' '}
+                                    Data:{" "}
                                     {formatObservationDate(
                                       selectedObservation?.date ??
                                         selectedObservation?.createdAt ??
@@ -2486,7 +2473,7 @@ export function StudentFormTabs({
                   Anterior
                 </Button>
                 <Button
-                  type={activeIndex === tabs.length - 1 ? 'submit' : 'button'}
+                  type={activeIndex === tabs.length - 1 ? "submit" : "button"}
                   onClick={() => {
                     if (activeIndex < tabs.length - 1) {
                       goToTab(activeIndex + 1);
@@ -2498,7 +2485,7 @@ export function StudentFormTabs({
                     ) : undefined
                   }
                 >
-                  {activeIndex === tabs.length - 1 ? 'Salvar' : 'Próximo'}
+                  {activeIndex === tabs.length - 1 ? "Salvar" : "Próximo"}
                 </Button>
               </div>
             </div>
@@ -2514,13 +2501,13 @@ export function StudentFormTabs({
           setPendingPhotoFile(null);
         }}
         onConfirm={(nextFile) => {
-          setValue('photo', [nextFile] as any, {
+          setValue("photo", [nextFile] as any, {
             shouldDirty: true,
             shouldValidate: true,
           });
           setIsCropModalOpen(false);
           setPendingPhotoFile(null);
-          if (photoInputRef.current) photoInputRef.current.value = '';
+          if (photoInputRef.current) photoInputRef.current.value = "";
         }}
       />
 
@@ -2533,15 +2520,15 @@ export function StudentFormTabs({
         title="Selecionar documento"
         description={
           pendingDocuments.length > 0
-            ? 'Escolha qual documento pendente voce deseja anexar.'
-            : 'Todos os documentos obrigatorios ja foram anexados. Escolha um item para substituir o arquivo atual.'
+            ? "Escolha qual documento pendente voce deseja anexar."
+            : "Todos os documentos obrigatorios ja foram anexados. Escolha um item para substituir o arquivo atual."
         }
         size="lg"
       >
         <div className="space-y-4">
           {queuedDocumentFile ? (
             <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-4 text-sm text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
-              Arquivo pronto para vincular:{' '}
+              Arquivo pronto para vincular:{" "}
               <strong>{queuedDocumentFile.name}</strong>
             </div>
           ) : null}
@@ -2559,8 +2546,8 @@ export function StudentFormTabs({
                 </span>
                 <span className="mt-2 inline-flex rounded-full bg-orange-50 px-2 py-1 text-xs font-medium text-orange-600 dark:bg-orange-900/30 dark:text-orange-300">
                   {!document.path && !document.file
-                    ? 'Pendente'
-                    : 'Substituir arquivo'}
+                    ? "Pendente"
+                    : "Substituir arquivo"}
                 </span>
               </button>
             ))}
@@ -2574,11 +2561,11 @@ export function StudentFormTabs({
           if (documentActionLoading) return;
           setSelectedUploadedDocument(null);
         }}
-        title={selectedUploadedDocument?.label ?? 'Anexo enviado'}
+        title={selectedUploadedDocument?.label ?? "Anexo enviado"}
         description={
           selectedUploadedDocument?.fileName
             ? `Arquivo enviado: ${selectedUploadedDocument.fileName}`
-            : 'Escolha o que deseja fazer com este anexo.'
+            : "Escolha o que deseja fazer com este anexo."
         }
         size="sm"
       >
@@ -2589,7 +2576,7 @@ export function StudentFormTabs({
             disabled={documentActionLoading !== null}
             className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
           >
-            {documentActionLoading === 'view' ? 'Abrindo...' : 'Visualizar'}
+            {documentActionLoading === "view" ? "Abrindo..." : "Visualizar"}
           </button>
 
           <button
@@ -2598,7 +2585,7 @@ export function StudentFormTabs({
             disabled={documentActionLoading !== null}
             className="inline-flex items-center justify-center rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-primary-900/50 dark:bg-primary-950/30 dark:text-primary-300 dark:hover:bg-primary-950/50"
           >
-            {documentActionLoading === 'download' ? 'Baixando...' : 'Baixar'}
+            {documentActionLoading === "download" ? "Baixando..." : "Baixar"}
           </button>
         </div>
       </Modal>

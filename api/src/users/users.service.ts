@@ -26,9 +26,9 @@ export class UsersService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  private buildInitialPassword(email: string) {
-    const [localPart] = email.toLowerCase().split('@');
-    return `${localPart}@Grafos`;
+  private buildInitialPassword(cpf?: string | null) {
+    const digits = String(cpf ?? '').replace(/\D/g, '');
+    return digits.length >= 6 ? digits.slice(0, 6) : null;
   }
 
   private getAvatarBucketName() {
@@ -264,7 +264,16 @@ export class UsersService {
         );
       }
     }
-    const resolvedPassword = password || this.buildInitialPassword(email);
+    const normalizedCpf =
+      typeof cpf === 'string' ? cpf.replace(/\D/g, '') : cpf;
+    const resolvedPassword =
+      password?.trim() || this.buildInitialPassword(normalizedCpf);
+
+    if (!resolvedPassword) {
+      throw new BadRequestException(
+        'Informe um CPF válido para gerar a senha padrão do primeiro acesso ou defina uma senha personalizada.',
+      );
+    }
 
     // Verifica se email já existe NESTA instituição
     const existingEmail = await this.prisma.user.findFirst({
@@ -279,15 +288,15 @@ export class UsersService {
     }
 
     // Verifica se CPF já existe NESTA instituição (se fornecido)
-    if (cpf) {
+    if (normalizedCpf) {
       // Valida CPF
-      if (!this.validateCPF(cpf)) {
+      if (!this.validateCPF(normalizedCpf)) {
         throw new BadRequestException('CPF inválido');
       }
 
       const existingCPF = await this.prisma.user.findFirst({
         where: {
-          cpf,
+          cpf: normalizedCpf,
           institutionId,
         },
       });
@@ -353,7 +362,7 @@ export class UsersService {
       data: {
         ...data,
         email,
-        cpf,
+        cpf: normalizedCpf,
         password: hashedPassword,
         birthDate: parsedBirthDate,
         institutionId,
@@ -1110,7 +1119,7 @@ export class UsersService {
           `Não foi possível verificar o primeiro acesso do usuário ${id} durante a alteração de email. A senha atual será preservada.`,
         );
       } else {
-        // A senha padrão exibida no primeiro acesso é derivada do email.
+        // A senha padrão do primeiro acesso é derivada do CPF.
         // Só a regeneramos enquanto o usuário ainda não trocou a senha;
         // usuários que já definiram uma senha pessoal não são afetados.
         shouldRefreshInitialPassword = Boolean(
@@ -1231,9 +1240,18 @@ export class UsersService {
         authIdentity?.authUserId
       ) {
         const supabase = this.getSupabaseAdminClient();
+        const initialPassword = this.buildInitialPassword(
+          normalizedCpf ?? existingUser.cpf,
+        );
+        if (!initialPassword) {
+          this.logger.warn(
+            `Não foi possível regenerar a senha inicial do usuário ${id}: CPF ausente ou inválido.`,
+          );
+          return updatedUser;
+        }
         const { error: authPasswordError } =
           await supabase.auth.admin.updateUserById(authIdentity.authUserId, {
-            password: this.buildInitialPassword(normalizedEmail),
+            password: initialPassword,
           });
 
         if (authPasswordError) {

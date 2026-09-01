@@ -1,50 +1,48 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { toast } from 'react-hot-toast';
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { toast } from "react-hot-toast";
 import {
   ArrowLeftIcon,
   EnvelopeIcon,
   PlusIcon,
   ShieldCheckIcon,
   UserGroupIcon,
-} from '@heroicons/react/24/outline';
-import { useRouter } from 'next/navigation';
-import { usersService } from '@/services/users.service';
-import { User, UserRole } from '@/types/user.types';
-import { useAuthStore } from '@/stores/authStore';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Badge } from '@/components/ui/Badge';
-import { presentFriendlyError } from '@/lib/friendly-error';
+} from "@heroicons/react/24/outline";
+import { useRouter } from "next/navigation";
+import { usersService } from "@/services/users.service";
+import { User, UserRole } from "@/types/user.types";
+import { useAuthStore } from "@/stores/authStore";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Badge } from "@/components/ui/Badge";
+import { presentFriendlyError } from "@/lib/friendly-error";
 
 function splitFullName(value: string) {
   const parts = value.trim().split(/\s+/).filter(Boolean);
   return {
-    firstName: parts[0] ?? '',
-    lastName: parts.slice(1).join(' '),
+    firstName: parts[0] ?? "",
+    lastName: parts.slice(1).join(" "),
   };
 }
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleDateString('pt-BR');
+  return new Date(value).toLocaleDateString("pt-BR");
 }
 
 export default function GlobalAdminsPage() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [cpf, setCpf] = useState('');
-  const [password, setPassword] = useState('');
-  const [passwordEdited, setPasswordEdited] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [cpf, setCpf] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isGlobalAdmin = user?.role === UserRole.SUPER_ADMIN_GLOBAL;
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['global-admins'],
+    queryKey: ["global-admins"],
     queryFn: () =>
       usersService.findAll({
         role: UserRole.SUPER_ADMIN_GLOBAL,
@@ -55,17 +53,6 @@ export default function GlobalAdminsPage() {
       }),
     enabled: isGlobalAdmin,
   });
-
-  const generatedPassword = useMemo(() => {
-    const localPart = email.trim().toLowerCase().split('@')[0];
-    return localPart ? `${localPart}@Grafos` : '';
-  }, [email]);
-
-  useEffect(() => {
-    if (!passwordEdited) {
-      setPassword(generatedPassword);
-    }
-  }, [generatedPassword, passwordEdited]);
 
   if (!isGlobalAdmin) {
     return (
@@ -82,17 +69,18 @@ export default function GlobalAdminsPage() {
     const name = splitFullName(fullName);
 
     if (!name.firstName || !name.lastName) {
-      toast.error('Informe nome e sobrenome do novo Super Admin Global.');
+      toast.error("Informe nome e sobrenome do novo Super Admin Global.");
       return;
     }
 
-    if (!email.includes('@')) {
-      toast.error('Informe um email válido.');
+    if (!email.includes("@")) {
+      toast.error("Informe um email válido.");
       return;
     }
 
-    if (password.length < 6) {
-      toast.error('A senha precisa ter no mínimo 6 caracteres.');
+    const normalizedCpf = cpf.replace(/\D/g, "");
+    if (normalizedCpf.length < 6) {
+      toast.error("Informe um CPF válido para gerar a senha inicial.");
       return;
     }
 
@@ -100,21 +88,21 @@ export default function GlobalAdminsPage() {
     try {
       await usersService.createGlobalAdmin({
         email,
-        password,
         firstName: name.firstName,
         lastName: name.lastName,
-        cpf: cpf || undefined,
+        cpf: normalizedCpf,
       });
 
-      toast.success('Super Admin Global criado com sucesso.');
-      setFullName('');
-      setEmail('');
-      setCpf('');
-      setPassword('');
-      setPasswordEdited(false);
+      toast.success("Super Admin Global criado com sucesso.");
+      setFullName("");
+      setEmail("");
+      setCpf("");
       await refetch();
     } catch (error) {
-      presentFriendlyError(error, 'Não foi possível criar o Super Admin Global agora.');
+      presentFriendlyError(
+        error,
+        "Não foi possível criar o Super Admin Global agora.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -126,7 +114,7 @@ export default function GlobalAdminsPage() {
         <div>
           <button
             type="button"
-            onClick={() => router.push('/admin/users')}
+            onClick={() => router.push("/admin/users")}
             className="mb-3 inline-flex items-center gap-2 text-sm text-gray-500 transition-colors hover:text-gray-900"
           >
             <ArrowLeftIcon className="h-4 w-4" />
@@ -137,8 +125,12 @@ export default function GlobalAdminsPage() {
               <ShieldCheckIcon className="h-7 w-7" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Super Admins Globais</h1>
-              <p className="text-gray-600">Gerencie os administradores com acesso total ao sistema.</p>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Super Admins Globais
+              </h1>
+              <p className="text-gray-600">
+                Gerencie os administradores com acesso total ao sistema.
+              </p>
             </div>
           </div>
         </div>
@@ -154,8 +146,12 @@ export default function GlobalAdminsPage() {
               <PlusIcon className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="font-semibold text-gray-900">Novo Super Admin Global</h2>
-              <p className="text-sm text-gray-500">A conta não fica vinculada a uma instituição.</p>
+              <h2 className="font-semibold text-gray-900">
+                Novo Super Admin Global
+              </h2>
+              <p className="text-sm text-gray-500">
+                A conta não fica vinculada a uma instituição.
+              </p>
             </div>
           </div>
 
@@ -177,30 +173,18 @@ export default function GlobalAdminsPage() {
               disabled={isSubmitting}
             />
             <Input
-              label="CPF (opcional)"
+              label="CPF"
               value={cpf}
               onChange={(event) => setCpf(event.target.value)}
               placeholder="000.000.000-00"
               disabled={isSubmitting}
             />
-            <div>
-              <Input
-                label="Senha inicial"
-                type="text"
-                value={password}
-                onChange={(event) => {
-                  setPasswordEdited(true);
-                  setPassword(event.target.value);
-                }}
-                placeholder="Gerada a partir do email"
-                disabled={isSubmitting}
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                A senha vem preenchida automaticamente e deverá ser alterada no primeiro acesso.
-              </p>
+            <div className="rounded-lg border border-green-100 bg-green-50 p-3 text-sm text-green-800">
+              A senha inicial será formada pelos 6 primeiros dígitos do CPF e
+              deverá ser alterada no primeiro acesso.
             </div>
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? 'Criando...' : 'Criar Super Admin Global'}
+              {isSubmitting ? "Criando..." : "Criar Super Admin Global"}
             </Button>
           </form>
         </section>
@@ -211,13 +195,19 @@ export default function GlobalAdminsPage() {
               <UserGroupIcon className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="font-semibold text-gray-900">Administradores cadastrados</h2>
-              <p className="text-sm text-gray-500">Somente contas SUPER_ADMIN_GLOBAL aparecem aqui.</p>
+              <h2 className="font-semibold text-gray-900">
+                Administradores cadastrados
+              </h2>
+              <p className="text-sm text-gray-500">
+                Somente contas SUPER_ADMIN_GLOBAL aparecem aqui.
+              </p>
             </div>
           </div>
 
           {isLoading ? (
-            <div className="py-10 text-center text-sm text-gray-500">Carregando administradores...</div>
+            <div className="py-10 text-center text-sm text-gray-500">
+              Carregando administradores...
+            </div>
           ) : data?.data.length ? (
             <div className="space-y-3">
               {data.data.map((admin: User) => (
@@ -242,14 +232,19 @@ export default function GlobalAdminsPage() {
                       <p className="truncate font-semibold text-gray-900">
                         {admin.firstName} {admin.lastName}
                       </p>
-                      <p className="truncate text-sm text-gray-600">{admin.email}</p>
+                      <p className="truncate text-sm text-gray-600">
+                        {admin.email}
+                      </p>
                       <p className="mt-1 text-xs text-gray-500">
                         Criado em {formatDate(admin.createdAt)}
                       </p>
                     </div>
                   </div>
-                  <Badge variant={admin.isActive ? 'success' : 'error'} size="sm">
-                    {admin.isActive ? 'Ativo' : 'Inativo'}
+                  <Badge
+                    variant={admin.isActive ? "success" : "error"}
+                    size="sm"
+                  >
+                    {admin.isActive ? "Ativo" : "Inativo"}
                   </Badge>
                 </div>
               ))}

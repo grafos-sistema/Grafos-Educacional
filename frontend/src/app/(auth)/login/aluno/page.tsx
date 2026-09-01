@@ -1,33 +1,43 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { LoginHelpModal } from '@/components/auth/LoginHelpModal';
-import { useAuth } from '@/contexts/AuthContext';
-import { 
-  Users, Mail, Lock, Eye, EyeOff, Headset, 
-  ShieldCheck, Book, ClipboardList, CheckSquare, 
-  Calendar, BarChart2, MessageCircle, Cloud, 
-  RefreshCcw, Smile, Rocket, ArrowLeft, ArrowRight,
-  GraduationCap, Sparkles
-} from 'lucide-react';
+import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { LoginHelpModal } from "@/components/auth/LoginHelpModal";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  Users,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Headset,
+  ShieldCheck,
+  Book,
+  ClipboardList,
+  CheckSquare,
+  Calendar,
+  BarChart2,
+  MessageCircle,
+  Cloud,
+  RefreshCcw,
+  Smile,
+  Rocket,
+  ArrowLeft,
+  ArrowRight,
+  GraduationCap,
+  Sparkles,
+} from "lucide-react";
 
 const loginSchema = z.object({
-  email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'A senha deve ter no mínimo 6 caracteres'),
+  email: z.string().email("Email inválido"),
+  password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres"),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
-
-function buildInitialPassword(email?: string) {
-  if (!email) return '';
-  const [localPart] = email.trim().toLowerCase().split('@');
-  return localPart ? `${localPart}@Grafos` : '';
-}
 
 export default function AlunoLogin() {
   const { login } = useAuth();
@@ -39,49 +49,70 @@ export default function AlunoLogin() {
     register,
     handleSubmit,
     watch,
-    setValue,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
-  const typedEmail = watch('email');
-  const suggestedPassword = buildInitialPassword(typedEmail);
-
+  const typedEmail = watch("email");
   const onSubmit = async (data: LoginFormData) => {
     try {
       setError(null);
       setIsLoading(true);
       await login(data);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erro ao fazer login. Verifique suas credenciais.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Erro ao fazer login. Verifique suas credenciais.",
+      );
       setIsLoading(false);
     }
   };
 
   return (
     <div className="w-screen h-screen flex font-[system-ui] bg-white overflow-hidden">
-      
       {/* COLUNA ESQUERDA - LOGIN */}
       <div className="flex-none w-full lg:w-[30%] lg:min-w-[380px] bg-white flex flex-col justify-center gap-5 px-8 lg:px-14 py-8 box-border relative overflow-y-auto z-20">
         <Link
           href="/"
           className="absolute top-8 left-8 lg:left-14 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#22a05f] transition-colors group"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-0.5 transition-transform">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="group-hover:-translate-x-0.5 transition-transform"
+          >
             <line x1="19" y1="12" x2="5" y2="12"></line>
             <polyline points="12 19 5 12 12 5"></polyline>
           </svg>
           Voltar para seleção de perfil
         </Link>
         <div className="mt-8 flex items-center gap-3.5">
-          <Image src="/assets/aluno_logo.png" alt="Grafos Logo" width={56} height={54} className="object-contain" />
+          <Image
+            src="/assets/aluno_logo.png"
+            alt="Grafos Logo"
+            width={56}
+            height={54}
+            className="object-contain"
+          />
           <div className="flex flex-col gap-0.5">
-            <div className="text-[27px] font-extrabold text-[#22a05f] leading-none">Grafos</div>
+            <div className="text-[27px] font-extrabold text-[#22a05f] leading-none">
+              Grafos
+            </div>
             <div className="text-base text-[#5b6560]">Gestão Escolar</div>
           </div>
         </div>
 
-        <form className="flex flex-col gap-4 mt-2" onSubmit={handleSubmit(onSubmit)}>
+        <form
+          className="flex flex-col gap-4 mt-2"
+          onSubmit={handleSubmit(onSubmit)}
+        >
           {error && (
             <div className="rounded-[10px] bg-[#fef2f2] border border-[#fecaca] p-3 mb-2">
               <p className="text-[13px] text-[#991b1b] m-0">{error}</p>
@@ -93,73 +124,110 @@ export default function AlunoLogin() {
             <span
               className={`flex items-center gap-2.5 border-[1.5px] rounded-lg px-3.5 h-12 bg-white transition-colors border-[#d7ddd9] focus-within:border-[#22a05f] focus-within:ring-[3px] focus-within:ring-[#22a05f]/15`}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8a938e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#8a938e"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <rect x="2" y="4" width="20" height="16" rx="2" />
                 <path d="M2 7 L12 13 L22 7" />
               </svg>
               <input
-                {...register('email')}
+                {...register("email")}
                 type="email"
                 placeholder="aluno@escola.edu.br"
                 disabled={isLoading}
                 className="border-none outline-none flex-1 text-[15px] bg-transparent font-sans"
               />
             </span>
-            {errors.email && <p className="mt-1 text-[12px] text-[#ef4444]">{errors.email.message}</p>}
+            {errors.email && (
+              <p className="mt-1 text-[12px] text-[#ef4444]">
+                {errors.email.message}
+              </p>
+            )}
           </label>
 
-          {suggestedPassword ? (
-            <div className="rounded-lg border border-[#d2eedc] bg-[#eaf7ef] px-4 py-3">
-              <div className="flex flex-col gap-2.5">
-                <div>
-                  <p className="text-[13.5px] font-bold text-slate-900">Primeiro acesso?</p>
-                  <p className="text-[12.5px] text-[#5f6a64]">
-                    Use o preenchimento automatico da senha padrao com base no email informado.
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setValue('password', suggestedPassword)}
-                    className="inline-flex h-10 items-center justify-center rounded-lg bg-[#22a05f] px-4 text-[13.5px] font-bold text-white transition hover:brightness-110"
-                  >
-                    Preencher senha padrao
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : null}
+          <div className="rounded-lg border border-[#d2eedc] bg-[#eaf7ef] px-4 py-3">
+            <p className="text-[13.5px] font-bold text-slate-900">
+              Primeiro acesso?
+            </p>
+            <p className="mt-1 text-[12.5px] text-[#5f6a64]">
+              A senha inicial é formada pelos 6 primeiros dígitos do CPF. No
+              primeiro acesso, o usuário deverá criar uma nova senha.
+            </p>
+          </div>
 
           <label className="flex flex-col gap-2">
             <span className="text-sm font-bold">Senha</span>
             <span
               className={`flex items-center gap-2.5 border-[1.5px] rounded-lg px-3.5 h-12 bg-white transition-colors border-[#d7ddd9] focus-within:border-[#22a05f] focus-within:ring-[3px] focus-within:ring-[#22a05f]/15`}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8a938e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#8a938e"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <rect x="4" y="10" width="16" height="11" rx="2" />
                 <path d="M8 10 V7 a4 4 0 0 1 8 0 v3" />
               </svg>
               <input
-                {...register('password')}
-                type={showPassword ? 'text' : 'password'}
+                {...register("password")}
+                type={showPassword ? "text" : "password"}
                 placeholder="••••••••••"
                 disabled={isLoading}
                 className="border-none outline-none flex-1 text-[15px] bg-transparent font-sans tracking-wide"
               />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="border-none bg-transparent cursor-pointer p-0.5 flex" title="Mostrar senha">
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="border-none bg-transparent cursor-pointer p-0.5 flex"
+                title="Mostrar senha"
+              >
                 {showPassword ? (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8a938e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 19.5c-4.97 0-9.27-3.61-11-8.5a10.08 10.08 0 0 1 3.06-4.94M9.9 9.9a3 3 0 0 0 4.2 4.2M1 1l22 22M23 11a10.05 10.05 0 0 0-5.06-4.94M15 7.5A10.08 10.08 0 0 0 12 7c-1.32 0-2.58.26-3.72.72"/>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#8a938e"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 19.5c-4.97 0-9.27-3.61-11-8.5a10.08 10.08 0 0 1 3.06-4.94M9.9 9.9a3 3 0 0 0 4.2 4.2M1 1l22 22M23 11a10.05 10.05 0 0 0-5.06-4.94M15 7.5A10.08 10.08 0 0 0 12 7c-1.32 0-2.58.26-3.72.72" />
                   </svg>
                 ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8a938e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#8a938e"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <path d="M2 12 C4.5 7 8 4.5 12 4.5 C16 4.5 19.5 7 22 12 C19.5 17 16 19.5 12 19.5 C8 19.5 4.5 17 2 12 Z" />
                     <circle cx="12" cy="12" r="3" />
                   </svg>
                 )}
               </button>
             </span>
-            {errors.password && <p className="mt-1 text-[12px] text-[#ef4444]">{errors.password.message}</p>}
+            {errors.password && (
+              <p className="mt-1 text-[12px] text-[#ef4444]">
+                {errors.password.message}
+              </p>
+            )}
           </label>
 
           <div className="flex items-center justify-between -mt-0.5">
@@ -167,7 +235,10 @@ export default function AlunoLogin() {
               <input type="checkbox" className="w-4 h-4 accent-[#22a05f]" />
               Lembrar-me
             </label>
-            <Link href="/forgot-password" className="text-[13.5px] font-bold text-[#22a05f] underline">
+            <Link
+              href="/forgot-password"
+              className="text-[13.5px] font-bold text-[#22a05f] underline"
+            >
               Esqueceu sua senha?
             </Link>
           </div>
@@ -178,27 +249,71 @@ export default function AlunoLogin() {
             className="mt-2.5 flex items-center justify-center gap-2.5 h-[54px] rounded-lg text-white text-base font-bold font-sans transition hover:brightness-[1.12] active:brightness-95 bg-[#22a05f] disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isLoading ? (
-              <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              <svg
+                className="animate-spin"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
             ) : (
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#fff"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <rect x="4" y="10" width="16" height="11" rx="2" />
                 <path d="M8 10 V7 a4 4 0 0 1 8 0 v3" />
               </svg>
             )}
-            {isLoading ? 'Entrando...' : 'Acessar Portal do Estudante'}
+            {isLoading ? "Entrando..." : "Acessar Portal do Estudante"}
           </button>
         </form>
 
         <div className="flex gap-4 bg-[#eaf7ef] border border-[#d2eedc] rounded-[10px] px-[22px] py-5 mt-1.5">
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#22a05f" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="flex-none mt-0.5">
+          <svg
+            width="30"
+            height="30"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#22a05f"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="flex-none mt-0.5"
+          >
             <path d="M4 13 a8 8 0 0 1 16 0" />
             <rect x="2.5" y="13" width="4" height="6.5" rx="2" />
             <rect x="17.5" y="13" width="4" height="6.5" rx="2" />
             <path d="M20 19.5 c0 2 -2 3 -5 3" />
           </svg>
           <div className="flex flex-col gap-1">
-            <div className="text-[14.5px] font-bold">Precisa de ajuda para acessar?</div>
-            <div className="text-[13px] text-[#6a736e]">Nossa equipe está pronta para ajudar você.</div>
+            <div className="text-[14.5px] font-bold">
+              Precisa de ajuda para acessar?
+            </div>
+            <div className="text-[13px] text-[#6a736e]">
+              Nossa equipe está pronta para ajudar você.
+            </div>
             <button
               type="button"
               onClick={() => setIsHelpModalOpen(true)}
@@ -212,7 +327,6 @@ export default function AlunoLogin() {
 
       {/* COLUNA DIREITA - VITRINE (Oculto em telas menores que lg) */}
       <div className="hidden lg:flex flex-1 relative bg-gradient-to-br from-[#279255] via-[#2ba05e] to-[#4bb279] overflow-hidden">
-        
         {/* Ícones fantasmas decorativos no topo direita */}
         <div className="absolute top-10 right-10 flex gap-8 xl:gap-12 text-white/10 pointer-events-none">
           <Book className="w-16 h-16 xl:w-24 xl:h-24 transform -rotate-12" />
@@ -221,19 +335,21 @@ export default function AlunoLogin() {
         </div>
 
         {/* Imagem do estudante com fade mask */}
-        <div 
+        <div
           className="absolute bottom-[-10px] right-[-20px] 2xl:right-10 w-[70%] max-w-[850px] z-10 pointer-events-none"
           style={{
-            maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%), linear-gradient(to left, transparent 0%, black 20%, black 80%, transparent 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%), linear-gradient(to left, transparent 0%, black 20%, black 80%, transparent 100%)',
-            WebkitMaskComposite: 'source-in',
-            maskComposite: 'intersect'
+            maskImage:
+              "linear-gradient(to bottom, transparent 0%, black 15%), linear-gradient(to left, transparent 0%, black 20%, black 80%, transparent 100%)",
+            WebkitMaskImage:
+              "linear-gradient(to bottom, transparent 0%, black 15%), linear-gradient(to left, transparent 0%, black 20%, black 80%, transparent 100%)",
+            WebkitMaskComposite: "source-in",
+            maskComposite: "intersect",
           }}
         >
-          <Image 
-            src="/assets/aluno_cena2.png" 
-            alt="Estudante em frente ao notebook" 
-            width={850} 
+          <Image
+            src="/assets/aluno_cena2.png"
+            alt="Estudante em frente ao notebook"
+            width={850}
             height={750}
             className="w-full h-auto object-contain object-bottom"
             priority
@@ -242,15 +358,14 @@ export default function AlunoLogin() {
 
         {/* Conteúdo Principal da Vitrine */}
         <div className="relative z-20 w-full h-full flex flex-col p-8 xl:p-14 2xl:p-20 pb-32 xl:pb-32 2xl:pb-36 overflow-y-auto overflow-x-hidden">
-          
           <div className="flex flex-col xl:flex-row w-full gap-8 xl:gap-12 mb-auto">
             {/* Bloco Central - Título + Grid */}
             <div className="flex flex-col flex-1 max-w-[900px]">
-              
               {/* Hero Section */}
               <div className="mb-10 xl:mb-14">
                 <h1 className="text-[36px] xl:text-[46px] font-bold text-white leading-[1.1] mb-4">
-                  Seu Aprendizado,<br />
+                  Seu Aprendizado,
+                  <br />
                   sua conquista!
                 </h1>
                 <p className="text-[#e6f6ec] text-[16px] xl:text-[18px] leading-relaxed max-w-lg">
@@ -265,53 +380,77 @@ export default function AlunoLogin() {
                   <div className="w-10 h-10 xl:w-11 xl:h-11 rounded-[11px] bg-purple-100 flex items-center justify-center mb-3 xl:mb-4">
                     <Book className="w-5 h-5 xl:w-6 xl:h-6 text-[#7c3aed]" />
                   </div>
-                  <h3 className="font-bold text-[15px] xl:text-[16px] text-slate-900 mb-1">Disciplinas</h3>
-                  <p className="text-[12px] xl:text-[12.5px] text-slate-500 leading-snug">Acesse suas disciplinas e conteúdos.</p>
+                  <h3 className="font-bold text-[15px] xl:text-[16px] text-slate-900 mb-1">
+                    Disciplinas
+                  </h3>
+                  <p className="text-[12px] xl:text-[12.5px] text-slate-500 leading-snug">
+                    Acesse suas disciplinas e conteúdos.
+                  </p>
                 </div>
-                
+
                 {/* Notas */}
                 <div className="bg-white rounded-[14px] p-4 xl:p-5 shadow-xl flex flex-col hover:scale-105 transition-transform origin-center">
                   <div className="w-10 h-10 xl:w-11 xl:h-11 rounded-[11px] bg-sky-100 flex items-center justify-center mb-3 xl:mb-4">
                     <ClipboardList className="w-5 h-5 xl:w-6 xl:h-6 text-[#0ea5e9]" />
                   </div>
-                  <h3 className="font-bold text-[15px] xl:text-[16px] text-slate-900 mb-1">Notas</h3>
-                  <p className="text-[12px] xl:text-[12.5px] text-slate-500 leading-snug">Acompanhe suas notas e desempenho.</p>
+                  <h3 className="font-bold text-[15px] xl:text-[16px] text-slate-900 mb-1">
+                    Notas
+                  </h3>
+                  <p className="text-[12px] xl:text-[12.5px] text-slate-500 leading-snug">
+                    Acompanhe suas notas e desempenho.
+                  </p>
                 </div>
-                
+
                 {/* Atividades */}
                 <div className="bg-white rounded-[14px] p-4 xl:p-5 shadow-xl flex flex-col hover:scale-105 transition-transform origin-right">
                   <div className="w-10 h-10 xl:w-11 xl:h-11 rounded-[11px] bg-amber-100 flex items-center justify-center mb-3 xl:mb-4">
                     <CheckSquare className="w-5 h-5 xl:w-6 xl:h-6 text-[#f59e0b]" />
                   </div>
-                  <h3 className="font-bold text-[15px] xl:text-[16px] text-slate-900 mb-1">Atividades</h3>
-                  <p className="text-[12px] xl:text-[12.5px] text-slate-500 leading-snug">Visualize tarefas e entregas pendentes.</p>
+                  <h3 className="font-bold text-[15px] xl:text-[16px] text-slate-900 mb-1">
+                    Atividades
+                  </h3>
+                  <p className="text-[12px] xl:text-[12.5px] text-slate-500 leading-snug">
+                    Visualize tarefas e entregas pendentes.
+                  </p>
                 </div>
-                
+
                 {/* Calendário */}
                 <div className="bg-white rounded-[14px] p-4 xl:p-5 shadow-xl flex flex-col hover:scale-105 transition-transform origin-left">
                   <div className="w-10 h-10 xl:w-11 xl:h-11 rounded-[11px] bg-rose-100 flex items-center justify-center mb-3 xl:mb-4">
                     <Calendar className="w-5 h-5 xl:w-6 xl:h-6 text-[#e11d48]" />
                   </div>
-                  <h3 className="font-bold text-[15px] xl:text-[16px] text-slate-900 mb-1">Calendário</h3>
-                  <p className="text-[12px] xl:text-[12.5px] text-slate-500 leading-snug">Fique por dentro das datas importantes.</p>
+                  <h3 className="font-bold text-[15px] xl:text-[16px] text-slate-900 mb-1">
+                    Calendário
+                  </h3>
+                  <p className="text-[12px] xl:text-[12.5px] text-slate-500 leading-snug">
+                    Fique por dentro das datas importantes.
+                  </p>
                 </div>
-                
+
                 {/* Desempenho */}
                 <div className="bg-white rounded-[14px] p-4 xl:p-5 shadow-xl flex flex-col hover:scale-105 transition-transform origin-center">
                   <div className="w-10 h-10 xl:w-11 xl:h-11 rounded-[11px] bg-blue-100 flex items-center justify-center mb-3 xl:mb-4">
                     <BarChart2 className="w-5 h-5 xl:w-6 xl:h-6 text-[#2563eb]" />
                   </div>
-                  <h3 className="font-bold text-[15px] xl:text-[16px] text-slate-900 mb-1">Desempenho</h3>
-                  <p className="text-[12px] xl:text-[12.5px] text-slate-500 leading-snug">Veja sua evolução e progresso.</p>
+                  <h3 className="font-bold text-[15px] xl:text-[16px] text-slate-900 mb-1">
+                    Desempenho
+                  </h3>
+                  <p className="text-[12px] xl:text-[12.5px] text-slate-500 leading-snug">
+                    Veja sua evolução e progresso.
+                  </p>
                 </div>
-                
+
                 {/* Comunicados */}
                 <div className="bg-white rounded-[14px] p-4 xl:p-5 shadow-xl flex flex-col hover:scale-105 transition-transform origin-right">
                   <div className="w-10 h-10 xl:w-11 xl:h-11 rounded-[11px] bg-pink-100 flex items-center justify-center mb-3 xl:mb-4">
                     <MessageCircle className="w-5 h-5 xl:w-6 xl:h-6 text-[#db2777]" />
                   </div>
-                  <h3 className="font-bold text-[15px] xl:text-[16px] text-slate-900 mb-1">Comunicados</h3>
-                  <p className="text-[12px] xl:text-[12.5px] text-slate-500 leading-snug">Leia avisos da escola e professores.</p>
+                  <h3 className="font-bold text-[15px] xl:text-[16px] text-slate-900 mb-1">
+                    Comunicados
+                  </h3>
+                  <p className="text-[12px] xl:text-[12.5px] text-slate-500 leading-snug">
+                    Leia avisos da escola e professores.
+                  </p>
                 </div>
               </div>
             </div>
@@ -321,14 +460,36 @@ export default function AlunoLogin() {
               {/* Card Média Geral */}
               <div className="bg-white rounded-[14px] p-5 shadow-2xl relative overflow-hidden group">
                 <div className="absolute top-0 left-0 w-1 h-full bg-[#22a05f]"></div>
-                <h3 className="text-[14px] font-bold text-slate-800 mb-4">Média Geral</h3>
+                <h3 className="text-[14px] font-bold text-slate-800 mb-4">
+                  Média Geral
+                </h3>
                 <div className="flex items-center gap-4">
                   <div className="relative w-16 h-16 flex items-center justify-center shrink-0">
                     <svg className="w-full h-full transform -rotate-90 transition-transform group-hover:scale-110 duration-500">
-                      <circle cx="32" cy="32" r="28" fill="none" stroke="#e2e8f0" strokeWidth="6" />
-                      <circle cx="32" cy="32" r="28" fill="none" stroke="#22a05f" strokeWidth="6" strokeDasharray="175.9" strokeDashoffset="17.5" strokeLinecap="round" className="transition-all duration-1000 ease-out" />
+                      <circle
+                        cx="32"
+                        cy="32"
+                        r="28"
+                        fill="none"
+                        stroke="#e2e8f0"
+                        strokeWidth="6"
+                      />
+                      <circle
+                        cx="32"
+                        cy="32"
+                        r="28"
+                        fill="none"
+                        stroke="#22a05f"
+                        strokeWidth="6"
+                        strokeDasharray="175.9"
+                        strokeDashoffset="17.5"
+                        strokeLinecap="round"
+                        className="transition-all duration-1000 ease-out"
+                      />
                     </svg>
-                    <span className="absolute font-bold text-[14px] text-slate-800">9,6</span>
+                    <span className="absolute font-bold text-[14px] text-slate-800">
+                      9,6
+                    </span>
                   </div>
                   <div className="flex-1">
                     <div className="flex items-end gap-1 mb-2 h-8">
@@ -338,7 +499,9 @@ export default function AlunoLogin() {
                       <div className="w-2 bg-[#22a05f]/80 rounded-t h-[90%]"></div>
                       <div className="w-2 bg-[#22a05f] rounded-t h-[100%] animate-pulse"></div>
                     </div>
-                    <p className="text-[11px] text-slate-500 leading-tight">Sua média está acima da média da turma</p>
+                    <p className="text-[11px] text-slate-500 leading-tight">
+                      Sua média está acima da média da turma
+                    </p>
                   </div>
                 </div>
               </div>
@@ -347,16 +510,43 @@ export default function AlunoLogin() {
               <div className="bg-white rounded-[14px] p-5 shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-1 h-full bg-[#22a05f]"></div>
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-[14px] font-bold text-slate-800">Frequência</h3>
-                  <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Presente</span>
+                  <h3 className="text-[14px] font-bold text-slate-800">
+                    Frequência
+                  </h3>
+                  <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    Presente
+                  </span>
                 </div>
                 <div className="flex items-end gap-4 mt-2">
-                  <span className="text-[36px] font-bold text-[#22a05f] leading-none tracking-tight">98%</span>
+                  <span className="text-[36px] font-bold text-[#22a05f] leading-none tracking-tight">
+                    98%
+                  </span>
                   <div className="flex-1 h-10 flex items-end opacity-80">
-                    <svg className="w-full h-full" viewBox="0 0 100 30" preserveAspectRatio="none">
-                      <path d="M0,25 C20,25 30,10 50,15 C70,20 80,5 100,10 L100,30 L0,30 Z" fill="#22a05f" fillOpacity="0.1" />
-                      <path d="M0,25 C20,25 30,10 50,15 C70,20 80,5 100,10" fill="none" stroke="#22a05f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      <circle cx="100" cy="10" r="3" fill="#22a05f" className="animate-ping origin-center" />
+                    <svg
+                      className="w-full h-full"
+                      viewBox="0 0 100 30"
+                      preserveAspectRatio="none"
+                    >
+                      <path
+                        d="M0,25 C20,25 30,10 50,15 C70,20 80,5 100,10 L100,30 L0,30 Z"
+                        fill="#22a05f"
+                        fillOpacity="0.1"
+                      />
+                      <path
+                        d="M0,25 C20,25 30,10 50,15 C70,20 80,5 100,10"
+                        fill="none"
+                        stroke="#22a05f"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <circle
+                        cx="100"
+                        cy="10"
+                        r="3"
+                        fill="#22a05f"
+                        className="animate-ping origin-center"
+                      />
                       <circle cx="100" cy="10" r="3" fill="#22a05f" />
                     </svg>
                   </div>
@@ -372,18 +562,26 @@ export default function AlunoLogin() {
                 <Cloud className="w-4 h-4 xl:w-5 xl:h-5 text-white" />
               </div>
               <div>
-                <h4 className="text-white font-bold text-[12px] xl:text-[12.5px]">Acesso Online</h4>
-                <p className="text-[#d9f0e2] text-[10px] xl:text-[11px] leading-tight mt-0.5">De qualquer lugar e dispositivo.</p>
+                <h4 className="text-white font-bold text-[12px] xl:text-[12.5px]">
+                  Acesso Online
+                </h4>
+                <p className="text-[#d9f0e2] text-[10px] xl:text-[11px] leading-tight mt-0.5">
+                  De qualquer lugar e dispositivo.
+                </p>
               </div>
             </div>
-            
+
             <div className="w-1/2 xl:flex-1 px-4 flex gap-3 items-center">
               <div className="w-9 h-9 xl:w-10 xl:h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0">
                 <RefreshCcw className="w-4 h-4 xl:w-5 xl:h-5 text-white" />
               </div>
               <div>
-                <h4 className="text-white font-bold text-[12px] xl:text-[12.5px]">Sinc. Automática</h4>
-                <p className="text-[#d9f0e2] text-[10px] xl:text-[11px] leading-tight mt-0.5">Dados salvos automaticamente.</p>
+                <h4 className="text-white font-bold text-[12px] xl:text-[12.5px]">
+                  Sinc. Automática
+                </h4>
+                <p className="text-[#d9f0e2] text-[10px] xl:text-[11px] leading-tight mt-0.5">
+                  Dados salvos automaticamente.
+                </p>
               </div>
             </div>
 
@@ -392,8 +590,12 @@ export default function AlunoLogin() {
                 <ShieldCheck className="w-4 h-4 xl:w-5 xl:h-5 text-white" />
               </div>
               <div>
-                <h4 className="text-white font-bold text-[12px] xl:text-[12.5px]">Segurança</h4>
-                <p className="text-[#d9f0e2] text-[10px] xl:text-[11px] leading-tight mt-0.5">Ambiente seguro e protegido.</p>
+                <h4 className="text-white font-bold text-[12px] xl:text-[12.5px]">
+                  Segurança
+                </h4>
+                <p className="text-[#d9f0e2] text-[10px] xl:text-[11px] leading-tight mt-0.5">
+                  Ambiente seguro e protegido.
+                </p>
               </div>
             </div>
 
@@ -402,8 +604,12 @@ export default function AlunoLogin() {
                 <Smile className="w-4 h-4 xl:w-5 xl:h-5 text-white" />
               </div>
               <div>
-                <h4 className="text-white font-bold text-[12px] xl:text-[12.5px]">Intuitiva</h4>
-                <p className="text-[#d9f0e2] text-[10px] xl:text-[11px] leading-tight mt-0.5">Design moderno e fácil de usar.</p>
+                <h4 className="text-white font-bold text-[12px] xl:text-[12.5px]">
+                  Intuitiva
+                </h4>
+                <p className="text-[#d9f0e2] text-[10px] xl:text-[11px] leading-tight mt-0.5">
+                  Design moderno e fácil de usar.
+                </p>
               </div>
             </div>
 
@@ -412,12 +618,15 @@ export default function AlunoLogin() {
                 <Rocket className="w-4 h-4 xl:w-5 xl:h-5 text-white" />
               </div>
               <div>
-                <h4 className="text-white font-bold text-[12px] xl:text-[12.5px]">Foco no Aprendizado</h4>
-                <p className="text-[#d9f0e2] text-[10px] xl:text-[11px] leading-tight mt-0.5">Ferramentas para aprender melhor.</p>
+                <h4 className="text-white font-bold text-[12px] xl:text-[12.5px]">
+                  Foco no Aprendizado
+                </h4>
+                <p className="text-[#d9f0e2] text-[10px] xl:text-[11px] leading-tight mt-0.5">
+                  Ferramentas para aprender melhor.
+                </p>
               </div>
             </div>
           </div>
-          
         </div>
       </div>
 

@@ -1,68 +1,71 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { toast } from 'react-hot-toast';
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { toast } from "react-hot-toast";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
   XMarkIcon,
   InformationCircleIcon,
-} from '@heroicons/react/24/outline';
-import { usersService } from '@/services/users.service';
-import { CreateUserDto, UserRole } from '@/types/user.types';
-import { useAuthStore } from '@/stores/authStore';
-import { Button } from '@/components/ui/Button';
-import { removeMask, validateCPF } from '@/components/ui/MaskedInput';
-import { StudentFormTabs } from './components/StudentFormTabs';
-import { Institution as InstitutionOption } from '@/components/ui/InstitutionSearch';
-import { authService } from '@/services/auth.service';
-import { institutionsService } from '@/services/institutions.service';
-import { RoleBasedUserWizard } from '../components/RoleBasedUserWizard';
-import { presentFriendlyError } from '@/lib/friendly-error';
-import { supabase } from '@/lib/supabase';
-import { serializeStudentTagList } from '@/lib/student-form-utils';
+} from "@heroicons/react/24/outline";
+import { usersService } from "@/services/users.service";
+import { CreateUserDto, UserRole } from "@/types/user.types";
+import { useAuthStore } from "@/stores/authStore";
+import { Button } from "@/components/ui/Button";
+import { removeMask, validateCPF } from "@/components/ui/MaskedInput";
+import { StudentFormTabs } from "./components/StudentFormTabs";
+import { Institution as InstitutionOption } from "@/components/ui/InstitutionSearch";
+import { authService } from "@/services/auth.service";
+import { institutionsService } from "@/services/institutions.service";
+import { RoleBasedUserWizard } from "../components/RoleBasedUserWizard";
+import { presentFriendlyError } from "@/lib/friendly-error";
+import { supabase } from "@/lib/supabase";
+import { serializeStudentTagList } from "@/lib/student-form-utils";
 
 const roleOptions = [
-  { value: UserRole.INSTITUTION_ADMIN, label: 'Secretário(a)' },
-  { value: UserRole.DIRECTOR, label: 'Diretor(a)' },
-  { value: UserRole.COORDINATOR, label: 'Coordenador' },
-  { value: UserRole.TEACHER, label: 'Professor' },
-  { value: UserRole.STUDENT, label: 'Aluno' },
-  { value: UserRole.PARENT, label: 'Responsável' },
+  { value: UserRole.INSTITUTION_ADMIN, label: "Secretário(a)" },
+  { value: UserRole.DIRECTOR, label: "Diretor(a)" },
+  { value: UserRole.COORDINATOR, label: "Coordenador" },
+  { value: UserRole.TEACHER, label: "Professor" },
+  { value: UserRole.STUDENT, label: "Aluno" },
+  { value: UserRole.PARENT, label: "Responsável" },
 ];
 
-const roleHeader: Partial<Record<UserRole, { title: string; subtitle: string }>> = {
+const roleHeader: Partial<
+  Record<UserRole, { title: string; subtitle: string }>
+> = {
   [UserRole.STUDENT]: {
-    title: 'Novo Aluno',
-    subtitle: 'Preencha os dados para cadastrar um novo aluno no sistema',
+    title: "Novo Aluno",
+    subtitle: "Preencha os dados para cadastrar um novo aluno no sistema",
   },
   [UserRole.COORDINATOR]: {
-    title: 'Novo Coordenador',
-    subtitle: 'Preencha os dados para cadastrar um novo coordenador no sistema',
+    title: "Novo Coordenador",
+    subtitle: "Preencha os dados para cadastrar um novo coordenador no sistema",
   },
   [UserRole.TEACHER]: {
-    title: 'Novo Professor',
-    subtitle: 'Preencha os dados para cadastrar um novo professor no sistema',
+    title: "Novo Professor",
+    subtitle: "Preencha os dados para cadastrar um novo professor no sistema",
   },
   [UserRole.PARENT]: {
-    title: 'Novo Responsável',
-    subtitle: 'Preencha os dados para cadastrar um novo responsável no sistema',
+    title: "Novo Responsável",
+    subtitle: "Preencha os dados para cadastrar um novo responsável no sistema",
   },
   [UserRole.DIRECTOR]: {
-    title: 'Novo Diretor(a)',
-    subtitle: 'Preencha os dados para cadastrar um novo diretor(a) no sistema',
+    title: "Novo Diretor(a)",
+    subtitle: "Preencha os dados para cadastrar um novo diretor(a) no sistema",
   },
   [UserRole.INSTITUTION_ADMIN]: {
-    title: 'Novo Secretário(a)',
-    subtitle: 'Preencha os dados para cadastrar um novo secretário(a) no sistema',
+    title: "Novo Secretário(a)",
+    subtitle:
+      "Preencha os dados para cadastrar um novo secretário(a) no sistema",
   },
 };
 
 const defaultHeader = {
-  title: 'Novo Usuário',
-  subtitle: 'Preencha os dados para criar um novo usuário',
+  title: "Novo Usuário",
+  subtitle: "Preencha os dados para criar um novo usuário",
 };
 
 interface NewUserPageContentProps {
@@ -76,17 +79,19 @@ export function NewUserPageContent({
   fixedRole,
   lockRole = false,
   backRoute,
-  successRoute = '/admin/users',
+  successRoute = "/admin/users",
 }: NewUserPageContentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuthStore();
-  const roleFromQuery = searchParams.get('role') as UserRole | null;
+  const roleFromQuery = searchParams.get("role") as UserRole | null;
   const resolvedInitialRole = fixedRole ?? roleFromQuery ?? undefined;
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingInstitutions, setIsLoadingInstitutions] = useState(false);
-  const [availableInstitutions, setAvailableInstitutions] = useState<InstitutionOption[]>([]);
+  const [availableInstitutions, setAvailableInstitutions] = useState<
+    InstitutionOption[]
+  >([]);
   const [error, setError] = useState<string | null>(null);
 
   const form = useForm<CreateUserDto & Record<string, any>>({
@@ -97,7 +102,7 @@ export function NewUserPageContent({
       unitIds: [],
       managesInstitutionGlobally: false,
       institutionId: user?.institutionId,
-    }
+    },
   });
 
   const {
@@ -111,7 +116,7 @@ export function NewUserPageContent({
 
   useEffect(() => {
     if (resolvedInitialRole) {
-      setValue('role', resolvedInitialRole);
+      setValue("role", resolvedInitialRole);
     }
   }, [resolvedInitialRole, setValue]);
 
@@ -129,34 +134,41 @@ export function NewUserPageContent({
             ? await institutionsService.getPublicInstitutions()
             : await authService.getInstitutions();
 
-        const normalizedInstitutions: InstitutionOption[] = institutions.map((institution) => ({
-          id: institution.id,
-          name: institution.name,
-          slug: institution.slug,
-          city: 'city' in institution ? institution.city : undefined,
-          state: 'state' in institution ? institution.state : undefined,
-        }));
+        const normalizedInstitutions: InstitutionOption[] = institutions.map(
+          (institution) => ({
+            id: institution.id,
+            name: institution.name,
+            slug: institution.slug,
+            city: "city" in institution ? institution.city : undefined,
+            state: "state" in institution ? institution.state : undefined,
+          }),
+        );
 
         setAvailableInstitutions(normalizedInstitutions);
 
         const defaultInstitutionId =
-          getValues('institutionId') ||
+          getValues("institutionId") ||
           user.institutionId ||
           normalizedInstitutions[0]?.id ||
-          '';
+          "";
 
         if (defaultInstitutionId) {
-          setValue('institutionId', defaultInstitutionId, { shouldValidate: true });
-          const currentExtraInstitutionIds = (getValues('institutionIds') as string[] | undefined) ?? [];
+          setValue("institutionId", defaultInstitutionId, {
+            shouldValidate: true,
+          });
+          const currentExtraInstitutionIds =
+            (getValues("institutionIds") as string[] | undefined) ?? [];
           setValue(
-            'institutionIds',
-            currentExtraInstitutionIds.filter((institutionId) => institutionId !== defaultInstitutionId),
-            { shouldValidate: true }
+            "institutionIds",
+            currentExtraInstitutionIds.filter(
+              (institutionId) => institutionId !== defaultInstitutionId,
+            ),
+            { shouldValidate: true },
           );
         }
       } catch (loadError) {
-        console.error('Erro ao carregar instituições disponíveis:', loadError);
-        toast.error('Não foi possível carregar as instituições disponíveis.');
+        console.error("Erro ao carregar instituições disponíveis:", loadError);
+        toast.error("Não foi possível carregar as instituições disponíveis.");
       } finally {
         setIsLoadingInstitutions(false);
       }
@@ -165,26 +177,23 @@ export function NewUserPageContent({
     loadInstitutions();
   }, [getValues, setValue, user]);
 
-  const currentRole = watch('role');
+  const currentRole = watch("role");
   const canManageTeacherAssignments = [
     UserRole.COORDINATOR,
     UserRole.DIRECTOR,
   ].includes((user?.activeProfile ?? user?.role) as UserRole);
-  const currentEmail = watch('email');
-  const selectedPrimaryInstitutionId = watch('institutionId') ?? user?.institutionId ?? '';
-  const selectedAdditionalInstitutionIds = (watch('institutionIds') as string[] | undefined) ?? [];
-  const header = (currentRole && roleHeader[currentRole as UserRole]) || defaultHeader;
-  const generatedInitialPassword = (() => {
-    if (!currentEmail) return '';
-    const [localPart] = currentEmail.trim().toLowerCase().split('@');
-    return localPart ? `${localPart}@Grafos` : '';
-  })();
+  const selectedPrimaryInstitutionId =
+    watch("institutionId") ?? user?.institutionId ?? "";
+  const selectedAdditionalInstitutionIds =
+    (watch("institutionIds") as string[] | undefined) ?? [];
+  const header =
+    (currentRole && roleHeader[currentRole as UserRole]) || defaultHeader;
   const getSelectedPhotoFile = (value: unknown): File | null => {
     if (!value) return null;
-    if (typeof FileList !== 'undefined' && value instanceof FileList) {
+    if (typeof FileList !== "undefined" && value instanceof FileList) {
       return value.item(0);
     }
-    return Array.isArray(value) ? value[0] ?? null : null;
+    return Array.isArray(value) ? (value[0] ?? null) : null;
   };
 
   const toggleAdditionalInstitution = (institutionId: string) => {
@@ -192,57 +201,67 @@ export function NewUserPageContent({
       ? selectedAdditionalInstitutionIds.filter((id) => id !== institutionId)
       : [...selectedAdditionalInstitutionIds, institutionId];
 
-    setValue('institutionIds', nextIds, { shouldDirty: true, shouldValidate: true });
+    setValue("institutionIds", nextIds, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
   };
 
   const handlePrimaryInstitutionChange = (institutionId: string) => {
-    setValue('institutionId', institutionId, { shouldDirty: true, shouldValidate: true });
+    setValue("institutionId", institutionId, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
     setValue(
-      'institutionIds',
+      "institutionIds",
       selectedAdditionalInstitutionIds.filter((id) => id !== institutionId),
-      { shouldDirty: true, shouldValidate: true }
+      { shouldDirty: true, shouldValidate: true },
     );
   };
 
   const onSubmit = async (data: CreateUserDto) => {
-    const normalizedCpf = typeof data.cpf === 'string' ? removeMask(data.cpf) : '';
+    const normalizedCpf =
+      typeof data.cpf === "string" ? removeMask(data.cpf) : "";
 
     if (normalizedCpf && !validateCPF(normalizedCpf)) {
       const info = presentFriendlyError(
-        new Error('CPF inválido'),
-        'Informe um CPF válido para continuar o cadastro.'
+        new Error("CPF inválido"),
+        "Informe um CPF válido para continuar o cadastro.",
       );
       setError(info.description);
       return;
     }
 
     const primaryInstitutionId =
-      typeof data.institutionId === 'string'
+      typeof data.institutionId === "string"
         ? data.institutionId.trim()
-        : (user?.institutionId ?? '');
+        : (user?.institutionId ?? "");
     const normalizedInstitutionIds = Array.from(
       new Set([
         ...(primaryInstitutionId ? [primaryInstitutionId] : []),
         ...((data.institutionIds ?? []).filter(Boolean) as string[]),
-      ])
+      ]),
     );
 
     if (!primaryInstitutionId) {
-      setError('Instituição não encontrada');
+      setError("Instituição não encontrada");
       return;
     }
 
     if (normalizedInstitutionIds.length === 0) {
-      setError('Selecione ao menos uma instituição para o usuário.');
+      setError("Selecione ao menos uma instituição para o usuário.");
       return;
     }
 
     // Validação: aluno precisa ter ao menos 1 responsável com nome preenchido
     if (data.role === UserRole.STUDENT) {
       const responsaveis = (data as any).responsaveis ?? [];
-      const responsaveisValidos = responsaveis.filter((r: any) => r?.nome?.trim());
+      const responsaveisValidos = responsaveis.filter((r: any) =>
+        r?.nome?.trim(),
+      );
       if (responsaveisValidos.length === 0) {
-        const msg = 'Todo aluno deve ter ao menos um responsável cadastrado. Preencha a aba "Responsáveis".';
+        const msg =
+          'Todo aluno deve ter ao menos um responsável cadastrado. Preencha a aba "Responsáveis".';
         setError(msg);
         toast.error(msg);
         return;
@@ -269,7 +288,7 @@ export function NewUserPageContent({
               ? ((data as any).unitIds ?? [])
               : (data as any).managesInstitutionGlobally
                 ? []
-                : [((data as any).unitId ?? '').trim()].filter(Boolean),
+                : [((data as any).unitId ?? "").trim()].filter(Boolean),
           ),
         ),
         cpf: data.cpf ? removeMask(data.cpf) : undefined,
@@ -286,7 +305,10 @@ export function NewUserPageContent({
           ? getSelectedPhotoFile((data as any).photo)
           : null;
 
-      if (canManageTeacherAssignments && Array.isArray((data as any).subjectIds)) {
+      if (
+        canManageTeacherAssignments &&
+        Array.isArray((data as any).subjectIds)
+      ) {
         userData.subjectIds = (data as any).subjectIds;
       }
 
@@ -295,32 +317,38 @@ export function NewUserPageContent({
       }
 
       if (data.role === UserRole.STUDENT) {
-        userData.telefoneFixo = data.telefoneFixo ? removeMask(data.telefoneFixo) : undefined;
-        
+        userData.telefoneFixo = data.telefoneFixo
+          ? removeMask(data.telefoneFixo)
+          : undefined;
+
         userData.healthInfo = {
-           tipoSanguineo: data.tipoSanguineo,
-           convenioMedico: serializeStudentTagList(data.convenioMedico),
-           alergias: serializeStudentTagList(data.alergias),
-           medicamentos: serializeStudentTagList(data.medicamentos),
-           necessidadesEspeciais: serializeStudentTagList(data.necessidadesEspeciais),
-           restricoesAlimentares: serializeStudentTagList(data.restricoesAlimentares),
-           contatoEmergencia: data.contatoEmergencia
+          tipoSanguineo: data.tipoSanguineo,
+          convenioMedico: serializeStudentTagList(data.convenioMedico),
+          alergias: serializeStudentTagList(data.alergias),
+          medicamentos: serializeStudentTagList(data.medicamentos),
+          necessidadesEspeciais: serializeStudentTagList(
+            data.necessidadesEspeciais,
+          ),
+          restricoesAlimentares: serializeStudentTagList(
+            data.restricoesAlimentares,
+          ),
+          contatoEmergencia: data.contatoEmergencia,
         };
-        
+
         userData.transportInfo = {
-           usaTransporte: data.usaTransporte,
-           tipoTransporte: data.tipoTransporte,
-           empresaTransporte: data.empresaTransporte,
-           motoristaTransporte: data.motoristaTransporte,
-           rotaTransporte: data.rotaTransporte
+          usaTransporte: data.usaTransporte,
+          tipoTransporte: data.tipoTransporte,
+          empresaTransporte: data.empresaTransporte,
+          motoristaTransporte: data.motoristaTransporte,
+          rotaTransporte: data.rotaTransporte,
         };
-        
+
         if (data.responsaveis) {
           userData.responsaveis = data.responsaveis.map((r: any) => ({
-             ...r,
-             cpf: r.cpf ? removeMask(r.cpf) : undefined,
-             celular: r.celular ? removeMask(r.celular) : undefined,
-             whatsapp: r.whatsapp ? removeMask(r.whatsapp) : undefined,
+            ...r,
+            cpf: r.cpf ? removeMask(r.cpf) : undefined,
+            celular: r.celular ? removeMask(r.celular) : undefined,
+            whatsapp: r.whatsapp ? removeMask(r.whatsapp) : undefined,
           }));
         }
       }
@@ -350,26 +378,36 @@ export function NewUserPageContent({
         } catch (avatarError) {
           // O usuário e seus vínculos já foram criados. A foto é uma etapa
           // complementar e não deve transformar um cadastro concluído em erro.
-          console.warn('Usuário criado, mas o avatar não pôde ser salvo:', avatarError);
-          toast.error('Usuário criado, mas a foto não pôde ser salva. Você poderá adicioná-la depois na edição.');
+          console.warn(
+            "Usuário criado, mas o avatar não pôde ser salvo:",
+            avatarError,
+          );
+          toast.error(
+            "Usuário criado, mas a foto não pôde ser salva. Você poderá adicioná-la depois na edição.",
+          );
         }
       }
 
       const targetUnitId =
-        data.role === UserRole.DIRECTOR || data.role === UserRole.INSTITUTION_ADMIN
+        data.role === UserRole.DIRECTOR ||
+        data.role === UserRole.INSTITUTION_ADMIN
           ? ((data as any).unitId as string | undefined)?.trim() || undefined
           : undefined;
 
-      if (targetUnitId && (data.role === UserRole.DIRECTOR || (data.role === UserRole.INSTITUTION_ADMIN && !!(data as any).unitId))) {
+      if (
+        targetUnitId &&
+        (data.role === UserRole.DIRECTOR ||
+          (data.role === UserRole.INSTITUTION_ADMIN && !!(data as any).unitId))
+      ) {
         const { error: linkUnitError } = await supabase
-          .from('institution_units')
+          .from("institution_units")
           .update({ directorUserId: createdUser.id })
-          .eq('id', targetUnitId);
+          .eq("id", targetUnitId);
 
         if (linkUnitError) {
-          console.error('Erro ao vincular diretor(a) ao anexo:', linkUnitError);
+          console.error("Erro ao vincular diretor(a) ao anexo:", linkUnitError);
           toast.error(
-            'Usuário criado, mas não foi possível vincular como diretor(a) do anexo. Tente novamente pela tela do anexo.'
+            "Usuário criado, mas não foi possível vincular como diretor(a) do anexo. Tente novamente pela tela do anexo.",
           );
         }
       }
@@ -382,28 +420,28 @@ export function NewUserPageContent({
         try {
           await usersService.uploadStudentDocuments(
             createdUser.studentProfile.id,
-            pendingStudentDocuments
+            pendingStudentDocuments,
           );
         } catch (documentError) {
           const info = presentFriendlyError(
             documentError,
-            'O aluno foi criado, mas nao foi possivel anexar os documentos agora.'
+            "O aluno foi criado, mas nao foi possivel anexar os documentos agora.",
           );
           setError(
-            `O aluno foi criado, mas os documentos nao puderam ser enviados agora. ${info.description}`
+            `O aluno foi criado, mas os documentos nao puderam ser enviados agora. ${info.description}`,
           );
           router.push(`/admin/alunos/${createdUser.id}/edit`);
           return;
         }
       }
 
-      toast.success('Usuário criado com sucesso!');
+      toast.success("Usuário criado com sucesso!");
       router.push(successRoute);
     } catch (err: any) {
-      console.error('Erro ao criar usuário:', err);
+      console.error("Erro ao criar usuário:", err);
       const info = presentFriendlyError(
         err,
-        'Nao foi possivel criar o usuario agora. Revise os dados e tente novamente.'
+        "Nao foi possivel criar o usuario agora. Revise os dados e tente novamente.",
       );
       setError(info.description);
     } finally {
@@ -421,7 +459,9 @@ export function NewUserPageContent({
           <div className="flex items-start gap-3">
             <button
               type="button"
-              onClick={() => (backRoute ? router.push(backRoute) : router.back())}
+              onClick={() =>
+                backRoute ? router.push(backRoute) : router.back()
+              }
               className="mt-1 p-2 h-9 w-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               aria-label="Voltar"
             >
@@ -445,7 +485,9 @@ export function NewUserPageContent({
           {/* Erro geral */}
           {error && (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/50">
-              <p className="text-sm text-slate-700 dark:text-slate-200">{error}</p>
+              <p className="text-sm text-slate-700 dark:text-slate-200">
+                {error}
+              </p>
             </div>
           )}
 
@@ -457,7 +499,9 @@ export function NewUserPageContent({
               isLoadingInstitutions={isLoadingInstitutions}
               roleOptions={roleOptions}
               selectedPrimaryInstitutionId={selectedPrimaryInstitutionId}
-              selectedAdditionalInstitutionIds={selectedAdditionalInstitutionIds}
+              selectedAdditionalInstitutionIds={
+                selectedAdditionalInstitutionIds
+              }
               onPrimaryInstitutionChange={handlePrimaryInstitutionChange}
               onToggleAdditionalInstitution={toggleAdditionalInstitution}
               isRoleLocked={lockRole}
@@ -470,7 +514,6 @@ export function NewUserPageContent({
                 availableInstitutions={availableInstitutions}
                 isLoadingInstitutions={isLoadingInstitutions}
                 mode="create"
-                generatedInitialPassword={generatedInitialPassword}
               />
             </>
           )}
@@ -479,7 +522,9 @@ export function NewUserPageContent({
             <Button
               type="button"
               variant="outline"
-              onClick={() => (backRoute ? router.push(backRoute) : router.back())}
+              onClick={() =>
+                backRoute ? router.push(backRoute) : router.back()
+              }
               disabled={isSubmitting}
               leftIcon={<XMarkIcon className="h-4 w-4" />}
             >

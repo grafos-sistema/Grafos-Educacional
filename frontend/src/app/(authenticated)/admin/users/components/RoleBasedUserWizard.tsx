@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import Image from 'next/image';
-import { UseFormReturn, useWatch } from 'react-hook-form';
-import { toast } from 'react-hot-toast';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import Image from "next/image";
+import { UseFormReturn, useWatch } from "react-hook-form";
+import { toast } from "react-hot-toast";
 import {
   AcademicCapIcon,
   ArrowLeftIcon,
@@ -20,27 +20,27 @@ import {
   MapPinIcon,
   ShieldCheckIcon,
   UserGroupIcon,
-} from '@heroicons/react/24/outline';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
+} from "@heroicons/react/24/outline";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import {
   MaskedInput,
   masks,
   removeMask,
   validateCPF,
   formatCPF,
-} from '@/components/ui/MaskedInput';
-import { Badge } from '@/components/ui/Badge';
-import { Dropdown } from '@/components/ui/HeroDropdown';
-import { supabase } from '@/lib/supabase';
-import { BRAZILIAN_UF_OPTIONS } from '@/lib/constants/document-options';
-import { Gender, UserRole } from '@/types/user.types';
-import { AvatarCropModal } from '@/components/ui/AvatarCropModal';
-import { useCepAutofill } from '@/hooks/useCepAutofill';
-import { formatScheduleLoad } from '@/lib/schedule-load';
-import { subjectsService } from '@/services/subjects.service';
-import { Pagination } from '@/components/ui/Pagination';
+} from "@/components/ui/MaskedInput";
+import { Badge } from "@/components/ui/Badge";
+import { Dropdown } from "@/components/ui/HeroDropdown";
+import { supabase } from "@/lib/supabase";
+import { BRAZILIAN_UF_OPTIONS } from "@/lib/constants/document-options";
+import { Gender, UserRole } from "@/types/user.types";
+import { AvatarCropModal } from "@/components/ui/AvatarCropModal";
+import { useCepAutofill } from "@/hooks/useCepAutofill";
+import { formatScheduleLoad } from "@/lib/schedule-load";
+import { subjectsService } from "@/services/subjects.service";
+import { Pagination } from "@/components/ui/Pagination";
 
 export interface InstitutionOption {
   id: string;
@@ -106,7 +106,7 @@ interface TeacherClassSummary {
 
 interface RoleBasedUserWizardProps {
   form: UseFormReturn<any>;
-  mode: 'create' | 'edit';
+  mode: "create" | "edit";
   availableInstitutions: InstitutionOption[];
   isLoadingInstitutions?: boolean;
   roleOptions: Array<{ value: string; label: string }>;
@@ -126,57 +126,51 @@ interface RoleBasedUserWizardProps {
 }
 
 const genderOptions = [
-  { value: Gender.MALE, label: 'Masculino' },
-  { value: Gender.FEMALE, label: 'Feminino' },
-  { value: Gender.OTHER, label: 'Outro' },
-  { value: Gender.NOT_INFORMED, label: 'Não informado' },
+  { value: Gender.MALE, label: "Masculino" },
+  { value: Gender.FEMALE, label: "Feminino" },
+  { value: Gender.OTHER, label: "Outro" },
+  { value: Gender.NOT_INFORMED, label: "Não informado" },
 ];
 
 const relationshipOptions = [
-  { value: 'Mãe', label: 'Mãe' },
-  { value: 'Pai', label: 'Pai' },
-  { value: 'Responsável Legal', label: 'Responsável Legal' },
-  { value: 'Avó/Avô', label: 'Avó/Avô' },
-  { value: 'Outro', label: 'Outro' },
+  { value: "Mãe", label: "Mãe" },
+  { value: "Pai", label: "Pai" },
+  { value: "Responsável Legal", label: "Responsável Legal" },
+  { value: "Avó/Avô", label: "Avó/Avô" },
+  { value: "Outro", label: "Outro" },
 ];
 
 const studentCache = new Map<string, StudentOption[]>();
 
-function getInitialPasswordFromEmail(email?: string) {
-  if (!email) return '';
-  const [localPart] = email.trim().toLowerCase().split('@');
-  return localPart ? `${localPart}@Grafos` : '';
-}
-
 function buildSteps(
   role?: UserRole,
-  mode: 'create' | 'edit' = 'create',
+  mode: "create" | "edit" = "create",
   canManageTeacherAssignments = true,
 ): StepDefinition[] {
   if (role === UserRole.TEACHER) {
     const teacherSteps: StepDefinition[] = [
       {
-        id: 'identity',
-        label: 'Dados Pessoais',
-        subtitle: 'Identificação do professor',
+        id: "identity",
+        label: "Dados Pessoais",
+        subtitle: "Identificação do professor",
         icon: IdentificationIcon,
       },
       {
-        id: 'contact',
-        label: 'Contato',
-        subtitle: 'Endereço e contatos',
+        id: "contact",
+        label: "Contato",
+        subtitle: "Endereço e contatos",
         icon: MapPinIcon,
       },
       {
-        id: 'profile',
-        label: 'Dados Profissionais',
-        subtitle: 'Formação e registro',
+        id: "profile",
+        label: "Dados Profissionais",
+        subtitle: "Formação e registro",
         icon: BriefcaseIcon,
       },
       {
-        id: 'institution',
-        label: 'Instituição',
-        subtitle: 'Escolas em que atua',
+        id: "institution",
+        label: "Instituição",
+        subtitle: "Escolas em que atua",
         icon: BuildingOffice2Icon,
       },
     ];
@@ -184,25 +178,25 @@ function buildSteps(
     if (canManageTeacherAssignments) {
       teacherSteps.push(
         {
-          id: 'subjects',
-          label: 'Disciplinas',
-          subtitle: 'Disciplinas que leciona',
+          id: "subjects",
+          label: "Disciplinas",
+          subtitle: "Disciplinas que leciona",
           icon: AcademicCapIcon,
         },
         {
-          id: 'classes',
-          label: 'Turmas',
-          subtitle: 'Turmas em que atua',
+          id: "classes",
+          label: "Turmas",
+          subtitle: "Turmas em que atua",
           icon: UserGroupIcon,
         },
       );
     }
 
-    if (mode === 'edit') {
+    if (mode === "edit") {
       teacherSteps.push({
-        id: 'access',
-        label: 'Acesso',
-        subtitle: 'Redefinição de senha',
+        id: "access",
+        label: "Acesso",
+        subtitle: "Redefinição de senha",
         icon: ShieldCheckIcon,
       });
     }
@@ -213,27 +207,27 @@ function buildSteps(
   if (role === UserRole.COORDINATOR) {
     return [
       {
-        id: 'identity',
-        label: 'Dados Pessoais',
-        subtitle: 'Identificação do coordenador',
+        id: "identity",
+        label: "Dados Pessoais",
+        subtitle: "Identificação do coordenador",
         icon: IdentificationIcon,
       },
       {
-        id: 'contact',
-        label: 'Contato',
-        subtitle: 'Endereço e contatos',
+        id: "contact",
+        label: "Contato",
+        subtitle: "Endereço e contatos",
         icon: MapPinIcon,
       },
       {
-        id: 'institution',
-        label: 'Instituição',
-        subtitle: 'Instituições vinculadas',
+        id: "institution",
+        label: "Instituição",
+        subtitle: "Instituições vinculadas",
         icon: BuildingOffice2Icon,
       },
       {
-        id: 'access',
-        label: 'Acesso',
-        subtitle: 'Redefinição de senha',
+        id: "access",
+        label: "Acesso",
+        subtitle: "Redefinição de senha",
         icon: ShieldCheckIcon,
       },
     ];
@@ -242,33 +236,33 @@ function buildSteps(
   if (role === UserRole.PARENT) {
     return [
       {
-        id: 'identity',
-        label: 'Dados Pessoais',
-        subtitle: 'Informações do responsável',
+        id: "identity",
+        label: "Dados Pessoais",
+        subtitle: "Informações do responsável",
         icon: IdentificationIcon,
       },
       {
-        id: 'contact',
-        label: 'Contato',
-        subtitle: 'Contato e endereço',
+        id: "contact",
+        label: "Contato",
+        subtitle: "Contato e endereço",
         icon: MapPinIcon,
       },
       {
-        id: 'institution',
-        label: 'Instituição',
-        subtitle: 'Instituições relacionadas',
+        id: "institution",
+        label: "Instituição",
+        subtitle: "Instituições relacionadas",
         icon: BuildingOffice2Icon,
       },
       {
-        id: 'students',
-        label: 'Vínculo com Alunos',
-        subtitle: 'Alunos e permissões',
+        id: "students",
+        label: "Vínculo com Alunos",
+        subtitle: "Alunos e permissões",
         icon: UserGroupIcon,
       },
       {
-        id: 'access',
-        label: 'Acesso',
-        subtitle: 'Redefinição de senha',
+        id: "access",
+        label: "Acesso",
+        subtitle: "Redefinição de senha",
         icon: EnvelopeIcon,
       },
     ];
@@ -277,21 +271,21 @@ function buildSteps(
   if (role === UserRole.DIRECTOR) {
     return [
       {
-        id: 'identity',
-        label: 'Dados Pessoais',
-        subtitle: 'Identificação do diretor',
+        id: "identity",
+        label: "Dados Pessoais",
+        subtitle: "Identificação do diretor",
         icon: IdentificationIcon,
       },
       {
-        id: 'contact',
-        label: 'Contato',
-        subtitle: 'Endereço e contatos',
+        id: "contact",
+        label: "Contato",
+        subtitle: "Endereço e contatos",
         icon: MapPinIcon,
       },
       {
-        id: 'institution',
-        label: 'Instituição',
-        subtitle: 'Instituição e anexo vinculados',
+        id: "institution",
+        label: "Instituição",
+        subtitle: "Instituição e anexo vinculados",
         icon: BuildingOffice2Icon,
       },
     ];
@@ -299,27 +293,27 @@ function buildSteps(
 
   return [
     {
-      id: 'identity',
-      label: 'Dados Pessoais',
-      subtitle: 'Informações básicas do perfil',
+      id: "identity",
+      label: "Dados Pessoais",
+      subtitle: "Informações básicas do perfil",
       icon: IdentificationIcon,
     },
     {
-      id: 'contact',
-      label: 'Contato',
-      subtitle: 'Contato e endereço',
+      id: "contact",
+      label: "Contato",
+      subtitle: "Contato e endereço",
       icon: MapPinIcon,
     },
     {
-      id: 'institution',
-      label: 'Instituição',
-      subtitle: 'Instituições vinculadas',
+      id: "institution",
+      label: "Instituição",
+      subtitle: "Instituições vinculadas",
       icon: BuildingOffice2Icon,
     },
     {
-      id: 'access',
-      label: 'Acesso',
-      subtitle: 'Redefinição de senha',
+      id: "access",
+      label: "Acesso",
+      subtitle: "Redefinição de senha",
       icon: ShieldCheckIcon,
     },
   ];
@@ -348,7 +342,7 @@ function TabHeader({
 }
 
 function institutionLocation(institution: InstitutionOption) {
-  return [institution.city, institution.state].filter(Boolean).join(' - ');
+  return [institution.city, institution.state].filter(Boolean).join(" - ");
 }
 
 export function RoleBasedUserWizard({
@@ -371,13 +365,13 @@ export function RoleBasedUserWizard({
   onPromoteExistingDirector,
   canManageTeacherAssignments = true,
 }: RoleBasedUserWizardProps) {
-  const [activeStepId, setActiveStepId] = useState('identity');
+  const [activeStepId, setActiveStepId] = useState("identity");
   const [subjectOptions, setSubjectOptions] = useState<SubjectOption[]>([]);
-  const [subjectSearchTerm, setSubjectSearchTerm] = useState('');
+  const [subjectSearchTerm, setSubjectSearchTerm] = useState("");
   const [subjectPage, setSubjectPage] = useState(1);
   const [studentOptions, setStudentOptions] = useState<StudentOption[]>([]);
   const [isLoadingDynamicOptions, setIsLoadingDynamicOptions] = useState(false);
-  const [institutionSearchTerm, setInstitutionSearchTerm] = useState('');
+  const [institutionSearchTerm, setInstitutionSearchTerm] = useState("");
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
@@ -394,7 +388,7 @@ export function RoleBasedUserWizard({
       unitName?: string | null;
     }>
   >([]);
-  const [selectedDirectorId, setSelectedDirectorId] = useState<string>('');
+  const [selectedDirectorId, setSelectedDirectorId] = useState<string>("");
   const [availableUnits, setAvailableUnits] = useState<
     Array<{ id: string; name: string }>
   >([]);
@@ -409,60 +403,57 @@ export function RoleBasedUserWizard({
     formState: { errors },
   } = form;
 
-  const role = useWatch({ control, name: 'role' }) as UserRole | undefined;
-  const firstName = useWatch({ control, name: 'firstName' }) as
+  const role = useWatch({ control, name: "role" }) as UserRole | undefined;
+  const firstName = useWatch({ control, name: "firstName" }) as
     string | undefined;
-  const lastName = useWatch({ control, name: 'lastName' }) as
+  const lastName = useWatch({ control, name: "lastName" }) as
     string | undefined;
-  const email = useWatch({ control, name: 'email' }) as string | undefined;
-  const cpf = useWatch({ control, name: 'cpf' }) as string | undefined;
-  const birthDate = useWatch({ control, name: 'birthDate' }) as
+  const email = useWatch({ control, name: "email" }) as string | undefined;
+  const cpf = useWatch({ control, name: "cpf" }) as string | undefined;
+  const birthDate = useWatch({ control, name: "birthDate" }) as
     string | undefined;
-  const state = useWatch({ control, name: 'state' }) as string | undefined;
-  const hireDate = useWatch({ control, name: 'hireDate' }) as
+  const state = useWatch({ control, name: "state" }) as string | undefined;
+  const hireDate = useWatch({ control, name: "hireDate" }) as
     string | undefined;
-  const unitId = useWatch({ control, name: 'unitId' }) as string | undefined;
+  const unitId = useWatch({ control, name: "unitId" }) as string | undefined;
   const selectedUnitIds =
-    (useWatch({ control, name: 'unitIds' }) as string[] | undefined) ?? [];
+    (useWatch({ control, name: "unitIds" }) as string[] | undefined) ?? [];
   const managesInstitutionGlobally = Boolean(
-    useWatch({ control, name: 'managesInstitutionGlobally' }),
+    useWatch({ control, name: "managesInstitutionGlobally" }),
   );
-  const isActive = useWatch({ control, name: 'isActive' }) as
+  const isActive = useWatch({ control, name: "isActive" }) as
     boolean | undefined;
-  const avatar = useWatch({ control, name: 'avatar' }) as string | undefined;
-  const photo = useWatch({ control, name: 'photo' }) as
+  const avatar = useWatch({ control, name: "avatar" }) as string | undefined;
+  const photo = useWatch({ control, name: "photo" }) as
     FileList | File[] | undefined;
   const selectedSubjects =
-    (useWatch({ control, name: 'subjectIds' }) as string[] | undefined) ?? [];
+    (useWatch({ control, name: "subjectIds" }) as string[] | undefined) ?? [];
   const linkedStudents =
-    (useWatch({ control, name: 'linkedStudents' }) as
+    (useWatch({ control, name: "linkedStudents" }) as
       StudentLink[] | undefined) ?? [];
-  const password = useWatch({ control, name: 'password' }) as
+  const password = useWatch({ control, name: "password" }) as
     string | undefined;
-  const generatedInitialPassword = useMemo(() => {
-    return getInitialPasswordFromEmail(email);
-  }, [email]);
   const profileDisplayName =
-    [firstName, lastName].filter(Boolean).join(' ').trim() ||
+    [firstName, lastName].filter(Boolean).join(" ").trim() ||
     (role === UserRole.COORDINATOR
-      ? 'Novo coordenador'
+      ? "Novo coordenador"
       : role === UserRole.DIRECTOR
-        ? 'Novo diretor'
+        ? "Novo diretor"
         : role === UserRole.INSTITUTION_ADMIN
-          ? 'Novo secretário'
+          ? "Novo secretário"
           : role === UserRole.PARENT
-            ? 'Novo responsável'
-            : 'Novo professor');
-  const profileSummary = cpf?.trim() ? formatCPF(cpf.trim()) : '';
+            ? "Novo responsável"
+            : "Novo professor");
+  const profileSummary = cpf?.trim() ? formatCPF(cpf.trim()) : "";
   const { fillAddressFromCep } = useCepAutofill({
     form,
     fields: {
-      zipCode: 'zipCode',
-      address: 'address',
-      city: 'city',
-      state: 'state',
-      bairro: 'bairro',
-      complemento: 'complemento',
+      zipCode: "zipCode",
+      address: "address",
+      city: "city",
+      state: "state",
+      bairro: "bairro",
+      complemento: "complemento",
     },
   });
 
@@ -498,7 +489,7 @@ export function RoleBasedUserWizard({
         institution.slug,
       ]
         .filter(Boolean)
-        .join(' ')
+        .join(" ")
         .toLowerCase();
       return !term || haystack.includes(term);
     });
@@ -522,7 +513,7 @@ export function RoleBasedUserWizard({
   ]);
   const selectedPhotoFile = useMemo(() => {
     if (!photo) return null;
-    if (typeof FileList !== 'undefined' && photo instanceof FileList) {
+    if (typeof FileList !== "undefined" && photo instanceof FileList) {
       return photo.item(0);
     }
     return Array.isArray(photo) ? (photo[0] ?? null) : null;
@@ -534,34 +525,34 @@ export function RoleBasedUserWizard({
     return avatar ?? null;
   }, [avatar, selectedPhotoFile]);
 
-  const photoRegister = register('photo');
+  const photoRegister = register("photo");
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const nextFile = event.target.files?.[0];
     if (!nextFile) return;
-    if (!nextFile.type.startsWith('image/')) {
-      event.target.value = '';
+    if (!nextFile.type.startsWith("image/")) {
+      event.target.value = "";
       return;
     }
     setPendingPhotoFile(nextFile);
     setIsCropModalOpen(true);
-    event.target.value = '';
+    event.target.value = "";
   };
 
   const handleDeletePhoto = () => {
     setPendingPhotoFile(null);
-    setValue('avatar', null as never, { shouldDirty: true });
-    setValue('photo', undefined as never, { shouldDirty: true });
-    if (photoInputRef.current) photoInputRef.current.value = '';
-    toast.success('Foto removida. Salve o cadastro para confirmar.');
+    setValue("avatar", null as never, { shouldDirty: true });
+    setValue("photo", undefined as never, { shouldDirty: true });
+    if (photoInputRef.current) photoInputRef.current.value = "";
+    toast.success("Foto removida. Salve o cadastro para confirmar.");
   };
 
   useEffect(() => {
-    setActiveStepId(steps[0]?.id ?? 'identity');
+    setActiveStepId(steps[0]?.id ?? "identity");
   }, [steps]);
 
   useEffect(() => {
     return () => {
-      if (selectedPhotoFile && photoPreviewUrl?.startsWith('blob:')) {
+      if (selectedPhotoFile && photoPreviewUrl?.startsWith("blob:")) {
         URL.revokeObjectURL(photoPreviewUrl);
       }
     };
@@ -575,7 +566,7 @@ export function RoleBasedUserWizard({
         return;
       }
 
-      const cacheKey = selectedInstitutionIds.slice().sort().join('|') || 'all';
+      const cacheKey = selectedInstitutionIds.slice().sort().join("|") || "all";
       setIsLoadingDynamicOptions(true);
 
       try {
@@ -612,11 +603,11 @@ export function RoleBasedUserWizard({
             setStudentOptions(cachedStudents);
           } else {
             const { data, error } = await supabase
-              .from('students')
+              .from("students")
               .select(
-                'id, registrationNumber, user:users!inner(id, firstName, lastName, institutionId, isActive)',
+                "id, registrationNumber, user:users!inner(id, firstName, lastName, institutionId, isActive)",
               )
-              .order('createdAt', { ascending: false });
+              .order("createdAt", { ascending: false });
 
             if (error) throw error;
 
@@ -625,7 +616,7 @@ export function RoleBasedUserWizard({
                 studentId: row.id as string,
                 userId: row.user?.id as string,
                 label:
-                  `${row.user?.firstName ?? ''} ${row.user?.lastName ?? ''}`.trim(),
+                  `${row.user?.firstName ?? ""} ${row.user?.lastName ?? ""}`.trim(),
                 registrationNumber: row.registrationNumber ?? undefined,
                 institutionId: row.user?.institutionId ?? undefined,
                 isActive: row.user?.isActive ?? true,
@@ -634,7 +625,7 @@ export function RoleBasedUserWizard({
               .filter(
                 (row) =>
                   selectedInstitutionIds.length === 0 ||
-                  selectedInstitutionIds.includes(row.institutionId ?? ''),
+                  selectedInstitutionIds.includes(row.institutionId ?? ""),
               );
 
             studentCache.set(cacheKey, normalized);
@@ -642,7 +633,7 @@ export function RoleBasedUserWizard({
           }
         }
       } catch (error) {
-        console.error('Erro ao carregar opcoes do wizard de usuario:', error);
+        console.error("Erro ao carregar opcoes do wizard de usuario:", error);
         if (role === UserRole.TEACHER) setSubjectOptions([]);
       } finally {
         setIsLoadingDynamicOptions(false);
@@ -662,7 +653,7 @@ export function RoleBasedUserWizard({
           .filter(Boolean)
           .some((value) => value?.toLocaleLowerCase().includes(search));
       })
-      .sort((first, second) => first.name.localeCompare(second.name, 'pt-BR'));
+      .sort((first, second) => first.name.localeCompare(second.name, "pt-BR"));
   }, [subjectOptions, subjectSearchTerm]);
 
   const subjectPagination = useMemo(() => {
@@ -722,11 +713,11 @@ export function RoleBasedUserWizard({
 
       try {
         const { data: unitRows, error: unitError } = await supabase
-          .from('institution_units')
-          .select('id, name, institutionId, directorUserId')
-          .in('institutionId', scopeInstitutionIds)
-          .eq('isActive', true)
-          .order('name', { ascending: true });
+          .from("institution_units")
+          .select("id, name, institutionId, directorUserId")
+          .in("institutionId", scopeInstitutionIds)
+          .eq("isActive", true)
+          .order("name", { ascending: true });
 
         if (!cancelled) {
           if (!unitError) {
@@ -747,17 +738,20 @@ export function RoleBasedUserWizard({
         // campo directorUserId de um anexo. O diretor pode ter sido criado
         // primeiro e vinculado ao anexo depois.
         const { data: userRows, error: userError } = await supabase
-          .from('users')
-          .select('id, firstName, lastName, email, institutionId')
-          .in('institutionId', scopeInstitutionIds)
-          .eq('role', UserRole.DIRECTOR)
-          .eq('isActive', true)
-          .order('firstName', { ascending: true });
+          .from("users")
+          .select("id, firstName, lastName, email, institutionId")
+          .in("institutionId", scopeInstitutionIds)
+          .eq("role", UserRole.DIRECTOR)
+          .eq("isActive", true)
+          .order("firstName", { ascending: true });
 
         if (!cancelled && !userError) {
           const unitByDirectorId = new Map<string, any>();
           for (const row of (unitRows ?? []) as any[]) {
-            if (row.directorUserId && !unitByDirectorId.has(row.directorUserId)) {
+            if (
+              row.directorUserId &&
+              !unitByDirectorId.has(row.directorUserId)
+            ) {
               unitByDirectorId.set(row.directorUserId, row);
             }
           }
@@ -768,7 +762,7 @@ export function RoleBasedUserWizard({
               return {
                 id: u.id,
                 name:
-                  `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email,
+                  `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.email,
                 email: u.email,
                 unitId: unit?.id ?? null,
                 unitName: unit?.name ?? null,
@@ -780,7 +774,7 @@ export function RoleBasedUserWizard({
         }
       } catch (err) {
         console.error(
-          'Erro ao carregar diretores/unidades para secretaria:',
+          "Erro ao carregar diretores/unidades para secretaria:",
           err,
         );
         if (!cancelled) {
@@ -806,8 +800,8 @@ export function RoleBasedUserWizard({
       if (!director) return;
       const current = getValues();
       const nameParts = director.name.trim().split(/\s+/);
-      const firstName = nameParts[0] ?? '';
-      const lastName = nameParts.slice(1).join(' ') ?? '';
+      const firstName = nameParts[0] ?? "";
+      const lastName = nameParts.slice(1).join(" ") ?? "";
       reset({
         ...current,
         role: UserRole.INSTITUTION_ADMIN,
@@ -819,7 +813,7 @@ export function RoleBasedUserWizard({
       });
       setIsAlsoDirector(true);
       toast(
-        'Dados do diretor carregados. Confira e salve para finalizar a promoção.',
+        "Dados do diretor carregados. Confira e salve para finalizar a promoção.",
       );
       return;
     }
@@ -836,9 +830,9 @@ export function RoleBasedUserWizard({
       if (role !== UserRole.INSTITUTION_ADMIN && role !== UserRole.DIRECTOR)
         return;
       if (!defaultUnitId) return;
-      const currentUnitId = (getValues as any)?.('unitId');
+      const currentUnitId = (getValues as any)?.("unitId");
       if (!currentUnitId) {
-        setValue('unitId', defaultUnitId, {
+        setValue("unitId", defaultUnitId, {
           shouldDirty: false,
           shouldValidate: false,
         });
@@ -849,52 +843,49 @@ export function RoleBasedUserWizard({
 
   const pendencias = useMemo(() => {
     const items: string[] = [];
-    if (!firstName || !lastName) items.push('Preencher nome e sobrenome.');
-    if (!email) items.push('Informar email de acesso.');
+    if (!firstName || !lastName) items.push("Preencher nome e sobrenome.");
+    if (!email) items.push("Informar email de acesso.");
     if (!selectedPrimaryInstitutionId)
-      items.push('Definir a instituição principal.');
+      items.push("Definir a instituição principal.");
     if (
       role === UserRole.COORDINATOR &&
       !managesInstitutionGlobally &&
       !unitId
     ) {
-      items.push('Selecionar o anexo do coordenador ou marcar gestão geral.');
+      items.push("Selecionar o anexo do coordenador ou marcar gestão geral.");
     }
-    if (
-      role === UserRole.TEACHER &&
-      selectedUnitIds.length === 0
-    ) {
-      items.push('Vincular o professor a pelo menos um anexo.');
+    if (role === UserRole.TEACHER && selectedUnitIds.length === 0) {
+      items.push("Vincular o professor a pelo menos um anexo.");
     }
     if (
       role === UserRole.TEACHER &&
       canManageTeacherAssignments &&
       selectedSubjects.length === 0
     ) {
-      items.push('Vincular ao menos uma disciplina.');
+      items.push("Vincular ao menos uma disciplina.");
     }
     if (role === UserRole.PARENT && linkedStudents.length === 0)
-      items.push('Vincular ao menos um aluno.');
+      items.push("Vincular ao menos um aluno.");
     return items;
   }, [
-      canManageTeacherAssignments,
-      email,
-      firstName,
-      lastName,
-      linkedStudents.length,
-      managesInstitutionGlobally,
-      role,
-      selectedPrimaryInstitutionId,
-      selectedSubjects.length,
-      selectedUnitIds.length,
-    ]);
+    canManageTeacherAssignments,
+    email,
+    firstName,
+    lastName,
+    linkedStudents.length,
+    managesInstitutionGlobally,
+    role,
+    selectedPrimaryInstitutionId,
+    selectedSubjects.length,
+    selectedUnitIds.length,
+  ]);
 
   const status =
     pendencias.length === 0
-      ? 'Pronto para uso'
+      ? "Pronto para uso"
       : pendencias.length <= 2
-        ? 'Incompleto'
-        : 'Cadastrado';
+        ? "Incompleto"
+        : "Cadastrado";
 
   const goToStep = (index: number) => {
     if (index < 0 || index >= steps.length) return;
@@ -907,7 +898,7 @@ export function RoleBasedUserWizard({
     const next = selectedSubjects.includes(subjectId)
       ? selectedSubjects.filter((id) => id !== subjectId)
       : [...selectedSubjects, subjectId];
-    setValue('subjectIds', next, { shouldDirty: true, shouldValidate: true });
+    setValue("subjectIds", next, { shouldDirty: true, shouldValidate: true });
   };
 
   const toggleLinkedStudent = (student: StudentOption) => {
@@ -922,14 +913,14 @@ export function RoleBasedUserWizard({
             studentId: student.studentId,
             studentUserId: student.userId,
             studentName: student.label,
-            relationship: 'Responsável Legal',
+            relationship: "Responsável Legal",
             isPrimary: linkedStudents.length === 0,
             notificacoes: true,
             podeRetirar: false,
           },
         ];
 
-    setValue('linkedStudents', next, {
+    setValue("linkedStudents", next, {
       shouldDirty: true,
       shouldValidate: true,
     });
@@ -943,7 +934,7 @@ export function RoleBasedUserWizard({
     const next = linkedStudents.map((item) =>
       item.studentId === studentId ? { ...item, [field]: value } : item,
     );
-    setValue('linkedStudents', next, {
+    setValue("linkedStudents", next, {
       shouldDirty: true,
       shouldValidate: true,
     });
@@ -959,7 +950,7 @@ export function RoleBasedUserWizard({
       if (fallbackInstitutionId) {
         onPrimaryInstitutionChange(fallbackInstitutionId);
       } else {
-        onPrimaryInstitutionChange('');
+        onPrimaryInstitutionChange("");
       }
       return;
     }
@@ -1014,7 +1005,7 @@ export function RoleBasedUserWizard({
                       width={144}
                       height={144}
                       className="h-full w-full object-cover"
-                      unoptimized={photoPreviewUrl.startsWith('blob:')}
+                      unoptimized={photoPreviewUrl.startsWith("blob:")}
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center gap-2 px-4 text-center text-gray-400">
@@ -1037,29 +1028,29 @@ export function RoleBasedUserWizard({
                 ...(photoPreviewUrl
                   ? [
                       {
-                        key: 'view-photo',
-                        label: 'Visualizar foto',
+                        key: "view-photo",
+                        label: "Visualizar foto",
                         onClick: () =>
                           window.open(
                             photoPreviewUrl,
-                            '_blank',
-                            'noopener,noreferrer',
+                            "_blank",
+                            "noopener,noreferrer",
                           ),
                       },
                     ]
                   : []),
                 {
-                  key: 'change-photo',
-                  label: photoPreviewUrl ? 'Trocar foto' : 'Adicionar foto',
+                  key: "change-photo",
+                  label: photoPreviewUrl ? "Trocar foto" : "Adicionar foto",
                   onClick: () => photoInputRef.current?.click(),
                 },
                 ...(photoPreviewUrl
                   ? [
                       {
-                        key: 'delete-photo',
-                        label: 'Excluir foto',
+                        key: "delete-photo",
+                        label: "Excluir foto",
                         onClick: handleDeletePhoto,
-                        color: 'danger' as const,
+                        color: "danger" as const,
                       },
                     ]
                   : []),
@@ -1082,7 +1073,7 @@ export function RoleBasedUserWizard({
                 {profileDisplayName}
               </p>
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {profileSummary || 'xxx.xxx.xxx-xx'}
+                {profileSummary || "xxx.xxx.xxx-xx"}
               </p>
             </div>
           </div>
@@ -1099,12 +1090,12 @@ export function RoleBasedUserWizard({
                 onClick={() => setActiveStepId(step.id)}
                 className={`flex items-center gap-3 text-left px-4 py-3 rounded-r-lg text-sm font-medium transition-colors whitespace-nowrap border-l-4 ${
                   isActive
-                    ? 'bg-primary-50/80 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400 border-primary-600 shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800 border-transparent'
+                    ? "bg-primary-50/80 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400 border-primary-600 shadow-sm"
+                    : "text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800 border-transparent"
                 }`}
               >
                 <Icon
-                  className={`h-5 w-5 shrink-0 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400'}`}
+                  className={`h-5 w-5 shrink-0 ${isActive ? "text-primary-600 dark:text-primary-400" : "text-gray-400"}`}
                 />
                 {step.label}
               </button>
@@ -1129,7 +1120,7 @@ export function RoleBasedUserWizard({
                     Promover Diretor existente para Secretário
                   </span>
                   <ChevronDownIcon
-                    className={`h-5 w-5 text-gray-500 transition-transform ${showDirectorPromotion ? 'rotate-180' : ''}`}
+                    className={`h-5 w-5 text-gray-500 transition-transform ${showDirectorPromotion ? "rotate-180" : ""}`}
                   />
                 </button>
 
@@ -1150,12 +1141,12 @@ export function RoleBasedUserWizard({
                           <Select
                             placeholder="Selecione um diretor(a)"
                             options={[
-                              { value: '', label: 'Selecione...' },
+                              { value: "", label: "Selecione..." },
                               ...availableDirectors.map((d) => ({
                                 value: d.id,
                                 label:
                                   d.name +
-                                  (d.unitName ? ` — ${d.unitName}` : ''),
+                                  (d.unitName ? ` — ${d.unitName}` : ""),
                               })),
                             ]}
                             value={selectedDirectorId}
@@ -1202,20 +1193,20 @@ export function RoleBasedUserWizard({
                             <Select
                               label="Anexo (Unidade) *"
                               options={[
-                                { value: '', label: 'Selecione...' },
+                                { value: "", label: "Selecione..." },
                                 ...availableUnits.map((u) => ({
                                   value: u.id,
                                   label: u.name,
                                 })),
                               ]}
-                              {...register('unitId', {
+                              {...register("unitId", {
                                 required: isAlsoDirector
-                                  ? 'Selecione o anexo do diretor(a)'
+                                  ? "Selecione o anexo do diretor(a)"
                                   : false,
                               })}
-                              value={unitId ?? ''}
+                              value={unitId ?? ""}
                               onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                                setValue('unitId', e.target.value, {
+                                setValue("unitId", e.target.value, {
                                   shouldDirty: true,
                                   shouldValidate: true,
                                 })
@@ -1247,7 +1238,7 @@ export function RoleBasedUserWizard({
               </div>
             )}
 
-            {activeStep.id === 'identity' && (
+            {activeStep.id === "identity" && (
               <div>
                 <TabHeader step={activeStep} />
 
@@ -1257,12 +1248,12 @@ export function RoleBasedUserWizard({
                       <Select
                         label="Perfil *"
                         options={roleOptions}
-                        {...register('role', {
-                          required: 'Perfil é obrigatório',
+                        {...register("role", {
+                          required: "Perfil é obrigatório",
                         })}
-                        value={role ?? ''}
+                        value={role ?? ""}
                         onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                          setValue('role', e.target.value as UserRole, {
+                          setValue("role", e.target.value as UserRole, {
                             shouldDirty: true,
                             shouldValidate: true,
                           })
@@ -1275,8 +1266,8 @@ export function RoleBasedUserWizard({
                   <div className="md:col-span-6">
                     <Input
                       label="Nome *"
-                      {...register('firstName', {
-                        required: 'Nome obrigatório',
+                      {...register("firstName", {
+                        required: "Nome obrigatório",
                       })}
                       error={errors.firstName?.message as string}
                     />
@@ -1284,23 +1275,23 @@ export function RoleBasedUserWizard({
                   <div className="md:col-span-6">
                     <Input
                       label="Sobrenome *"
-                      {...register('lastName', {
-                        required: 'Sobrenome obrigatório',
+                      {...register("lastName", {
+                        required: "Sobrenome obrigatório",
                       })}
                       error={errors.lastName?.message as string}
                     />
                   </div>
                   <div className="md:col-span-6">
-                    <Input label="Nome Social" {...register('socialName')} />
+                    <Input label="Nome Social" {...register("socialName")} />
                   </div>
                   <div className="md:col-span-3">
                     <Input
                       label="Data de Nascimento"
                       type="date"
-                      {...register('birthDate')}
-                      value={birthDate ?? ''}
+                      {...register("birthDate")}
+                      value={birthDate ?? ""}
                       onChange={(e) =>
-                        setValue('birthDate', e.target.value, {
+                        setValue("birthDate", e.target.value, {
                           shouldDirty: true,
                           shouldValidate: true,
                         })
@@ -1311,9 +1302,9 @@ export function RoleBasedUserWizard({
                     <Select
                       label="Sexo"
                       options={genderOptions}
-                      value={watch('gender') ?? Gender.NOT_INFORMED}
+                      value={watch("gender") ?? Gender.NOT_INFORMED}
                       onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                        setValue('gender', e.target.value as Gender, {
+                        setValue("gender", e.target.value as Gender, {
                           shouldDirty: true,
                           shouldValidate: true,
                         })
@@ -1325,13 +1316,17 @@ export function RoleBasedUserWizard({
                       label="CPF"
                       mask={masks.cpf}
                       maskChar={null}
-                      value={cpf ?? ''}
-                      {...register('cpf', {
+                      value={cpf ?? ""}
+                      {...register("cpf", {
+                        required:
+                          mode === "create"
+                            ? "CPF é obrigatório para gerar a senha inicial"
+                            : false,
                         validate: (value) => {
                           if (!value) return true;
                           if (removeMask(value).length !== 11)
-                            return 'CPF deve conter 11 dígitos';
-                          if (!validateCPF(value)) return 'CPF inválido';
+                            return "CPF deve conter 11 dígitos";
+                          if (!validateCPF(value)) return "CPF inválido";
                           return true;
                         },
                       })}
@@ -1343,7 +1338,7 @@ export function RoleBasedUserWizard({
               </div>
             )}
 
-            {activeStep.id === 'contact' && (
+            {activeStep.id === "contact" && (
               <div>
                 <TabHeader step={activeStep} />
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
@@ -1351,11 +1346,11 @@ export function RoleBasedUserWizard({
                     <Input
                       label="Email *"
                       type="email"
-                      {...register('email', {
-                        required: 'Email é obrigatório',
+                      {...register("email", {
+                        required: "Email é obrigatório",
                         pattern: {
                           value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                          message: 'Email inválido',
+                          message: "Email inválido",
                         },
                       })}
                       error={errors.email?.message as string}
@@ -1366,7 +1361,7 @@ export function RoleBasedUserWizard({
                       label="Celular"
                       mask={masks.phone}
                       maskChar={null}
-                      {...register('phone')}
+                      {...register("phone")}
                       placeholder="(00) 0 0000-0000"
                     />
                   </div>
@@ -1375,7 +1370,7 @@ export function RoleBasedUserWizard({
                       label="Telefone Fixo"
                       mask={masks.phone}
                       maskChar={null}
-                      {...register('telefoneFixo')}
+                      {...register("telefoneFixo")}
                       placeholder="(00) 0000-0000"
                     />
                   </div>
@@ -1387,15 +1382,15 @@ export function RoleBasedUserWizard({
                       label="CEP"
                       mask={masks.cep}
                       maskChar={null}
-                      {...register('zipCode', {
+                      {...register("zipCode", {
                         onBlur: async () => {
                           await fillAddressFromCep();
                           await trigger([
-                            'address',
-                            'city',
-                            'state',
-                            'bairro',
-                            'complemento',
+                            "address",
+                            "city",
+                            "state",
+                            "bairro",
+                            "complemento",
                           ]);
                         },
                       })}
@@ -1403,31 +1398,31 @@ export function RoleBasedUserWizard({
                     />
                   </div>
                   <div className="md:col-span-9 xl:col-span-7">
-                    <Input label="Logradouro" {...register('address')} />
+                    <Input label="Logradouro" {...register("address")} />
                   </div>
                   <div className="md:col-span-3 xl:col-span-3">
-                    <Input label="Número" {...register('numero')} />
+                    <Input label="Número" {...register("numero")} />
                   </div>
                   <div className="md:col-span-4 xl:col-span-3">
-                    <Input label="Complemento" {...register('complemento')} />
+                    <Input label="Complemento" {...register("complemento")} />
                   </div>
                   <div className="md:col-span-4 xl:col-span-3">
-                    <Input label="Bairro" {...register('bairro')} />
+                    <Input label="Bairro" {...register("bairro")} />
                   </div>
                   <div className="md:col-span-4 xl:col-span-4">
-                    <Input label="Cidade" {...register('city')} />
+                    <Input label="Cidade" {...register("city")} />
                   </div>
                   <div className="md:col-span-2 xl:col-span-2">
                     <Select
                       label="Estado"
                       options={[
-                        { value: '', label: 'Selecione a UF' },
+                        { value: "", label: "Selecione a UF" },
                         ...BRAZILIAN_UF_OPTIONS,
                       ]}
-                      {...register('state')}
-                      value={state ?? ''}
+                      {...register("state")}
+                      value={state ?? ""}
                       onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                        setValue('state', e.target.value, {
+                        setValue("state", e.target.value, {
                           shouldDirty: true,
                           shouldValidate: true,
                         })
@@ -1438,28 +1433,28 @@ export function RoleBasedUserWizard({
               </div>
             )}
 
-            {activeStep.id === 'profile' && role === UserRole.TEACHER && (
+            {activeStep.id === "profile" && role === UserRole.TEACHER && (
               <div>
                 <TabHeader step={activeStep} />
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                   <div className="md:col-span-4">
                     <Input
                       label="Formação principal"
-                      {...register('degree')}
+                      {...register("degree")}
                       placeholder="Ex.: Licenciatura em Matemática"
                     />
                   </div>
                   <div className="md:col-span-4">
                     <Input
                       label="Especialização"
-                      {...register('specialization')}
+                      {...register("specialization")}
                       placeholder="Ex.: Educação Inclusiva"
                     />
                   </div>
                   <div className="md:col-span-4">
                     <Input
                       label="Registro profissional"
-                      {...register('registrationNumber')}
+                      {...register("registrationNumber")}
                       placeholder="Ex.: Registro interno"
                     />
                   </div>
@@ -1467,10 +1462,10 @@ export function RoleBasedUserWizard({
                     <Input
                       label="Data de admissão"
                       type="date"
-                      {...register('hireDate')}
-                      value={hireDate ?? ''}
+                      {...register("hireDate")}
+                      value={hireDate ?? ""}
                       onChange={(e) =>
-                        setValue('hireDate', e.target.value, {
+                        setValue("hireDate", e.target.value, {
                           shouldDirty: true,
                           shouldValidate: true,
                         })
@@ -1481,7 +1476,7 @@ export function RoleBasedUserWizard({
               </div>
             )}
 
-            {activeStep.id === 'institution' && (
+            {activeStep.id === "institution" && (
               <div>
                 <TabHeader step={activeStep} />
 
@@ -1492,7 +1487,7 @@ export function RoleBasedUserWizard({
                         Instituição
                       </div>
                       <div className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
-                        {directorInstitutionName || 'Não informado'}
+                        {directorInstitutionName || "Não informado"}
                       </div>
                     </div>
                     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
@@ -1500,7 +1495,7 @@ export function RoleBasedUserWizard({
                         Anexo
                       </div>
                       <div className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
-                        {directorUnitName || 'Não informado'}
+                        {directorUnitName || "Não informado"}
                       </div>
                     </div>
                   </div>
@@ -1556,8 +1551,8 @@ export function RoleBasedUserWizard({
                                 }
                                 onKeyDown={(event) => {
                                   if (
-                                    event.key === 'Enter' ||
-                                    event.key === ' '
+                                    event.key === "Enter" ||
+                                    event.key === " "
                                   ) {
                                     event.preventDefault();
                                     toggleInstitutionSelection(institution.id);
@@ -1565,8 +1560,8 @@ export function RoleBasedUserWizard({
                                 }}
                                 className={`w-full text-left rounded-xl border p-4 transition-colors cursor-pointer ${
                                   isSelected
-                                    ? 'border-emerald-300 bg-emerald-50/80 dark:bg-emerald-900/20'
-                                    : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 hover:border-primary-200'
+                                    ? "border-emerald-300 bg-emerald-50/80 dark:bg-emerald-900/20"
+                                    : "border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 hover:border-primary-200"
                                 }`}
                               >
                                 <div className="flex items-start justify-between gap-3">
@@ -1607,10 +1602,10 @@ export function RoleBasedUserWizard({
                                           }
                                           items={[
                                             {
-                                              key: 'set-primary',
+                                              key: "set-primary",
                                               label: isPrimary
-                                                ? 'Instituição principal'
-                                                : 'Definir como principal',
+                                                ? "Instituição principal"
+                                                : "Definir como principal",
                                               onClick: () =>
                                                 defineInstitutionAsPrimary(
                                                   institution.id,
@@ -1639,16 +1634,16 @@ export function RoleBasedUserWizard({
                             onChange={(event) => {
                               const managesGlobally = event.target.checked;
                               setValue(
-                                'managesInstitutionGlobally',
+                                "managesInstitutionGlobally",
                                 managesGlobally,
                                 { shouldDirty: true, shouldValidate: true },
                               );
                               if (managesGlobally) {
-                                setValue('unitId', '', {
+                                setValue("unitId", "", {
                                   shouldDirty: true,
                                   shouldValidate: true,
                                 });
-                                setValue('unitIds', [], {
+                                setValue("unitIds", [], {
                                   shouldDirty: true,
                                   shouldValidate: true,
                                 });
@@ -1670,15 +1665,15 @@ export function RoleBasedUserWizard({
                           <Select
                             label="Anexo do coordenador *"
                             options={[
-                              { value: '', label: 'Selecione um anexo' },
+                              { value: "", label: "Selecione um anexo" },
                               ...availableUnits.map((unit) => ({
                                 value: unit.id,
                                 label: unit.name,
                               })),
                             ]}
-                            value={unitId ?? ''}
+                            value={unitId ?? ""}
                             onChange={(event) =>
-                              setValue('unitId', event.target.value, {
+                              setValue("unitId", event.target.value, {
                                 shouldDirty: true,
                                 shouldValidate: true,
                               })
@@ -1699,24 +1694,28 @@ export function RoleBasedUserWizard({
                             Anexos em que leciona *
                           </p>
                           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            Selecione um ou mais anexos onde este professor dará aulas.
+                            Selecione um ou mais anexos onde este professor dará
+                            aulas.
                           </p>
                         </div>
                         {availableUnits.length === 0 ? (
                           <p className="rounded-lg border border-dashed border-gray-300 p-3 text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">
-                            Selecione uma instituição para carregar os anexos disponíveis.
+                            Selecione uma instituição para carregar os anexos
+                            disponíveis.
                           </p>
                         ) : (
                           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                             {availableUnits.map((unit) => {
-                              const isSelected = selectedUnitIds.includes(unit.id);
+                              const isSelected = selectedUnitIds.includes(
+                                unit.id,
+                              );
                               return (
                                 <label
                                   key={unit.id}
                                   className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
                                     isSelected
-                                      ? 'border-primary-300 bg-primary-50/80 dark:bg-primary-900/20'
-                                      : 'border-gray-200 hover:border-primary-200 dark:border-gray-700'
+                                      ? "border-primary-300 bg-primary-50/80 dark:bg-primary-900/20"
+                                      : "border-gray-200 hover:border-primary-200 dark:border-gray-700"
                                   }`}
                                 >
                                   <input
@@ -1728,7 +1727,7 @@ export function RoleBasedUserWizard({
                                             (id) => id !== unit.id,
                                           )
                                         : [...selectedUnitIds, unit.id];
-                                      setValue('unitIds', next, {
+                                      setValue("unitIds", next, {
                                         shouldDirty: true,
                                         shouldValidate: true,
                                       });
@@ -1750,7 +1749,7 @@ export function RoleBasedUserWizard({
               </div>
             )}
 
-            {activeStep.id === 'subjects' && role === UserRole.TEACHER && (
+            {activeStep.id === "subjects" && role === UserRole.TEACHER && (
               <div>
                 <TabHeader
                   step={activeStep}
@@ -1792,44 +1791,46 @@ export function RoleBasedUserWizard({
                 ) : (
                   <>
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    {subjectPagination.data.map((subject) => {
-                      const isSelected = selectedSubjects.includes(subject.id);
-                      const institutionName = availableInstitutions.find(
-                        (item) => item.id === subject.institutionId,
-                      )?.name;
-                      return (
-                        <label
-                          key={subject.id}
-                          className={`flex items-start gap-3 rounded-xl border p-4 transition-colors ${
-                            canManageTeacherAssignments
-                              ? 'cursor-pointer'
-                              : 'cursor-default opacity-90'
-                          } ${
-                            isSelected
-                              ? 'border-primary-300 bg-primary-50/80 dark:bg-primary-900/20'
-                              : 'border-gray-200 dark:border-gray-700 hover:border-primary-200'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleSubject(subject.id)}
-                            disabled={!canManageTeacherAssignments}
-                            className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                          />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">
-                              {subject.name}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {[subject.code, institutionName]
-                                .filter(Boolean)
-                                .join(' | ')}
-                            </p>
-                          </div>
-                        </label>
-                      );
-                    })}
+                      {subjectPagination.data.map((subject) => {
+                        const isSelected = selectedSubjects.includes(
+                          subject.id,
+                        );
+                        const institutionName = availableInstitutions.find(
+                          (item) => item.id === subject.institutionId,
+                        )?.name;
+                        return (
+                          <label
+                            key={subject.id}
+                            className={`flex items-start gap-3 rounded-xl border p-4 transition-colors ${
+                              canManageTeacherAssignments
+                                ? "cursor-pointer"
+                                : "cursor-default opacity-90"
+                            } ${
+                              isSelected
+                                ? "border-primary-300 bg-primary-50/80 dark:bg-primary-900/20"
+                                : "border-gray-200 dark:border-gray-700 hover:border-primary-200"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSubject(subject.id)}
+                              disabled={!canManageTeacherAssignments}
+                              className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                {subject.name}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {[subject.code, institutionName]
+                                  .filter(Boolean)
+                                  .join(" | ")}
+                              </p>
+                            </div>
+                          </label>
+                        );
+                      })}
                     </div>
                     <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
                       <Pagination
@@ -1842,13 +1843,13 @@ export function RoleBasedUserWizard({
               </div>
             )}
 
-            {activeStep.id === 'students' && role === UserRole.PARENT && (
+            {activeStep.id === "students" && role === UserRole.PARENT && (
               <div>
                 <TabHeader step={activeStep} />
                 <div className="mb-4">
                   <Input
                     label="Ocupação"
-                    {...register('occupation')}
+                    {...register("occupation")}
                     placeholder="Ex.: Autônoma, Servidor, Analista"
                   />
                 </div>
@@ -1873,8 +1874,8 @@ export function RoleBasedUserWizard({
                             key={student.studentId}
                             className={`flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-colors ${
                               isSelected
-                                ? 'border-primary-300 bg-primary-50/80 dark:bg-primary-900/20'
-                                : 'border-gray-200 dark:border-gray-700 hover:border-primary-200'
+                                ? "border-primary-300 bg-primary-50/80 dark:bg-primary-900/20"
+                                : "border-gray-200 dark:border-gray-700 hover:border-primary-200"
                             }`}
                           >
                             <input
@@ -1890,7 +1891,7 @@ export function RoleBasedUserWizard({
                               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                 {[student.registrationNumber, institutionName]
                                   .filter(Boolean)
-                                  .join(' | ')}
+                                  .join(" | ")}
                               </p>
                             </div>
                           </label>
@@ -1927,7 +1928,7 @@ export function RoleBasedUserWizard({
                             onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                               updateLinkedStudent(
                                 student.studentId,
-                                'relationship',
+                                "relationship",
                                 e.target.value,
                               )
                             }
@@ -1939,7 +1940,7 @@ export function RoleBasedUserWizard({
                               onChange={(e) =>
                                 updateLinkedStudent(
                                   student.studentId,
-                                  'isPrimary',
+                                  "isPrimary",
                                   e.target.checked,
                                 )
                               }
@@ -1956,7 +1957,7 @@ export function RoleBasedUserWizard({
                               onChange={(e) =>
                                 updateLinkedStudent(
                                   student.studentId,
-                                  'notificacoes',
+                                  "notificacoes",
                                   e.target.checked,
                                 )
                               }
@@ -1973,7 +1974,7 @@ export function RoleBasedUserWizard({
                               onChange={(e) =>
                                 updateLinkedStudent(
                                   student.studentId,
-                                  'podeRetirar',
+                                  "podeRetirar",
                                   e.target.checked,
                                 )
                               }
@@ -1991,11 +1992,11 @@ export function RoleBasedUserWizard({
               </div>
             )}
 
-            {activeStep.id === 'classes' && role === UserRole.TEACHER && (
+            {activeStep.id === "classes" && role === UserRole.TEACHER && (
               <div>
                 <TabHeader step={activeStep} />
 
-                {mode === 'create' ? (
+                {mode === "create" ? (
                   <div className="space-y-4">
                     <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4">
                       <p className="text-sm font-semibold text-amber-900">
@@ -2035,9 +2036,9 @@ export function RoleBasedUserWizard({
                       <div
                         key={item.id}
                         className={`rounded-xl border p-4 ${
-                          item.assignmentType === 'main_teacher'
-                            ? 'border-blue-200 bg-blue-50/70'
-                            : 'border-emerald-200 bg-emerald-50/70'
+                          item.assignmentType === "main_teacher"
+                            ? "border-blue-200 bg-blue-50/70"
+                            : "border-emerald-200 bg-emerald-50/70"
                         }`}
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -2049,30 +2050,28 @@ export function RoleBasedUserWizard({
                               {item.class.grade}
                               {item.class.section
                                 ? ` • ${item.class.section}`
-                                : ''}
-                              {item.class.shift ? ` • ${item.class.shift}` : ''}
+                                : ""}
+                              {item.class.shift ? ` • ${item.class.shift}` : ""}
                             </p>
                           </div>
                           <Badge
                             variant={
-                              item.assignmentType === 'main_teacher'
-                                ? 'info'
-                                : 'success'
+                              item.assignmentType === "main_teacher"
+                                ? "info"
+                                : "success"
                             }
                             size="sm"
                           >
-                            {item.assignmentLabel || 'Vinculada'}
+                            {item.assignmentLabel || "Vinculada"}
                           </Badge>
                         </div>
                         <div className="mt-3 space-y-1">
                           <p className="text-sm text-gray-700">
-                            <span className="font-medium">Disciplina:</span>{' '}
-                            {item.subject?.name || 'Professor Titular'}
+                            <span className="font-medium">Disciplina:</span>{" "}
+                            {item.subject?.name || "Professor Titular"}
                           </p>
                           <p className="text-sm text-gray-700">
-                            <span className="font-medium">
-                              Carga semanal:
-                            </span>{' '}
+                            <span className="font-medium">Carga semanal:</span>{" "}
                             {formatScheduleLoad(
                               item.scheduledMinutes,
                               item.scheduledClassCount,
@@ -2086,61 +2085,39 @@ export function RoleBasedUserWizard({
               </div>
             )}
 
-            {activeStep.id === 'access' && (
+            {activeStep.id === "access" && (
               <div>
                 <TabHeader step={activeStep} />
 
-                {mode === 'create' ? (
+                {mode === "create" ? (
                   <div className="space-y-4">
                     <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
                       <p className="text-sm font-medium text-gray-900 dark:text-white">
                         Primeiro acesso
                       </p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {generatedInitialPassword
-                          ? 'Se for o primeiro login do usuário, você pode preencher a senha inicial automaticamente com o início do email.'
-                          : 'Preencha o email para liberar o preenchimento automático da senha inicial.'}
+                        Se a senha personalizada ficar em branco, o sistema
+                        usará os 6 primeiros dígitos do CPF como senha inicial e
+                        exigirá a troca no primeiro acesso.
                       </p>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          disabled={!generatedInitialPassword}
-                          onClick={() => {
-                            if (!generatedInitialPassword) return;
-                            setValue('password', generatedInitialPassword, {
-                              shouldDirty: true,
-                              shouldValidate: true,
-                            });
-                          }}
-                        >
-                          É o primeiro acesso? Preencher senha
-                        </Button>
-                        {generatedInitialPassword ? (
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            Senha sugerida:{' '}
-                            <strong>{generatedInitialPassword}</strong>
-                          </span>
-                        ) : null}
-                      </div>
                     </div>
 
                     <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
                       <Input
-                        label="Senha inicial"
+                        label="Senha personalizada (opcional)"
                         type="text"
-                        value={password ?? ''}
+                        value={password ?? ""}
                         onChange={(event) =>
-                          setValue('password', event.target.value, {
+                          setValue("password", event.target.value, {
                             shouldDirty: true,
                             shouldValidate: true,
                           })
                         }
-                        placeholder="Clique no botão para preencher automaticamente"
+                        placeholder="Deixe em branco para usar os 6 primeiros dígitos do CPF"
                       />
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        No primeiro login, o usuário poderá trocar essa senha
-                        depois de acessar a conta.
+                        O usuário deverá trocar a senha inicial ao entrar pela
+                        primeira vez.
                       </p>
                     </div>
                   </div>
@@ -2178,7 +2155,7 @@ export function RoleBasedUserWizard({
                 Anterior
               </Button>
               <Button
-                type={activeIndex === steps.length - 1 ? 'submit' : 'button'}
+                type={activeIndex === steps.length - 1 ? "submit" : "button"}
                 onClick={() => {
                   if (activeIndex < steps.length - 1) {
                     goToStep(activeIndex + 1);
@@ -2190,7 +2167,7 @@ export function RoleBasedUserWizard({
                   ) : undefined
                 }
               >
-                {activeIndex === steps.length - 1 ? 'Salvar' : 'Próximo'}
+                {activeIndex === steps.length - 1 ? "Salvar" : "Próximo"}
               </Button>
             </div>
           </div>
@@ -2205,13 +2182,13 @@ export function RoleBasedUserWizard({
           setPendingPhotoFile(null);
         }}
         onConfirm={(nextFile) => {
-          setValue('photo', [nextFile] as any, {
+          setValue("photo", [nextFile] as any, {
             shouldDirty: true,
             shouldValidate: true,
           });
           setIsCropModalOpen(false);
           setPendingPhotoFile(null);
-          if (photoInputRef.current) photoInputRef.current.value = '';
+          if (photoInputRef.current) photoInputRef.current.value = "";
         }}
       />
     </div>

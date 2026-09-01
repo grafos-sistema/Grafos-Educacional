@@ -1,79 +1,78 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useMemo } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { toast } from 'react-hot-toast';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect, useMemo } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { toast } from "react-hot-toast";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeftIcon,
   EyeIcon,
   EyeSlashIcon,
   AcademicCapIcon,
   EllipsisHorizontalIcon,
-} from '@heroicons/react/24/outline';
-import { usersService } from '@/services/users.service';
-import { UpdateUserData, Gender } from '@/types/user.types';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+} from "@heroicons/react/24/outline";
+import { usersService } from "@/services/users.service";
+import { UpdateUserData, Gender } from "@/types/user.types";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import {
   removeMask,
   formatCPF,
   formatPhone,
   formatCEP,
-} from '@/components/ui/MaskedInput';
-import { StudentFormTabs } from '@/app/(authenticated)/admin/users/new/components/StudentFormTabs';
-import { UserRole } from '@/types/user.types';
-import { RoleBasedUserWizard } from '@/app/(authenticated)/admin/users/components/RoleBasedUserWizard';
-import { authService } from '@/services/auth.service';
-import { institutionsService } from '@/services/institutions.service';
-import { supabase } from '@/lib/supabase';
-import { teachersService } from '@/services/teachers.service';
-import { teacherSubjectsService } from '@/services/teacher-subjects.service';
-import { enrollmentsService } from '@/services/enrollments.service';
-import { getUserListRouteByRole } from '@/lib/user-route-utils';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { useAuthStore } from '@/stores/authStore';
-import { Modal } from '@/components/ui/Modal';
-import { presentFriendlyError } from '@/lib/friendly-error';
-import { Dropdown } from '@/components/ui/HeroDropdown';
+} from "@/components/ui/MaskedInput";
+import { StudentFormTabs } from "@/app/(authenticated)/admin/users/new/components/StudentFormTabs";
+import { UserRole } from "@/types/user.types";
+import { RoleBasedUserWizard } from "@/app/(authenticated)/admin/users/components/RoleBasedUserWizard";
+import { authService } from "@/services/auth.service";
+import { institutionsService } from "@/services/institutions.service";
+import { supabase } from "@/lib/supabase";
+import { teachersService } from "@/services/teachers.service";
+import { teacherSubjectsService } from "@/services/teacher-subjects.service";
+import { enrollmentsService } from "@/services/enrollments.service";
+import { getUserListRouteByRole } from "@/lib/user-route-utils";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useAuthStore } from "@/stores/authStore";
+import { Modal } from "@/components/ui/Modal";
+import { presentFriendlyError } from "@/lib/friendly-error";
+import { Dropdown } from "@/components/ui/HeroDropdown";
 import {
   parseStudentTagList,
   serializeStudentTagList,
-} from '@/lib/student-form-utils';
+} from "@/lib/student-form-utils";
 
-function buildInitialPassword(email?: string) {
-  if (!email) return '';
-  const [localPart] = email.trim().toLowerCase().split('@');
-  return localPart ? `${localPart}@Grafos` : '';
+function buildInitialPassword(cpf?: string | null) {
+  const digits = String(cpf ?? "").replace(/\D/g, "");
+  return digits.length >= 6 ? digits.slice(0, 6) : "";
 }
 
 function toDateInputValue(value: unknown) {
-  if (!value) return '';
+  if (!value) return "";
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return value.toISOString().slice(0, 10);
   }
 
   const match = String(value).match(/\d{4}-\d{2}-\d{2}/);
-  return match?.[0] ?? '';
+  return match?.[0] ?? "";
 }
 
 const genderOptions = [
-  { value: Gender.MALE, label: 'Masculino' },
-  { value: Gender.FEMALE, label: 'Feminino' },
-  { value: Gender.OTHER, label: 'Outro' },
-  { value: Gender.NOT_INFORMED, label: 'Não informado' },
+  { value: Gender.MALE, label: "Masculino" },
+  { value: Gender.FEMALE, label: "Feminino" },
+  { value: Gender.OTHER, label: "Outro" },
+  { value: Gender.NOT_INFORMED, label: "Não informado" },
 ];
 
 const roleOptions = [
-  { value: UserRole.DIRECTOR, label: 'Diretor(a)' },
-  { value: UserRole.INSTITUTION_ADMIN, label: 'Secretário(a)' },
-  { value: UserRole.COORDINATOR, label: 'Coordenador' },
-  { value: UserRole.TEACHER, label: 'Professor' },
-  { value: UserRole.STUDENT, label: 'Aluno' },
-  { value: UserRole.PARENT, label: 'Responsável' },
+  { value: UserRole.DIRECTOR, label: "Diretor(a)" },
+  { value: UserRole.INSTITUTION_ADMIN, label: "Secretário(a)" },
+  { value: UserRole.COORDINATOR, label: "Coordenador" },
+  { value: UserRole.TEACHER, label: "Professor" },
+  { value: UserRole.STUDENT, label: "Aluno" },
+  { value: UserRole.PARENT, label: "Responsável" },
 ];
 
 interface EditUserPageContentProps {
@@ -84,11 +83,11 @@ interface EditUserPageContentProps {
 
 type EditUserFormData = Omit<
   UpdateUserData,
-  | 'alergias'
-  | 'medicamentos'
-  | 'necessidadesEspeciais'
-  | 'restricoesAlimentares'
-  | 'convenioMedico'
+  | "alergias"
+  | "medicamentos"
+  | "necessidadesEspeciais"
+  | "restricoesAlimentares"
+  | "convenioMedico"
 > & {
   alergias?: string[];
   medicamentos?: string[];
@@ -153,7 +152,7 @@ export function EditUserPageContent({
     isLoading,
     error: queryError,
   } = useQuery({
-    queryKey: ['user', userId],
+    queryKey: ["user", userId],
     queryFn: () => usersService.findOne(userId),
     enabled: !!userId,
   });
@@ -161,7 +160,7 @@ export function EditUserPageContent({
     user?.role === UserRole.TEACHER ? user.teacherProfile?.id : undefined;
   const { data: teacherClasses = [], isLoading: isLoadingTeacherClasses } =
     useQuery({
-      queryKey: ['teacher-classes', teacherProfileId],
+      queryKey: ["teacher-classes", teacherProfileId],
       queryFn: () =>
         teachersService.getTeacherClasses(teacherProfileId as string),
       enabled: Boolean(teacherProfileId),
@@ -169,7 +168,7 @@ export function EditUserPageContent({
   const studentProfileId =
     user?.role === UserRole.STUDENT ? user.studentProfile?.id : undefined;
   const { data: studentEnrollmentData } = useQuery({
-    queryKey: ['student-class-enrollment', studentProfileId],
+    queryKey: ["student-class-enrollment", studentProfileId],
     queryFn: () =>
       enrollmentsService.findAll({
         studentId: studentProfileId as string,
@@ -189,8 +188,8 @@ export function EditUserPageContent({
     watch,
     setValue,
   } = form;
-  const watchedPassword = watch('password');
-  const watchedConfirmPassword = watch('confirmPassword');
+  const watchedPassword = watch("password");
+  const watchedConfirmPassword = watch("confirmPassword");
   const hasPasswordChangePending = useMemo(
     () => Boolean(watchedPassword && String(watchedPassword).trim()),
     [watchedPassword],
@@ -218,9 +217,9 @@ export function EditUserPageContent({
                 .getInstitutions()
                 .catch(() => institutionsService.getPublicInstitutions()),
           supabase
-            .from('user_institutions')
-            .select('institutionId, isPrimary')
-            .eq('userId', user.id),
+            .from("user_institutions")
+            .select("institutionId, isPrimary")
+            .eq("userId", user.id),
           user.role === UserRole.TEACHER && user.teacherProfile
             ? teacherSubjectsService.getByTeacher(user.teacherProfile.id)
             : Promise.resolve([]),
@@ -258,10 +257,10 @@ export function EditUserPageContent({
 
         if (user.role === UserRole.DIRECTOR) {
           const { data: unitRows, error: unitError } = await supabase
-            .from('institution_units')
-            .select('id, name, institutionId')
-            .eq('directorUserId', user.id)
-            .eq('isActive', true)
+            .from("institution_units")
+            .select("id, name, institutionId")
+            .eq("directorUserId", user.id)
+            .eq("isActive", true)
             .limit(1);
 
           if (unitError) throw unitError;
@@ -279,9 +278,9 @@ export function EditUserPageContent({
             setDirectorUnitName(unitRow.name ?? null);
             const { data: institutionRow, error: institutionError } =
               await supabase
-                .from('institutions')
-                .select('name')
-                .eq('id', unitRow.institutionId)
+                .from("institutions")
+                .select("name")
+                .eq("id", unitRow.institutionId)
                 .maybeSingle();
 
             if (institutionError) throw institutionError;
@@ -290,9 +289,9 @@ export function EditUserPageContent({
             setLoadedPrimaryUnitId(null);
             const { data: institutionRow, error: institutionError } =
               await supabase
-                .from('institutions')
-                .select('name')
-                .eq('id', user.institutionId)
+                .from("institutions")
+                .select("name")
+                .eq("id", user.institutionId)
                 .maybeSingle();
 
             if (institutionError) throw institutionError;
@@ -310,9 +309,9 @@ export function EditUserPageContent({
         }
 
         const emergencyContactNames = new Set(
-          String(user.studentProfile?.healthRecord?.contatoEmergencia ?? '')
-            .split('|')
-            .map((value) => value.split('—')[0].trim())
+          String(user.studentProfile?.healthRecord?.contatoEmergencia ?? "")
+            .split("|")
+            .map((value) => value.split("—")[0].trim())
             .map((value) => value.trim())
             .filter(Boolean),
         );
@@ -322,26 +321,27 @@ export function EditUserPageContent({
           firstName: user.firstName,
           lastName: user.lastName,
           email: user.email,
-          cpf: user.cpf ? formatCPF(user.cpf) : '',
-          phone: user.phone ? formatPhone(user.phone) : '',
+          cpf: user.cpf ? formatCPF(user.cpf) : "",
+          phone: user.phone ? formatPhone(user.phone) : "",
           birthDate: toDateInputValue(user.birthDate),
           gender: user.gender,
-          address: user.address || '',
-          city: user.city || '',
-          state: user.state ? String(user.state).toUpperCase().slice(0, 2) : '',
-          zipCode: user.zipCode ? formatCEP(user.zipCode) : '',
+          address: user.address || "",
+          city: user.city || "",
+          state: user.state ? String(user.state).toUpperCase().slice(0, 2) : "",
+          zipCode: user.zipCode ? formatCEP(user.zipCode) : "",
           isActive: user.isActive,
-          socialName: user.socialName || '',
-          telefoneFixo: user.telefoneFixo || '',
-          numero: user.numero || '',
-          complemento: user.complemento || '',
-          bairro: user.bairro || '',
-          avatar: user.avatar || '',
+          socialName: user.socialName || "",
+          telefoneFixo: user.telefoneFixo || "",
+          numero: user.numero || "",
+          complemento: user.complemento || "",
+          bairro: user.bairro || "",
+          avatar: user.avatar || "",
           institutionId: user.institutionId,
           institutionIds: additionalInstitutionIds,
-          unitId: ((user as any).userUnits ?? []).find(
-            (link: any) => link.isPrimary && link.isActive !== false,
-          )?.unitId ?? '',
+          unitId:
+            ((user as any).userUnits ?? []).find(
+              (link: any) => link.isPrimary && link.isActive !== false,
+            )?.unitId ?? "",
           unitIds: ((user as any).userUnits ?? [])
             .filter((link: any) => link.isActive !== false)
             .map((link: any) => link.unitId)
@@ -359,8 +359,8 @@ export function EditUserPageContent({
                 studentId: child.student?.id,
                 studentUserId: child.student?.userId,
                 studentName:
-                  `${child.student?.user?.firstName || ''} ${child.student?.user?.lastName || ''}`.trim(),
-                relationship: child.relationship || 'Responsável Legal',
+                  `${child.student?.user?.firstName || ""} ${child.student?.user?.lastName || ""}`.trim(),
+                relationship: child.relationship || "Responsável Legal",
                 isPrimary: child.isPrimary || false,
                 notificacoes: true,
                 podeRetirar: false,
@@ -370,20 +370,20 @@ export function EditUserPageContent({
           // Student Data
           ...(user.role === UserRole.STUDENT && user.studentProfile
             ? {
-                situacao: user.studentProfile.situacao || 'ATIVO',
-                escola: user.studentProfile.escola || '',
-                unidade: user.studentProfile.unidade || '',
-                anoLetivo: user.studentProfile.anoLetivo || '',
-                curso: user.studentProfile.curso || '',
-                serie: user.studentProfile.serie || '',
-                turma: user.studentProfile.turma || '',
-                turmaId: studentEnrollmentData?.data?.[0]?.classId || '',
-                modalidade: user.studentProfile.modalidade || '',
-                turno: user.studentProfile.turno || '',
+                situacao: user.studentProfile.situacao || "ATIVO",
+                escola: user.studentProfile.escola || "",
+                unidade: user.studentProfile.unidade || "",
+                anoLetivo: user.studentProfile.anoLetivo || "",
+                curso: user.studentProfile.curso || "",
+                serie: user.studentProfile.serie || "",
+                turma: user.studentProfile.turma || "",
+                turmaId: studentEnrollmentData?.data?.[0]?.classId || "",
+                modalidade: user.studentProfile.modalidade || "",
+                turno: user.studentProfile.turno || "",
                 dataMatricula: toDateInputValue(
                   user.studentProfile.enrollmentDate,
                 ),
-                observacoes: user.studentProfile.observacoes || '',
+                observacoes: user.studentProfile.observacoes || "",
                 documents: user.studentProfile.documents || [],
                 ...user.studentProfile.healthRecord,
                 alergias: parseStudentTagList(
@@ -405,76 +405,71 @@ export function EditUserPageContent({
                 responsaveis:
                   (Array.isArray(studentParents) && studentParents.length > 0
                     ? studentParents
-                    : (user.studentProfile as any).parents ?? []
+                    : ((user.studentProfile as any).parents ?? [])
                   ).length > 0
-                    ? (Array.isArray(studentParents) && studentParents.length > 0
+                    ? (Array.isArray(studentParents) &&
+                      studentParents.length > 0
                         ? studentParents
-                        : (user.studentProfile as any).parents ?? []
-                      ).map(
-                        (p: any, index: number) => {
-                          const parentUser =
-                            p.parent?.user ?? p.user ?? p.parent ?? {};
-                          return {
-                            id: index + 1,
-                            linkId: p.id,
-                            // Keep the database relationship identifiers in the
-                            // form. The sync function can then update the same
-                            // parent even when CPF/e-mail are blank or changed.
-                            parentId: p.parentId,
-                            parentUserId: parentUser.id,
-                            nome:
+                        : ((user.studentProfile as any).parents ?? [])
+                      ).map((p: any, index: number) => {
+                        const parentUser =
+                          p.parent?.user ?? p.user ?? p.parent ?? {};
+                        return {
+                          id: index + 1,
+                          linkId: p.id,
+                          // Keep the database relationship identifiers in the
+                          // form. The sync function can then update the same
+                          // parent even when CPF/e-mail are blank or changed.
+                          parentId: p.parentId,
+                          parentUserId: parentUser.id,
+                          nome:
+                            parentUser.name ||
+                            `${parentUser.firstName || ""} ${parentUser.lastName || ""}`.trim() ||
+                            "",
+                          parentesco: p.relationship || "",
+                          cpf: parentUser.cpf ? formatCPF(parentUser.cpf) : "",
+                          email: parentUser.email || "",
+                          celular: parentUser.phone
+                            ? formatPhone(parentUser.phone)
+                            : "",
+                          whatsapp: parentUser.whatsapp
+                            ? formatPhone(parentUser.whatsapp)
+                            : "",
+                          dataNascimento: toDateInputValue(
+                            parentUser.birthDate ??
+                              parentUser.dataNascimento ??
+                              p.parent?.birthDate ??
+                              p.parent?.dataNascimento ??
+                              p.birthDate,
+                          ),
+                          financeiro: p.isPrimary || false,
+                          notificacoes:
+                            p.receivesNotifications ?? p.notificacoes ?? false,
+                          podeRetirar: p.canPickup ?? p.podeRetirar ?? false,
+                          contatoEmergencia: emergencyContactNames.has(
+                            String(
                               parentUser.name ||
-                              `${parentUser.firstName || ''} ${parentUser.lastName || ''}`.trim() ||
-                              '',
-                            parentesco: p.relationship || '',
-                            cpf: parentUser.cpf
-                              ? formatCPF(parentUser.cpf)
-                              : '',
-                            email: parentUser.email || '',
-                            celular: parentUser.phone
-                              ? formatPhone(parentUser.phone)
-                              : '',
-                            whatsapp: parentUser.whatsapp
-                              ? formatPhone(parentUser.whatsapp)
-                              : '',
-                            dataNascimento: toDateInputValue(
-                                parentUser.birthDate ??
-                                parentUser.dataNascimento ??
-                                p.parent?.birthDate ??
-                                p.parent?.dataNascimento ??
-                                p.birthDate,
-                            ),
-                            financeiro: p.isPrimary || false,
-                            notificacoes:
-                              p.receivesNotifications ??
-                              p.notificacoes ??
-                              false,
-                            podeRetirar: p.canPickup ?? p.podeRetirar ?? false,
-                            contatoEmergencia: emergencyContactNames.has(
-                              String(
-                                parentUser.name ||
-                                  `${parentUser.firstName || ''} ${parentUser.lastName || ''}`,
-                              ).trim(),
-                            ),
-                          };
-                        },
-                      )
+                                `${parentUser.firstName || ""} ${parentUser.lastName || ""}`,
+                            ).trim(),
+                          ),
+                        };
+                      })
                     : [{ id: 1 }],
               }
             : {}),
           ...(user.role === UserRole.TEACHER && user.teacherProfile
             ? {
-                specialization: user.teacherProfile.specialization || '',
-                degree: user.teacherProfile.degree || '',
+                specialization: user.teacherProfile.specialization || "",
+                degree: user.teacherProfile.degree || "",
                 registrationNumber:
-                  user.teacherProfile.registrationNumber || '',
+                  user.teacherProfile.registrationNumber || "",
                 hireDate: toDateInputValue(user.teacherProfile.hireDate),
               }
             : {}),
 
           ...(user.role === UserRole.PARENT && user.parentProfile
             ? {
-                occupation: user.parentProfile.occupation || '',
+                occupation: user.parentProfile.occupation || "",
               }
             : {}),
         });
@@ -487,7 +482,7 @@ export function EditUserPageContent({
   }, [currentUser?.role, reset, studentEnrollmentData?.data, user]);
 
   const selectedPrimaryInstitutionId =
-    watch('institutionId') ?? user?.institutionId ?? '';
+    watch("institutionId") ?? user?.institutionId ?? "";
 
   const toggleAdditionalInstitution = (institutionId: string) => {
     const nextIds = selectedAdditionalInstitutionIds.includes(institutionId)
@@ -495,14 +490,14 @@ export function EditUserPageContent({
       : [...selectedAdditionalInstitutionIds, institutionId];
 
     setSelectedAdditionalInstitutionIds(nextIds);
-    setValue('institutionIds', nextIds, {
+    setValue("institutionIds", nextIds, {
       shouldDirty: true,
       shouldValidate: true,
     });
   };
 
   const handlePrimaryInstitutionChange = (institutionId: string) => {
-    setValue('institutionId', institutionId, {
+    setValue("institutionId", institutionId, {
       shouldDirty: true,
       shouldValidate: true,
     });
@@ -510,7 +505,7 @@ export function EditUserPageContent({
       (id) => id !== institutionId,
     );
     setSelectedAdditionalInstitutionIds(filtered);
-    setValue('institutionIds', filtered, {
+    setValue("institutionIds", filtered, {
       shouldDirty: true,
       shouldValidate: true,
     });
@@ -518,7 +513,7 @@ export function EditUserPageContent({
 
   const getSelectedPhotoFile = (value: unknown): File | null => {
     if (!value) return null;
-    if (typeof FileList !== 'undefined' && value instanceof FileList) {
+    if (typeof FileList !== "undefined" && value instanceof FileList) {
       return value.item(0);
     }
     return Array.isArray(value) ? (value[0] ?? null) : null;
@@ -533,24 +528,24 @@ export function EditUserPageContent({
     try {
       const nextIsActive = !user.isActive;
       await usersService.update(userId, { isActive: nextIsActive });
-      setValue('isActive', nextIsActive, {
+      setValue("isActive", nextIsActive, {
         shouldDirty: true,
         shouldValidate: true,
       });
-      queryClient.invalidateQueries({ queryKey: ['user', userId] });
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['students'] });
-      queryClient.invalidateQueries({ queryKey: ['teachers'] });
-      queryClient.invalidateQueries({ queryKey: ['coordinators'] });
+      queryClient.invalidateQueries({ queryKey: ["user", userId] });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+      queryClient.invalidateQueries({ queryKey: ["teachers"] });
+      queryClient.invalidateQueries({ queryKey: ["coordinators"] });
       toast.success(
         nextIsActive
-          ? 'Usuário ativado com sucesso!'
-          : 'Usuário desativado com sucesso!',
+          ? "Usuário ativado com sucesso!"
+          : "Usuário desativado com sucesso!",
       );
     } catch (err: any) {
       const info = presentFriendlyError(
         err,
-        'Nao foi possivel alterar o status do usuario agora.',
+        "Nao foi possivel alterar o status do usuario agora.",
       );
       setError(info.description);
     } finally {
@@ -559,16 +554,16 @@ export function EditUserPageContent({
   };
 
   const handleResetPasswordToDefault = async () => {
-    if (!user?.email) return;
+    if (!user?.cpf) return;
 
     setIsResettingDefaultPassword(true);
     setError(null);
 
     try {
-      const defaultPassword = buildInitialPassword(user.email);
+      const defaultPassword = buildInitialPassword(user.cpf);
       if (!defaultPassword) {
         throw new Error(
-          'Não foi possível gerar a senha padrão a partir do email.',
+          "Não foi possível gerar a senha padrão a partir do CPF.",
         );
       }
 
@@ -580,10 +575,10 @@ export function EditUserPageContent({
       );
       setIsResetDefaultPasswordOpen(false);
     } catch (err: any) {
-      console.error('Erro ao resetar senha para padrão:', err);
+      console.error("Erro ao resetar senha para padrão:", err);
       const info = presentFriendlyError(
         err,
-        'Não foi possível redefinir a senha para o padrão agora.',
+        "Não foi possível redefinir a senha para o padrão agora.",
       );
       setError(info.description);
       toast.error(info.description);
@@ -612,9 +607,9 @@ export function EditUserPageContent({
         phone: data.phone ? removeMask(data.phone) : undefined,
         zipCode: data.zipCode ? removeMask(data.zipCode) : undefined,
         institutionId:
-          typeof data.institutionId === 'string'
+          typeof data.institutionId === "string"
             ? data.institutionId.trim()
-            : (user?.institutionId ?? ''),
+            : (user?.institutionId ?? ""),
         institutionIds: Array.from(
           new Set(
             [
@@ -629,8 +624,11 @@ export function EditUserPageContent({
             ? []
             : Array.from(
                 new Set(
-                  ((data as any).unitIds ??
-                    [((data as any).unitId ?? '').trim()]).filter(Boolean),
+                  (
+                    (data as any).unitIds ?? [
+                      ((data as any).unitId ?? "").trim(),
+                    ]
+                  ).filter(Boolean),
                 ),
               ),
         subjectIds: canManageTeacherAssignments
@@ -743,16 +741,16 @@ export function EditUserPageContent({
             userId,
             photoFile,
           );
-          setValue('avatar', uploadResult.avatar, { shouldDirty: true });
+          setValue("avatar", uploadResult.avatar, { shouldDirty: true });
         } catch (avatarError) {
           // A atualização dos dados já foi concluída; a foto pode ser incluída
           // posteriormente sem bloquear o restante do fluxo.
           console.warn(
-            'Usuário atualizado, mas o avatar não pôde ser salvo:',
+            "Usuário atualizado, mas o avatar não pôde ser salvo:",
             avatarError,
           );
           toast.error(
-            'Dados atualizados, mas a foto não pôde ser salva. Tente adicioná-la novamente depois.',
+            "Dados atualizados, mas a foto não pôde ser salva. Tente adicioná-la novamente depois.",
           );
         }
       }
@@ -772,30 +770,30 @@ export function EditUserPageContent({
           // If unitId changed, update the new unit and clear the old one
           if (submittedUnitId && submittedUnitId !== previousUnitId) {
             const { error: newUnitErr } = await supabase
-              .from('institution_units')
+              .from("institution_units")
               .update({ directorUserId: userId })
-              .eq('id', submittedUnitId);
+              .eq("id", submittedUnitId);
 
             if (newUnitErr) {
               console.error(
-                'Erro ao vincular diretor(a) ao anexo:',
+                "Erro ao vincular diretor(a) ao anexo:",
                 newUnitErr,
               );
               toast.error(
-                'Não foi possível vincular como diretor(a) ao novo anexo. Verifique a tela do anexo.',
+                "Não foi possível vincular como diretor(a) ao novo anexo. Verifique a tela do anexo.",
               );
             }
 
             if (previousUnitId && previousUnitId !== submittedUnitId) {
               // Clear previous unit director only if it's still pointing to the same user
               const { error: oldUnitErr } = await supabase
-                .from('institution_units')
+                .from("institution_units")
                 .update({ directorUserId: null })
-                .eq('id', previousUnitId)
-                .eq('directorUserId', userId);
+                .eq("id", previousUnitId)
+                .eq("directorUserId", userId);
               if (oldUnitErr) {
                 console.warn(
-                  'Aviso: não foi possível limpar vínculo antigo do diretor(a):',
+                  "Aviso: não foi possível limpar vínculo antigo do diretor(a):",
                   oldUnitErr,
                 );
               }
@@ -810,29 +808,29 @@ export function EditUserPageContent({
             // (The user can clear the checkbox to indicate they are no longer director)
           }
         } catch (err) {
-          console.error('Erro ao atualizar vínculo diretor/anexo:', err);
+          console.error("Erro ao atualizar vínculo diretor/anexo:", err);
         }
       }
 
-      queryClient.invalidateQueries({ queryKey: ['user', userId] });
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['students'] });
-      queryClient.invalidateQueries({ queryKey: ['teachers'] });
-      queryClient.invalidateQueries({ queryKey: ['coordinators'] });
+      queryClient.invalidateQueries({ queryKey: ["user", userId] });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+      queryClient.invalidateQueries({ queryKey: ["teachers"] });
+      queryClient.invalidateQueries({ queryKey: ["coordinators"] });
 
       toast.success(
         shouldResetPassword
-          ? 'Usuário atualizado e senha redefinida com sucesso!'
-          : 'Usuário atualizado com sucesso!',
+          ? "Usuário atualizado e senha redefinida com sucesso!"
+          : "Usuário atualizado com sucesso!",
       );
-      setValue('password', '', { shouldDirty: false });
-      setValue('confirmPassword', '', { shouldDirty: false });
+      setValue("password", "", { shouldDirty: false });
+      setValue("confirmPassword", "", { shouldDirty: false });
       router.push(successRoute ?? getUserListRouteByRole(user?.role));
     } catch (err: any) {
-      console.error('Erro ao atualizar usuário:', err);
+      console.error("Erro ao atualizar usuário:", err);
       const info = presentFriendlyError(
         err,
-        'Nao foi possivel atualizar o usuario agora. Revise os dados e tente novamente.',
+        "Nao foi possivel atualizar o usuario agora. Revise os dados e tente novamente.",
       );
       setError(info.description);
       toast.error(info.description);
@@ -848,28 +846,28 @@ export function EditUserPageContent({
     if (nextPassword) {
       if (!canManagePassword) {
         const errorMsg =
-          'Apenas o Super Admin Global pode redefinir senhas por este fluxo.';
+          "Apenas o Super Admin Global pode redefinir senhas por este fluxo.";
         setError(errorMsg);
         toast.error(errorMsg);
         return;
       }
 
       if (nextPassword.length < 6) {
-        const errorMsg = 'A nova senha deve ter no mínimo 6 caracteres.';
+        const errorMsg = "A nova senha deve ter no mínimo 6 caracteres.";
         setError(errorMsg);
         toast.error(errorMsg);
         return;
       }
 
       if (!confirmPassword) {
-        const errorMsg = 'Confirme a nova senha para continuar.';
+        const errorMsg = "Confirme a nova senha para continuar.";
         setError(errorMsg);
         toast.error(errorMsg);
         return;
       }
 
       if (nextPassword !== confirmPassword) {
-        const errorMsg = 'A confirmação da senha não confere.';
+        const errorMsg = "A confirmação da senha não confere.";
         setError(errorMsg);
         toast.error(errorMsg);
         return;
@@ -907,7 +905,7 @@ export function EditUserPageContent({
         <div className="text-center text-gray-600 dark:text-gray-400">
           {queryError instanceof Error
             ? queryError.message
-            : 'Usuário não encontrado'}
+            : "Usuário não encontrado"}
         </div>
       </div>
     );
@@ -960,15 +958,15 @@ export function EditUserPageContent({
               ...(canManagePassword
                 ? [
                     {
-                      key: 'reset-default-password',
-                      label: 'Resetar senha para padrão',
+                      key: "reset-default-password",
+                      label: "Resetar senha para padrão",
                       onClick: () => setIsResetDefaultPasswordOpen(true),
                     },
                   ]
                 : []),
               {
-                key: user.isActive ? 'deactivate-user' : 'activate-user',
-                label: user.isActive ? 'Desativar Usuário' : 'Ativar Usuário',
+                key: user.isActive ? "deactivate-user" : "activate-user",
+                label: user.isActive ? "Desativar Usuário" : "Ativar Usuário",
                 onClick: handleToggleUserStatus,
               },
             ]}
@@ -1005,8 +1003,8 @@ export function EditUserPageContent({
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <Input
                           label="Nova senha"
-                          type={showPassword ? 'text' : 'password'}
-                          {...register('password')}
+                          type={showPassword ? "text" : "password"}
+                          {...register("password")}
                           helperText="Defina uma nova senha para o aluno. A alteração será confirmada em modal."
                           rightIcon={
                             <button
@@ -1015,7 +1013,7 @@ export function EditUserPageContent({
                               onClick={() => setShowPassword((value) => !value)}
                               className="pointer-events-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                               aria-label={
-                                showPassword ? 'Ocultar senha' : 'Mostrar senha'
+                                showPassword ? "Ocultar senha" : "Mostrar senha"
                               }
                             >
                               {showPassword ? (
@@ -1028,8 +1026,8 @@ export function EditUserPageContent({
                         />
                         <Input
                           label="Confirmar nova senha"
-                          type={showConfirmPassword ? 'text' : 'password'}
-                          {...register('confirmPassword')}
+                          type={showConfirmPassword ? "text" : "password"}
+                          {...register("confirmPassword")}
                           helperText="Repita a senha para liberar a confirmação final."
                           rightIcon={
                             <button
@@ -1041,8 +1039,8 @@ export function EditUserPageContent({
                               className="pointer-events-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                               aria-label={
                                 showConfirmPassword
-                                  ? 'Ocultar confirmação de senha'
-                                  : 'Mostrar confirmação de senha'
+                                  ? "Ocultar confirmação de senha"
+                                  : "Mostrar confirmação de senha"
                               }
                             >
                               {showConfirmPassword ? (
@@ -1061,9 +1059,9 @@ export function EditUserPageContent({
                             Senha padrão automática
                           </p>
                           <p className="text-xs text-blue-800/90 dark:text-blue-300/90 mt-0.5 truncate">
-                            {user?.email
-                              ? buildInitialPassword(user.email)
-                              : 'Preencha o email do usuário para gerar.'}
+                            {user?.cpf
+                              ? buildInitialPassword(user.cpf)
+                              : "Cadastre um CPF com pelo menos 6 dígitos para gerar."}
                           </p>
                         </div>
                         <Button
@@ -1071,7 +1069,7 @@ export function EditUserPageContent({
                           variant="primary"
                           size="sm"
                           onClick={() => setIsResetDefaultPasswordOpen(true)}
-                          disabled={!user?.email || isResettingDefaultPassword}
+                          disabled={!user?.cpf || isResettingDefaultPassword}
                           isLoading={isResettingDefaultPassword}
                         >
                           Resetar para padrão
@@ -1108,8 +1106,8 @@ export function EditUserPageContent({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <Input
                         label="Nova senha"
-                        type={showPassword ? 'text' : 'password'}
-                        {...register('password')}
+                        type={showPassword ? "text" : "password"}
+                        {...register("password")}
                         helperText="Defina uma nova senha para o usuário. A alteração será confirmada em modal."
                         rightIcon={
                           <button
@@ -1118,7 +1116,7 @@ export function EditUserPageContent({
                             onClick={() => setShowPassword((value) => !value)}
                             className="pointer-events-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                             aria-label={
-                              showPassword ? 'Ocultar senha' : 'Mostrar senha'
+                              showPassword ? "Ocultar senha" : "Mostrar senha"
                             }
                           >
                             {showPassword ? (
@@ -1131,8 +1129,8 @@ export function EditUserPageContent({
                       />
                       <Input
                         label="Confirmar nova senha"
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        {...register('confirmPassword')}
+                        type={showConfirmPassword ? "text" : "password"}
+                        {...register("confirmPassword")}
                         helperText="Repita a senha para liberar a confirmação final."
                         rightIcon={
                           <button
@@ -1144,8 +1142,8 @@ export function EditUserPageContent({
                             className="pointer-events-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                             aria-label={
                               showConfirmPassword
-                                ? 'Ocultar confirmação de senha'
-                                : 'Mostrar confirmação de senha'
+                                ? "Ocultar confirmação de senha"
+                                : "Mostrar confirmação de senha"
                             }
                           >
                             {showConfirmPassword ? (
@@ -1164,9 +1162,9 @@ export function EditUserPageContent({
                           Senha padrão automática
                         </p>
                         <p className="text-xs text-blue-800/90 dark:text-blue-300/90 mt-0.5 truncate">
-                          {user?.email
-                            ? buildInitialPassword(user.email)
-                            : 'Preencha o email do usuário para gerar.'}
+                          {user?.cpf
+                            ? buildInitialPassword(user.cpf)
+                            : "Cadastre um CPF com pelo menos 6 dígitos para gerar."}
                         </p>
                       </div>
                       <Button
@@ -1174,7 +1172,7 @@ export function EditUserPageContent({
                         variant="primary"
                         size="sm"
                         onClick={() => setIsResetDefaultPasswordOpen(true)}
-                        disabled={!user?.email || isResettingDefaultPassword}
+                        disabled={!user?.cpf || isResettingDefaultPassword}
                         isLoading={isResettingDefaultPassword}
                       >
                         Resetar para padrão
@@ -1288,13 +1286,13 @@ export function EditUserPageContent({
               <AcademicCapIcon className="h-6 w-6 text-amber-700 dark:text-amber-400" />
             </div>
             <div className="flex-1 space-y-2">
-              {user?.email ? (
+              {user?.cpf ? (
                 <>
                   <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                     Senha padrão gerada automaticamente
                   </p>
                   <div className="p-3 rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/60 font-mono text-sm font-bold text-gray-900 dark:text-gray-100 break-all">
-                    {buildInitialPassword(user.email)}
+                    {buildInitialPassword(user.cpf)}
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-300">
                     O usuário receberá esta senha e deverá alterá-la no primeiro
@@ -1303,7 +1301,7 @@ export function EditUserPageContent({
                 </>
               ) : (
                 <p className="text-sm text-red-600 dark:text-red-400">
-                  Usuário sem email válido para gerar a senha padrão.
+                  Usuário sem CPF válido para gerar a senha padrão.
                 </p>
               )}
             </div>

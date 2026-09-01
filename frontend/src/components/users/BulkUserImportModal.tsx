@@ -1,28 +1,28 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   ArrowDownTrayIcon,
   DocumentArrowUpIcon,
   InformationCircleIcon,
   MagnifyingGlassIcon,
-} from '@heroicons/react/24/outline';
-import { toast } from 'react-hot-toast';
-import { Modal } from '@/components/ui/Modal';
-import { Button } from '@/components/ui/Button';
-import { Select } from '@/components/ui/Select';
-import { UserRole, type CreateUserDto } from '@/types/user.types';
-import { usersService } from '@/services/users.service';
-import { classesService } from '@/services/classes.service';
-import { institutionsService } from '@/services/institutions.service';
-import type { Institution } from '@/types/institution.types';
-import type { Class } from '@/types/class.types';
-import { getFriendlyErrorInfo } from '@/lib/friendly-error';
+} from "@heroicons/react/24/outline";
+import { toast } from "react-hot-toast";
+import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
+import { UserRole, type CreateUserDto } from "@/types/user.types";
+import { usersService } from "@/services/users.service";
+import { classesService } from "@/services/classes.service";
+import { institutionsService } from "@/services/institutions.service";
+import type { Institution } from "@/types/institution.types";
+import type { Class } from "@/types/class.types";
+import { getFriendlyErrorInfo } from "@/lib/friendly-error";
 
 type ImportRow = Record<string, string> & {
   __lineNumber?: string;
 };
-type ImportMode = 'ALL' | 'TEACHERS' | 'STUDENTS';
+type ImportMode = "ALL" | "TEACHERS" | "STUDENTS";
 type ImportBatchSize = 1 | 5 | 10;
 
 const IMPORT_BATCH_OPTIONS: Array<{
@@ -32,175 +32,175 @@ const IMPORT_BATCH_OPTIONS: Array<{
 }> = [
   {
     value: 1,
-    label: 'Sequencial',
-    description: 'Um usuário por vez, com máxima estabilidade.',
+    label: "Sequencial",
+    description: "Um usuário por vez, com máxima estabilidade.",
   },
   {
     value: 5,
-    label: 'Grupos de 3 a 5',
-    description: 'Até 5 usuários ao mesmo tempo, equilibrando velocidade.',
+    label: "Grupos de 3 a 5",
+    description: "Até 5 usuários ao mesmo tempo, equilibrando velocidade.",
   },
   {
     value: 10,
-    label: 'Grupos de 6 a 10',
-    description: 'Até 10 usuários ao mesmo tempo, para planilhas maiores.',
+    label: "Grupos de 6 a 10",
+    description: "Até 10 usuários ao mesmo tempo, para planilhas maiores.",
   },
 ];
 
 const COMMON_HEADERS = [
-  'nome',
-  'sobrenome',
-  'nome_social',
-  'email',
-  'cpf',
-  'telefone',
-  'whatsapp',
-  'telefone_fixo',
-  'data_nascimento',
-  'genero',
-  'endereco',
-  'numero',
-  'complemento',
-  'bairro',
-  'cidade',
-  'estado',
-  'cep',
-  'senha',
+  "nome",
+  "sobrenome",
+  "nome_social",
+  "email",
+  "cpf",
+  "telefone",
+  "whatsapp",
+  "telefone_fixo",
+  "data_nascimento",
+  "genero",
+  "endereco",
+  "numero",
+  "complemento",
+  "bairro",
+  "cidade",
+  "estado",
+  "cep",
+  "senha",
 ];
 
 const TEACHER_HEADERS = [
   ...COMMON_HEADERS,
-  'especializacao',
-  'formacao',
-  'registro_profissional',
-  'data_admissao',
-  'ocupacao',
+  "especializacao",
+  "formacao",
+  "registro_profissional",
+  "data_admissao",
+  "ocupacao",
 ];
 
 const STUDENT_HEADERS = [
   ...COMMON_HEADERS,
-  'situacao',
-  'ano_letivo',
-  'curso',
-  'serie',
-  'turma',
-  'turno',
-  'data_matricula',
-  'modalidade',
-  'observacoes',
-  'tipo_sanguineo',
-  'alergias',
-  'medicamentos',
-  'necessidades_especiais',
-  'restricoes_alimentares',
-  'convenio_medico',
-  'responsavel_nome',
-  'responsavel_cpf',
-  'responsavel_email',
-  'responsavel_celular',
-  'responsavel_whatsapp',
-  'responsavel_telefone_fixo',
-  'parentesco',
-  'responsavel_data_nascimento',
-  'responsavel_financeiro',
-  'responsavel_contato_emergencia',
-  'responsavel_notificacoes',
-  'responsavel_pode_retirar',
+  "situacao",
+  "ano_letivo",
+  "curso",
+  "serie",
+  "turma",
+  "turno",
+  "data_matricula",
+  "modalidade",
+  "observacoes",
+  "tipo_sanguineo",
+  "alergias",
+  "medicamentos",
+  "necessidades_especiais",
+  "restricoes_alimentares",
+  "convenio_medico",
+  "responsavel_nome",
+  "responsavel_cpf",
+  "responsavel_email",
+  "responsavel_celular",
+  "responsavel_whatsapp",
+  "responsavel_telefone_fixo",
+  "parentesco",
+  "responsavel_data_nascimento",
+  "responsavel_financeiro",
+  "responsavel_contato_emergencia",
+  "responsavel_notificacoes",
+  "responsavel_pode_retirar",
 ];
 
 const ALL_HEADERS = [
-  'tipo',
+  "tipo",
   ...COMMON_HEADERS,
   ...TEACHER_HEADERS.slice(COMMON_HEADERS.length),
   ...STUDENT_HEADERS.slice(COMMON_HEADERS.length),
 ];
 
 const MODE_OPTIONS = [
-  { value: 'ALL', label: 'Alunos e professores juntos' },
-  { value: 'TEACHERS', label: 'Somente professores' },
-  { value: 'STUDENTS', label: 'Somente alunos' },
+  { value: "ALL", label: "Alunos e professores juntos" },
+  { value: "TEACHERS", label: "Somente professores" },
+  { value: "STUDENTS", label: "Somente alunos" },
 ];
 
 const MODE_LABELS: Record<ImportMode, string> = {
-  ALL: 'alunos e professores',
-  TEACHERS: 'professores',
-  STUDENTS: 'alunos',
+  ALL: "alunos e professores",
+  TEACHERS: "professores",
+  STUDENTS: "alunos",
 };
 
 const PROFESSOR_SAMPLE: ImportRow = {
-  tipo: 'PROFESSOR',
-  nome: 'Maria',
-  sobrenome: 'Oliveira',
-  nome_social: 'Maria Oliveira',
-  email: 'maria.oliveira@escola.com.br',
-  cpf: '12345678901',
-  telefone: '11999999999',
-  whatsapp: '11999999999',
-  telefone_fixo: '1133334444',
-  data_nascimento: '1988-04-12',
-  genero: 'FEMALE',
-  endereco: 'Rua das Flores',
-  numero: '120',
-  complemento: 'Sala 3',
-  bairro: 'Centro',
-  cidade: 'São Paulo',
-  estado: 'SP',
-  cep: '01001000',
-  senha: 'Maria@Grafos2026',
-  especializacao: 'Matemática',
-  formacao: 'Licenciatura em Matemática',
-  registro_profissional: 'REG-2026-001',
-  data_admissao: '2026-01-20',
-  ocupacao: 'Professora de Matemática',
+  tipo: "PROFESSOR",
+  nome: "Maria",
+  sobrenome: "Oliveira",
+  nome_social: "Maria Oliveira",
+  email: "maria.oliveira@escola.com.br",
+  cpf: "12345678901",
+  telefone: "11999999999",
+  whatsapp: "11999999999",
+  telefone_fixo: "1133334444",
+  data_nascimento: "1988-04-12",
+  genero: "FEMALE",
+  endereco: "Rua das Flores",
+  numero: "120",
+  complemento: "Sala 3",
+  bairro: "Centro",
+  cidade: "São Paulo",
+  estado: "SP",
+  cep: "01001000",
+  senha: "",
+  especializacao: "Matemática",
+  formacao: "Licenciatura em Matemática",
+  registro_profissional: "REG-2026-001",
+  data_admissao: "2026-01-20",
+  ocupacao: "Professora de Matemática",
 };
 
 const STUDENT_SAMPLE: ImportRow = {
-  tipo: 'ALUNO',
-  nome: 'Lucas',
-  sobrenome: 'Ferreira',
-  nome_social: 'Lucas Ferreira',
-  email: 'lucas.ferreira@escola.com.br',
-  cpf: '98765432100',
-  telefone: '11977776666',
-  whatsapp: '11977776666',
-  telefone_fixo: '1132221111',
-  data_nascimento: '2014-08-20',
-  genero: 'MALE',
-  endereco: 'Avenida Brasil',
-  numero: '450',
-  complemento: 'Casa 2',
-  bairro: 'Jardim América',
-  cidade: 'São Paulo',
-  estado: 'SP',
-  cep: '01430000',
-  senha: 'Lucas@Grafos2026',
-  situacao: 'ATIVO',
-  ano_letivo: '2026',
-  curso: 'Ensino Fundamental I',
-  serie: '1º Ano',
-  turma: '1º Ano A',
-  turno: 'MATUTINO',
-  data_matricula: '2026-01-15',
-  modalidade: 'Presencial',
-  observacoes: 'Aluno fictício utilizado no modelo de importação.',
-  tipo_sanguineo: 'O+',
-  alergias: 'Poeira',
-  medicamentos: 'Nenhum',
-  necessidades_especiais: 'Nenhuma',
-  restricoes_alimentares: 'Nenhuma',
-  convenio_medico: 'Saúde Escolar Exemplo',
-  responsavel_nome: 'Fernanda Ferreira',
-  responsavel_cpf: '11122233344',
-  responsavel_email: 'fernanda@email.com',
-  responsavel_celular: '11988888888',
-  responsavel_whatsapp: '11988888888',
-  responsavel_telefone_fixo: '1131112222',
-  parentesco: 'Mãe',
-  responsavel_data_nascimento: '1982-06-18',
-  responsavel_financeiro: 'SIM',
-  responsavel_contato_emergencia: 'SIM',
-  responsavel_notificacoes: 'SIM',
-  responsavel_pode_retirar: 'SIM',
+  tipo: "ALUNO",
+  nome: "Lucas",
+  sobrenome: "Ferreira",
+  nome_social: "Lucas Ferreira",
+  email: "lucas.ferreira@escola.com.br",
+  cpf: "98765432100",
+  telefone: "11977776666",
+  whatsapp: "11977776666",
+  telefone_fixo: "1132221111",
+  data_nascimento: "2014-08-20",
+  genero: "MALE",
+  endereco: "Avenida Brasil",
+  numero: "450",
+  complemento: "Casa 2",
+  bairro: "Jardim América",
+  cidade: "São Paulo",
+  estado: "SP",
+  cep: "01430000",
+  senha: "",
+  situacao: "ATIVO",
+  ano_letivo: "2026",
+  curso: "Ensino Fundamental I",
+  serie: "1º Ano",
+  turma: "1º Ano A",
+  turno: "MATUTINO",
+  data_matricula: "2026-01-15",
+  modalidade: "Presencial",
+  observacoes: "Aluno fictício utilizado no modelo de importação.",
+  tipo_sanguineo: "O+",
+  alergias: "Poeira",
+  medicamentos: "Nenhum",
+  necessidades_especiais: "Nenhuma",
+  restricoes_alimentares: "Nenhuma",
+  convenio_medico: "Saúde Escolar Exemplo",
+  responsavel_nome: "Fernanda Ferreira",
+  responsavel_cpf: "11122233344",
+  responsavel_email: "fernanda@email.com",
+  responsavel_celular: "11988888888",
+  responsavel_whatsapp: "11988888888",
+  responsavel_telefone_fixo: "1131112222",
+  parentesco: "Mãe",
+  responsavel_data_nascimento: "1982-06-18",
+  responsavel_financeiro: "SIM",
+  responsavel_contato_emergencia: "SIM",
+  responsavel_notificacoes: "SIM",
+  responsavel_pode_retirar: "SIM",
 };
 
 const TEMPLATE_SAMPLES: Record<ImportMode, ImportRow[]> = {
@@ -210,8 +210,8 @@ const TEMPLATE_SAMPLES: Record<ImportMode, ImportRow[]> = {
 };
 
 function headersForMode(mode: ImportMode) {
-  if (mode === 'TEACHERS') return TEACHER_HEADERS;
-  if (mode === 'STUDENTS') return STUDENT_HEADERS;
+  if (mode === "TEACHERS") return TEACHER_HEADERS;
+  if (mode === "STUDENTS") return STUDENT_HEADERS;
   return ALL_HEADERS;
 }
 
@@ -220,17 +220,17 @@ function templateForMode(mode: ImportMode) {
   const rows = TEMPLATE_SAMPLES[mode].map((sample) =>
     headers
       .map(
-        (header) => sample[header] ?? (mode === 'ALL' ? 'NÃO SE APLICA' : ''),
+        (header) => sample[header] ?? (mode === "ALL" ? "NÃO SE APLICA" : ""),
       )
-      .join(';'),
+      .join(";"),
   );
 
-  return [headers.join(';'), ...rows].join('\n');
+  return [headers.join(";"), ...rows].join("\n");
 }
 
-function splitLine(line: string, delimiter: ',' | ';') {
+function splitLine(line: string, delimiter: "," | ";") {
   const values: string[] = [];
-  let value = '';
+  let value = "";
   let quoted = false;
 
   for (let index = 0; index < line.length; index += 1) {
@@ -244,7 +244,7 @@ function splitLine(line: string, delimiter: ',' | ';') {
       }
     } else if (char === delimiter && !quoted) {
       values.push(value.trim());
-      value = '';
+      value = "";
     } else {
       value += char;
     }
@@ -254,7 +254,7 @@ function splitLine(line: string, delimiter: ',' | ';') {
   return values;
 }
 
-function detectDelimiter(headerLine: string): ',' | ';' {
+function detectDelimiter(headerLine: string): "," | ";" {
   let commas = 0;
   let semicolons = 0;
   let quoted = false;
@@ -270,16 +270,16 @@ function detectDelimiter(headerLine: string): ',' | ';' {
       continue;
     }
 
-    if (!quoted && char === ',') commas += 1;
-    if (!quoted && char === ';') semicolons += 1;
+    if (!quoted && char === ",") commas += 1;
+    if (!quoted && char === ";") semicolons += 1;
   }
 
-  return commas > semicolons ? ',' : ';';
+  return commas > semicolons ? "," : ";";
 }
 
 function parseFile(content: string): ImportRow[] {
   const lines = content
-    .replace(/^\uFEFF/, '')
+    .replace(/^\uFEFF/, "")
     .split(/\r?\n/)
     .filter((line) => line.trim());
   if (lines.length < 2) return [];
@@ -291,7 +291,7 @@ function parseFile(content: string): ImportRow[] {
   return lines.slice(1).map((line, index) => {
     const values = splitLine(line, delimiter);
     const row = headers.reduce<ImportRow>((parsedRow, header, valueIndex) => {
-      parsedRow[header] = values[valueIndex] ?? '';
+      parsedRow[header] = values[valueIndex] ?? "";
       return parsedRow;
     }, {});
     row.__lineNumber = String(index + 2);
@@ -301,16 +301,16 @@ function parseFile(content: string): ImportRow[] {
 
 function normalizedRole(value: string) {
   const normalized = value.trim().toUpperCase();
-  if (normalized === 'ALUNO' || normalized === 'STUDENT')
+  if (normalized === "ALUNO" || normalized === "STUDENT")
     return UserRole.STUDENT;
-  if (normalized === 'PROFESSOR' || normalized === 'TEACHER')
+  if (normalized === "PROFESSOR" || normalized === "TEACHER")
     return UserRole.TEACHER;
   return null;
 }
 
 function roleForRow(row: ImportRow, mode: ImportMode) {
-  if (mode === 'STUDENTS') return UserRole.STUDENT;
-  if (mode === 'TEACHERS') return UserRole.TEACHER;
+  if (mode === "STUDENTS") return UserRole.STUDENT;
+  if (mode === "TEACHERS") return UserRole.TEACHER;
   return normalizedRole(row.tipo);
 }
 
@@ -321,13 +321,13 @@ function isValidEmail(value: string) {
 function rowValidationError(row: ImportRow, mode: ImportMode) {
   const role = roleForRow(row, mode);
 
-  if (!role) return 'tipo de usuário inválido';
+  if (!role) return "tipo de usuário inválido";
   if (!row.nome?.trim() || !row.sobrenome?.trim()) {
-    return 'nome e sobrenome são obrigatórios';
+    return "nome e sobrenome são obrigatórios";
   }
-  if (!isValidEmail(row.email || '')) return 'e-mail inválido';
+  if (!isValidEmail(row.email || "")) return "e-mail inválido";
   if (role === UserRole.STUDENT && !row.responsavel_nome?.trim()) {
-    return 'nome do responsável é obrigatório para alunos';
+    return "nome do responsável é obrigatório para alunos";
   }
 
   return null;
@@ -335,73 +335,75 @@ function rowValidationError(row: ImportRow, mode: ImportMode) {
 
 function normalizeErrorText(value: string) {
   return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLocaleLowerCase('pt-BR');
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR");
 }
 
 function friendlyImportError(error: unknown) {
   const info = getFriendlyErrorInfo(
     error,
-    'Não foi possível importar este usuário. Revise os dados e tente novamente.',
+    "Não foi possível importar este usuário. Revise os dados e tente novamente.",
   );
-  const normalized = normalizeErrorText(`${info.rawMessage} ${info.description}`);
+  const normalized = normalizeErrorText(
+    `${info.rawMessage} ${info.description}`,
+  );
   const isDuplicate =
-    normalized.includes('duplicate') ||
-    normalized.includes('duplicad') ||
-    normalized.includes('ja existe') ||
-    normalized.includes('cadastrad') ||
-    normalized.includes('already registered') ||
-    normalized.includes('unique constraint');
+    normalized.includes("duplicate") ||
+    normalized.includes("duplicad") ||
+    normalized.includes("ja existe") ||
+    normalized.includes("cadastrad") ||
+    normalized.includes("already registered") ||
+    normalized.includes("unique constraint");
 
-  if (normalized.includes('cpf') && isDuplicate) {
-    return 'CPF duplicado: já existe outro usuário com esse CPF.';
+  if (normalized.includes("cpf") && isDuplicate) {
+    return "CPF duplicado: já existe outro usuário com esse CPF.";
   }
 
   if (
-    normalized.includes('email') &&
-    (normalized.includes('invalid') ||
-      normalized.includes('invalido') ||
-      normalized.includes('format') ||
-      normalized.includes('validate'))
+    normalized.includes("email") &&
+    (normalized.includes("invalid") ||
+      normalized.includes("invalido") ||
+      normalized.includes("format") ||
+      normalized.includes("validate"))
   ) {
-    return 'E-mail inválido: confira o endereço informado.';
+    return "E-mail inválido: confira o endereço informado.";
   }
 
   if (
-    normalized.includes('email') &&
-    (isDuplicate || normalized.includes('registered'))
+    normalized.includes("email") &&
+    (isDuplicate || normalized.includes("registered"))
   ) {
-    return 'E-mail já cadastrado: informe outro endereço.';
+    return "E-mail já cadastrado: informe outro endereço.";
   }
 
-  if (normalized.includes('cpf') && normalized.includes('invalido')) {
-    return 'CPF inválido: confira os números informados.';
-  }
-
-  if (
-    normalized.includes('obrigatori') ||
-    normalized.includes('required') ||
-    normalized.includes('not-null')
-  ) {
-    return 'Dados incompletos: preencha os campos obrigatórios.';
+  if (normalized.includes("cpf") && normalized.includes("invalido")) {
+    return "CPF inválido: confira os números informados.";
   }
 
   if (
-    normalized.includes('forbidden') ||
-    normalized.includes('permissao') ||
-    normalized.includes('acesso negado')
+    normalized.includes("obrigatori") ||
+    normalized.includes("required") ||
+    normalized.includes("not-null")
   ) {
-    return 'Acesso não permitido para importar este usuário.';
+    return "Dados incompletos: preencha os campos obrigatórios.";
   }
 
   if (
-    normalized.includes('network') ||
-    normalized.includes('timeout') ||
-    normalized.includes('conexao') ||
-    normalized.includes('conexão')
+    normalized.includes("forbidden") ||
+    normalized.includes("permissao") ||
+    normalized.includes("acesso negado")
   ) {
-    return 'Falha de conexão: tente importar esta linha novamente.';
+    return "Acesso não permitido para importar este usuário.";
+  }
+
+  if (
+    normalized.includes("network") ||
+    normalized.includes("timeout") ||
+    normalized.includes("conexao") ||
+    normalized.includes("conexão")
+  ) {
+    return "Falha de conexão: tente importar esta linha novamente.";
   }
 
   return info.description;
@@ -412,12 +414,12 @@ function institutionName(institution: Institution) {
 }
 
 function normalizeImportLookup(value: unknown) {
-  return String(value ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLocaleLowerCase('pt-BR')
-    .replace(/[ºª]/g, '')
-    .replace(/[^a-z0-9]+/g, ' ')
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .replace(/[ºª]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }
 
@@ -442,7 +444,8 @@ function resolveImportedClassId(row: ImportRow, classes: Class[]) {
     const classMatches =
       itemClassName === className || itemClassName.endsWith(` ${className}`);
     const yearMatches =
-      itemAcademicYear === academicYear || itemAcademicYear.includes(academicYear);
+      itemAcademicYear === academicYear ||
+      itemAcademicYear.includes(academicYear);
 
     return (
       item.isActive &&
@@ -461,23 +464,23 @@ export function BulkUserImportModal({
   isOpen,
   onClose,
   onComplete,
-  defaultMode = '',
+  defaultMode = "",
   lockMode = false,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onComplete: () => void;
-  defaultMode?: ImportMode | '';
+  defaultMode?: ImportMode | "";
   lockMode?: boolean;
 }) {
   const [rows, setRows] = useState<ImportRow[]>([]);
-  const [fileName, setFileName] = useState('');
+  const [fileName, setFileName] = useState("");
   const [institutions, setInstitutions] = useState<Institution[]>([]);
-  const [institutionSearch, setInstitutionSearch] = useState('');
-  const [institutionId, setInstitutionId] = useState('');
-  const [unitId, setUnitId] = useState('');
+  const [institutionSearch, setInstitutionSearch] = useState("");
+  const [institutionId, setInstitutionId] = useState("");
+  const [unitId, setUnitId] = useState("");
   const [classes, setClasses] = useState<Class[]>([]);
-  const [mode, setMode] = useState<ImportMode | ''>(defaultMode);
+  const [mode, setMode] = useState<ImportMode | "">(defaultMode);
   const [isLoading, setIsLoading] = useState(false);
   const [importProgress, setImportProgress] = useState<number | null>(null);
   const [importBatchSize, setImportBatchSize] = useState<ImportBatchSize>(1);
@@ -499,10 +502,10 @@ export function BulkUserImportModal({
   );
   const selectedUnit = availableUnits.find((unit) => unit.id === unitId);
   const filteredInstitutions = useMemo(() => {
-    const search = institutionSearch.trim().toLocaleLowerCase('pt-BR');
+    const search = institutionSearch.trim().toLocaleLowerCase("pt-BR");
     if (!search) return institutions;
     return institutions.filter((institution) =>
-      institutionName(institution).toLocaleLowerCase('pt-BR').includes(search),
+      institutionName(institution).toLocaleLowerCase("pt-BR").includes(search),
     );
   }, [institutionSearch, institutions]);
 
@@ -515,9 +518,8 @@ export function BulkUserImportModal({
       mode
         ? rows
             .map((row) => ({ row, reason: rowValidationError(row, mode) }))
-            .filter(
-              (item): item is { row: ImportRow; reason: string } =>
-                Boolean(item.reason),
+            .filter((item): item is { row: ImportRow; reason: string } =>
+              Boolean(item.reason),
             )
         : [],
     [mode, rows],
@@ -525,10 +527,10 @@ export function BulkUserImportModal({
 
   const resetFile = () => {
     setRows([]);
-    setFileName('');
+    setFileName("");
     setResult(null);
     setImportProgress(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const loadInstitutions = async () => {
@@ -541,7 +543,7 @@ export function BulkUserImportModal({
       });
       setInstitutions(response.data);
     } catch {
-      toast.error('Não foi possível carregar as instituições.');
+      toast.error("Não foi possível carregar as instituições.");
     } finally {
       setLoadingInstitutions(false);
     }
@@ -589,8 +591,8 @@ export function BulkUserImportModal({
   const selectInstitution = (institution: Institution) => {
     setInstitutionId(institution.id);
     setInstitutionSearch(institutionName(institution));
-    setUnitId('');
-    setMode('');
+    setUnitId("");
+    setMode("");
     resetFile();
   };
 
@@ -600,14 +602,14 @@ export function BulkUserImportModal({
       !selectedInstitution ||
       value !== institutionName(selectedInstitution)
     ) {
-      setInstitutionId('');
-      setUnitId('');
-      setMode('');
+      setInstitutionId("");
+      setUnitId("");
+      setMode("");
       resetFile();
     }
   };
 
-  const handleModeChange = (nextMode: ImportMode | '') => {
+  const handleModeChange = (nextMode: ImportMode | "") => {
     setMode(nextMode);
     resetFile();
   };
@@ -615,16 +617,16 @@ export function BulkUserImportModal({
   const downloadTemplate = () => {
     if (!mode) {
       toast.error(
-        'Selecione o tipo de importação para baixar o modelo correto.',
+        "Selecione o tipo de importação para baixar o modelo correto.",
       );
       return;
     }
 
     const blob = new Blob([`\uFEFF${templateForMode(mode)}`], {
-      type: 'text/csv;charset=utf-8;',
+      type: "text/csv;charset=utf-8;",
     });
     const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
+    const anchor = document.createElement("a");
     anchor.href = url;
     anchor.download = `modelo-importacao-${mode.toLowerCase()}.csv`;
     anchor.click();
@@ -635,35 +637,35 @@ export function BulkUserImportModal({
     const file = event.target.files?.[0];
     if (!file) return;
     if (!mode) {
-      toast.error('Selecione o tipo de importação antes do arquivo.');
-      event.target.value = '';
+      toast.error("Selecione o tipo de importação antes do arquivo.");
+      event.target.value = "";
       return;
     }
     setFileName(file.name);
     setResult(null);
     const reader = new FileReader();
-    reader.onload = () => setRows(parseFile(String(reader.result ?? '')));
-    reader.readAsText(file, 'UTF-8');
+    reader.onload = () => setRows(parseFile(String(reader.result ?? "")));
+    reader.readAsText(file, "UTF-8");
   };
 
   const importUsers = async () => {
     if (!institutionId || !selectedInstitution) {
-      toast.error('Selecione a instituição dos usuários.');
+      toast.error("Selecione a instituição dos usuários.");
       return;
     }
     if (!unitId) {
-      toast.error('Selecione o anexo da instituição.');
+      toast.error("Selecione o anexo da instituição.");
       return;
     }
     if (!mode) {
       toast.error(
-        'Selecione se a importação será de alunos, professores ou dos dois.',
+        "Selecione se a importação será de alunos, professores ou dos dois.",
       );
       return;
     }
     if (validRows.length === 0) {
       toast.error(
-        'Envie um arquivo com linhas válidas para o modelo selecionado.',
+        "Envie um arquivo com linhas válidas para o modelo selecionado.",
       );
       return;
     }
@@ -671,7 +673,7 @@ export function BulkUserImportModal({
     setIsLoading(true);
     setImportProgress(0);
     const errors: string[] = invalidRows.map(
-      ({ row, reason }) => `Linha ${row.__lineNumber ?? '?'}: ${reason}`,
+      ({ row, reason }) => `Linha ${row.__lineNumber ?? "?"}: ${reason}`,
     );
     let imported = 0;
     const buildPayload = (row: ImportRow, role: UserRole): CreateUserDto => ({
@@ -686,7 +688,7 @@ export function BulkUserImportModal({
       whatsapp: row.whatsapp || undefined,
       telefoneFixo: row.telefone_fixo || undefined,
       birthDate: row.data_nascimento || undefined,
-      gender: (row.genero || undefined) as CreateUserDto['gender'],
+      gender: (row.genero || undefined) as CreateUserDto["gender"],
       address: row.endereco || undefined,
       numero: row.numero || undefined,
       complemento: row.complemento || undefined,
@@ -696,7 +698,7 @@ export function BulkUserImportModal({
       zipCode: row.cep || undefined,
       institutionId,
       unitId,
-      importSource: role === UserRole.STUDENT ? 'BULK_IMPORT' : undefined,
+      importSource: role === UserRole.STUDENT ? "BULK_IMPORT" : undefined,
       specialization: row.especializacao || undefined,
       degree: row.formacao || undefined,
       registrationNumber: row.registro_profissional || undefined,
@@ -737,22 +739,22 @@ export function BulkUserImportModal({
                 celular: row.responsavel_celular || undefined,
                 whatsapp: row.responsavel_whatsapp || undefined,
                 telefoneFixo: row.responsavel_telefone_fixo || undefined,
-                parentesco: row.parentesco || 'Responsável',
+                parentesco: row.parentesco || "Responsável",
                 dataNascimento: row.responsavel_data_nascimento || undefined,
-                financeiro: ['SIM', 'S', 'TRUE', '1'].includes(
-                  row.responsavel_financeiro?.trim().toUpperCase() || '',
+                financeiro: ["SIM", "S", "TRUE", "1"].includes(
+                  row.responsavel_financeiro?.trim().toUpperCase() || "",
                 ),
-                contatoEmergencia: ['SIM', 'S', 'TRUE', '1'].includes(
+                contatoEmergencia: ["SIM", "S", "TRUE", "1"].includes(
                   row.responsavel_contato_emergencia?.trim().toUpperCase() ||
-                    '',
+                    "",
                 ),
                 notificacoes:
-                  ['SIM', 'S', 'TRUE', '1'].includes(
-                    row.responsavel_notificacoes?.trim().toUpperCase() || '',
+                  ["SIM", "S", "TRUE", "1"].includes(
+                    row.responsavel_notificacoes?.trim().toUpperCase() || "",
                   ) || undefined,
                 podeRetirar:
-                  ['SIM', 'S', 'TRUE', '1'].includes(
-                    row.responsavel_pode_retirar?.trim().toUpperCase() || '',
+                  ["SIM", "S", "TRUE", "1"].includes(
+                    row.responsavel_pode_retirar?.trim().toUpperCase() || "",
                   ) || undefined,
               },
             ]
@@ -778,23 +780,18 @@ export function BulkUserImportModal({
 
         batchResults.forEach((batchResult, batchIndex) => {
           const row = batch[batchIndex].row;
-          if (batchResult.status === 'fulfilled') {
+          if (batchResult.status === "fulfilled") {
             imported += 1;
             return;
           }
 
           errors.push(
-            `Linha ${row.__lineNumber ?? '?'}: ${friendlyImportError(batchResult.reason)}`,
+            `Linha ${row.__lineNumber ?? "?"}: ${friendlyImportError(batchResult.reason)}`,
           );
         });
 
-        const processed = Math.min(
-          start + batch.length,
-          rowsToImport.length,
-        );
-        setImportProgress(
-          Math.round((processed / rowsToImport.length) * 100),
-        );
+        const processed = Math.min(start + batch.length, rowsToImport.length);
+        setImportProgress(Math.round((processed / rowsToImport.length) * 100));
       }
 
       setResult({ imported, errors });
@@ -831,8 +828,8 @@ export function BulkUserImportModal({
               onChange={(event) => handleInstitutionSearch(event.target.value)}
               placeholder={
                 loadingInstitutions
-                  ? 'Carregando instituições...'
-                  : 'Buscar instituição pelo nome'
+                  ? "Carregando instituições..."
+                  : "Buscar instituição pelo nome"
               }
               disabled={loadingInstitutions || isLoading}
               className="block w-full rounded-lg border-2 border-gray-300 bg-white py-3 pl-11 pr-4 text-sm text-gray-900 shadow-sm outline-none transition focus:border-primary-500 focus:ring-4 focus:ring-primary-100 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:ring-primary-900/30"
@@ -856,7 +853,7 @@ export function BulkUserImportModal({
                       <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
                         {[institution.city, institution.state]
                           .filter(Boolean)
-                          .join(' - ')}
+                          .join(" - ")}
                       </span>
                     ) : null}
                   </button>
@@ -882,11 +879,11 @@ export function BulkUserImportModal({
               value={unitId}
               onChange={(event) => {
                 setUnitId(event.target.value);
-                setMode('');
+                setMode("");
                 resetFile();
               }}
               options={[
-                { value: '', label: 'Selecione o anexo...' },
+                { value: "", label: "Selecione o anexo..." },
                 ...availableUnits.map((unit) => ({
                   value: unit.id,
                   label: unit.name,
@@ -896,14 +893,14 @@ export function BulkUserImportModal({
               required
               helpText={
                 availableUnits.length === 0
-                  ? 'Esta instituição ainda não possui anexos ativos.'
-                  : 'Os usuários serão vinculados a este anexo.'
+                  ? "Esta instituição ainda não possui anexos ativos."
+                  : "Os usuários serão vinculados a este anexo."
               }
             />
             {unitId ? (
               lockMode ? (
                 <p className="self-center text-sm text-gray-600 dark:text-gray-300">
-                  Importação de{' '}
+                  Importação de{" "}
                   {MODE_LABELS[mode || (defaultMode as ImportMode)]}.
                 </p>
               ) : (
@@ -911,10 +908,10 @@ export function BulkUserImportModal({
                   label="O que deseja importar?"
                   value={mode}
                   onChange={(event) =>
-                    handleModeChange(event.target.value as ImportMode | '')
+                    handleModeChange(event.target.value as ImportMode | "")
                   }
                   options={[
-                    { value: '', label: 'Selecione...' },
+                    { value: "", label: "Selecione..." },
                     ...MODE_OPTIONS,
                   ]}
                   disabled={isLoading}
@@ -955,6 +952,10 @@ export function BulkUserImportModal({
                 {fileName}
               </span>
             ) : null}
+            <p className="basis-full text-xs text-gray-500 dark:text-gray-400">
+              Deixe a coluna senha vazia para usar os 6 primeiros dígitos do CPF
+              no primeiro acesso.
+            </p>
           </div>
         ) : null}
 
@@ -980,8 +981,8 @@ export function BulkUserImportModal({
                   aria-pressed={importBatchSize === option.value}
                   className={`rounded-lg border px-3 py-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                     importBatchSize === option.value
-                      ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-100 dark:border-primary-400 dark:bg-primary-950/30 dark:ring-primary-900/40'
-                      : 'border-gray-200 bg-white hover:border-primary-300 hover:bg-primary-50/50 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-primary-700 dark:hover:bg-primary-900/20'
+                      ? "border-primary-500 bg-primary-50 ring-2 ring-primary-100 dark:border-primary-400 dark:bg-primary-950/30 dark:ring-primary-900/40"
+                      : "border-gray-200 bg-white hover:border-primary-300 hover:bg-primary-50/50 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-primary-700 dark:hover:bg-primary-900/20"
                   }`}
                 >
                   <span className="block text-sm font-semibold text-gray-900 dark:text-white">
@@ -1005,7 +1006,7 @@ export function BulkUserImportModal({
                   <th className="px-3 py-2">Nome</th>
                   <th className="px-3 py-2">E-mail</th>
                   <th className="px-3 py-2">Anexo</th>
-                  {mode !== 'TEACHERS' ? (
+                  {mode !== "TEACHERS" ? (
                     <th className="px-3 py-2">Responsável</th>
                   ) : null}
                 </tr>
@@ -1020,20 +1021,20 @@ export function BulkUserImportModal({
                     >
                       <td className="px-3 py-2">
                         {role === UserRole.STUDENT
-                          ? 'Aluno'
+                          ? "Aluno"
                           : role === UserRole.TEACHER
-                            ? 'Professor'
-                            : row.tipo || '-'}
+                            ? "Professor"
+                            : row.tipo || "-"}
                       </td>
                       <td className="px-3 py-2">
-                        {`${row.nome || ''} ${row.sobrenome || ''}`.trim() ||
-                          '-'}
+                        {`${row.nome || ""} ${row.sobrenome || ""}`.trim() ||
+                          "-"}
                       </td>
-                      <td className="px-3 py-2">{row.email || '-'}</td>
-                      <td className="px-3 py-2">{selectedUnit?.name || '-'}</td>
-                      {mode !== 'TEACHERS' ? (
+                      <td className="px-3 py-2">{row.email || "-"}</td>
+                      <td className="px-3 py-2">{selectedUnit?.name || "-"}</td>
+                      {mode !== "TEACHERS" ? (
                         <td className="px-3 py-2">
-                          {row.responsavel_nome || '—'}
+                          {row.responsavel_nome || "—"}
                         </td>
                       ) : null}
                     </tr>
@@ -1048,12 +1049,14 @@ export function BulkUserImportModal({
             ) : null}
             {invalidRows.length > 0 ? (
               <p className="border-t border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                {invalidRows.length} linha(s) não serão importadas.{' '}
+                {invalidRows.length} linha(s) não serão importadas.{" "}
                 {invalidRows
                   .slice(0, 3)
-                  .map(({ row, reason }) => `Linha ${row.__lineNumber}: ${reason}`)
-                  .join(' • ')}
-                {invalidRows.length > 3 ? ' • ...' : ''}
+                  .map(
+                    ({ row, reason }) => `Linha ${row.__lineNumber}: ${reason}`,
+                  )
+                  .join(" • ")}
+                {invalidRows.length > 3 ? " • ..." : ""}
               </p>
             ) : null}
             {importProgress !== null ? (
@@ -1102,8 +1105,8 @@ export function BulkUserImportModal({
               validRows.length === 0
             }
           >
-            Importar{' '}
-            {validRows.length > 0 ? `${validRows.length} linha(s)` : ''}
+            Importar{" "}
+            {validRows.length > 0 ? `${validRows.length} linha(s)` : ""}
           </Button>
         </div>
       </div>

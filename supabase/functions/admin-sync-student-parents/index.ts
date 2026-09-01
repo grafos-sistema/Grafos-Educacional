@@ -21,9 +21,9 @@ function json(data: any, status = 200) {
   });
 }
 
-function buildInitialPassword(email: string) {
-  const [localPart] = email.trim().toLowerCase().split("@");
-  return `${localPart}@Grafos`;
+function buildInitialPassword(cpf?: string | null) {
+  const digits = String(cpf ?? "").replace(/\D/g, "");
+  return digits.length >= 6 ? digits.slice(0, 6) : null;
 }
 
 const adultOnlyRelationships = new Set(["primo", "prima", "irmão", "irmã"]);
@@ -181,6 +181,10 @@ Deno.serve(async (req) => {
         }
       }
 
+      const normalizedParentCpf = resp.cpf
+        ? resp.cpf.replace(/\D/g, "") || null
+        : null;
+
       // Tentar encontrar responsável existente por CPF (prioritário) ou email
       if (!parentUserId && (resp.cpf || resp.email)) {
         let query = supabase
@@ -188,10 +192,12 @@ Deno.serve(async (req) => {
           .select("id")
           .eq("institutionId", institutionId)
           .eq("role", "PARENT");
-        if (resp.cpf && resp.email) {
-          query = query.or(`cpf.eq.${resp.cpf},email.eq.${resp.email}`);
-        } else if (resp.cpf) {
-          query = query.eq("cpf", resp.cpf);
+        if (normalizedParentCpf && resp.email) {
+          query = query.or(
+            `cpf.eq.${normalizedParentCpf},email.eq.${resp.email}`,
+          );
+        } else if (normalizedParentCpf) {
+          query = query.eq("cpf", normalizedParentCpf);
         } else if (resp.email) {
           query = query.eq("email", resp.email);
         }
@@ -214,7 +220,7 @@ Deno.serve(async (req) => {
             name: nomeCompleto,
             firstName: primeiroNome,
             lastName: ultimoNome,
-            cpf: resp.cpf ?? undefined,
+            cpf: normalizedParentCpf ?? undefined,
             phone: resp.celular ?? null,
             whatsapp: resp.whatsapp ?? null,
             birthDate: responsibleBirthDate,
@@ -241,8 +247,20 @@ Deno.serve(async (req) => {
           ? resp.email.trim().toLowerCase()
           : `responsavel_${crypto.randomUUID()}@sem-acesso.grafos.internal`;
 
-        // Usar a mesma senha padrão exibida na tela de login do responsável.
-        const parentPassword = buildInitialPassword(parentEmail);
+        // Responsáveis sem e-mail não terão acesso e recebem uma senha
+        // aleatória apenas para satisfazer o requisito do Auth. Quando há
+        // e-mail real, o CPF é obrigatório para gerar a senha conhecida do
+        // primeiro acesso.
+        const parentPassword = temEmailReal
+          ? buildInitialPassword(normalizedParentCpf)
+          : crypto.randomUUID();
+
+        if (!parentPassword) {
+          return json(
+            { error: "missing_cpf_for_parent_initial_password" },
+            400,
+          );
+        }
 
         const { data: pAuth, error: pAuthError } =
           await supabase.auth.admin.createUser({
@@ -280,7 +298,7 @@ Deno.serve(async (req) => {
               name: nomeCompleto,
               firstName: primeiroNome,
               lastName: ultimoNome,
-              cpf: resp.cpf ?? null,
+              cpf: normalizedParentCpf,
               phone: resp.celular ?? null,
               whatsapp: resp.whatsapp ?? null,
               birthDate: responsibleBirthDate,
@@ -391,7 +409,6 @@ Deno.serve(async (req) => {
           }
         }
       }
-
     }
 
     // 3. Remove links that were deleted in the UI

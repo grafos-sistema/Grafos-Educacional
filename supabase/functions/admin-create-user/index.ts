@@ -105,9 +105,9 @@ function isAllowedRole(role: string) {
   ].includes(role);
 }
 
-function buildInitialPassword(email: string) {
-  const [localPart] = email.split("@");
-  return `${localPart}@Grafos`;
+function buildInitialPassword(cpf?: string | null) {
+  const digits = String(cpf ?? "").replace(/\D/g, "");
+  return digits.length >= 6 ? digits.slice(0, 6) : null;
 }
 
 function normalizePassword(value?: string | null) {
@@ -171,21 +171,27 @@ async function resolveBulkStudentClassId(
   );
   const academicYearIds = Array.from(
     new Set(
-      (classes ?? [])
-        .map((item: any) => item.academicYearId)
-        .filter(Boolean),
+      (classes ?? []).map((item: any) => item.academicYearId).filter(Boolean),
     ),
   );
   if (courseIds.length === 0 || academicYearIds.length === 0) return null;
-  const [{ data: courses, error: coursesError }, { data: years, error: yearsError }] =
-    await Promise.all([
-      supabase.from("courses").select("id, name").in("id", courseIds),
-      supabase.from("academic_years").select("id, year, name").in("id", academicYearIds),
-    ]);
+  const [
+    { data: courses, error: coursesError },
+    { data: years, error: yearsError },
+  ] = await Promise.all([
+    supabase.from("courses").select("id, name").in("id", courseIds),
+    supabase
+      .from("academic_years")
+      .select("id, year, name")
+      .in("id", academicYearIds),
+  ]);
   if (coursesError || yearsError) throw coursesError ?? yearsError;
 
   const courseNames = new Map(
-    (courses ?? []).map((course: any) => [course.id, normalizeClassLookup(course.name)]),
+    (courses ?? []).map((course: any) => [
+      course.id,
+      normalizeClassLookup(course.name),
+    ]),
   );
   const yearNames = new Map(
     (years ?? []).map((year: any) => [
@@ -198,7 +204,8 @@ async function resolveBulkStudentClassId(
     const itemClassName = normalizeClassLookup(item.name);
     const itemYear = yearNames.get(item.academicYearId) ?? "";
     return (
-      (itemClassName === className || itemClassName.endsWith(` ${className}`)) &&
+      (itemClassName === className ||
+        itemClassName.endsWith(` ${className}`)) &&
       courseNames.get(item.courseId) === courseName &&
       normalizeClassLookup(item.grade) === grade &&
       (itemYear === academicYear || itemYear.includes(academicYear)) &&
@@ -296,13 +303,13 @@ Deno.serve(async (req: Request) => {
     ),
   ) as string[];
   const isActive = body?.isActive ?? true;
+  const normalizedCpf = body?.cpf ? body.cpf.replace(/\D/g, "") || null : null;
   const generatedPassword =
-    normalizePassword(body?.password) ??
-    (email ? buildInitialPassword(email) : null);
+    normalizePassword(body?.password) ?? buildInitialPassword(normalizedCpf);
 
   if (!email) return json({ error: "missing_email" }, 400);
-  if (!generatedPassword || generatedPassword.length < 6)
-    return json({ error: "invalid_password" }, 400);
+  if (!generatedPassword)
+    return json({ error: "missing_cpf_for_initial_password" }, 400);
   if (!role || !isAllowedRole(role))
     return json({ error: "invalid_role" }, 400);
   if (!firstName) return json({ error: "missing_firstName" }, 400);
@@ -387,8 +394,8 @@ Deno.serve(async (req: Request) => {
   let existingCpf: { id: string } | null = null;
   let existingCpfError: { message: string } | null = null;
 
-  if (body?.cpf) {
-    let cpfQuery = supabase.from("users").select("id").eq("cpf", body.cpf);
+  if (normalizedCpf) {
+    let cpfQuery = supabase.from("users").select("id").eq("cpf", normalizedCpf);
 
     cpfQuery = isCreatingGlobalAdmin
       ? cpfQuery.is("institutionId", null)
@@ -453,7 +460,7 @@ Deno.serve(async (req: Request) => {
       name: fullName,
       firstName,
       lastName,
-      cpf: body?.cpf ?? null,
+      cpf: normalizedCpf,
       socialName: body?.socialName ?? null,
       phone: body?.phone ?? null,
       whatsapp: body?.whatsapp ?? null,
@@ -515,19 +522,17 @@ Deno.serve(async (req: Request) => {
   }
 
   if (requestedUnitIds.length > 0) {
-    const { error: unitLinkError } = await supabase
-      .from("user_units")
-      .insert(
-        requestedUnitIds.map((requestedUnitId, index) => ({
-          id: crypto.randomUUID(),
-          userId: appUser.id,
-          unitId: requestedUnitId,
-          isActive: true,
-          isPrimary: index === 0,
-          createdAt: now,
-          updatedAt: now,
-        })),
-      );
+    const { error: unitLinkError } = await supabase.from("user_units").insert(
+      requestedUnitIds.map((requestedUnitId, index) => ({
+        id: crypto.randomUUID(),
+        userId: appUser.id,
+        unitId: requestedUnitId,
+        isActive: true,
+        isPrimary: index === 0,
+        createdAt: now,
+        updatedAt: now,
+      })),
+    );
 
     if (unitLinkError) {
       await cleanup();
@@ -592,7 +597,11 @@ Deno.serve(async (req: Request) => {
     }
 
     let resolvedTurmaId = body?.turmaId?.trim() || null;
-    if (!resolvedTurmaId && body?.importSource === "BULK_IMPORT" && body?.turma) {
+    if (
+      !resolvedTurmaId &&
+      body?.importSource === "BULK_IMPORT" &&
+      body?.turma
+    ) {
       try {
         resolvedTurmaId = await resolveBulkStudentClassId(
           supabase,
@@ -778,8 +787,21 @@ Deno.serve(async (req: Request) => {
             ? resp.email.trim().toLowerCase()
             : `responsavel_${crypto.randomUUID()}@sem-acesso.grafos.internal`;
 
-          // Usar a mesma senha padrão exibida na tela de login do responsável.
-          const parentPassword = buildInitialPassword(parentEmail);
+          // Responsáveis sem e-mail não terão acesso e recebem uma senha
+          // aleatória apenas para satisfazer o requisito do Auth. Quando há
+          // e-mail real, o CPF é obrigatório para gerar a senha conhecida do
+          // primeiro acesso.
+          const parentPassword = temEmailReal
+            ? buildInitialPassword(resp.cpf)
+            : crypto.randomUUID();
+
+          if (!parentPassword) {
+            await cleanup();
+            return json(
+              { error: "missing_cpf_for_parent_initial_password" },
+              400,
+            );
+          }
 
           const { data: pAuth, error: pAuthError } =
             await supabase.auth.admin.createUser({
@@ -817,7 +839,7 @@ Deno.serve(async (req: Request) => {
                 name: nomeCompleto,
                 firstName: primeiroNome,
                 lastName: ultimoNome,
-                cpf: resp.cpf ?? null,
+                cpf: resp.cpf ? resp.cpf.replace(/\D/g, "") || null : null,
                 phone: resp.celular ?? null,
                 whatsapp: resp.whatsapp ?? null,
                 telefoneFixo: resp.telefoneFixo ?? null,
