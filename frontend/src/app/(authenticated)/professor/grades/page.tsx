@@ -532,6 +532,23 @@ export default function GradesPage() {
     setShowProposalModal(true);
   };
 
+  const isProposalExam = proposalType.trim().toLocaleLowerCase('pt-BR') === 'prova';
+  const canSubmitProposal = Boolean(
+    proposalTitle.trim() &&
+    selectedClassSubjectId &&
+    selectedPeriodId &&
+    (!isProposalExam || proposalExamDate),
+  );
+
+  const handleProposalSubmit = () => {
+    if (isProposalExam && !proposalExamDate) {
+      toast.error('Informe a data da prova para que ela seja divulgada aos alunos.');
+      return;
+    }
+
+    proposalMutation.mutate();
+  };
+
   const openReview = (evaluation: any, mode: 'view' | 'publish' = 'view') => {
     setReviewEvaluationId(evaluation.id);
     setReviewMode(mode);
@@ -636,8 +653,8 @@ export default function GradesPage() {
               Cancelar
             </Button>
             <Button
-              onClick={() => proposalMutation.mutate()}
-              disabled={!proposalTitle.trim() || proposalMutation.isPending}
+              onClick={handleProposalSubmit}
+              disabled={!canSubmitProposal || proposalMutation.isPending}
               isLoading={proposalMutation.isPending}
             >
               Enviar proposta
@@ -673,10 +690,12 @@ export default function GradesPage() {
             required
           />
           <Input
-            label="Data (opcional)"
+            label={isProposalExam ? 'Data da prova' : 'Data (opcional)'}
             type="date"
             value={proposalExamDate}
             onChange={(event) => setProposalExamDate(event.target.value)}
+            required={isProposalExam}
+            helperText={isProposalExam ? 'A data será exibida aos alunos após a aprovação.' : undefined}
           />
           <div className="sm:col-span-2">
             <Input

@@ -17,7 +17,11 @@ export const evaluationsService = {
   },
 
   async create(data: CreateEvaluationDto): Promise<Evaluation> {
-    return (await api.post<Evaluation>('/evaluations', data)) as unknown as Evaluation;
+    // As telas de avaliação já exibem a mensagem de falha em um toast.
+    // Evita duplicar esse feedback com o modal global do interceptor da API.
+    return (await api.post<Evaluation>('/evaluations', data, {
+      headers: { 'x-skip-error-toast': '1' },
+    })) as unknown as Evaluation;
   },
 
   async approve(id: string): Promise<Evaluation> {

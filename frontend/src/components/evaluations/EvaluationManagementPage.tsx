@@ -102,6 +102,19 @@ export function EvaluationManagementPage() {
   });
 
   const canSubmit = Boolean(title.trim() && classSubjectId && periodId);
+  const isExam = type.trim().toLocaleLowerCase('pt-BR') === 'prova';
+  const canSubmitEvaluation = Boolean(
+    canSubmit && (!isExam || examDate),
+  );
+
+  const handleCreateEvaluation = () => {
+    if (isExam && !examDate) {
+      toast.error('Informe a data da prova para que ela seja divulgada aos alunos.');
+      return;
+    }
+
+    createMutation.mutate();
+  };
   const pending = useMemo(
     () => evaluations.filter((item) => item.status === 'PENDING_APPROVAL'),
     [evaluations],
@@ -160,11 +173,18 @@ export function EvaluationManagementPage() {
           />
           <Input label="Título da avaliação" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Ex.: Prova bimestral" />
           <Select label="Tipo" value={type} onChange={(event) => setType(event.target.value)} options={types.map((item) => ({ value: item, label: item }))} />
-          <Input label="Data (opcional)" type="date" value={examDate} onChange={(event) => setExamDate(event.target.value)} />
+          <Input
+            label={isExam ? 'Data da prova' : 'Data (opcional)'}
+            type="date"
+            value={examDate}
+            onChange={(event) => setExamDate(event.target.value)}
+            required={isExam}
+            helperText={isExam ? 'A data será exibida aos alunos após a liberação.' : undefined}
+          />
           <Input label="Descrição (opcional)" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Conteúdos ou orientações" />
         </div>
         <div className="mt-5 flex justify-end">
-          <Button onClick={() => createMutation.mutate()} disabled={!canSubmit || createMutation.isPending} isLoading={createMutation.isPending}>
+          <Button onClick={handleCreateEvaluation} disabled={!canSubmitEvaluation || createMutation.isPending} isLoading={createMutation.isPending}>
             Salvar avaliação
           </Button>
         </div>

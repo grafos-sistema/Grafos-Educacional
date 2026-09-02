@@ -56,6 +56,7 @@ export default function CoordinatorLessonPlansPage() {
   const [startDateFilter, setStartDateFilter] = useState('');
   const [endDateFilter, setEndDateFilter] = useState('');
   const [sortBy, setSortBy] = useState<'pendentes' | 'recentes' | 'titulo' | 'inicio'>('pendentes');
+  const [showFilters, setShowFilters] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
@@ -303,35 +304,8 @@ export default function CoordinatorLessonPlansPage() {
       </div>
 
       {/* Filtros */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6">
-        <div className="flex items-center gap-2 mb-3">
-          <FunnelIcon className="h-5 w-5 text-gray-500" />
-          <span className="font-medium text-gray-900 dark:text-white">Filtros</span>
-        </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <Select
-            label="Status"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as LessonPlanStatus | '')}
-            options={[
-              { value: '', label: 'Todos' },
-              { value: LessonPlanStatus.SUBMITTED, label: 'Aguardando Aprovação' },
-              { value: LessonPlanStatus.APPROVED, label: 'Aprovados' },
-              { value: LessonPlanStatus.REJECTED, label: 'Rejeitados' },
-            ]}
-          />
-          <Select
-            label="Período Letivo"
-            value={selectedAcademicPeriodId}
-            onChange={(e) => setSelectedAcademicPeriodId(e.target.value)}
-            options={[
-              { value: '', label: 'Todos os períodos' },
-              ...academicPeriods.map((period) => ({
-                value: period.id,
-                label: period.name,
-              })),
-            ]}
-          />
+      <div className="mb-6 rounded-lg border border-[#e3e5e9] bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,2fr)_minmax(180px,1fr)_minmax(180px,1fr)_auto]">
           <Input
             label="Buscar plano"
             value={searchTerm}
@@ -351,7 +325,47 @@ export default function CoordinatorLessonPlansPage() {
             value={endDateFilter}
             onChange={(e) => setEndDateFilter(e.target.value)}
           />
-          <div className="xl:col-span-2 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+          <button
+            type="button"
+            aria-label="Abrir filtros adicionais"
+            aria-expanded={showFilters}
+            title="Abrir filtros adicionais"
+            onClick={() => setShowFilters((current) => !current)}
+            className={`mb-0.5 inline-flex h-12 w-12 items-center justify-center rounded-[5px] border transition-colors ${
+              showFilters
+                ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-400 dark:bg-primary-900/20 dark:text-primary-300'
+                : 'border-[#e3e5e9] bg-white text-gray-500 hover:border-primary-400 hover:text-primary-600 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300'
+            }`}
+          >
+            <FunnelIcon className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
+
+        {showFilters && (
+          <div className="mt-4 grid grid-cols-1 items-end gap-4 border-t border-[#e0e0e0] pt-4 dark:border-gray-700 md:grid-cols-2 xl:grid-cols-4">
+            <Select
+              label="Status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as LessonPlanStatus | '')}
+              options={[
+                { value: '', label: 'Todos' },
+                { value: LessonPlanStatus.SUBMITTED, label: 'Aguardando Aprovação' },
+                { value: LessonPlanStatus.APPROVED, label: 'Aprovados' },
+                { value: LessonPlanStatus.REJECTED, label: 'Rejeitados' },
+              ]}
+            />
+            <Select
+              label="Período Letivo"
+              value={selectedAcademicPeriodId}
+              onChange={(e) => setSelectedAcademicPeriodId(e.target.value)}
+              options={[
+                { value: '', label: 'Todos os períodos' },
+                ...academicPeriods.map((period) => ({
+                  value: period.id,
+                  label: period.name,
+                })),
+              ]}
+            />
             <Select
               label="Ordenação"
               value={sortBy}
@@ -365,9 +379,6 @@ export default function CoordinatorLessonPlansPage() {
             />
             <Button
               variant="secondary"
-              aria-label="Limpar filtros"
-              title="Limpar filtros"
-              className="!min-w-10 !px-0"
               onClick={() => {
                 setStatusFilter('');
                 setSearchTerm('');
@@ -376,12 +387,12 @@ export default function CoordinatorLessonPlansPage() {
                 setEndDateFilter('');
                 setSortBy('pendentes');
               }}
+              leftIcon={<BackspaceIcon className="h-5 w-5" aria-hidden="true" />}
             >
-              <BackspaceIcon className="h-5 w-5" aria-hidden="true" />
-              <span className="sr-only">Limpar filtros</span>
+              Limpar filtros
             </Button>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Lista de Planos */}
