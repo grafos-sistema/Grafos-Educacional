@@ -395,9 +395,8 @@ export default function SchedulesManagementPage() {
           {selectedClassId && !hasClassSubjects && (
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-800">
               <div>
-                Esta turma ainda não possui disciplinas vinculadas. O cadastro de horários usa as
-                disciplinas já associadas à turma em `class_subjects`, por isso nenhuma opção aparece
-                para montar a grade enquanto esse vínculo não existir.
+                Esta turma ainda não possui disciplinas vinculadas. Associe pelo menos uma disciplina
+                à turma para liberar o cadastro dos horários da grade.
               </div>
             </div>
           )}

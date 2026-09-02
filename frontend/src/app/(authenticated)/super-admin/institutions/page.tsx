@@ -82,7 +82,7 @@ export default function InstitutionsPage() {
         <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1">
             <Input
-              placeholder="Buscar por nome, slug, ou cidade..."
+              placeholder="Buscar por nome, identificador ou cidade..."
               value={filters.search || ''}
               onChange={(e) =>
                 setFilters({ ...filters, search: e.target.value })
@@ -182,7 +182,9 @@ export default function InstitutionsPage() {
                       >
                         <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                           <div className="font-medium">{inst.name}</div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">{inst.slug}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            Identificador: {inst.slug}
+                          </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                           {inst.city ? `${inst.city} - ${inst.state}` : '-'}

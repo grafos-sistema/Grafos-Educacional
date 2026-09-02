@@ -748,7 +748,7 @@ export default function AnnouncementsPage() {
         errorMessages.some((message) => message.includes('targetStudentIds should not exist'))
       ) {
         toast.error(
-          'A API publicada ainda nao suporta destinatarios especificos. E preciso subir a atualizacao do backend para usar essa funcao.'
+          'A seleção de destinatários específicos ainda não está disponível. Use o envio geral ou fale com a equipe.'
         );
       } else if (
         Array.isArray(errorMessages) &&

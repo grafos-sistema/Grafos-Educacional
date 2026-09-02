@@ -46,7 +46,7 @@ const tabs = [
   {
     id: 'sistema',
     label: 'Sistema',
-    subtitle: 'Slug, status e identidade visual',
+    subtitle: 'Identificador, status e identidade visual',
     icon: IdentificationIcon,
   },
 ] as const;
@@ -882,7 +882,7 @@ export function InstitutionFormTabs({ form, institutionId }: InstitutionFormTabs
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="md:col-span-2">
                     <Input
-                      label="Slug (Identificador na URL) *"
+                      label="Identificador da instituição *"
                       placeholder="Ex: sesi"
                       value={slugValue}
                       onChange={(event) => {

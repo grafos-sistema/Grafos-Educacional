@@ -194,7 +194,7 @@ export default function AdminRankingsPage() {
           </div>
           {!legacyAdminActionsAvailable && (
             <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-              As acoes administrativas de recalculo ainda dependem da API legada. A leitura do ranking ja foi migrada para o Supabase.
+              As ações administrativas de recálculo ainda não estão disponíveis nesta versão. Os dados exibidos no ranking continuam disponíveis para consulta.
             </p>
           )}
 

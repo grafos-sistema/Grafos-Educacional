@@ -28,5 +28,5 @@ export function getApiBaseUrl(): string | undefined {
 }
 
 export function getApiConfigurationMessage(): string {
-  return 'A API backend ainda nao esta configurada para este ambiente. Publique a API e defina NEXT_PUBLIC_API_URL antes de usar o cadastro.';
+  return 'O sistema ainda não conseguiu se conectar ao serviço de dados. Tente novamente mais tarde ou fale com a equipe de suporte.';
 }
