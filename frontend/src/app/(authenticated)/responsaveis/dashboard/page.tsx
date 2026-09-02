@@ -3,25 +3,27 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { UserRole } from '@/types/user.types';
 import {
-  UserGroupIcon,
+  AcademicCapIcon,
+  ArrowRightIcon,
   CalendarDaysIcon,
   ClipboardDocumentCheckIcon,
-  AcademicCapIcon,
-  BookOpenIcon,
-  ArrowRightIcon,
-  UsersIcon,
-  ChartBarIcon,
-  ExclamationTriangleIcon,
+  ClockIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
+import { UserRole } from '@/types/user.types';
 import { useAuthStore } from '@/stores/authStore';
 import { usersService } from '@/services/users.service';
 import { parentsService, ParentStudent } from '@/services/parents.service';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import BarChart from '@/components/charts/BarChart';
+import {
+  DashboardAvatar,
+  DashboardEmpty,
+  DashboardPageHeader,
+  DashboardSection,
+  DashboardStatus,
+} from '@/components/dashboard/DashboardUI';
 
 export default function PaisDashboard() {
   const router = useRouter();
@@ -29,367 +31,182 @@ export default function PaisDashboard() {
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const activeRole = user?.activeProfile ?? user?.role;
 
-  // Buscar perfil completo do responsável para obter o ID do parent
   const { data: parentProfile, isLoading: loadingProfile } = useQuery({
     queryKey: ['parent-profile', user?.id],
     queryFn: () => usersService.findOne(user!.id),
     enabled: !!user?.id && activeRole === UserRole.PARENT,
   });
 
-  // Buscar dados dos filhos (students) com informações de matrícula e desempenho
   const { data: children, isLoading: loadingChildren } = useQuery<ParentStudent[]>({
     queryKey: ['parent-children', parentProfile?.parentProfile?.id],
     queryFn: () => parentsService.getChildren(parentProfile!.parentProfile!.id),
     enabled: !!parentProfile?.parentProfile?.id,
   });
 
-  const openChildSection = (section: 'grades' | 'attendance' | 'schedule' | 'subjects') => {
-    const childId = selectedChildId ?? (children?.length === 1 ? children[0]?.student.userId : undefined);
-
-    if (childId) {
-      const destination = section === 'subjects'
-        ? `/responsaveis/children/${childId}`
-        : `/responsaveis/children/${childId}/${section}`;
-      router.push(destination);
-      return;
-    }
-
-    document.getElementById('parent-children')?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-    });
-  };
-
-  const quickActions = [
-    {
-      title: 'Boletim',
-      description: 'Ver notas dos filhos',
-      icon: ClipboardDocumentCheckIcon,
-      section: 'grades' as const,
-      color: 'bg-green-500',
-    },
-    {
-      title: 'Frequência',
-      description: 'Acompanhar presença',
-      icon: CalendarDaysIcon,
-      section: 'attendance' as const,
-      color: 'bg-blue-500',
-    },
-    {
-      title: 'Horários',
-      description: 'Ver grade de aulas',
-      icon: BookOpenIcon,
-      section: 'schedule' as const,
-      color: 'bg-purple-500',
-    },
-    {
-      title: 'Disciplinas',
-      description: 'Matérias dos filhos',
-      icon: AcademicCapIcon,
-      section: 'subjects' as const,
-      color: 'bg-orange-500',
-    },
-  ];
-
-  // Estatísticas gerais
-  const totalChildren = children?.length || 0;
-  const totalClasses = children?.reduce((acc, child) => acc + (child.enrollments?.length || 0), 0) || 0;
-  const totalSubjects = children?.reduce((acc, child) => acc + (child.subjectsCount || 0), 0) || 0;
-
-  const stats = [
-    {
-      name: 'Filhos',
-      value: totalChildren,
-      subtitle: totalChildren === 1 ? 'Cadastrado' : 'Cadastrados',
-      icon: UsersIcon,
-      color: 'bg-blue-500',
-    },
-    {
-      name: 'Turmas',
-      value: totalClasses,
-      subtitle: 'Total',
-      icon: UserGroupIcon,
-      color: 'bg-green-500',
-    },
-    {
-      name: 'Disciplinas',
-      value: totalSubjects,
-      subtitle: 'Total',
-      icon: BookOpenIcon,
-      color: 'bg-purple-500',
-    },
-    {
-      name: 'Desempenho',
-      value: '-',
-      subtitle: 'Em desenvolvimento',
-      icon: ChartBarIcon,
-      color: 'bg-orange-500',
-    },
-  ];
-
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex min-h-screen items-center justify-center">
         <LoadingSpinner size="lg" text="Carregando..." />
       </div>
     );
   }
 
   const isLoading = loadingProfile || loadingChildren;
+  const selectedChild = children?.find((child) => child.student.id === selectedChildId) || children?.[0];
+
+  const openChildSection = (section: 'grades' | 'attendance' | 'schedule' | 'subjects') => {
+    const childId = selectedChild?.student.userId;
+    if (!childId) return;
+
+    const destination = section === 'subjects'
+      ? `/responsaveis/children/${childId}`
+      : `/responsaveis/children/${childId}/${section}`;
+    router.push(destination);
+  };
+
+  const childLinks = [
+    { title: 'Notas', description: 'Acompanhe as avaliações', icon: ClipboardDocumentCheckIcon, section: 'grades' as const },
+    { title: 'Frequência', description: 'Veja a presença', icon: CalendarDaysIcon, section: 'attendance' as const },
+    { title: 'Horários', description: 'Consulte a grade', icon: ClockIcon, section: 'schedule' as const },
+    { title: 'Disciplinas', description: 'Veja as matérias', icon: AcademicCapIcon, section: 'subjects' as const },
+  ];
 
   return (
-    <>
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Portal da Família
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Bem-vindo, {user.firstName}! Acompanhe o desenvolvimento dos seus filhos.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <DashboardPageHeader
+        eyebrow="Portal da família"
+        title={`Olá, ${user.firstName}`}
+        description="Acompanhe os principais dados escolares dos seus filhos."
+      />
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div
-              key={stat.name}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 text-left"
+      {isLoading ? (
+        <DashboardSection title="Meus filhos" description="Carregando os vínculos escolares...">
+          <div className="flex justify-center py-8"><LoadingSpinner size="md" /></div>
+        </DashboardSection>
+      ) : !children || children.length === 0 ? (
+        <DashboardSection title="Meus filhos">
+          <DashboardEmpty
+            icon={UserGroupIcon}
+            title="Nenhum filho vinculado"
+            description="Quando o vínculo for realizado pela secretaria, os dados do aluno aparecerão aqui."
+          />
+        </DashboardSection>
+      ) : (
+        <>
+          {children.length > 1 && (
+            <DashboardSection title="Selecione um filho" description="Escolha qual aluno deseja acompanhar.">
+              <div className="flex flex-wrap gap-2">
+                {children.map((child) => {
+                  const isSelected = (selectedChild?.student.id || '') === child.student.id;
+                  return (
+                    <button
+                      key={child.student.id}
+                      type="button"
+                      onClick={() => setSelectedChildId(child.student.id)}
+                      className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left transition ${isSelected ? 'border-primary-500 bg-primary-50 text-primary-800 dark:border-primary-400 dark:bg-primary-950/40 dark:text-primary-200' : 'border-slate-200 text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600'}`}
+                    >
+                      <DashboardAvatar src={child.student.avatar} firstName={child.student.firstName} lastName={child.student.lastName} size="sm" />
+                      <span className="text-sm font-medium">{child.student.firstName} {child.student.lastName}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </DashboardSection>
+          )}
+
+          {selectedChild && (
+            <DashboardSection
+              title="Aluno selecionado"
+              description="Acesse as informações do período letivo atual."
+              action={
+                <Button variant="ghost" size="sm" onClick={() => router.push(`/responsaveis/children/${selectedChild.student.userId}`)} rightIcon={<ArrowRightIcon className="h-4 w-4" />}>
+                  Ver detalhes
+                </Button>
+              }
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-lg ${stat.color}`}>
-                  <Icon className="h-6 w-6 text-white" />
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex min-w-0 items-center gap-3">
+                  <DashboardAvatar src={selectedChild.student.avatar} firstName={selectedChild.student.firstName} lastName={selectedChild.student.lastName} size="lg" />
+                  <div className="min-w-0">
+                    <h2 className="truncate text-lg font-semibold text-slate-950 dark:text-white">{selectedChild.student.firstName} {selectedChild.student.lastName}</h2>
+                    <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
+                      {selectedChild.enrollments[0]?.class.name || 'Sem turma vinculada'}
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-3">
+                      <DashboardStatus tone={selectedChild.student.isActive ? 'green' : 'slate'}>
+                        {selectedChild.student.isActive ? 'Aluno ativo' : 'Aluno inativo'}
+                      </DashboardStatus>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">Matrícula {selectedChild.student.registrationNumber}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2 sm:min-w-[330px]">
+                  <div className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Turmas</p>
+                    <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">{selectedChild.enrollments.length}</p>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Disciplinas</p>
+                    <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">{selectedChild.subjectsCount}</p>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Alertas</p>
+                    <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">{selectedChild.alerts.length}</p>
+                  </div>
                 </div>
               </div>
-              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
-                {stat.name}
-              </h3>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-                {stat.value}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{stat.subtitle}</p>
+            </DashboardSection>
+          )}
+
+          <DashboardSection title="Acompanhar aluno" description="Escolha uma área para consultar agora.">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {childLinks.map((link) => {
+                const Icon = link.icon;
+                return (
+                  <button
+                    key={link.title}
+                    type="button"
+                    onClick={() => openChildSection(link.section)}
+                    className="group flex items-center gap-3 rounded-lg border border-slate-200 p-3 text-left transition hover:border-primary-300 hover:bg-primary-50/40 dark:border-slate-700 dark:hover:border-primary-700 dark:hover:bg-primary-950/20"
+                  >
+                    <span className="rounded-lg bg-slate-100 p-2.5 text-slate-700 group-hover:bg-primary-100 group-hover:text-primary-700 dark:bg-slate-800 dark:text-slate-300 dark:group-hover:bg-primary-950 dark:group-hover:text-primary-300">
+                      <Icon className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-slate-900 dark:text-white">{link.title}</span>
+                      <span className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">{link.description}</span>
+                    </span>
+                    <ArrowRightIcon className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                  </button>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
+          </DashboardSection>
 
-      {/* Quick Actions */}
-      <div className="mb-8">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Acesso Rápido
-        </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {quickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <button
-                key={action.title}
-                onClick={() => openChildSection(action.section)}
-                className="text-left bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 hover:shadow-md hover:-translate-y-0.5 transition-all group border border-gray-100 dark:border-gray-700"
-              >
-                <div className={`inline-flex items-center justify-center w-12 h-12 rounded-lg ${action.color} mb-4 group-hover:scale-110 transition-transform`}>
-                  <Icon className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">
-                  {action.title}
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {action.description}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Comparativo entre Filhos */}
-      {children && children.length > 1 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            <ChartBarIcon className="h-5 w-5 text-blue-600" />
-            Comparativo de Matrículas e Disciplinas
-          </h2>
-          <BarChart
-            data={children.map((child) => ({
-              nome: `${child.student?.firstName} ${child.student?.lastName?.charAt(0)}.`,
-              'Turmas': child.enrollments?.length || 0,
-              'Disciplinas': child.subjectsCount || 0,
-            }))}
-            xKey="nome"
-            yKeys={[
-              { key: 'Turmas', name: 'Turmas', color: '#3B82F6' },
-              { key: 'Disciplinas', name: 'Disciplinas', color: '#10B981' },
-            ]}
-            height={250}
-          />
-        </div>
+          {children.length > 1 && (
+            <DashboardSection title="Resumo dos filhos" description="Selecione outro aluno acima para trocar o acompanhamento.">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {children.map((child) => (
+                  <button
+                    key={child.student.id}
+                    type="button"
+                    onClick={() => setSelectedChildId(child.student.id)}
+                    className="flex w-full items-center gap-3 py-3 text-left first:pt-0 last:pb-0"
+                  >
+                    <DashboardAvatar src={child.student.avatar} firstName={child.student.firstName} lastName={child.student.lastName} size="sm" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-slate-900 dark:text-white">{child.student.firstName} {child.student.lastName}</span>
+                      <span className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">{child.enrollments[0]?.class.name || 'Sem turma vinculada'}</span>
+                    </span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">{child.alerts.length} alertas</span>
+                    <ArrowRightIcon className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                  </button>
+                ))}
+              </div>
+            </DashboardSection>
+          )}
+        </>
       )}
-
-      {/* My Children */}
-      <div id="parent-children" className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Meus Filhos
-          </h2>
-        </div>
-
-        {isLoading ? (
-          <div className="flex justify-center py-12">
-            <LoadingSpinner size="md" text="Carregando filhos..." />
-          </div>
-        ) : children && children.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {children.map((childData) => {
-              if (!childData) return null;
-              const { student, enrollments = [], subjectsCount = 0, alerts = [] } = childData;
-
-              return (
-                <div
-                  key={student.id}
-                  className="p-6 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600"
-                >
-                  {/* Student Header */}
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
-                      <AcademicCapIcon className="h-6 w-6 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
-                        {student.firstName} {student.lastName}
-                      </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {enrollments.length > 0
-                          ? enrollments[0].class.name
-                          : 'Sem turma'}
-                      </p>
-                    </div>
-                    <Badge variant={student.isActive ? 'success' : 'error'} size="sm">
-                      {student.isActive ? 'Ativo' : 'Inativo'}
-                    </Badge>
-                  </div>
-
-                  {/* Alerts */}
-                  {alerts.length > 0 && (
-                    <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                      <div className="flex items-start gap-2">
-                        <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-1">
-                            {alerts.length === 1
-                              ? '1 alerta de desempenho'
-                              : `${alerts.length} alertas de desempenho`}
-                          </p>
-                          <div className="space-y-1">
-                            {alerts.slice(0, 2).map((alert: any, index: number) => (
-                              <p key={index} className="text-xs text-yellow-700 dark:text-yellow-400">
-                                • {alert.type === 'grade' ? 'Nota baixa' : 'Presença baixa'} em{' '}
-                                {alert.subjectName}: {alert.value}
-                              </p>
-                            ))}
-                            {alerts.length > 2 && (
-                              <p className="text-xs text-yellow-600 dark:text-yellow-500">
-                                +{alerts.length - 2} mais...
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Student Stats */}
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center">
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                        Turmas
-                      </div>
-                      <div className="text-xl font-bold text-gray-900 dark:text-white">
-                        {enrollments.length}
-                      </div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center">
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                        Matérias
-                      </div>
-                      <div className="text-xl font-bold text-gray-900 dark:text-white">
-                        {subjectsCount}
-                      </div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center">
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                        Nota
-                      </div>
-                      <div className="text-xl font-bold text-gray-900 dark:text-white">
-                        -
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Enrollments */}
-                  {enrollments.length > 0 && (
-                    <div className="space-y-2 mb-4">
-                      {enrollments.slice(0, 2).map((enrollment: any) => (
-                        <div
-                          key={enrollment.id}
-                          className="flex items-center gap-2 text-sm"
-                        >
-                          <UserGroupIcon className="h-4 w-4 text-gray-400" />
-                          <span className="text-gray-700 dark:text-gray-300">
-                            {enrollment.class.name}
-                          </span>
-                          <span className="text-gray-500 dark:text-gray-400">
-                            • {enrollment.class.course?.name}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedChildId(student.userId);
-                        router.push(`/responsaveis/children/${student.userId}`);
-                      }}
-                      className="flex-1"
-                    >
-                      Ver Detalhes
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedChildId(student.userId);
-                        router.push(`/responsaveis/children/${student.userId}/grades`);
-                      }}
-                    >
-                      Notas
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <UsersIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Nenhum filho cadastrado
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
-              Você ainda não tem filhos vinculados à sua conta
-            </p>
-            <p className="text-sm text-gray-400 dark:text-gray-500">
-              Entre em contato com a secretaria para vincular seus filhos
-            </p>
-          </div>
-        )}
-      </div>
-    </>
+    </div>
   );
 }
