@@ -124,12 +124,17 @@ export class AcademicYearsService {
     institutionId?: string,
     year?: number,
     isActive?: boolean,
+    unitId?: string,
   ) {
     const skip = (page - 1) * limit;
     const where: any = {};
 
     if (institutionId) {
       where.institutionId = institutionId;
+    }
+
+    if (unitId) {
+      where.unitId = unitId;
     }
 
     if (year) {

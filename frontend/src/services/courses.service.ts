@@ -12,6 +12,7 @@ export interface CoursesFilterParams {
   page?: number;
   limit?: number;
   institutionId?: string;
+  unitId?: string;
   search?: string;
   isActive?: boolean;
 }
@@ -28,6 +29,7 @@ export const coursesService = {
         page,
         limit,
         institutionId: params.institutionId,
+        unitId: params.unitId,
         search: params.search?.trim() || undefined,
         isActive: params.isActive,
       },

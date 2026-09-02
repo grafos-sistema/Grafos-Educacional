@@ -15,7 +15,9 @@ import {
   SubjectsFilterParams,
 } from "@/services/subjects.service";
 import { Subject } from "@/types/subject.types";
+import { UserRole } from "@/types/user.types";
 import { useAuthStore } from "@/stores/authStore";
+import { institutionsService } from "@/services/institutions.service";
 import { Table, Column } from "@/components/ui/Table";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -26,6 +28,9 @@ import { Pagination } from "@/components/ui/Pagination";
 export default function SubjectsPage() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const isGlobalAdmin = user?.role === UserRole.SUPER_ADMIN_GLOBAL;
+  const [globalInstitutionId, setGlobalInstitutionId] = useState("");
+  const [globalUnitId, setGlobalUnitId] = useState("");
   const [filters, setFilters] = useState<SubjectsFilterParams>({
     page: 1,
     limit: 20,
@@ -33,21 +38,51 @@ export default function SubjectsPage() {
     institutionId: user?.institutionId,
     isActive: undefined,
   });
-  const effectiveFilters = {
-    ...filters,
-    institutionId: user?.institutionId,
-  };
+  const { data: institutionsData, isLoading: isLoadingInstitutions } = useQuery({
+    queryKey: ["academic-scope-institutions"],
+    queryFn: () => institutionsService.findAll({ page: 1, limit: 200, isActive: true }),
+    enabled: isGlobalAdmin,
+  });
+  const selectedInstitution = institutionsData?.data.find(
+    (institution) => institution.id === globalInstitutionId,
+  );
+  const availableUnits = (selectedInstitution?.units ?? []).filter((unit) => unit.isActive);
+  const effectiveFilters: SubjectsFilterParams = isGlobalAdmin
+    ? {
+        ...filters,
+        institutionId: globalInstitutionId || undefined,
+        unitId: globalUnitId || undefined,
+      }
+    : {
+        ...filters,
+        institutionId: user?.institutionId,
+        unitId: undefined,
+      };
+  const canLoadSubjects = isGlobalAdmin
+    ? Boolean(globalInstitutionId && globalUnitId)
+    : Boolean(user?.institutionId);
 
   // Buscar disciplinas
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["subjects", effectiveFilters],
     queryFn: () => subjectsService.findAll(effectiveFilters),
-    enabled: Boolean(user?.institutionId),
+    enabled: canLoadSubjects,
   });
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setFilters({ ...filters, page: 1 });
+  };
+
+  const handleGlobalInstitutionChange = (institutionId: string) => {
+    setGlobalInstitutionId(institutionId);
+    setGlobalUnitId("");
+    setFilters({ ...filters, page: 1, institutionId, unitId: undefined });
+  };
+
+  const handleGlobalUnitChange = (unitId: string) => {
+    setGlobalUnitId(unitId);
+    setFilters({ ...filters, page: 1, unitId });
   };
 
   const columns: Column<Subject>[] = [
@@ -143,48 +178,96 @@ export default function SubjectsPage() {
 
       {/* Filtros */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6">
-        <form
-          onSubmit={handleSearch}
-          className="flex flex-col sm:flex-row gap-3"
-        >
-          <div className="flex-1">
-            <Input
-              placeholder="Buscar por nome, código ou descrição..."
-              value={filters.search}
-              onChange={(e) =>
-                setFilters({ ...filters, search: e.target.value })
-              }
-              leftIcon={
-                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-              }
-            />
-          </div>
-          <div className="w-full sm:w-36">
-            <Select
-              options={[
-                { value: "", label: "Todos" },
-                { value: "true", label: "Ativos" },
-                { value: "false", label: "Inativos" },
-              ]}
-              value={filters.isActive?.toString() || ""}
-              onChange={(e) =>
-                setFilters({
-                  ...filters,
-                  isActive: e.target.value
-                    ? e.target.value === "true"
-                    : undefined,
-                })
-              }
-            />
-          </div>
-          <Button
-            type="submit"
-            className="w-full sm:w-auto"
-            leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
+        {isGlobalAdmin ? (
+          <form onSubmit={handleSearch} className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <div className="w-full sm:min-w-[250px] sm:flex-1">
+              <Select
+                label="Instituição"
+                options={[
+                  { value: "", label: isLoadingInstitutions ? "Carregando instituições..." : "Selecione uma instituição" },
+                  ...(institutionsData?.data.map((institution) => ({
+                    value: institution.id,
+                    label: institution.name,
+                  })) || []),
+                ]}
+                value={globalInstitutionId}
+                onChange={(e) => handleGlobalInstitutionChange(e.target.value)}
+                disabled={isLoadingInstitutions}
+              />
+            </div>
+            <div className="w-full sm:min-w-[220px] sm:flex-1">
+              <Select
+                label="Anexo"
+                options={[
+                  { value: "", label: "Selecione um anexo" },
+                  ...availableUnits.map((unit) => ({ value: unit.id, label: unit.name })),
+                ]}
+                value={globalUnitId}
+                onChange={(e) => handleGlobalUnitChange(e.target.value)}
+                disabled={!globalInstitutionId || availableUnits.length === 0}
+              />
+            </div>
+            <div className="w-full sm:w-64">
+              <Input
+                placeholder="Buscar por nome..."
+                value={filters.search}
+                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full sm:w-auto"
+              disabled={!canLoadSubjects}
+              leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
+            >
+              Buscar
+            </Button>
+          </form>
+        ) : (
+          <form
+            onSubmit={handleSearch}
+            className="flex flex-col sm:flex-row gap-3"
           >
-            Buscar
-          </Button>
-        </form>
+            <div className="flex-1">
+              <Input
+                placeholder="Buscar por nome, código ou descrição..."
+                value={filters.search}
+                onChange={(e) =>
+                  setFilters({ ...filters, search: e.target.value })
+                }
+                leftIcon={
+                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                }
+              />
+            </div>
+            <div className="w-full sm:w-36">
+              <Select
+                options={[
+                  { value: "", label: "Todos" },
+                  { value: "true", label: "Ativos" },
+                  { value: "false", label: "Inativos" },
+                ]}
+                value={filters.isActive?.toString() || ""}
+                onChange={(e) =>
+                  setFilters({
+                    ...filters,
+                    isActive: e.target.value
+                      ? e.target.value === "true"
+                      : undefined,
+                  })
+                }
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full sm:w-auto"
+              leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
+            >
+              Buscar
+            </Button>
+          </form>
+        )}
       </div>
 
       {/* Header com botão de criar */}
@@ -207,7 +290,11 @@ export default function SubjectsPage() {
 
       {/* Tabela */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-        {isError ? (
+        {isGlobalAdmin && !canLoadSubjects ? (
+          <div className="p-10 text-center text-sm text-gray-600 dark:text-gray-400">
+            Selecione uma instituição e um anexo para visualizar as disciplinas.
+          </div>
+        ) : isError ? (
           <div className="flex flex-col items-center gap-3 p-10 text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Não foi possível carregar as disciplinas agora.
@@ -228,7 +315,7 @@ export default function SubjectsPage() {
       </div>
 
       {/* Paginação */}
-      {data && data.meta.totalPages > 1 && (
+      {canLoadSubjects && data && data.meta.totalPages > 1 && (
         <div className="mt-6">
           <Pagination
             meta={data.meta}

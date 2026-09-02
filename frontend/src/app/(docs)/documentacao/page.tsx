@@ -1,9 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  ArrowRightOnRectangleIcon,
   Bars3Icon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -11,8 +10,6 @@ import {
   MagnifyingGlassIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
 import { documentationSections } from "./sections";
 
 type DocSection = {
@@ -318,8 +315,6 @@ const sections: DocSection[] = documentationSections.length
   : legacySections;
 
 export default function DocumentationPage() {
-  const router = useRouter();
-  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const [activeId, setActiveId] = useState("inicio");
   const [search, setSearch] = useState("");
   const [mobileMenu, setMobileMenu] = useState(false);
@@ -338,24 +333,6 @@ export default function DocumentationPage() {
     );
   }, [search]);
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.replace("/documentacao/login");
-    if (
-      !isLoading &&
-      user &&
-      ![
-        "SUPER_ADMIN_GLOBAL",
-        "SUPER_ADMIN",
-        "DIRECTOR",
-        "INSTITUTION_ADMIN",
-        "COORDINATOR",
-        "TEACHER",
-      ].includes(user.role)
-    ) {
-      router.replace("/");
-    }
-  }, [isAuthenticated, isLoading, router, user]);
-
   const selectSection = (sectionId: string) => {
     setActiveId(sectionId);
     setMobileMenu(false);
@@ -367,14 +344,6 @@ export default function DocumentationPage() {
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
   };
-
-  if (isLoading || !isAuthenticated || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#090c0d] text-sm text-slate-400">
-        Carregando documentação...
-      </div>
-    );
-  }
 
   const activeIndex = sections.findIndex((section) => section.id === active.id);
   const previous = sections[activeIndex - 1];
@@ -408,21 +377,9 @@ export default function DocumentationPage() {
               Documentação de uso
             </span>
           </div>
-          <div className="ml-auto flex items-center gap-3 text-xs font-semibold text-white">
-            <span className="hidden md:inline">
-              {user.firstName
-                ? `${user.firstName} ${user.lastName ?? ""}`.trim()
-                : user.email}
-            </span>
-            <button
-              type="button"
-              onClick={() => void logout()}
-              className="flex items-center gap-1.5 text-white/90 transition hover:text-white"
-            >
-              <span>Sair</span>
-              <ArrowRightOnRectangleIcon className="h-4 w-4" />
-            </button>
-          </div>
+          <span className="ml-auto hidden text-xs font-semibold text-white/85 sm:inline">
+            Acesso público
+          </span>
         </div>
       </header>
 

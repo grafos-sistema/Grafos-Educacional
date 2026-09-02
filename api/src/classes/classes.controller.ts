@@ -127,6 +127,12 @@ export class ClassesController {
     description: 'Filtrar por status ativo/inativo',
     example: true,
   })
+  @ApiQuery({
+    name: 'unitId',
+    required: false,
+    type: String,
+    description: 'Filtrar pelas turmas do Anexo selecionado',
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista de turmas retornada com sucesso',
@@ -160,6 +166,7 @@ export class ClassesController {
     @Query('grade') grade?: string,
     @Query('shift') shift?: string,
     @Query('isActive') isActive?: boolean,
+    @Query('unitId') unitId?: string,
   ) {
     return this.classesService.findAll(
       page,
@@ -170,6 +177,7 @@ export class ClassesController {
       grade,
       shift,
       isActive,
+      unitId,
     );
   }
 

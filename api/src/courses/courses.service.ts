@@ -80,12 +80,23 @@ export class CoursesService {
     institutionId?: string,
     search?: string,
     isActive?: boolean,
+    unitId?: string,
   ) {
     const skip = (page - 1) * limit;
     const where: any = {};
 
     if (institutionId) {
       where.institutionId = institutionId;
+    }
+
+    if (unitId) {
+      where.classes = {
+        some: {
+          academicYear: {
+            unitId,
+          },
+        },
+      };
     }
 
     if (isActive !== undefined) {

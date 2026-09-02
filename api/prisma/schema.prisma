@@ -211,6 +211,7 @@ model InstitutionUnit {
   institution   Institution? @relation(fields: [institutionId], references: [id], onDelete: Cascade)
 
   userUnits UserUnit[]
+  academicYears AcademicYear[]
   documents InstitutionDocument[]
 
   @@unique([institutionId, code])
@@ -556,6 +557,11 @@ model AcademicYear {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // An optional Anexo-specific academic calendar. Null keeps legacy
+  // institution-wide academic years compatible.
+  unitId String?
+  unit   InstitutionUnit? @relation(fields: [unitId], references: [id], onDelete: SetNull)
+
   // Foreign Keys
   institutionId String
   institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
@@ -567,6 +573,7 @@ model AcademicYear {
 
   @@unique([institutionId, year])
   @@index([institutionId])
+  @@index([unitId])
   @@map("academic_years")
 }
 

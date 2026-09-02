@@ -18,7 +18,6 @@ const publicRoutes = [
   '/institutions', // Public institution selection page for municipality deployments
   '/register', // Public registration page
   '/pending-approval',
-  '/documentacao/login',
 ];
 
 // Auth routes that should redirect to dashboard if already logged in
@@ -40,15 +39,15 @@ const sharedAuthenticatedRoutes = ['/perfil', '/configuracoes'];
 
 // Role-based route access
 const roleRoutes: Record<string, string[]> = {
-  SUPER_ADMIN_GLOBAL: ['/super-admin', '/admin', '/coordinator', '/professor', '/aluno', '/responsaveis', '/communication', '/documentacao'],
-  SUPER_ADMIN: ['/super-admin', '/admin', '/coordinator', '/professor', '/aluno', '/responsaveis', '/communication', '/documentacao'],
-  DIRECTOR: ['/admin', '/super-admin/questions', '/communication', '/documentacao'],
-  INSTITUTION_ADMIN: ['/admin', '/coordinator', '/professor', '/aluno', '/responsaveis', '/communication', '/documentacao'],
+  SUPER_ADMIN_GLOBAL: ['/super-admin', '/admin', '/coordinator', '/professor', '/aluno', '/responsaveis', '/communication'],
+  SUPER_ADMIN: ['/super-admin', '/admin', '/coordinator', '/professor', '/aluno', '/responsaveis', '/communication'],
+  DIRECTOR: ['/admin', '/super-admin/questions', '/communication'],
+  INSTITUTION_ADMIN: ['/admin', '/coordinator', '/professor', '/aluno', '/responsaveis', '/communication'],
   // A coordenação usa as telas de disciplinas e turmas compartilhadas com a
   // administração. As permissões de criação/edição continuam sendo validadas
   // pela API, mas o middleware precisa permitir a navegação até essas telas.
-  COORDINATOR: ['/coordinator', '/admin/subjects', '/admin/classes', '/professor', '/aluno', '/communication', '/documentacao'],
-  TEACHER: ['/professor', '/communication', '/documentacao'],
+  COORDINATOR: ['/coordinator', '/admin/subjects', '/admin/classes', '/professor', '/aluno', '/communication'],
+  TEACHER: ['/professor', '/communication'],
   STUDENT: ['/aluno', '/communication'],
   PARENT: ['/responsaveis', '/communication'],
 };
@@ -56,10 +55,29 @@ const roleRoutes: Record<string, string[]> = {
 export function middleware(request: NextRequest) {
   const incomingPathname = request.nextUrl.pathname;
   const configuredDocsHost = process.env.DOCS_HOST || process.env.NEXT_PUBLIC_DOCS_HOST;
+  const docsHost = (configuredDocsHost || 'docs.grafoseducacional.com.br')
+    .replace(/^https?:\/\//, '')
+    .split('/')[0]
+    .split(':')[0]
+    .toLowerCase();
   const requestHost = request.headers.get('host')?.split(':')[0];
-  const isDocsHost = Boolean(configuredDocsHost && requestHost === configuredDocsHost);
+  const isDocsHost = requestHost?.toLowerCase() === docsHost;
+  const isDocumentationPath =
+    incomingPathname === '/documentacao' || incomingPathname.startsWith('/documentacao/');
+
+  // Documentation is served only from its dedicated host. Keep the old path
+  // as a convenience redirect when the host is configured, but do not expose
+  // the documentation route as part of the application shell.
+  if (!isDocsHost && isDocumentationPath) {
+    const docsUrl = new URL(request.url);
+    docsUrl.protocol = 'https:';
+    docsUrl.host = docsHost;
+    docsUrl.pathname = incomingPathname.replace(/^\/documentacao/, '') || '/';
+    return NextResponse.redirect(docsUrl);
+  }
+
   const pathname = isDocsHost
-    ? incomingPathname === '/'
+    ? incomingPathname === '/' || incomingPathname === '/documentacao' || incomingPathname === '/documentacao/login'
       ? '/documentacao'
       : incomingPathname.startsWith('/documentacao')
         ? incomingPathname
@@ -80,7 +98,9 @@ export function middleware(request: NextRequest) {
   const { accessToken } = serverCookies.getAuthTokens(cookieHeader);
   const roleFromCookie = serverCookies.getUserRole(cookieHeader);
 
-  const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith(route + '/'));
+  const isPublicRoute =
+    (isDocsHost && (pathname === '/documentacao' || pathname.startsWith('/documentacao/'))) ||
+    publicRoutes.some((route) => pathname === route || pathname.startsWith(route + '/'));
   const isAuthRoute = authRoutes.some((route) => pathname === route || pathname.startsWith(route + '/'));
 
   const userRole = roleFromCookie;
@@ -96,9 +116,6 @@ export function middleware(request: NextRequest) {
     // Store the attempted URL to redirect back after login
     const loginUrl = new URL('/', request.url);
     loginUrl.searchParams.set('from', pathname);
-    if (isDocsHost) {
-      loginUrl.pathname = '/documentacao/login';
-    }
     return NextResponse.redirect(loginUrl);
   }
 

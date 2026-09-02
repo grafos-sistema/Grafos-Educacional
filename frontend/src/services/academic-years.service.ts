@@ -80,6 +80,7 @@ export const academicYearsService = {
         page,
         limit,
         institutionId: params.institutionId,
+        unitId: params.unitId,
         year: params.year,
         isActive: params.isActive,
       },

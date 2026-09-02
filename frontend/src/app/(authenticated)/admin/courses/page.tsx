@@ -14,7 +14,9 @@ import {
 } from '@heroicons/react/24/outline';
 import { coursesService, CoursesFilterParams } from '@/services/courses.service';
 import { Course } from '@/types/course.types';
+import { UserRole } from '@/types/user.types';
 import { useAuthStore } from '@/stores/authStore';
+import { institutionsService } from '@/services/institutions.service';
 import { Table, Column } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -27,6 +29,9 @@ import { presentFriendlyError } from '@/lib/friendly-error';
 export default function CoursesPage() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const isGlobalAdmin = user?.role === UserRole.SUPER_ADMIN_GLOBAL;
+  const [globalInstitutionId, setGlobalInstitutionId] = useState('');
+  const [globalUnitId, setGlobalUnitId] = useState('');
   const [filters, setFilters] = useState<CoursesFilterParams>({
     page: 1,
     limit: 20,
@@ -39,15 +44,51 @@ export default function CoursesPage() {
     course: Course | null;
   }>({ isOpen: false, course: null });
 
+  const { data: institutionsData, isLoading: isLoadingInstitutions } = useQuery({
+    queryKey: ['academic-scope-institutions'],
+    queryFn: () => institutionsService.findAll({ page: 1, limit: 200, isActive: true }),
+    enabled: isGlobalAdmin,
+  });
+  const selectedInstitution = institutionsData?.data.find(
+    (institution) => institution.id === globalInstitutionId,
+  );
+  const availableUnits = (selectedInstitution?.units ?? []).filter((unit) => unit.isActive);
+  const effectiveFilters: CoursesFilterParams = isGlobalAdmin
+    ? {
+        ...filters,
+        institutionId: globalInstitutionId || undefined,
+        unitId: globalUnitId || undefined,
+      }
+    : {
+        ...filters,
+        institutionId: user?.institutionId,
+        unitId: undefined,
+      };
+  const canLoadCourses = isGlobalAdmin
+    ? Boolean(globalInstitutionId && globalUnitId)
+    : Boolean(user?.institutionId);
+
   // Buscar cursos
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['courses', filters],
-    queryFn: () => coursesService.findAll(filters),
+    queryKey: ['courses', effectiveFilters],
+    queryFn: () => coursesService.findAll(effectiveFilters),
+    enabled: canLoadCourses,
   });
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setFilters({ ...filters, page: 1 });
+  };
+
+  const handleGlobalInstitutionChange = (institutionId: string) => {
+    setGlobalInstitutionId(institutionId);
+    setGlobalUnitId('');
+    setFilters({ ...filters, page: 1, institutionId, unitId: undefined });
+  };
+
+  const handleGlobalUnitChange = (unitId: string) => {
+    setGlobalUnitId(unitId);
+    setFilters({ ...filters, page: 1, unitId });
   };
 
   const handleDelete = async (courseId: string) => {
@@ -155,43 +196,91 @@ export default function CoursesPage() {
 
       {/* Filtros */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6">
-        <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1">
-            <Input
-              placeholder="Buscar por nome, código ou descrição..."
-              value={filters.search}
-              onChange={(e) =>
-                setFilters({ ...filters, search: e.target.value })
-              }
-              leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
-            />
-          </div>
-          <div className="w-full sm:w-36">
-            <Select
-              options={[
-                { value: '', label: 'Todos' },
-                { value: 'true', label: 'Ativos' },
-                { value: 'false', label: 'Inativos' },
-              ]}
-              value={filters.isActive?.toString() || ''}
-              onChange={(e) =>
-                setFilters({
-                  ...filters,
-                  isActive: e.target.value
-                    ? e.target.value === 'true'
-                    : undefined,
-                })
-              }
-            />
-          </div>
-          <Button
-            type="submit"
-            className="w-full sm:w-auto"
-            leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
-          >
-            Buscar
-          </Button>
-        </form>
+        {isGlobalAdmin ? (
+          <form onSubmit={handleSearch} className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <div className="w-full sm:min-w-[250px] sm:flex-1">
+              <Select
+                label="Instituição"
+                options={[
+                  { value: '', label: isLoadingInstitutions ? 'Carregando instituições...' : 'Selecione uma instituição' },
+                  ...(institutionsData?.data.map((institution) => ({
+                    value: institution.id,
+                    label: institution.name,
+                  })) || []),
+                ]}
+                value={globalInstitutionId}
+                onChange={(e) => handleGlobalInstitutionChange(e.target.value)}
+                disabled={isLoadingInstitutions}
+              />
+            </div>
+            <div className="w-full sm:min-w-[220px] sm:flex-1">
+              <Select
+                label="Anexo"
+                options={[
+                  { value: '', label: 'Selecione um anexo' },
+                  ...availableUnits.map((unit) => ({ value: unit.id, label: unit.name })),
+                ]}
+                value={globalUnitId}
+                onChange={(e) => handleGlobalUnitChange(e.target.value)}
+                disabled={!globalInstitutionId || availableUnits.length === 0}
+              />
+            </div>
+            <div className="w-full sm:w-64">
+              <Input
+                placeholder="Buscar por nome..."
+                value={filters.search}
+                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full sm:w-auto"
+              disabled={!canLoadCourses}
+              leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
+            >
+              Buscar
+            </Button>
+          </form>
+        ) : (
+          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1">
+              <Input
+                placeholder="Buscar por nome, código ou descrição..."
+                value={filters.search}
+                onChange={(e) =>
+                  setFilters({ ...filters, search: e.target.value })
+                }
+                leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
+              />
+            </div>
+            <div className="w-full sm:w-36">
+              <Select
+                options={[
+                  { value: '', label: 'Todos' },
+                  { value: 'true', label: 'Ativos' },
+                  { value: 'false', label: 'Inativos' },
+                ]}
+                value={filters.isActive?.toString() || ''}
+                onChange={(e) =>
+                  setFilters({
+                    ...filters,
+                    isActive: e.target.value
+                      ? e.target.value === 'true'
+                      : undefined,
+                  })
+                }
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full sm:w-auto"
+              leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
+            >
+              Buscar
+            </Button>
+          </form>
+        )}
       </div>
 
       {/* Header com botão de criar */}
@@ -214,17 +303,23 @@ export default function CoursesPage() {
 
       {/* Tabela */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-        <Table
-          data={data?.data || []}
-          columns={columns}
-          keyExtractor={(course) => course.id}
-          isLoading={isLoading}
-          emptyMessage="Nenhum curso encontrado"
-        />
+        {isGlobalAdmin && !canLoadCourses ? (
+          <div className="p-10 text-center text-sm text-gray-600 dark:text-gray-400">
+            Selecione uma instituição e um anexo para visualizar os cursos.
+          </div>
+        ) : (
+          <Table
+            data={data?.data || []}
+            columns={columns}
+            keyExtractor={(course) => course.id}
+            isLoading={isLoading}
+            emptyMessage="Nenhum curso encontrado"
+          />
+        )}
       </div>
 
       {/* Paginação */}
-      {data && data.meta.totalPages > 1 && (
+      {canLoadCourses && data && data.meta.totalPages > 1 && (
         <div className="mt-6">
           <Pagination
             meta={data.meta}

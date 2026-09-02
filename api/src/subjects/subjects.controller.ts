@@ -108,6 +108,12 @@ export class SubjectsController {
     description: 'Filtrar por status ativo/inativo',
     example: true,
   })
+  @ApiQuery({
+    name: 'unitId',
+    required: false,
+    type: String,
+    description: 'Filtrar pelas disciplinas usadas no Anexo selecionado',
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista de disciplinas retornada com sucesso',
@@ -139,6 +145,7 @@ export class SubjectsController {
     @Query('courseId') courseId?: string,
     @Query('search') search?: string,
     @Query('isActive') isActive?: boolean,
+    @Query('unitId') unitId?: string,
   ) {
     return this.subjectsService.findAll(
       page,
@@ -147,6 +154,7 @@ export class SubjectsController {
       courseId,
       search,
       isActive,
+      unitId,
     );
   }
 

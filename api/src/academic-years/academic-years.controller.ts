@@ -102,6 +102,12 @@ export class AcademicYearsController {
     description: 'Filtrar por status ativo/inativo',
     example: true,
   })
+  @ApiQuery({
+    name: 'unitId',
+    required: false,
+    type: String,
+    description: 'Filtrar pelo Anexo selecionado',
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista de anos letivos retornada com sucesso',
@@ -132,6 +138,7 @@ export class AcademicYearsController {
     @Query('institutionId') institutionId?: string,
     @Query('year', new DefaultValuePipe(0), ParseIntPipe) year?: number,
     @Query('isActive') isActive?: boolean,
+    @Query('unitId') unitId?: string,
   ) {
     const yearFilter = year && year > 0 ? year : undefined;
     return this.academicYearsService.findAll(
@@ -140,6 +147,7 @@ export class AcademicYearsController {
       institutionId,
       yearFilter,
       isActive,
+      unitId,
     );
   }
 

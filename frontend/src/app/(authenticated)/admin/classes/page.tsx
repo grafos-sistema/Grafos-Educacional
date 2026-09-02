@@ -18,6 +18,7 @@ import { academicYearsService } from '@/services/academic-years.service';
 import { Class } from '@/types/class.types';
 import { UserRole } from '@/types/user.types';
 import { useAuthStore } from '@/stores/authStore';
+import { institutionsService } from '@/services/institutions.service';
 import { Table, Column } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -31,7 +32,10 @@ export default function ClassesPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const currentRole = user?.activeProfile || user?.role;
+  const isGlobalAdmin = user?.role === UserRole.SUPER_ADMIN_GLOBAL;
   const canRemoveClasses = currentRole !== UserRole.COORDINATOR;
+  const [globalInstitutionId, setGlobalInstitutionId] = useState('');
+  const [globalUnitId, setGlobalUnitId] = useState('');
   const [filters, setFilters] = useState<ClassesFilterParams>({
     page: 1,
     limit: 20,
@@ -44,45 +48,80 @@ export default function ClassesPage() {
     class: Class | null;
   }>({ isOpen: false, class: null });
 
-  const effectiveFilters = {
+  const { data: institutionsData, isLoading: isLoadingInstitutions } = useQuery({
+    queryKey: ['academic-scope-institutions'],
+    queryFn: () => institutionsService.findAll({ page: 1, limit: 200, isActive: true }),
+    enabled: isGlobalAdmin,
+  });
+  const selectedInstitution = institutionsData?.data.find(
+    (institution) => institution.id === globalInstitutionId,
+  );
+  const availableUnits = (selectedInstitution?.units ?? []).filter((unit) => unit.isActive);
+  const scopeInstitutionId = isGlobalAdmin ? globalInstitutionId : user?.institutionId;
+  const scopeUnitId = isGlobalAdmin ? globalUnitId : undefined;
+  const effectiveFilters: ClassesFilterParams = {
     ...filters,
-    institutionId: user?.institutionId,
+    institutionId: scopeInstitutionId || undefined,
+    unitId: scopeUnitId,
   };
+  const canLoadClasses = isGlobalAdmin
+    ? Boolean(globalInstitutionId && globalUnitId)
+    : Boolean(user?.institutionId);
 
   // Buscar turmas
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['classes', effectiveFilters],
     queryFn: () => classesService.findAll(effectiveFilters),
-    enabled: Boolean(user?.institutionId),
+    enabled: canLoadClasses,
   });
 
   // Buscar cursos para filtro
   const { data: coursesData } = useQuery({
-    queryKey: ['courses', { institutionId: user?.institutionId, limit: 100 }],
+    queryKey: ['courses', { institutionId: scopeInstitutionId, unitId: scopeUnitId, limit: 100 }],
     queryFn: () =>
       coursesService.findAll({
-        institutionId: user?.institutionId,
+        institutionId: scopeInstitutionId,
+        unitId: scopeUnitId,
         limit: 100,
         isActive: true,
       }),
-    enabled: Boolean(user?.institutionId),
+    enabled: Boolean(scopeInstitutionId) && (!isGlobalAdmin || Boolean(scopeUnitId)),
   });
 
   // Buscar anos letivos para filtro
   const { data: academicYearsData } = useQuery({
-    queryKey: ['academic-years', { institutionId: user?.institutionId, limit: 100 }],
+    queryKey: ['academic-years', { institutionId: scopeInstitutionId, unitId: scopeUnitId, limit: 100 }],
     queryFn: () =>
       academicYearsService.findAll({
-        institutionId: user?.institutionId,
+        institutionId: scopeInstitutionId,
+        unitId: scopeUnitId,
         limit: 100,
         isActive: true,
       }),
-    enabled: Boolean(user?.institutionId),
+    enabled: Boolean(scopeInstitutionId) && (!isGlobalAdmin || Boolean(scopeUnitId)),
   });
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setFilters({ ...filters, page: 1 });
+  };
+
+  const handleGlobalInstitutionChange = (institutionId: string) => {
+    setGlobalInstitutionId(institutionId);
+    setGlobalUnitId('');
+    setFilters({
+      ...filters,
+      page: 1,
+      institutionId,
+      unitId: undefined,
+      courseId: undefined,
+      academicYearId: undefined,
+    });
+  };
+
+  const handleGlobalUnitChange = (unitId: string) => {
+    setGlobalUnitId(unitId);
+    setFilters({ ...filters, page: 1, unitId, courseId: undefined, academicYearId: undefined });
   };
 
   const handleDelete = async (classId: string) => {
@@ -234,8 +273,39 @@ export default function ClassesPage() {
 
       {/* Filtros */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6">
-        <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1">
+        <form onSubmit={handleSearch} className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+          {isGlobalAdmin && (
+            <>
+              <div className="w-full sm:min-w-[250px] sm:flex-1">
+                <Select
+                  label="Instituição"
+                  options={[
+                    { value: '', label: isLoadingInstitutions ? 'Carregando instituições...' : 'Selecione uma instituição' },
+                    ...(institutionsData?.data.map((institution) => ({
+                      value: institution.id,
+                      label: institution.name,
+                    })) || []),
+                  ]}
+                  value={globalInstitutionId}
+                  onChange={(e) => handleGlobalInstitutionChange(e.target.value)}
+                  disabled={isLoadingInstitutions}
+                />
+              </div>
+              <div className="w-full sm:min-w-[220px] sm:flex-1">
+                <Select
+                  label="Anexo"
+                  options={[
+                    { value: '', label: 'Selecione um anexo' },
+                    ...availableUnits.map((unit) => ({ value: unit.id, label: unit.name })),
+                  ]}
+                  value={globalUnitId}
+                  onChange={(e) => handleGlobalUnitChange(e.target.value)}
+                  disabled={!globalInstitutionId || availableUnits.length === 0}
+                />
+              </div>
+            </>
+          )}
+          <div className={isGlobalAdmin ? 'w-full sm:w-56' : 'flex-1'}>
             <Input
               placeholder="Buscar por nome ou série..."
               value={filters.search}
@@ -281,7 +351,7 @@ export default function ClassesPage() {
               }
             />
           </div>
-          <div className="w-full sm:w-32">
+          {!isGlobalAdmin && <div className="w-full sm:w-32">
             <Select
               options={[
                 { value: '', label: 'Todos' },
@@ -298,7 +368,7 @@ export default function ClassesPage() {
                 })
               }
             />
-          </div>
+          </div>}
           <Button
             type="submit"
             className="w-full sm:w-auto"
@@ -329,7 +399,11 @@ export default function ClassesPage() {
 
       {/* Tabela */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-        {isError ? (
+        {isGlobalAdmin && !canLoadClasses ? (
+          <div className="p-10 text-center text-sm text-gray-600 dark:text-gray-400">
+            Selecione uma instituição e um anexo para visualizar as turmas.
+          </div>
+        ) : isError ? (
           <div className="flex flex-col items-center gap-3 p-10 text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Não foi possível carregar as turmas agora.
@@ -350,7 +424,7 @@ export default function ClassesPage() {
       </div>
 
       {/* Paginação */}
-      {data && data.meta.totalPages > 1 && (
+      {canLoadClasses && data && data.meta.totalPages > 1 && (
         <div className="mt-6">
           <Pagination
             meta={data.meta}

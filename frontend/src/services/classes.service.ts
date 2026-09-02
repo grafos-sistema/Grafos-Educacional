@@ -16,6 +16,7 @@ export interface ClassesFilterParams {
   page?: number;
   limit?: number;
   institutionId?: string;
+  unitId?: string;
   courseId?: string;
   academicYearId?: string;
   search?: string;
@@ -213,6 +214,7 @@ export const classesService = {
         page,
         limit,
         institutionId: params.institutionId,
+        unitId: params.unitId,
         courseId: params.courseId,
         academicYearId: params.academicYearId,
         search: params.search?.trim() || undefined,

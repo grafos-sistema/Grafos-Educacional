@@ -172,12 +172,17 @@ export class ClassesService {
     grade?: string,
     shift?: string,
     isActive?: boolean,
+    unitId?: string,
   ) {
     const skip = (page - 1) * limit;
     const where: any = {};
 
     if (institutionId) {
       where.institutionId = institutionId;
+    }
+
+    if (unitId) {
+      where.academicYear = { unitId };
     }
 
     if (courseId) {

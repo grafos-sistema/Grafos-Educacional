@@ -111,6 +111,7 @@ export class SubjectsService {
     courseId?: string,
     search?: string,
     isActive?: boolean,
+    unitId?: string,
   ) {
     const skip = (page - 1) * limit;
     const where: any = {};
@@ -125,11 +126,12 @@ export class SubjectsService {
 
     // Note: Subject doesn't have direct course relation
     // Filter by course through classes if needed
-    if (courseId) {
+    if (courseId || unitId) {
       where.classSubjects = {
         some: {
           class: {
-            courseId: courseId,
+            ...(courseId ? { courseId } : {}),
+            ...(unitId ? { academicYear: { unitId } } : {}),
           },
         },
       };
