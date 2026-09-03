@@ -1,22 +1,14 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
 import { BookOpenIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
-import { useAuthStore } from '@/stores/authStore';
-import { teacherSubjectsService, TeacherSubject } from '@/services/teacher-subjects.service';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { useTeacherSubjects } from '@/hooks/useTeacherSubjects';
 
 export default function MySubjectsPage() {
-  const { user } = useAuthStore();
-  const { data: subjects = [], isLoading } = useQuery({
-    queryKey: ['my-subjects', user?.teacherProfile?.id],
-    queryFn: () => teacherSubjectsService.getMySubjects(),
-    enabled: Boolean(user?.teacherProfile?.id),
-    staleTime: 60_000,
-  });
+  const { data: subjects = [], isLoading } = useTeacherSubjects();
 
   const uniqueSubjects = Array.from(
-    new Map(subjects.map((assignment: TeacherSubject) => [assignment.subjectId, assignment])).values()
+    new Map(subjects.map((assignment) => [assignment.subjectId, assignment])).values()
   );
 
   return (
@@ -76,7 +68,7 @@ export default function MySubjectsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {uniqueSubjects.map((assignment: TeacherSubject) => (
+              {uniqueSubjects.map((assignment) => (
                 <div
                   key={assignment.subjectId}
                   className="relative rounded-lg border border-secondary-200 p-4"

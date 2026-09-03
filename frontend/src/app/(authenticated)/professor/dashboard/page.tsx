@@ -15,6 +15,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { useTeacherClassSubjects } from '@/hooks/useTeacherClassSubjects';
+import { useTeacherSubjects } from '@/hooks/useTeacherSubjects';
 import { formatScheduleLoad } from '@/lib/schedule-load';
 import { ROLE_LABELS } from '@/constants/roles';
 import {
@@ -28,6 +29,10 @@ export default function ProfessorDashboard() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { data: teacherSubjects = [], isLoading } = useTeacherClassSubjects();
+  const {
+    data: assignedSubjects = [],
+    isLoading: isLoadingAssignedSubjects,
+  } = useTeacherSubjects();
 
   const classGroups = useMemo(() => {
     const groups = new Map<string, {
@@ -61,9 +66,7 @@ export default function ProfessorDashboard() {
   const scheduledMinutes = teacherSubjects.reduce((total, item) => total + (item.scheduledMinutes ?? 0), 0);
   const scheduledClassCount = teacherSubjects.reduce((total, item) => total + (item.scheduledClassCount ?? 0), 0);
   const totalStudents = classGroups.reduce((total, group) => total + group.studentCount, 0);
-  const totalSubjects = new Set(
-    teacherSubjects.map((item) => item.subject?.id || item.subjectId || item.subject?.name),
-  ).size;
+  const totalSubjects = new Set(assignedSubjects.map((item) => item.subjectId)).size;
 
   if (!user) {
     return (
@@ -113,7 +116,7 @@ export default function ProfessorDashboard() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <DashboardStat label="Minhas turmas" value={classGroups.length} helper={`${totalStudents} alunos`} icon={UsersIcon} tone="blue" onClick={() => router.push('/professor/my-classes')} />
-        <DashboardStat label="Disciplinas" value={totalSubjects} helper="Componentes vinculados" icon={BookOpenIcon} tone="green" onClick={() => router.push('/professor/my-subjects')} />
+        <DashboardStat label="Disciplinas" value={isLoadingAssignedSubjects ? '…' : totalSubjects} helper="Componentes vinculados" icon={BookOpenIcon} tone="green" onClick={() => router.push('/professor/my-subjects')} />
         <DashboardStat label="Alunos" value={totalStudents} helper="Nas minhas turmas" icon={UserGroupIcon} tone="purple" />
         <DashboardStat label="Carga semanal" value={formatScheduleLoad(scheduledMinutes, scheduledClassCount)} helper="Calculada pela grade de horários" icon={AcademicCapIcon} tone="amber" />
       </div>
