@@ -9,6 +9,7 @@ import {
   PlusIcon,
   ShieldCheckIcon,
   UserGroupIcon,
+  MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import { useRouter } from "next/navigation";
 import { usersService } from "@/services/users.service";
@@ -18,6 +19,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { presentFriendlyError } from "@/lib/friendly-error";
+import { UserFilterTags } from "@/components/users/UserFilterTags";
 
 function splitFullName(value: string) {
   const parts = value.trim().split(/\s+/).filter(Boolean);
@@ -37,12 +39,14 @@ export default function GlobalAdminsPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [cpf, setCpf] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isActive, setIsActive] = useState<boolean | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isGlobalAdmin = user?.role === UserRole.SUPER_ADMIN_GLOBAL;
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ["global-admins"],
+    queryKey: ["global-admins", searchTerm, isActive],
     queryFn: () =>
       usersService.findAll({
         role: UserRole.SUPER_ADMIN_GLOBAL,
@@ -50,6 +54,8 @@ export default function GlobalAdminsPage() {
         limit: 100,
         includeGlobalAdmins: true,
         includeAllInstitutions: true,
+        search: searchTerm.trim() || undefined,
+        isActive,
       }),
     enabled: isGlobalAdmin,
   });
@@ -202,6 +208,18 @@ export default function GlobalAdminsPage() {
                 Somente contas SUPER_ADMIN_GLOBAL aparecem aqui.
               </p>
             </div>
+          </div>
+
+          <div className="mb-4">
+            <Input
+              placeholder="Buscar por nome ou email..."
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
+            />
+          </div>
+          <div className="mb-5">
+            <UserFilterTags isActive={isActive} onStatusChange={setIsActive} />
           </div>
 
           {isLoading ? (

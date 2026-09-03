@@ -21,6 +21,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Select } from '@/components/ui/Select';
+import { calculateGradeAverage } from '@/lib/grade-average';
 
 export default function StudentGradesPage() {
   const router = useRouter();
@@ -128,12 +129,8 @@ export default function StudentGradesPage() {
     );
 
     if (publishedGrades.length > 0) {
-      const totalWeightedValue = publishedGrades.reduce(
-        (sum: number, g: any) => sum + g.value * g.weight,
-        0
-      );
       const totalWeight = publishedGrades.reduce((sum: number, g: any) => sum + g.weight, 0);
-      group.average = totalWeight > 0 ? totalWeightedValue / totalWeight : 0;
+      group.average = calculateGradeAverage(publishedGrades) ?? 0;
       group.totalWeight = totalWeight;
     }
   });

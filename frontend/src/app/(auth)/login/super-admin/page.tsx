@@ -70,7 +70,7 @@ export default function SuperAdminLoginPage() {
         return;
       }
 
-      router.replace('/super-admin/dashboard');
+      router.replace('/super-admin/institutions');
     } catch (err: unknown) {
       setError(
         err instanceof Error

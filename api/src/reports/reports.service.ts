@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AttendanceReportQueryDto } from './dto/attendance-report-query.dto';
 import { GradesReportQueryDto } from './dto/grades-report-query.dto';
 import { UserRole } from '@prisma/client';
+import { calculateGradeAverage } from '../grades/grade-average.util';
 
 @Injectable()
 export class ReportsService {
@@ -210,9 +211,7 @@ export class ReportsService {
 
     // Calculate statistics
     const totalGrades = grades.length;
-    const totalScore = grades.reduce((sum, grade) => sum + grade.value, 0);
-    const averageScore =
-      totalGrades > 0 ? (totalScore / totalGrades).toFixed(2) : 0;
+    const averageScore = (calculateGradeAverage(grades) ?? 0).toFixed(2);
 
     // Group by student
     const byStudent = grades.reduce(
@@ -248,7 +247,14 @@ export class ReportsService {
 
     // Calculate average for each student
     Object.values(byStudent).forEach((student: any) => {
-      student.average = (student.totalScore / student.gradeCount).toFixed(2);
+      student.average = (
+        calculateGradeAverage(
+          student.grades.map((grade: { score: number; weight: number }) => ({
+            value: grade.score,
+            weight: grade.weight,
+          })),
+        ) ?? 0
+      ).toFixed(2);
     });
 
     // Group by subject
@@ -277,7 +283,10 @@ export class ReportsService {
 
     // Calculate average for each subject
     Object.values(bySubject).forEach((subject: any) => {
-      subject.average = (subject.totalScore / subject.gradeCount).toFixed(2);
+      const subjectGrades = grades.filter(
+        (grade) => grade.classSubject?.subjectId === subject.subjectId,
+      );
+      subject.average = (calculateGradeAverage(subjectGrades) ?? 0).toFixed(2);
     });
 
     return {
@@ -377,10 +386,7 @@ export class ReportsService {
 
     // Calculate statistics
     const totalGrades = grades.length;
-    const averageGrade =
-      totalGrades > 0
-        ? (grades.reduce((sum, g) => sum + g.value, 0) / totalGrades).toFixed(2)
-        : 0;
+    const averageGrade = (calculateGradeAverage(grades) ?? 0).toFixed(2);
 
     const totalAttendances = attendances.length;
     const presentCount = attendances.filter(
@@ -410,8 +416,11 @@ export class ReportsService {
     );
 
     Object.values(gradesBySubject).forEach((subject: any) => {
-      const sum = subject.grades.reduce((a: number, b: number) => a + b, 0);
-      subject.average = (sum / subject.grades.length).toFixed(2);
+      const subjectGrades = grades.filter(
+        (grade) =>
+          (grade.classSubject?.subject?.name || 'N/A') === subject.subject,
+      );
+      subject.average = (calculateGradeAverage(subjectGrades) ?? 0).toFixed(2);
     });
 
     return {
@@ -509,10 +518,7 @@ export class ReportsService {
       (e) => e.isActive,
     ).length;
     const totalGrades = grades.length;
-    const averageGrade =
-      totalGrades > 0
-        ? (grades.reduce((sum, g) => sum + g.value, 0) / totalGrades).toFixed(2)
-        : 0;
+    const averageGrade = (calculateGradeAverage(grades) ?? 0).toFixed(2);
 
     const totalAttendances = attendances.length;
     const presentCount = attendances.filter(
@@ -543,7 +549,11 @@ export class ReportsService {
     );
 
     Object.values(bySubject).forEach((subject: any) => {
-      subject.average = (subject.totalScore / subject.gradeCount).toFixed(2);
+      const subjectGrades = grades.filter(
+        (grade) =>
+          (grade.classSubject?.subject?.name || 'N/A') === subject.subject,
+      );
+      subject.average = (calculateGradeAverage(subjectGrades) ?? 0).toFixed(2);
     });
 
     return {

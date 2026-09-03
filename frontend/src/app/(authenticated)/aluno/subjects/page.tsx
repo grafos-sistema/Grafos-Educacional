@@ -21,6 +21,7 @@ import { gradesService } from '@/services/grades.service';
 import { attendancesService } from '@/services/attendances.service';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
+import { calculateGradeAverage } from '@/lib/grade-average';
 
 interface SubjectStats {
   subjectId: string;
@@ -109,11 +110,7 @@ export default function SubjectsPage() {
       const subjectGrades = grades.filter(
         (g) => g.classSubjectId === subject.id && g.status === 'PUBLISHED'
       );
-      const averageGrade =
-        subjectGrades.length > 0
-          ? subjectGrades.reduce((sum, g) => sum + g.value * g.weight, 0) /
-            subjectGrades.reduce((sum, g) => sum + g.weight, 0)
-          : null;
+      const averageGrade = calculateGradeAverage(subjectGrades);
 
       // Calculate attendance rate
       const subjectAttendances = attendances.filter((a) => a.classSubjectId === subject.id);

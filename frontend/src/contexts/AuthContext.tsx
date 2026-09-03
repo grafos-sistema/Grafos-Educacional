@@ -206,7 +206,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       case 'SUPER_ADMIN':
         return '/admin/dashboard';
       case 'SUPER_ADMIN_GLOBAL':
-        return '/admin/dashboard';
+        return '/super-admin/institutions';
       case 'DIRECTOR':
         return '/admin/dashboard';
       case 'INSTITUTION_ADMIN':

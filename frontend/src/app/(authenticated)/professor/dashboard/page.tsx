@@ -16,6 +16,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { useTeacherClassSubjects } from '@/hooks/useTeacherClassSubjects';
 import { formatScheduleLoad } from '@/lib/schedule-load';
+import { ROLE_LABELS } from '@/constants/roles';
 import {
   DashboardEmpty,
   DashboardPageHeader,
@@ -60,7 +61,9 @@ export default function ProfessorDashboard() {
   const scheduledMinutes = teacherSubjects.reduce((total, item) => total + (item.scheduledMinutes ?? 0), 0);
   const scheduledClassCount = teacherSubjects.reduce((total, item) => total + (item.scheduledClassCount ?? 0), 0);
   const totalStudents = classGroups.reduce((total, group) => total + group.studentCount, 0);
-  const totalSubjects = new Set(teacherSubjects.map((item) => item.subjectId)).size;
+  const totalSubjects = new Set(
+    teacherSubjects.map((item) => item.subject?.id || item.subjectId || item.subject?.name),
+  ).size;
 
   if (!user) {
     return (
@@ -96,7 +99,16 @@ export default function ProfessorDashboard() {
       <DashboardPageHeader
         eyebrow="Portal do professor"
         title={`Olá, Prof. ${user.firstName}`}
-        description="Acesse suas turmas e execute as rotinas pedagógicas do dia."
+        description={
+          <>
+            <span className="block font-medium text-primary-600 dark:text-primary-400">
+              {ROLE_LABELS[user.activeProfile ?? user.role] ?? 'Professor'}
+            </span>
+            <span className="mt-1 block">
+              Acesse suas turmas e execute as rotinas pedagógicas do dia.
+            </span>
+          </>
+        }
       />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">

@@ -66,16 +66,16 @@ export class CreateGradeDto {
   value: number;
 
   @ApiProperty({
-    description: 'Peso da avaliação',
-    example: 1.0,
-    minimum: 0,
-    maximum: 10,
-    default: 1.0,
+    description: 'Peso percentual da VA no bimestre',
+    example: 70,
+    minimum: 1,
+    maximum: 100,
+    default: 1,
   })
   @IsOptional()
   @IsNumber({}, { message: 'Peso deve ser um número' })
-  @Min(0, { message: 'Peso deve ser maior ou igual a 0' })
-  @Max(10, { message: 'Peso deve ser menor ou igual a 10' })
+  @Min(1, { message: 'O peso deve ser no mínimo 1%' })
+  @Max(100, { message: 'O peso deve ser no máximo 100%' })
   weight?: number;
 
   @ApiProperty({

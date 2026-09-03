@@ -35,6 +35,7 @@ import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/hooks/useToast';
 import { Tabs } from '@/components/ui/Tabs';
 import { useTeacherClassSubjects } from '@/hooks/useTeacherClassSubjects';
+import { calculateAssessmentScore } from '@/lib/grade-average';
 
 const assessmentSlots = ['VA1', 'VA2', 'VA3', 'VA4'] as const;
 type AssessmentSlot = (typeof assessmentSlots)[number];
@@ -68,17 +69,15 @@ const normalizeAssessmentSlot = (examType?: string): AssessmentSlot | null => {
     : null;
 };
 
-const getFilledValues = (entry?: GradeEntry) =>
-  [entry?.va1, entry?.va2, entry?.va3, entry?.va4]
-    .filter((value): value is string => value !== undefined && value !== '')
-    .map(Number)
-    .filter((value) => Number.isFinite(value));
+const getDefaultAssessmentWeights = (count: number): Record<AssessmentSlot, number> => {
+  const safeCount = Math.max(1, Math.min(assessmentSlots.length, count));
+  const baseWeight = Math.floor(100 / safeCount);
+  const remainder = 100 - baseWeight * safeCount;
 
-const getDetailedAverage = (entry?: GradeEntry) => {
-  const values = getFilledValues(entry);
-  return values.length > 0
-    ? values.reduce((sum, value) => sum + value, 0) / values.length
-    : null;
+  return assessmentSlots.reduce((weights, slot, index) => {
+    weights[slot] = index < safeCount ? baseWeight + (index < remainder ? 1 : 0) : 0;
+    return weights;
+  }, {} as Record<AssessmentSlot, number>);
 };
 
 const clampGradeValue = (value: string) => {
@@ -105,6 +104,10 @@ export default function GradesPage() {
   const [selectedClassSubjectId, setSelectedClassSubjectId] = useState('');
   const [selectedPeriodId, setSelectedPeriodId] = useState('');
   const [gradesData, setGradesData] = useState<Record<string, GradeEntry>>({});
+  const [assessmentCount, setAssessmentCount] = useState(1);
+  const [assessmentWeights, setAssessmentWeights] = useState<Record<AssessmentSlot, number>>(
+    () => getDefaultAssessmentWeights(1),
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showProposalModal, setShowProposalModal] = useState(false);
@@ -284,6 +287,62 @@ export default function GradesPage() {
     [approvedEvaluations],
   );
 
+  useEffect(() => {
+    if (!selectedClassSubjectId || !selectedPeriodId || loadingEvaluations || loadingCurrentGrades) {
+      return;
+    }
+
+    const persistedWeights = new Map<AssessmentSlot, number>();
+
+    approvedEvaluations.forEach((evaluation) => {
+      if (evaluation.weight > 0) {
+        persistedWeights.set(evaluation.slot, evaluation.weight);
+      }
+    });
+
+    currentGrades.forEach((grade) => {
+      const slot = normalizeAssessmentSlot(grade.examType);
+      if (slot && !persistedWeights.has(slot) && grade.weight > 1) {
+        persistedWeights.set(slot, grade.weight);
+      }
+    });
+
+    const inferredCount = persistedWeights.size > 0
+      ? Math.max(...Array.from(persistedWeights.keys()).map((slot) => assessmentSlots.indexOf(slot) + 1))
+      : 1;
+    const nextCount = Math.max(1, Math.min(assessmentSlots.length, inferredCount));
+    const nextSlots = assessmentSlots.slice(0, nextCount);
+    const nextWeights = nextSlots.reduce((weights, slot) => {
+      weights[slot] = persistedWeights.get(slot) ?? 0;
+      return weights;
+    }, {} as Record<AssessmentSlot, number>);
+    const persistedTotal = nextSlots.reduce((total, slot) => total + nextWeights[slot], 0);
+    const hasCompletePersistedWeights = nextSlots.every((slot) => nextWeights[slot] >= 1) && persistedTotal === 100;
+
+    setAssessmentCount(nextCount);
+    setAssessmentWeights(
+      hasCompletePersistedWeights
+        ? { ...getDefaultAssessmentWeights(nextCount), ...nextWeights }
+        : getDefaultAssessmentWeights(nextCount),
+    );
+  }, [
+    approvedEvaluations,
+    currentGrades,
+    loadingCurrentGrades,
+    loadingEvaluations,
+    selectedClassSubjectId,
+    selectedPeriodId,
+  ]);
+
+  const activeAssessmentSlots = assessmentSlots.slice(0, assessmentCount);
+  const totalAssessmentWeight = activeAssessmentSlots.reduce(
+    (total, slot) => total + Number(assessmentWeights[slot] || 0),
+    0,
+  );
+  const hasValidAssessmentWeights = activeAssessmentSlots.every(
+    (slot) => Number(assessmentWeights[slot]) >= 1,
+  ) && totalAssessmentWeight === 100;
+
   const proposalMutation = useMutation({
     mutationFn: () => evaluationsService.create({
       title: proposalTitle.trim(),
@@ -388,13 +447,26 @@ export default function GradesPage() {
     mutationFn: async () => {
       if (!selectedSubject || !user || !selectedPeriodId) return;
 
+      if (!hasValidAssessmentWeights) {
+        throw new Error('A soma dos pesos das VAs deve totalizar exatamente 100%');
+      }
+
+      const missingEvaluations = activeAssessmentSlots.filter(
+        (slot) => !evaluationsBySlot.has(slot),
+      );
+      if (missingEvaluations.length > 0) {
+        throw new Error(
+          `A avaliação ${missingEvaluations.join(', ')} ainda precisa ser aprovada pela direção ou coordenação`,
+        );
+      }
+
       const teacherId = user.teacherId || user.teacherProfile?.id;
       if (!teacherId) {
         throw new Error('Perfil de professor não encontrado');
       }
 
-      const gradesBySlot = assessmentSlots.map((slot) => ({
-        examType: slot,
+       const gradesBySlot = activeAssessmentSlots.map((slot) => ({
+         examType: slot,
         grades: Object.entries(gradesData)
           .filter(([, data]) => data[slotToField[slot]] !== '')
           .map(([studentId, data]) => ({
@@ -409,29 +481,55 @@ export default function GradesPage() {
         throw new Error('Nenhuma nota foi preenchida');
       }
 
-      const currentGradeIsSlot = (grade: (typeof currentGrades)[number]) =>
-        Boolean(normalizeAssessmentSlot(grade.examType));
-      await Promise.all(currentGrades.filter(currentGradeIsSlot).map((grade) => gradesService.remove(grade.id)));
-
-      await Promise.all(
-        gradesBySlot
-          .filter(({ grades }) => grades.length > 0)
-          .map(({ examType: slot, grades }) => {
+      // Primeiro retiramos o peso de VAs que deixaram de fazer parte da
+      // composição e depois aplicamos os novos pesos. Assim, uma alteração
+      // como 70/20/10 para 60/30/10 nunca é bloqueada temporariamente por
+      // ultrapassar 100% durante a atualização.
+      const weightUpdates = [
+        ...approvedEvaluations
+          .filter((evaluation) => !activeAssessmentSlots.includes(evaluation.slot))
+          .filter((evaluation) => evaluation.weight > 0)
+          .map((evaluation) => ({ evaluation, weight: 0 })),
+        ...activeAssessmentSlots
+          .map((slot) => {
             const evaluation = evaluationsBySlot.get(slot);
-            return gradesService.createBulk({
-              examType: slot,
-              evaluationId: evaluation?.id,
-              examDate: evaluation?.examDate,
-              description: evaluation?.title,
-              weight: 1,
-              classSubjectId: selectedClassSubjectId,
-              academicPeriodId: selectedPeriodId,
-              teacherId,
-              grades,
-            });
-          }),
-      );
-    },
+            return evaluation
+              ? { evaluation, weight: assessmentWeights[slot] }
+              : null;
+          })
+          .filter((update): update is { evaluation: (typeof approvedEvaluations)[number]; weight: number } => Boolean(update)),
+      ].sort((first, second) => {
+        const firstDecreases = first.weight < first.evaluation.weight;
+        const secondDecreases = second.weight < second.evaluation.weight;
+        return Number(secondDecreases) - Number(firstDecreases);
+      });
+
+      for (const { evaluation, weight } of weightUpdates) {
+        if (evaluation.weight === weight) continue;
+        await evaluationsService.updateWeight(evaluation.id, weight);
+      }
+
+       const currentGradeIsSlot = (grade: (typeof currentGrades)[number]) =>
+         Boolean(normalizeAssessmentSlot(grade.examType));
+       await Promise.all(currentGrades.filter(currentGradeIsSlot).map((grade) => gradesService.remove(grade.id)));
+
+       for (const { examType: slot, grades } of gradesBySlot) {
+         if (grades.length === 0) continue;
+
+         const evaluation = evaluationsBySlot.get(slot);
+         await gradesService.createBulk({
+           examType: slot,
+           evaluationId: evaluation?.id,
+           examDate: evaluation?.examDate,
+           description: evaluation?.title,
+           weight: assessmentWeights[slot],
+           classSubjectId: selectedClassSubjectId,
+           academicPeriodId: selectedPeriodId,
+           teacherId,
+           grades,
+         });
+       }
+     },
     onSuccess: () => {
       setShowConfirmDialog(false);
       setListFilterClassId(selectedClassId);
@@ -518,11 +616,43 @@ export default function GradesPage() {
     toast.info('Todas as notas foram removidas');
   };
 
+  const handleAssessmentCountChange = (count: number) => {
+    const nextCount = Math.max(1, Math.min(assessmentSlots.length, count));
+    setAssessmentCount(nextCount);
+    setAssessmentWeights(getDefaultAssessmentWeights(nextCount));
+  };
+
+  const handleAssessmentWeightChange = (slot: AssessmentSlot, value: string) => {
+    const nextWeight = value === '' ? 0 : Number(value);
+    if (!Number.isFinite(nextWeight)) return;
+
+    setAssessmentWeights((current) => ({
+      ...current,
+      [slot]: Math.max(0, Math.min(100, Math.round(nextWeight))),
+    }));
+  };
+
   const handleSaveClick = () => {
     if (stats.filled === 0) {
       toast.warning('Nenhuma nota foi preenchida');
       return;
     }
+
+    if (!hasValidAssessmentWeights) {
+      toast.warning('A soma dos pesos das VAs deve totalizar exatamente 100%');
+      return;
+    }
+
+    const missingEvaluations = activeAssessmentSlots.filter(
+      (slot) => !evaluationsBySlot.has(slot),
+    );
+    if (missingEvaluations.length > 0) {
+      toast.warning(
+        `Aprove ${missingEvaluations.join(', ')} antes de lançar as notas`,
+      );
+      return;
+    }
+
     setShowConfirmDialog(true);
   };
 
@@ -614,7 +744,16 @@ export default function GradesPage() {
 
   const currentAverages = Object.values(gradesData)
     .map((entry) =>
-      getDetailedAverage(entry),
+      calculateAssessmentScore(
+        {
+          VA1: entry.va1,
+          VA2: entry.va2,
+          VA3: entry.va3,
+          VA4: entry.va4,
+        },
+        activeAssessmentSlots,
+        assessmentWeights,
+      ),
     )
     .filter((value): value is number => value !== null && Number.isFinite(value));
 
@@ -634,9 +773,9 @@ export default function GradesPage() {
         onClose={() => setShowConfirmDialog(false)}
         onConfirm={() => saveMutation.mutate()}
         title="Confirmar salvamento"
-        message={`Você está prestes a salvar ${stats.filled} média${
+        message={`Você está prestes a salvar ${stats.filled} nota${
           stats.filled > 1 ? 's' : ''
-        } calculadas somente pelas VAs preenchidas. Deseja continuar?`}
+        } com composição ponderada pelas VAs configuradas. Deseja continuar?`}
         confirmText="Sim, salvar"
         cancelText="Cancelar"
       />
@@ -940,7 +1079,7 @@ export default function GradesPage() {
                Lançamento de notas
              </h2>
              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-               Selecione o bimestre e informe a nota consolidada de cada VA aplicada.
+               Selecione o bimestre, defina as VAs e informe as notas dos alunos.
              </p>
            </div>
            <Button
@@ -963,6 +1102,8 @@ export default function GradesPage() {
               setSelectedClassSubjectId('');
               setSelectedPeriodId('');
               setGradesData({});
+              setAssessmentCount(1);
+              setAssessmentWeights(getDefaultAssessmentWeights(1));
             }}
             required
             options={[
@@ -981,6 +1122,8 @@ export default function GradesPage() {
               setSelectedClassSubjectId(e.target.value);
               setSelectedPeriodId('');
               setGradesData({});
+              setAssessmentCount(1);
+              setAssessmentWeights(getDefaultAssessmentWeights(1));
             }}
             disabled={!selectedClassId || loadingSubjects}
             required
@@ -999,7 +1142,12 @@ export default function GradesPage() {
           <Select
             label="Período Acadêmico"
             value={selectedPeriodId}
-            onChange={(e) => setSelectedPeriodId(e.target.value)}
+            onChange={(e) => {
+              setSelectedPeriodId(e.target.value);
+              setGradesData({});
+              setAssessmentCount(1);
+              setAssessmentWeights(getDefaultAssessmentWeights(1));
+            }}
             disabled={!selectedClassSubjectId || loadingPeriods || Boolean(periodsError)}
             required
             options={[
@@ -1028,9 +1176,81 @@ export default function GradesPage() {
             Ainda não há uma avaliação VA aprovada para este período. A direção ou coordenação precisa cadastrá-la antes do lançamento.
           </p>
         )}
-      </div>
+       </div>
 
-      {/* Content */}
+       {selectedPeriodId && (
+         <div className="mb-6 rounded-lg border border-[#e0e0e0] bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+             <div>
+               <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+                 Composição da nota do bimestre
+               </h2>
+               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                 Escolha de 1 a 4 VAs e defina quanto cada uma representa na nota final.
+               </p>
+             </div>
+             <div className="w-full lg:w-48">
+               <Select
+                 label="Quantidade de VAs"
+                 value={assessmentCount}
+                 onChange={(event) => handleAssessmentCountChange(Number(event.target.value))}
+                 options={[1, 2, 3, 4].map((count) => ({
+                   value: count,
+                   label: `${count} ${count === 1 ? 'avaliação' : 'avaliações'}`,
+                 }))}
+               />
+             </div>
+           </div>
+
+           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+             {activeAssessmentSlots.map((slot) => {
+               const evaluation = evaluationsBySlot.get(slot);
+               return (
+                 <div key={slot} className="rounded-lg border border-[#e3e5e9] p-3 dark:border-gray-600">
+                   <div className="mb-2 flex items-center justify-between gap-2">
+                     <span className="text-sm font-semibold text-gray-900 dark:text-white">{slot}</span>
+                     <span className="text-xs text-gray-500 dark:text-gray-400">
+                       {evaluation ? 'Avaliação aprovada' : 'Sem avaliação aprovada'}
+                     </span>
+                   </div>
+                   <Input
+                     type="number"
+                     label={`Peso da ${slot}`}
+                     value={assessmentWeights[slot] || ''}
+                     onChange={(event) => handleAssessmentWeightChange(slot, event.target.value)}
+                     min="1"
+                     max="100"
+                     step="1"
+                     placeholder="0 a 100"
+                   />
+                   {evaluation && (
+                     <p className="mt-2 truncate text-xs text-gray-500 dark:text-gray-400" title={evaluation.title}>
+                       {evaluation.title}
+                     </p>
+                   )}
+                 </div>
+               );
+             })}
+           </div>
+
+           <div className={`mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm ${
+             totalAssessmentWeight === 100
+               ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
+               : 'bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-300'
+           }`}>
+             <span>
+               Total dos pesos: <strong>{totalAssessmentWeight}%</strong>
+             </span>
+             <span>
+               {totalAssessmentWeight === 100
+                 ? 'Configuração pronta para o lançamento.'
+                 : 'Ajuste os pesos até totalizar 100%.'}
+             </span>
+           </div>
+         </div>
+       )}
+
+       {/* Content */}
       {!selectedClassSubjectId || !selectedPeriodId ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
           <AcademicCapIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -1058,16 +1278,16 @@ export default function GradesPage() {
               </div>
             </div>
             <div className="rounded-lg border border-[#e0e0e0] bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-              <div className="mb-1 text-sm text-gray-600 dark:text-gray-400">Média atual</div>
+                 <div className="mb-1 text-sm text-gray-600 dark:text-gray-400">Nota acumulada</div>
               <div className="text-2xl font-bold text-gray-900 dark:text-white">
                 {stats.average}
               </div>
             </div>
             <div className="rounded-lg border border-[#e0e0e0] bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
               <div className="mb-1 text-sm text-gray-600 dark:text-gray-400">Regra do bimestre</div>
-              <div className="text-lg font-bold text-gray-900 dark:text-white">
-                Média das VAs preenchidas
-              </div>
+                 <div className="text-lg font-bold text-gray-900 dark:text-white">
+                   Soma ponderada das VAs
+                 </div>
             </div>
           </div>
 
@@ -1094,11 +1314,14 @@ export default function GradesPage() {
                     <tr>
                       <th className="px-4 py-3 font-medium">Aluno</th>
                       <th className="px-4 py-3 font-medium">Matrícula</th>
-                      {assessmentSlots.map((slot) => (
-                        <th key={slot} className="px-4 py-3 text-center font-medium">
-                          {slot}
-                        </th>
-                      ))}
+                       {activeAssessmentSlots.map((slot) => (
+                         <th key={slot} className="px-4 py-3 text-center font-medium">
+                           <span className="block">{slot}</span>
+                           <span className="block text-[10px] font-normal normal-case tracking-normal text-gray-500">
+                             {assessmentWeights[slot]}%
+                           </span>
+                         </th>
+                       ))}
                       <th className="px-4 py-3 text-center font-medium">Média atual</th>
                       <th className="px-4 py-3 font-medium">Situação</th>
                       <th className="px-4 py-3 font-medium">Observações</th>
@@ -1107,9 +1330,22 @@ export default function GradesPage() {
                   <tbody>
                     {filteredEnrollments.map((enrollment) => {
                       const entry = gradesData[enrollment.studentId] ?? createEmptyGradeEntry();
-                      const average = getDetailedAverage(entry);
-                      const isApproved = average !== null && average >= 6;
-                      const isFailed = average !== null && average < 6;
+                       const average = calculateAssessmentScore(
+                         {
+                           VA1: entry.va1,
+                           VA2: entry.va2,
+                           VA3: entry.va3,
+                           VA4: entry.va4,
+                         },
+                         activeAssessmentSlots,
+                         assessmentWeights,
+                       );
+                       const hasAllGrades = activeAssessmentSlots.every((slot) => {
+                         const value = entry[slotToField[slot]];
+                         return value !== '' && Number.isFinite(Number(value));
+                       });
+                       const isApproved = hasAllGrades && average !== null && average >= 6;
+                       const isFailed = hasAllGrades && average !== null && average < 6;
                       const studentName = `${enrollment.student?.firstName || ''} ${enrollment.student?.lastName || ''}`.trim();
 
                       return (
@@ -1139,7 +1375,7 @@ export default function GradesPage() {
                           <td className="px-4 py-3 text-gray-600 dark:text-gray-300">
                             {enrollment.student?.registrationNumber || 'Não informada'}
                           </td>
-                          {assessmentSlots.map((slot) => {
+                           {activeAssessmentSlots.map((slot) => {
                             const field = slotToField[slot];
                             const evaluation = evaluationsBySlot.get(slot);
                             return (

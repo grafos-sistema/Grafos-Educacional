@@ -1,6 +1,7 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
+import { calculateGradeAverage } from '../grades/grade-average.util';
 
 @Injectable()
 export class DashboardService {
@@ -95,13 +96,9 @@ export class DashboardService {
       },
     });
 
-    const averageGrade =
-      recentGrades.length > 0
-        ? (
-            recentGrades.reduce((sum, g) => sum + g.value, 0) /
-            recentGrades.length
-          ).toFixed(2)
-        : 0;
+    const averageGrade = Number(
+      (calculateGradeAverage(recentGrades) ?? 0).toFixed(2),
+    );
 
     // Get attendance statistics (last 30 days)
     const recentAttendances = await this.prisma.attendance.findMany({
@@ -188,7 +185,7 @@ export class DashboardService {
         activeEnrollments,
       },
       performance: {
-        averageGrade: parseFloat(averageGrade as string),
+        averageGrade,
         attendanceRate: parseFloat(attendanceRate as string),
         totalGradesLast30Days: recentGrades.length,
         totalAttendancesLast30Days: recentAttendances.length,
@@ -481,13 +478,9 @@ export class DashboardService {
           },
         });
 
-        const averageGrade =
-          studentGrades.length > 0
-            ? (
-                studentGrades.reduce((sum, g) => sum + g.value, 0) /
-                studentGrades.length
-              ).toFixed(2)
-            : 0;
+        const averageGrade = Number(
+          (calculateGradeAverage(studentGrades) ?? 0).toFixed(2),
+        );
 
         // Get attendance for this student
         const attendances = await this.prisma.attendance.findMany({
@@ -511,7 +504,7 @@ export class DashboardService {
           id: student.id,
           name: student.user.name,
           currentClass: student.classEnrollments[0]?.class.name || 'N/A',
-          averageGrade: parseFloat(averageGrade as string),
+          averageGrade,
           attendanceRate: parseFloat(attendanceRate as string),
           recentGradesCount: studentGrades.filter(
             (g) => g.createdAt >= thirtyDaysAgo,

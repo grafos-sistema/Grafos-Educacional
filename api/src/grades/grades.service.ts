@@ -10,6 +10,7 @@ import { GradeStatus, UserRole } from '@prisma/client';
 import { RankingsService } from '../rankings/rankings.service';
 import { AchievementsService } from '../achievements/achievements.service';
 import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
+import { calculateGradeAverage } from './grade-average.util';
 
 @Injectable()
 export class GradesService {
@@ -48,12 +49,18 @@ export class GradesService {
       teacherId,
       currentUser,
     );
-    await this.validateEvaluation(
+    const evaluation = await this.validateEvaluation(
       evaluationId,
       classSubjectId,
       academicPeriodId,
       examType,
     );
+
+    const effectiveWeight =
+      evaluation?.weight && evaluation.weight > 0
+        ? evaluation.weight
+        : (weight ?? 1.0);
+    this.ensurePercentageWeight(effectiveWeight);
 
     const grade = await this.prisma.grade.create({
       data: {
@@ -63,7 +70,7 @@ export class GradesService {
         teacherId,
         evaluationId: evaluationId ?? null,
         value,
-        weight: weight || 1.0,
+        weight: effectiveWeight,
         examType,
         examDate: examDate ? new Date(examDate) : null,
         description,
@@ -226,6 +233,9 @@ export class GradesService {
       academicPeriodId,
       examType,
     );
+    const effectiveWeight =
+      evaluation && evaluation.weight > 0 ? evaluation.weight : (weight ?? 1.0);
+    this.ensurePercentageWeight(effectiveWeight);
 
     // Valida período letivo
     const academicPeriod = await this.prisma.academicPeriod.findUnique({
@@ -287,7 +297,7 @@ export class GradesService {
             teacherId,
             evaluationId: evaluationId ?? null,
             value: grade.value,
-            weight: evaluation ? 1.0 : weight || 1.0,
+            weight: effectiveWeight,
             examType,
             examDate: parsedExamDate,
             description: description ?? evaluation?.title,
@@ -395,6 +405,7 @@ export class GradesService {
         slot: true,
         status: true,
         title: true,
+        weight: true,
       },
     });
 
@@ -775,7 +786,7 @@ export class GradesService {
     // Calcula média ponderada
     Object.values(subjectPeriodStats).forEach((stats: any) => {
       stats.average = Number(
-        (stats.totalWeightedValue / stats.totalWeight).toFixed(2),
+        (calculateGradeAverage(stats.grades) ?? 0).toFixed(2),
       );
     });
 
@@ -944,6 +955,14 @@ export class GradesService {
     ) {
       throw new ForbiddenException(
         'Você só pode gerenciar as notas das suas próprias turmas',
+      );
+    }
+  }
+
+  private ensurePercentageWeight(weight: number) {
+    if (!Number.isFinite(weight) || weight < 1 || weight > 100) {
+      throw new BadRequestException(
+        'O peso de cada VA deve estar entre 1% e 100%',
       );
     }
   }

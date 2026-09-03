@@ -23,6 +23,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { usePrefetch } from '@/hooks/usePrefetch';
+import { calculateGradeAverage } from '@/lib/grade-average';
 import BarChart from '@/components/charts/BarChart';
 import PieChart from '@/components/charts/PieChart';
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer, Legend, Tooltip } from 'recharts';
@@ -127,11 +128,7 @@ export default function AlunoDashboard() {
       const subjectGrades = grades.filter(
         (g) => g.classSubjectId === subject.id && g.status === 'PUBLISHED'
       );
-      const averageGrade =
-        subjectGrades.length > 0
-          ? subjectGrades.reduce((sum, g) => sum + g.value * g.weight, 0) /
-            subjectGrades.reduce((sum, g) => sum + g.weight, 0)
-          : null;
+      const averageGrade = calculateGradeAverage(subjectGrades);
 
       // Calculate attendance rate
       const subjectAttendances = attendances.filter((a) => a.classSubjectId === subject.id);
@@ -376,9 +373,7 @@ export default function AlunoDashboard() {
                   const subjectGrades = grades.filter(
                     (g: any) => g.classSubjectId === subject.id && g.status === 'PUBLISHED'
                   );
-                  const avgGrade = subjectGrades.length > 0
-                    ? subjectGrades.reduce((sum: number, g: any) => sum + g.value, 0) / subjectGrades.length
-                    : 0;
+                  const avgGrade = calculateGradeAverage(subjectGrades) ?? 0;
                   return {
                     subject: subject.subject?.name?.substring(0, 10) || 'N/A',
                     nota: Math.round(avgGrade * 10) / 10,
@@ -414,9 +409,7 @@ export default function AlunoDashboard() {
                   const subjectGrades = grades.filter(
                     (g: any) => g.classSubjectId === subject.id && g.status === 'PUBLISHED'
                   );
-                  const avgGrade = subjectGrades.length > 0
-                    ? subjectGrades.reduce((sum: number, g: any) => sum + g.value, 0) / subjectGrades.length
-                    : 0;
+                  const avgGrade = calculateGradeAverage(subjectGrades) ?? 0;
                   return {
                     materia: subject.subject?.name?.substring(0, 15) || 'N/A',
                     'Nota Média': Math.round(avgGrade * 10) / 10,

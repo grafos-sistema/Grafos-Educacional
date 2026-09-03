@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -35,6 +36,12 @@ export default function AdminDashboard() {
     routes: ['/admin/users', '/admin/classes', '/admin/subjects', '/perfil', '/configuracoes'],
     delay: 2000,
   });
+
+  useEffect(() => {
+    if (user?.role === UserRole.SUPER_ADMIN_GLOBAL) {
+      router.replace('/super-admin/institutions');
+    }
+  }, [router, user?.role]);
 
   const { data: studentsData } = useQuery({
     queryKey: ['students-stats', user?.institutionId],
@@ -80,6 +87,14 @@ export default function AdminDashboard() {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <LoadingSpinner size="lg" text="Carregando..." />
+      </div>
+    );
+  }
+
+  if (user.role === UserRole.SUPER_ADMIN_GLOBAL) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <LoadingSpinner size="lg" text="Abrindo a administração global..." />
       </div>
     );
   }

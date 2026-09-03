@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { calculateGradeAverage } from '../grades/grade-average.util';
 import { CreateStudentDto, UpdateStudentDto } from './dto';
 import { UserRole } from '@prisma/client';
 
@@ -411,8 +412,7 @@ export class StudentsService {
         ]);
 
         // Calcula média das notas
-        const totalGrade = grades.reduce((sum, g) => sum + Number(g.value), 0);
-        const averageGrade = grades.length > 0 ? totalGrade / grades.length : 0;
+        const averageGrade = calculateGradeAverage(grades) ?? 0;
 
         // Calcula taxa de presença
         const totalClasses = attendances.length;

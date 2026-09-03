@@ -24,6 +24,7 @@ import { Modal } from '@/components/ui/Modal';
 import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
 import { presentFriendlyError } from '@/lib/friendly-error';
 import { GlobalAdminInstitutionUnitFilter } from '@/components/users/GlobalAdminInstitutionUnitFilter';
+import { UserFilterTags } from '@/components/users/UserFilterTags';
 
 export default function CoordenadoresPage() {
   const router = useRouter();
@@ -224,6 +225,13 @@ export default function CoordenadoresPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="mb-6">
+        <UserFilterTags
+          isActive={filters.isActive}
+          onStatusChange={(isActive) => setFilters({ ...filters, isActive, page: 1 })}
+        />
       </div>
 
       {/* Header com botão de criar */}

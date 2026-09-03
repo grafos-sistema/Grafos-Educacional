@@ -33,6 +33,7 @@ import { OptimizedImage } from '@/components/performance/OptimizedImage';
 import { getUserEditRouteByRole } from '@/lib/user-route-utils';
 import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
 import { presentFriendlyError } from '@/lib/friendly-error';
+import { UserFilterTags } from '@/components/users/UserFilterTags';
 
 const roleLabels: Record<UserRole, string> = {
   SUPER_ADMIN_GLOBAL: 'Super Admin Global',
@@ -429,9 +430,18 @@ export default function UsersPage() {
           </div>
           </div>
         </div>
-      </div>
+       </div>
 
-      {/* Header com botão de criar */}
+       <div className="mb-6">
+         <UserFilterTags
+           isActive={filters.isActive}
+           onStatusChange={(isActive) => setFilters({ ...filters, isActive, page: 1 })}
+           hasProfile={filters.hasProfile}
+           onProfileChange={(hasProfile) => setFilters({ ...filters, hasProfile, page: 1 })}
+         />
+       </div>
+
+       {/* Header com botão de criar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
         <div>
           {data && (

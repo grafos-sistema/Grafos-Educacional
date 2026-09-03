@@ -921,6 +921,7 @@ model Evaluation {
   description           String?          @db.Text
   examDate              DateTime?
   maxValue              Float            @default(10)
+  weight                Float            @default(0) // Peso percentual da VA no bimestre
   countsTowardsAverage  Boolean          @default(true)
   status                EvaluationStatus @default(DRAFT)
   rejectionReason       String?          @db.Text

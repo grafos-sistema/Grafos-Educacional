@@ -229,6 +229,52 @@ export class EvaluationsService {
     });
   }
 
+  async updateWeight(
+    id: string,
+    weight: number,
+    currentUser: CurrentUserPayload,
+  ) {
+    const evaluation = await this.findOne(id, currentUser);
+
+    if (currentUser.role === UserRole.TEACHER) {
+      const classSubject = await this.prisma.classSubject.findUnique({
+        where: { id: evaluation.classSubjectId },
+        select: { teacherId: true },
+      });
+
+      if (!classSubject || classSubject.teacherId !== currentUser.teacherId) {
+        throw new ForbiddenException(
+          'Você só pode configurar o peso das suas próprias avaliações',
+        );
+      }
+    }
+
+    const otherEvaluations = await this.prisma.evaluation.findMany({
+      where: {
+        classSubjectId: evaluation.classSubjectId,
+        academicPeriodId: evaluation.academicPeriodId,
+        id: { not: id },
+      },
+      select: { weight: true },
+    });
+    const totalWeight = otherEvaluations.reduce(
+      (total, item) => total + Number(item.weight || 0),
+      weight,
+    );
+
+    if (totalWeight > 100) {
+      throw new BadRequestException(
+        'A soma dos pesos das VAs deste bimestre não pode ultrapassar 100%',
+      );
+    }
+
+    return this.prisma.evaluation.update({
+      where: { id },
+      data: { weight },
+      include: this.includeRelations(),
+    });
+  }
+
   private async assertInstitutionAccess(
     institutionId: string,
     currentUser: CurrentUserPayload,

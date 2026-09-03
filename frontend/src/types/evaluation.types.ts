@@ -14,6 +14,7 @@ export interface Evaluation {
   description?: string;
   examDate?: string;
   maxValue: number;
+  weight: number;
   countsTowardsAverage: boolean;
   status: EvaluationStatus;
   rejectionReason?: string;

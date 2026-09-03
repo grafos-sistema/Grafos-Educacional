@@ -19,6 +19,7 @@ import { Select } from '@/components/ui/Select';
 import { Pagination } from '@/components/ui/Pagination';
 import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
 import { GlobalAdminInstitutionUnitFilter } from '@/components/users/GlobalAdminInstitutionUnitFilter';
+import { UserFilterTags } from '@/components/users/UserFilterTags';
 
 export default function DiretoresPage() {
   const router = useRouter();
@@ -170,6 +171,13 @@ export default function DiretoresPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="mb-6">
+        <UserFilterTags
+          isActive={filters.isActive}
+          onStatusChange={(isActive) => setFilters({ ...filters, isActive, page: 1 })}
+        />
       </div>
 
       {data && (

@@ -26,6 +26,7 @@ import { formatCPF, formatPhone } from '@/components/ui/MaskedInput';
 import { presentFriendlyError } from '@/lib/friendly-error';
 import { GlobalAdminInstitutionUnitFilter } from '@/components/users/GlobalAdminInstitutionUnitFilter';
 import { BulkUserImportModal } from '@/components/users/BulkUserImportModal';
+import { UserFilterTags } from '@/components/users/UserFilterTags';
 
 export default function AlunosPage() {
   const router = useRouter();
@@ -232,6 +233,13 @@ export default function AlunosPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="mb-6">
+        <UserFilterTags
+          isActive={filters.isActive}
+          onStatusChange={(isActive) => setFilters({ ...filters, isActive, page: 1 })}
+        />
       </div>
 
       {/* Header com botão de criar */}
