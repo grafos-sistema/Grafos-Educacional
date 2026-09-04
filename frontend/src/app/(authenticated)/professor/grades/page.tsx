@@ -152,6 +152,7 @@ export default function GradesPage() {
   });
 
   const { data: teacherSubjects = [], isLoading: loadingSubjects } = useTeacherClassSubjects();
+  const teacherId = user?.teacherId || user?.teacherProfile?.id;
 
   const teacherClasses = useMemo(() => {
     const uniqueClasses = new Map<string, (typeof teacherSubjects)[number]['class']>();
@@ -165,40 +166,79 @@ export default function GradesPage() {
     return Array.from(uniqueClasses.values());
   }, [teacherSubjects]);
 
-  const subjectsForSelectedClass = useMemo(
-    () => teacherSubjects.filter((assignment) => assignment.classId === selectedClassId),
-    [teacherSubjects, selectedClassId],
-  );
-
   const subjectsForListClass = useMemo(
     () => teacherSubjects.filter((assignment) => assignment.classId === listFilterClassId),
     [teacherSubjects, listFilterClassId],
   );
 
-  // A turma define qual ano letivo deve fornecer os períodos acadêmicos.
   const selectedSubject = teacherSubjects.find((s) => s.id === selectedClassSubjectId);
-  const selectedAcademicYearId = selectedSubject?.class?.academicYear?.id;
 
   const listSelectedSubject = teacherSubjects.find((s) => s.id === listFilterClassSubjectId);
   const listAcademicYearId = listSelectedSubject?.class?.academicYear?.id;
 
-  // Buscar períodos acadêmicos
+  const teacherAcademicYearIds = useMemo(
+    () => Array.from(new Set(
+      teacherSubjects
+        .map((assignment) => assignment.class?.academicYear?.id)
+        .filter((academicYearId): academicYearId is string => Boolean(academicYearId)),
+    )),
+    [teacherSubjects],
+  );
+
+  // O período é a primeira escolha do lançamento. Como o professor pode dar
+  // aula em mais de um ano letivo, os períodos das suas turmas são reunidos
+  // em uma única lista e depois a turma/disciplina é filtrada pelo ano do
+  // período escolhido.
   const {
     data: periods = [],
     isLoading: loadingPeriods,
     isError: periodsError,
   } = useQuery({
-    queryKey: ['academic-periods', user?.id, selectedAcademicYearId ?? 'none'],
+    queryKey: ['academic-periods', user?.id, teacherAcademicYearIds],
     queryFn: async () => {
-      const response = await academicPeriodsService.findAllFromApi({
-        academicYearId: selectedAcademicYearId,
-        isActive: true,
-        limit: 100,
-      });
-      return response.data;
+      const responses = await Promise.all(
+        teacherAcademicYearIds.map((academicYearId) =>
+          academicPeriodsService.findAllFromApi({
+            academicYearId,
+            isActive: true,
+            limit: 100,
+          }),
+        ),
+      );
+
+      return Array.from(
+        new Map(
+          responses
+            .flatMap((response) => response.data)
+            .map((period) => [period.id, period]),
+        ).values(),
+      ).sort((a, b) => a.startDate.localeCompare(b.startDate));
     },
-    enabled: Boolean(user?.id && selectedClassSubjectId && selectedAcademicYearId),
+    enabled: Boolean(user?.id && teacherAcademicYearIds.length > 0),
   });
+
+  const selectedPeriod = periods.find((period) => period.id === selectedPeriodId);
+  const teacherSubjectsForSelectedPeriod = useMemo(
+    () => teacherSubjects.filter(
+      (assignment) => assignment.class?.academicYear?.id === selectedPeriod?.academicYearId,
+    ),
+    [teacherSubjects, selectedPeriod?.academicYearId],
+  );
+  const teacherClassesForSelectedPeriod = useMemo(() => {
+    const uniqueClasses = new Map<string, (typeof teacherSubjects)[number]['class']>();
+
+    teacherSubjectsForSelectedPeriod.forEach((assignment) => {
+      if (assignment.class?.id && !uniqueClasses.has(assignment.class.id)) {
+        uniqueClasses.set(assignment.class.id, assignment.class);
+      }
+    });
+
+    return Array.from(uniqueClasses.values());
+  }, [teacherSubjectsForSelectedPeriod]);
+  const subjectsForSelectedClass = useMemo(
+    () => teacherSubjectsForSelectedPeriod.filter((assignment) => assignment.classId === selectedClassId),
+    [teacherSubjectsForSelectedPeriod, selectedClassId],
+  );
 
   const {
     data: listPeriods = [],
@@ -228,7 +268,6 @@ export default function GradesPage() {
   });
 
   // Buscar notas lançadas (para aba de listagem)
-  const teacherId = user?.teacherId || user?.teacherProfile?.id;
   const {
     data: currentGrades = [],
     isLoading: loadingCurrentGrades,
@@ -298,19 +337,17 @@ export default function GradesPage() {
     isLoading: loadingComposition,
     isError: compositionError,
   } = useQuery({
-    queryKey: ['grade-composition', selectedClassSubjectId, selectedPeriodId],
+    queryKey: ['grade-composition', teacherId, selectedPeriodId],
     queryFn: () => gradeCompositionsService.findAll({
-      classSubjectId: selectedClassSubjectId,
       academicPeriodId: selectedPeriodId,
     }),
-    enabled: Boolean(selectedClassSubjectId && selectedPeriodId),
+    enabled: Boolean(teacherId && selectedPeriodId),
   });
 
   const composition: GradeComposition | undefined = gradeCompositions[0];
 
   useEffect(() => {
     if (
-      !selectedClassSubjectId ||
       !selectedPeriodId ||
       loadingComposition ||
       compositionError
@@ -342,7 +379,6 @@ export default function GradesPage() {
     composition?.status,
     loadingComposition,
     compositionError,
-    selectedClassSubjectId,
     selectedPeriodId,
   ]);
 
@@ -357,7 +393,6 @@ export default function GradesPage() {
 
   const compositionMutation = useMutation({
     mutationFn: () => gradeCompositionsService.create({
-      classSubjectId: selectedClassSubjectId,
       academicPeriodId: selectedPeriodId,
       assessmentCount,
       va1Weight: assessmentWeights.VA1,
@@ -817,7 +852,6 @@ export default function GradesPage() {
             <Button
               onClick={() => compositionMutation.mutate()}
               disabled={
-                !selectedClassSubjectId ||
                 !selectedPeriodId ||
                 !hasValidAssessmentWeights ||
                 compositionMutation.isPending
@@ -1178,10 +1212,10 @@ export default function GradesPage() {
                Lançamento de notas
              </h2>
              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-               Selecione a turma, a disciplina e o bimestre para iniciar o lançamento.
+               Primeiro escolha o período acadêmico. Depois da aprovação da composição, selecione a turma e a disciplina.
              </p>
            </div>
-           {composition?.status === 'APPROVED' ? (
+           {composition?.status === 'APPROVED' && selectedClassSubjectId ? (
              <Button
                variant="secondary"
                size="sm"
@@ -1193,75 +1227,30 @@ export default function GradesPage() {
            ) : null}
          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-          <Select
-            label="Turma"
-            value={selectedClassId}
-            onChange={(e) => {
-              setSelectedClassId(e.target.value);
-              setSelectedClassSubjectId('');
-              setSelectedPeriodId('');
-              setGradesData({});
-              setAssessmentCount(1);
-              setAssessmentWeights(getDefaultAssessmentWeights(1));
-            }}
-            required
-            options={[
-              { value: '', label: loadingSubjects ? 'Carregando turmas...' : 'Selecione...' },
-              ...teacherClasses.map((classItem) => ({
-                value: classItem.id,
-                label: `${classItem.name}${classItem.shift ? ` • ${classItem.shift}` : ''}`,
-              })),
-            ]}
-          />
-
-          <Select
-            label="Disciplina"
-            value={selectedClassSubjectId}
-            onChange={(e) => {
-              setSelectedClassSubjectId(e.target.value);
-              setSelectedPeriodId('');
-              setGradesData({});
-              setAssessmentCount(1);
-              setAssessmentWeights(getDefaultAssessmentWeights(1));
-            }}
-            disabled={!selectedClassId || loadingSubjects}
-            required
-            options={[
-              {
-                value: '',
-                label: !selectedClassId ? 'Selecione a turma primeiro' : 'Selecione...',
-              },
-              ...subjectsForSelectedClass.map((assignment) => ({
-                value: assignment.id,
-                label: assignment.subject?.name || 'Disciplina sem nome',
-              })),
-            ]}
-          />
-
+        <div className="mb-4 max-w-md">
           <Select
             label="Período Acadêmico"
             value={selectedPeriodId}
             onChange={(e) => {
               setSelectedPeriodId(e.target.value);
+              setSelectedClassId('');
+              setSelectedClassSubjectId('');
               setGradesData({});
               setAssessmentCount(1);
               setAssessmentWeights(getDefaultAssessmentWeights(1));
             }}
-            disabled={!selectedClassSubjectId || loadingPeriods || Boolean(periodsError)}
+            disabled={loadingPeriods || Boolean(periodsError)}
             required
             options={[
               {
                 value: '',
-                label: !selectedClassSubjectId
-                  ? 'Selecione a disciplina primeiro'
-                  : loadingPeriods
-                    ? 'Carregando períodos...'
-                    : periodsError
-                      ? 'Não foi possível carregar os períodos'
-                      : periods.length === 0
-                        ? 'Nenhum período cadastrado'
-                        : 'Selecione...',
+                label: loadingPeriods
+                  ? 'Carregando períodos...'
+                  : periodsError
+                    ? 'Não foi possível carregar os períodos'
+                    : periods.length === 0
+                      ? 'Nenhum período cadastrado'
+                      : 'Selecione o bimestre',
               },
               ...periods.map((period) => ({
                 value: period.id,
@@ -1269,8 +1258,51 @@ export default function GradesPage() {
               })),
             ]}
           />
-
         </div>
+
+        {selectedPeriodId && composition?.status === 'APPROVED' ? (
+          <div className="grid grid-cols-1 gap-4 border-t border-[#e0e0e0] pt-4 dark:border-gray-700 md:grid-cols-2">
+            <Select
+              label="Turma"
+              value={selectedClassId}
+              onChange={(e) => {
+                setSelectedClassId(e.target.value);
+                setSelectedClassSubjectId('');
+                setGradesData({});
+              }}
+              disabled={loadingSubjects}
+              required
+              options={[
+                { value: '', label: loadingSubjects ? 'Carregando turmas...' : 'Selecione...' },
+                ...teacherClassesForSelectedPeriod.map((classItem) => ({
+                  value: classItem.id,
+                  label: `${classItem.name}${classItem.shift ? ` • ${classItem.shift}` : ''}`,
+                })),
+              ]}
+            />
+
+            <Select
+              label="Disciplina"
+              value={selectedClassSubjectId}
+              onChange={(e) => {
+                setSelectedClassSubjectId(e.target.value);
+                setGradesData({});
+              }}
+              disabled={!selectedClassId || loadingSubjects}
+              required
+              options={[
+                {
+                  value: '',
+                  label: !selectedClassId ? 'Selecione a turma primeiro' : 'Selecione...',
+                },
+                ...subjectsForSelectedClass.map((assignment) => ({
+                  value: assignment.id,
+                  label: assignment.subject?.name || 'Disciplina sem nome',
+                })),
+              ]}
+            />
+          </div>
+        ) : null}
         {selectedPeriodId && !loadingEvaluations && composition?.status === 'APPROVED' && approvedEvaluations.length === 0 && (
           <p className="text-sm text-gray-500 dark:text-gray-400">
             A composição foi aprovada. Agora a coordenação ou direção precisa liberar as avaliações que serão usadas em cada VA.
@@ -1329,33 +1361,43 @@ export default function GradesPage() {
        )}
 
        {/* Content */}
-      {!selectedClassSubjectId || !selectedPeriodId ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
-          <AcademicCapIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            Selecione o bimestre
-          </h3>
-          <p className="text-gray-500 dark:text-gray-400">
-            Selecione a turma, disciplina e período acadêmico para lançar as notas
-          </p>
-        </div>
-      ) : loadingComposition ? (
+       {!selectedPeriodId ? (
+         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
+           <AcademicCapIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+             Selecione o período acadêmico
+           </h3>
+           <p className="text-gray-500 dark:text-gray-400">
+             A composição da nota será verificada assim que você escolher o período.
+           </p>
+         </div>
+       ) : loadingComposition ? (
         <div className="flex justify-center py-12">
           <LoadingSpinner size="lg" text="Verificando composição do bimestre..." />
         </div>
-      ) : composition?.status !== 'APPROVED' ? (
+       ) : composition?.status !== 'APPROVED' ? (
         <div className="rounded-lg border border-[#e0e0e0] bg-white p-10 text-center shadow-sm dark:border-gray-700 dark:bg-gray-800">
           <AcademicCapIcon className="mx-auto mb-4 h-12 w-12 text-gray-400" />
           <h3 className="text-base font-semibold text-gray-900 dark:text-white">
             Lançamento bloqueado até a aprovação
           </h3>
           <p className="mx-auto mt-2 max-w-lg text-sm text-gray-500 dark:text-gray-400">
-            {composition?.status === 'PENDING_APPROVAL'
+           {composition?.status === 'PENDING_APPROVAL'
               ? 'A composição deste bimestre está aguardando análise da coordenação ou direção.'
               : 'Defina a composição do bimestre e envie a solicitação para análise.'}
-          </p>
-        </div>
-      ) : loadingEnrollments ? (
+         </p>
+       </div>
+       ) : !selectedClassSubjectId ? (
+         <div className="rounded-lg border border-[#e0e0e0] bg-white p-10 text-center shadow-sm dark:border-gray-700 dark:bg-gray-800">
+           <AcademicCapIcon className="mx-auto mb-4 h-12 w-12 text-gray-400" />
+           <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+             Agora selecione a turma e a disciplina
+           </h3>
+           <p className="mx-auto mt-2 max-w-lg text-sm text-gray-500 dark:text-gray-400">
+             A composição deste período já foi aprovada. Escolha uma turma e uma disciplina para lançar as notas.
+           </p>
+         </div>
+       ) : loadingEnrollments ? (
         <div className="flex justify-center py-12">
           <LoadingSpinner size="lg" text="Carregando alunos..." />
         </div>

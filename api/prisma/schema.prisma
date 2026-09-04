@@ -216,9 +216,9 @@ model InstitutionUnit {
   institutionId String?
   institution   Institution? @relation(fields: [institutionId], references: [id], onDelete: Cascade)
 
-  userUnits UserUnit[]
+  userUnits     UserUnit[]
   academicYears AcademicYear[]
-  documents InstitutionDocument[]
+  documents     InstitutionDocument[]
 
   @@unique([institutionId, code])
   @@unique([institutionId, slug])
@@ -291,17 +291,17 @@ model User {
   parentProfile  Parent?
 
   // Activity tracking
-  createdAnnouncements Announcement[]
-  notifications        Notification[]        @relation("UserNotifications")
-  sentNotifications    Notification[]        @relation("SentNotifications")
-  lessonPlansCreated   LessonPlan[]          @relation("LessonPlanCreatedBy")
-  lessonPlansApproved  LessonPlan[]          @relation("LessonPlanApprovedBy")
-  createdEvaluations   Evaluation[]          @relation("EvaluationCreatedBy")
-  approvedEvaluations  Evaluation[]          @relation("EvaluationApprovedBy")
-  submittedGradeCompositions GradeComposition[] @relation("GradeCompositionSubmittedBy")
-  reviewedGradeCompositions  GradeComposition[] @relation("GradeCompositionReviewedBy")
-  createdQuestions     Question[]
-  reviewedRequests     ClassSubjectRequest[] @relation("ReviewedRequests")
+  createdAnnouncements       Announcement[]
+  notifications              Notification[]        @relation("UserNotifications")
+  sentNotifications          Notification[]        @relation("SentNotifications")
+  lessonPlansCreated         LessonPlan[]          @relation("LessonPlanCreatedBy")
+  lessonPlansApproved        LessonPlan[]          @relation("LessonPlanApprovedBy")
+  createdEvaluations         Evaluation[]          @relation("EvaluationCreatedBy")
+  approvedEvaluations        Evaluation[]          @relation("EvaluationApprovedBy")
+  submittedGradeCompositions GradeComposition[]    @relation("GradeCompositionSubmittedBy")
+  reviewedGradeCompositions  GradeComposition[]    @relation("GradeCompositionReviewedBy")
+  createdQuestions           Question[]
+  reviewedRequests           ClassSubjectRequest[] @relation("ReviewedRequests")
 
   // Gamification
   rankings                 Ranking[]
@@ -386,6 +386,7 @@ model Teacher {
   activities         Activity[]
   exams              Exam[]
   teacherSubjects    TeacherSubject[] // Disciplinas que o professor trabalha
+  gradeCompositions  GradeComposition[]
 
   @@map("teachers")
 }
@@ -601,11 +602,11 @@ model AcademicPeriod {
   academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
 
   // Relations
-  grades      Grade[]
-  evaluations Evaluation[]
+  grades            Grade[]
+  evaluations       Evaluation[]
   gradeCompositions GradeComposition[]
-  lessonPlans LessonPlan[]
-  attendances Attendance[]
+  lessonPlans       LessonPlan[]
+  attendances       Attendance[]
 
   @@unique([academicYearId, orderNumber])
   @@index([academicYearId])
@@ -924,68 +925,73 @@ model LessonPlan {
 // ==========================================
 
 model Evaluation {
-  id                    String           @id @default(uuid())
-  title                 String
-  type                  String
-  slot                  AssessmentSlot
-  description           String?          @db.Text
-  examDate              DateTime?
-  maxValue              Float            @default(10)
-  weight                Float            @default(0) // Peso percentual da VA no bimestre
-  countsTowardsAverage  Boolean          @default(true)
-  status                EvaluationStatus @default(DRAFT)
-  rejectionReason       String?          @db.Text
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
-  approvedAt            DateTime?
+  id                   String           @id @default(uuid())
+  title                String
+  type                 String
+  slot                 AssessmentSlot
+  description          String?          @db.Text
+  examDate             DateTime?
+  maxValue             Float            @default(10)
+  weight               Float            @default(0) // Peso percentual da VA no bimestre
+  countsTowardsAverage Boolean          @default(true)
+  status               EvaluationStatus @default(DRAFT)
+  rejectionReason      String?          @db.Text
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  approvedAt           DateTime?
 
-  institutionId         String
-  institution           Institution      @relation(fields: [institutionId], references: [id], onDelete: Cascade)
-  classSubjectId        String
-  classSubject          ClassSubject     @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
-  academicPeriodId      String
-  academicPeriod        AcademicPeriod   @relation(fields: [academicPeriodId], references: [id], onDelete: Cascade)
-  createdById            String
-  createdBy              User             @relation("EvaluationCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
-  approvedById           String?
-  approvedBy             User?            @relation("EvaluationApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  institutionId    String
+  institution      Institution    @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  classSubjectId   String
+  classSubject     ClassSubject   @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  academicPeriodId String
+  academicPeriod   AcademicPeriod @relation(fields: [academicPeriodId], references: [id], onDelete: Cascade)
+  createdById      String
+  createdBy        User           @relation("EvaluationCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  approvedById     String?
+  approvedBy       User?          @relation("EvaluationApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
 
-  grades                Grade[]
+  grades Grade[]
 
+  @@unique([classSubjectId, academicPeriodId, slot])
   @@index([institutionId])
   @@index([classSubjectId, academicPeriodId])
   @@index([status])
   @@index([createdById])
-  @@unique([classSubjectId, academicPeriodId, slot])
   @@map("evaluations")
 }
 
-// Composição única das avaliações de uma disciplina/turma em cada bimestre.
-// Os pesos pertencem à composição, e não às avaliações individuais.
+// Composição única das avaliações de um professor em cada período acadêmico.
+// Os pesos pertencem à composição, e não às avaliações individuais. O vínculo
+// opcional com a disciplina da turma mantém compatibilidade com registros
+// antigos criados antes da composição passar a ser do professor.
 model GradeComposition {
-  id              String                @id @default(uuid())
+  id              String                 @id @default(uuid())
   assessmentCount Int
   va1Weight       Int
   va2Weight       Int?
   va3Weight       Int?
   va4Weight       Int?
   status          GradeCompositionStatus @default(PENDING_APPROVAL)
-  reviewNote      String?               @db.Text
-  submittedAt     DateTime              @default(now())
+  reviewNote      String?                @db.Text
+  submittedAt     DateTime               @default(now())
   reviewedAt      DateTime?
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
 
-  classSubjectId  String
-  classSubject    ClassSubject           @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  teacherId        String
+  teacher          Teacher        @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classSubjectId   String?
+  classSubject     ClassSubject?  @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
   academicPeriodId String
-  academicPeriod  AcademicPeriod         @relation(fields: [academicPeriodId], references: [id], onDelete: Cascade)
-  submittedById   String
-  submittedBy     User                   @relation("GradeCompositionSubmittedBy", fields: [submittedById], references: [id], onDelete: Cascade)
-  reviewedById    String?
-  reviewedBy      User?                  @relation("GradeCompositionReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  academicPeriod   AcademicPeriod @relation(fields: [academicPeriodId], references: [id], onDelete: Cascade)
+  submittedById    String
+  submittedBy      User           @relation("GradeCompositionSubmittedBy", fields: [submittedById], references: [id], onDelete: Cascade)
+  reviewedById     String?
+  reviewedBy       User?          @relation("GradeCompositionReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
 
-  @@unique([classSubjectId, academicPeriodId])
+  @@unique([teacherId, academicPeriodId])
+  @@index([teacherId])
   @@index([status])
   @@index([submittedById])
   @@index([reviewedById])

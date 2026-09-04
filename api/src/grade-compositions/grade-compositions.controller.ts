@@ -51,19 +51,16 @@ export class GradeCompositionsController {
 
   @Get()
   @Roles(...managerRoles, UserRole.TEACHER)
-  @ApiQuery({ name: 'classSubjectId', required: false })
   @ApiQuery({ name: 'academicPeriodId', required: false })
   @ApiQuery({ name: 'status', required: false, enum: GradeCompositionStatus })
   @ApiOperation({ summary: 'Listar composições de notas' })
   findAll(
     @CurrentUser() user: CurrentUserPayload,
-    @Query('classSubjectId') classSubjectId?: string,
     @Query('academicPeriodId') academicPeriodId?: string,
     @Query('status') status?: GradeCompositionStatus,
   ) {
     return this.gradeCompositionsService.findAll({
       currentUser: user,
-      classSubjectId,
       academicPeriodId,
       status,
     });

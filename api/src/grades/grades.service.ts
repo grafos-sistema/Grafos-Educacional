@@ -1001,10 +1001,24 @@ export class GradesService {
     examType: string,
     currentUser?: CurrentUserPayload,
   ) {
+    const classSubject = await this.prisma.classSubject.findUnique({
+      where: { id: classSubjectId },
+      select: { teacherId: true },
+    });
+
+    if (!classSubject?.teacherId) {
+      if (currentUser?.role === UserRole.TEACHER) {
+        throw new ForbiddenException(
+          'A disciplina da turma ainda não possui um professor responsável',
+        );
+      }
+      return null;
+    }
+
     const composition = await this.prisma.gradeComposition.findUnique({
       where: {
-        classSubjectId_academicPeriodId: {
-          classSubjectId,
+        teacherId_academicPeriodId: {
+          teacherId: classSubject.teacherId,
           academicPeriodId,
         },
       },

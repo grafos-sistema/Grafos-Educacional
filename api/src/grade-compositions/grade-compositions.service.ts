@@ -32,50 +32,38 @@ export class GradeCompositionsService {
       );
     }
 
-    const classSubject = await this.prisma.classSubject.findUnique({
-      where: { id: dto.classSubjectId },
-      select: {
-        id: true,
-        teacherId: true,
-        class: {
-          select: {
-            institutionId: true,
-            academicYearId: true,
-          },
-        },
-      },
-    });
-
-    if (!classSubject) {
-      throw new NotFoundException('Disciplina da turma não encontrada');
+    if (!currentUser.teacherId) {
+      throw new ForbiddenException('Perfil de professor não encontrado');
     }
-
-    if (
-      !currentUser.teacherId ||
-      classSubject.teacherId !== currentUser.teacherId
-    ) {
-      throw new ForbiddenException(
-        'Você só pode configurar a composição das suas próprias turmas',
-      );
-    }
-
-    await this.assertInstitutionAccess(
-      classSubject.class.institutionId,
-      currentUser,
-    );
 
     const period = await this.prisma.academicPeriod.findUnique({
       where: { id: dto.academicPeriodId },
-      select: { id: true, academicYearId: true },
+      select: {
+        id: true,
+        academicYear: { select: { id: true, institutionId: true } },
+      },
     });
 
     if (!period) {
       throw new NotFoundException('Período acadêmico não encontrado');
     }
 
-    if (period.academicYearId !== classSubject.class.academicYearId) {
-      throw new BadRequestException(
-        'O período acadêmico não pertence ao ano letivo da turma',
+    await this.assertInstitutionAccess(
+      period.academicYear.institutionId,
+      currentUser,
+    );
+
+    const teacherHasAssignment = await this.prisma.classSubject.findFirst({
+      where: {
+        teacherId: currentUser.teacherId,
+        class: { academicYearId: period.academicYear.id },
+      },
+      select: { id: true },
+    });
+
+    if (!teacherHasAssignment) {
+      throw new ForbiddenException(
+        'Você não possui uma turma vinculada a este período acadêmico',
       );
     }
 
@@ -83,8 +71,8 @@ export class GradeCompositionsService {
 
     const existing = await this.prisma.gradeComposition.findUnique({
       where: {
-        classSubjectId_academicPeriodId: {
-          classSubjectId: dto.classSubjectId,
+        teacherId_academicPeriodId: {
+          teacherId: currentUser.teacherId,
           academicPeriodId: dto.academicPeriodId,
         },
       },
@@ -126,7 +114,7 @@ export class GradeCompositionsService {
       : await this.prisma.gradeComposition.create({
           data: {
             ...data,
-            classSubjectId: dto.classSubjectId,
+            teacherId: currentUser.teacherId,
             academicPeriodId: dto.academicPeriodId,
           },
           include: this.includeRelations(),
@@ -136,7 +124,6 @@ export class GradeCompositionsService {
   }
 
   async findAll(params: {
-    classSubjectId?: string;
     academicPeriodId?: string;
     status?: GradeCompositionStatus;
     currentUser: CurrentUserPayload;
@@ -144,19 +131,18 @@ export class GradeCompositionsService {
     const { currentUser } = params;
     const where: any = {};
 
-    if (params.classSubjectId) where.classSubjectId = params.classSubjectId;
     if (params.academicPeriodId) {
       where.academicPeriodId = params.academicPeriodId;
     }
     if (params.status) where.status = params.status;
 
     if (currentUser.role === UserRole.TEACHER) {
-      where.classSubject = {
-        teacherId: currentUser.teacherId ?? '__none__',
-      };
+      where.teacherId = currentUser.teacherId ?? '__none__';
     } else if (currentUser.role !== UserRole.SUPER_ADMIN_GLOBAL) {
-      where.classSubject = {
-        class: { institutionId: currentUser.institutionId ?? '__none__' },
+      where.academicPeriod = {
+        academicYear: {
+          institutionId: currentUser.institutionId ?? '__none__',
+        },
       };
     }
 
@@ -226,13 +212,13 @@ export class GradeCompositionsService {
     }
 
     await this.assertInstitutionAccess(
-      composition.classSubject.class.institutionId,
+      composition.academicPeriod.academicYear.institutionId,
       currentUser,
     );
 
     if (
       currentUser.role === UserRole.TEACHER &&
-      composition.classSubject.teacherId !== currentUser.teacherId
+      composition.teacherId !== currentUser.teacherId
     ) {
       throw new ForbiddenException(
         'Você não tem acesso a esta composição de notas',
@@ -316,6 +302,20 @@ export class GradeCompositionsService {
 
   private includeRelations() {
     return {
+      teacher: {
+        select: {
+          id: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              firstName: true,
+              lastName: true,
+              avatar: true,
+            },
+          },
+        },
+      },
       classSubject: {
         select: {
           id: true,
@@ -339,6 +339,7 @@ export class GradeCompositionsService {
           orderNumber: true,
           type: true,
           academicYearId: true,
+          academicYear: { select: { institutionId: true } },
         },
       },
       submittedBy: {

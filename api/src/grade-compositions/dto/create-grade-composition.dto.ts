@@ -4,10 +4,6 @@ import { IsInt, IsUUID, Max, Min, ValidateIf } from 'class-validator';
 export class CreateGradeCompositionDto {
   @ApiProperty({ format: 'uuid' })
   @IsUUID('4')
-  classSubjectId: string;
-
-  @ApiProperty({ format: 'uuid' })
-  @IsUUID('4')
   academicPeriodId: string;
 
   @ApiProperty({ minimum: 1, maximum: 4, example: 3 })

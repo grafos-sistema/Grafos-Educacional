@@ -248,7 +248,7 @@ export function EvaluationManagementPage() {
                 <div key={item.id} className="flex flex-col gap-4 px-6 py-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <div className="font-medium text-gray-900 dark:text-white">
-                      {item.classSubject?.class?.name} · {item.classSubject?.subject?.name}
+                      Composição de {item.assessmentCount} {item.assessmentCount === 1 ? 'avaliação' : 'avaliações'}
                     </div>
                     <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                       {item.academicPeriod?.name} · enviada por {teacherName}

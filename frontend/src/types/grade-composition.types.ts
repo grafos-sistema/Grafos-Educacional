@@ -16,8 +16,13 @@ export interface GradeComposition {
   reviewNote?: string | null;
   submittedAt: string;
   reviewedAt?: string | null;
-  classSubjectId: string;
+  teacherId: string;
+  classSubjectId?: string | null;
   academicPeriodId: string;
+  teacher?: {
+    id: string;
+    user?: { id: string; name?: string; firstName?: string; lastName?: string; avatar?: string | null } | null;
+  } | null;
   classSubject?: {
     id: string;
     teacherId?: string | null;
@@ -42,7 +47,6 @@ export interface GradeComposition {
 }
 
 export interface CreateGradeCompositionDto {
-  classSubjectId: string;
   academicPeriodId: string;
   assessmentCount: number;
   va1Weight: number;
@@ -52,7 +56,6 @@ export interface CreateGradeCompositionDto {
 }
 
 export interface GradeCompositionFilters {
-  classSubjectId?: string;
   academicPeriodId?: string;
   status?: GradeCompositionStatus;
 }
