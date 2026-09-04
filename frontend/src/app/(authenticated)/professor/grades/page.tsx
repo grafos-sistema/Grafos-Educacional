@@ -218,13 +218,11 @@ export default function GradesPage() {
   });
 
   const selectedPeriod = periods.find((period) => period.id === selectedPeriodId);
-  const teacherSubjectsForSelectedPeriod = useMemo(
-    () => teacherSubjects.filter(
-      (assignment) => assignment.class?.academicYear?.id === selectedPeriod?.academicYearId,
-    ),
-    [teacherSubjects, selectedPeriod?.academicYearId],
+  const selectedPeriodAcademicYearId = selectedPeriod?.academicYearId;
+  const teacherSubjectsForSelectedPeriod = teacherSubjects.filter(
+    (assignment) => assignment.class?.academicYear?.id === selectedPeriodAcademicYearId,
   );
-  const teacherClassesForSelectedPeriod = useMemo(() => {
+  const teacherClassesForSelectedPeriod = (() => {
     const uniqueClasses = new Map<string, (typeof teacherSubjects)[number]['class']>();
 
     teacherSubjectsForSelectedPeriod.forEach((assignment) => {
@@ -234,10 +232,9 @@ export default function GradesPage() {
     });
 
     return Array.from(uniqueClasses.values());
-  }, [teacherSubjectsForSelectedPeriod]);
-  const subjectsForSelectedClass = useMemo(
-    () => teacherSubjectsForSelectedPeriod.filter((assignment) => assignment.classId === selectedClassId),
-    [teacherSubjectsForSelectedPeriod, selectedClassId],
+  })();
+  const subjectsForSelectedClass = teacherSubjectsForSelectedPeriod.filter(
+    (assignment) => assignment.classId === selectedClassId,
   );
 
   const {
