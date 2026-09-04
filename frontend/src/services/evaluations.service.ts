@@ -32,7 +32,4 @@ export const evaluationsService = {
     return (await api.patch<Evaluation>(`/evaluations/${id}/reject`, { reason })) as unknown as Evaluation;
   },
 
-  async updateWeight(id: string, weight: number): Promise<Evaluation> {
-    return (await api.patch<Evaluation>(`/evaluations/${id}/weight`, { weight })) as unknown as Evaluation;
-  },
 };

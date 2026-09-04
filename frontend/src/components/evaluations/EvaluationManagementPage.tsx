@@ -8,11 +8,14 @@ import { useAuthStore } from '@/stores/authStore';
 import { classesService } from '@/services/classes.service';
 import { academicPeriodsService } from '@/services/academic-periods.service';
 import { evaluationsService } from '@/services/evaluations.service';
+import { gradeCompositionsService } from '@/services/grade-compositions.service';
 import type { AssessmentSlot, EvaluationStatus } from '@/types/evaluation.types';
+import type { GradeComposition } from '@/types/grade-composition.types';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/hooks/useToast';
 
 const slots: AssessmentSlot[] = ['VA1', 'VA2', 'VA3', 'VA4'];
@@ -31,6 +34,8 @@ export function EvaluationManagementPage() {
   const [type, setType] = useState('Prova');
   const [description, setDescription] = useState('');
   const [examDate, setExamDate] = useState('');
+  const [compositionToReview, setCompositionToReview] = useState<GradeComposition | null>(null);
+  const [compositionReviewReason, setCompositionReviewReason] = useState('');
 
   const { data: classesData, isLoading: loadingClasses } = useQuery({
     queryKey: ['evaluation-classes', user?.institutionId],
@@ -58,6 +63,12 @@ export function EvaluationManagementPage() {
   const { data: evaluations = [], isLoading: loadingEvaluations } = useQuery({
     queryKey: ['evaluation-management', user?.institutionId],
     queryFn: () => evaluationsService.findAll(),
+    enabled: Boolean(user),
+  });
+
+  const { data: compositions = [], isLoading: loadingCompositions } = useQuery({
+    queryKey: ['grade-composition-management', user?.institutionId],
+    queryFn: () => gradeCompositionsService.findAll(),
     enabled: Boolean(user),
   });
 
@@ -101,6 +112,34 @@ export function EvaluationManagementPage() {
     },
   });
 
+  const approveCompositionMutation = useMutation({
+    mutationFn: (id: string) => gradeCompositionsService.approve(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['grade-composition-management'] });
+      queryClient.invalidateQueries({ queryKey: ['grade-composition'] });
+      toast.success('Composição aprovada. O professor já pode lançar as notas.');
+    },
+    onError: (error: any) => toast.error(error?.message || 'Não foi possível aprovar a composição.'),
+  });
+
+  const requestCompositionChangesMutation = useMutation({
+    mutationFn: () => {
+      if (!compositionToReview) throw new Error('Selecione uma composição');
+      return gradeCompositionsService.requestChanges(
+        compositionToReview.id,
+        compositionReviewReason.trim() || undefined,
+      );
+    },
+    onSuccess: () => {
+      setCompositionToReview(null);
+      setCompositionReviewReason('');
+      queryClient.invalidateQueries({ queryKey: ['grade-composition-management'] });
+      queryClient.invalidateQueries({ queryKey: ['grade-composition'] });
+      toast.success('Composição devolvida para ajustes do professor.');
+    },
+    onError: (error: any) => toast.error(error?.message || 'Não foi possível devolver a composição.'),
+  });
+
   const canSubmit = Boolean(title.trim() && classSubjectId && periodId);
   const isExam = type.trim().toLocaleLowerCase('pt-BR') === 'prova';
   const canSubmitEvaluation = Boolean(
@@ -119,9 +158,52 @@ export function EvaluationManagementPage() {
     () => evaluations.filter((item) => item.status === 'PENDING_APPROVAL'),
     [evaluations],
   );
+  const pendingCompositions = useMemo(
+    () => compositions.filter((item) => item.status === 'PENDING_APPROVAL'),
+    [compositions],
+  );
 
   return (
     <div className="space-y-6">
+      <Modal
+        isOpen={Boolean(compositionToReview)}
+        onClose={() => {
+          setCompositionToReview(null);
+          setCompositionReviewReason('');
+        }}
+        title="Devolver composição para ajustes"
+        description="Explique ao professor o que precisa ser revisado antes de uma nova análise."
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setCompositionToReview(null);
+                setCompositionReviewReason('');
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => requestCompositionChangesMutation.mutate()}
+              disabled={requestCompositionChangesMutation.isPending}
+              isLoading={requestCompositionChangesMutation.isPending}
+            >
+              Devolver para ajustes
+            </Button>
+          </div>
+        }
+      >
+        <textarea
+          value={compositionReviewReason}
+          onChange={(event) => setCompositionReviewReason(event.target.value)}
+          rows={4}
+          maxLength={500}
+          placeholder="Ex.: Distribua novamente os pesos para totalizar 100%."
+          className="w-full resize-y rounded-[5px] border border-[#e3e5e9] bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:ring-primary-900/30"
+        />
+      </Modal>
+
       <div>
         <Button
           variant="ghost"
@@ -136,6 +218,77 @@ export function EvaluationManagementPage() {
           Cadastre a avaliação que receberá a nota consolidada VA1, VA2, VA3 ou VA4.
         </p>
       </div>
+
+      <section className="overflow-hidden rounded-lg border border-[#e3e5e9] bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div className="flex items-center justify-between border-b border-[#e0e0e0] px-6 py-4 dark:border-gray-700">
+          <div>
+            <h2 className="font-semibold text-gray-900 dark:text-white">Composições para analisar</h2>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Revise quantas avaliações formarão a nota de cada bimestre e os respectivos pesos.
+            </p>
+          </div>
+          {pendingCompositions.length > 0 ? (
+            <span className="text-sm text-gray-600 dark:text-gray-300">{pendingCompositions.length} pendente(s)</span>
+          ) : null}
+        </div>
+        {loadingCompositions ? (
+          <div className="p-8"><LoadingSpinner text="Carregando solicitações..." /></div>
+        ) : pendingCompositions.length === 0 ? (
+          <p className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">Nenhuma composição aguardando análise.</p>
+        ) : (
+          <div className="divide-y divide-[#e0e0e0] dark:divide-gray-700">
+            {pendingCompositions.map((item) => {
+              const weights = [item.va1Weight, item.va2Weight, item.va3Weight, item.va4Weight]
+                .slice(0, item.assessmentCount);
+              const teacherName = item.submittedBy?.name ||
+                `${item.submittedBy?.firstName || ''} ${item.submittedBy?.lastName || ''}`.trim() ||
+                'Professor';
+
+              return (
+                <div key={item.id} className="flex flex-col gap-4 px-6 py-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <div className="font-medium text-gray-900 dark:text-white">
+                      {item.classSubject?.class?.name} · {item.classSubject?.subject?.name}
+                    </div>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      {item.academicPeriod?.name} · enviada por {teacherName}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300">
+                      {weights.map((weight, index) => (
+                        <span key={index} className="rounded border border-[#e3e5e9] px-2 py-1 dark:border-gray-600">
+                          VA{index + 1}: {weight}%
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setCompositionToReview(item);
+                        setCompositionReviewReason('');
+                      }}
+                      disabled={approveCompositionMutation.isPending || requestCompositionChangesMutation.isPending}
+                      leftIcon={<XMarkIcon className="h-4 w-4" />}
+                    >
+                      Devolver
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => approveCompositionMutation.mutate(item.id)}
+                      disabled={approveCompositionMutation.isPending || requestCompositionChangesMutation.isPending}
+                      leftIcon={<CheckIcon className="h-4 w-4" />}
+                    >
+                      Aprovar
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       <section className="rounded-lg border border-[#e3e5e9] bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div className="mb-5">

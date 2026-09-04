@@ -60,6 +60,12 @@ enum AssessmentSlot {
   VA4
 }
 
+enum GradeCompositionStatus {
+  PENDING_APPROVAL
+  APPROVED
+  CHANGES_REQUESTED
+}
+
 enum AssignmentStatus {
   PENDING
   SUBMITTED
@@ -292,6 +298,8 @@ model User {
   lessonPlansApproved  LessonPlan[]          @relation("LessonPlanApprovedBy")
   createdEvaluations   Evaluation[]          @relation("EvaluationCreatedBy")
   approvedEvaluations  Evaluation[]          @relation("EvaluationApprovedBy")
+  submittedGradeCompositions GradeComposition[] @relation("GradeCompositionSubmittedBy")
+  reviewedGradeCompositions  GradeComposition[] @relation("GradeCompositionReviewedBy")
   createdQuestions     Question[]
   reviewedRequests     ClassSubjectRequest[] @relation("ReviewedRequests")
 
@@ -595,6 +603,7 @@ model AcademicPeriod {
   // Relations
   grades      Grade[]
   evaluations Evaluation[]
+  gradeCompositions GradeComposition[]
   lessonPlans LessonPlan[]
   attendances Attendance[]
 
@@ -738,6 +747,7 @@ model ClassSubject {
   lessonPlans        LessonPlan[]
   assignments        Assignment[]
   evaluations        Evaluation[]
+  gradeCompositions  GradeComposition[]
 
   @@unique([classId, subjectId])
   @@index([classId])
@@ -948,6 +958,38 @@ model Evaluation {
   @@index([createdById])
   @@unique([classSubjectId, academicPeriodId, slot])
   @@map("evaluations")
+}
+
+// Composição única das avaliações de uma disciplina/turma em cada bimestre.
+// Os pesos pertencem à composição, e não às avaliações individuais.
+model GradeComposition {
+  id              String                @id @default(uuid())
+  assessmentCount Int
+  va1Weight       Int
+  va2Weight       Int?
+  va3Weight       Int?
+  va4Weight       Int?
+  status          GradeCompositionStatus @default(PENDING_APPROVAL)
+  reviewNote      String?               @db.Text
+  submittedAt     DateTime              @default(now())
+  reviewedAt      DateTime?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  classSubjectId  String
+  classSubject    ClassSubject           @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  academicPeriodId String
+  academicPeriod  AcademicPeriod         @relation(fields: [academicPeriodId], references: [id], onDelete: Cascade)
+  submittedById   String
+  submittedBy     User                   @relation("GradeCompositionSubmittedBy", fields: [submittedById], references: [id], onDelete: Cascade)
+  reviewedById    String?
+  reviewedBy      User?                  @relation("GradeCompositionReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([classSubjectId, academicPeriodId])
+  @@index([status])
+  @@index([submittedById])
+  @@index([reviewedById])
+  @@map("grade_compositions")
 }
 
 model Grade {

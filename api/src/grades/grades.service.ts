@@ -6,7 +6,12 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGradeDto, BulkGradeDto, UpdateGradeDto } from './dto';
-import { GradeStatus, UserRole } from '@prisma/client';
+import {
+  AssessmentSlot,
+  GradeCompositionStatus,
+  GradeStatus,
+  UserRole,
+} from '@prisma/client';
 import { RankingsService } from '../rankings/rankings.service';
 import { AchievementsService } from '../achievements/achievements.service';
 import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
@@ -55,11 +60,18 @@ export class GradesService {
       academicPeriodId,
       examType,
     );
+    const composition = await this.getApprovedComposition(
+      classSubjectId,
+      academicPeriodId,
+      examType,
+      currentUser,
+    );
 
     const effectiveWeight =
-      evaluation?.weight && evaluation.weight > 0
+      composition?.weight ??
+      (evaluation?.weight && evaluation.weight > 0
         ? evaluation.weight
-        : (weight ?? 1.0);
+        : (weight ?? 1.0));
     this.ensurePercentageWeight(effectiveWeight);
 
     const grade = await this.prisma.grade.create({
@@ -233,8 +245,17 @@ export class GradesService {
       academicPeriodId,
       examType,
     );
+    const composition = await this.getApprovedComposition(
+      classSubjectId,
+      academicPeriodId,
+      examType,
+      currentUser,
+    );
     const effectiveWeight =
-      evaluation && evaluation.weight > 0 ? evaluation.weight : (weight ?? 1.0);
+      composition?.weight ??
+      (evaluation && evaluation.weight > 0
+        ? evaluation.weight
+        : (weight ?? 1.0));
     this.ensurePercentageWeight(effectiveWeight);
 
     // Valida período letivo
@@ -814,11 +835,18 @@ export class GradesService {
     this.ensureTeacherCanManage(existingGrade.teacherId, currentUser);
 
     const { examDate, ...data } = updateGradeDto;
+    const composition = await this.getApprovedComposition(
+      existingGrade.classSubjectId,
+      existingGrade.academicPeriodId,
+      existingGrade.examType,
+      currentUser,
+    );
 
     return this.prisma.grade.update({
       where: { id },
       data: {
         ...data,
+        ...(composition ? { weight: composition.weight } : {}),
         examDate: examDate ? new Date(examDate) : undefined,
       },
       include: {
@@ -965,5 +993,87 @@ export class GradesService {
         'O peso de cada VA deve estar entre 1% e 100%',
       );
     }
+  }
+
+  private async getApprovedComposition(
+    classSubjectId: string,
+    academicPeriodId: string,
+    examType: string,
+    currentUser?: CurrentUserPayload,
+  ) {
+    const composition = await this.prisma.gradeComposition.findUnique({
+      where: {
+        classSubjectId_academicPeriodId: {
+          classSubjectId,
+          academicPeriodId,
+        },
+      },
+      select: {
+        status: true,
+        assessmentCount: true,
+        va1Weight: true,
+        va2Weight: true,
+        va3Weight: true,
+        va4Weight: true,
+      },
+    });
+
+    if (!composition && currentUser?.role === UserRole.TEACHER) {
+      throw new ForbiddenException(
+        'A composição da nota deste bimestre ainda não foi aprovada pela coordenação ou direção',
+      );
+    }
+
+    if (!composition) return null;
+
+    if (composition.status !== GradeCompositionStatus.APPROVED) {
+      if (currentUser?.role === UserRole.TEACHER) {
+        throw new ForbiddenException(
+          'A composição da nota deste bimestre ainda não foi aprovada pela coordenação ou direção',
+        );
+      }
+      return null;
+    }
+
+    const slot = this.normalizeAssessmentSlot(examType);
+    if (!slot) {
+      throw new BadRequestException('Informe uma VA válida entre VA1 e VA4');
+    }
+
+    const slotIndex = [
+      AssessmentSlot.VA1,
+      AssessmentSlot.VA2,
+      AssessmentSlot.VA3,
+      AssessmentSlot.VA4,
+    ].indexOf(slot);
+
+    if (slotIndex >= composition.assessmentCount) {
+      throw new BadRequestException(
+        `${slot} não faz parte da composição aprovada deste bimestre`,
+      );
+    }
+
+    const weights: Record<AssessmentSlot, number | null> = {
+      VA1: composition.va1Weight,
+      VA2: composition.va2Weight,
+      VA3: composition.va3Weight,
+      VA4: composition.va4Weight,
+    };
+    const selectedWeight = weights[slot];
+
+    if (!selectedWeight) {
+      throw new BadRequestException(
+        `O peso da ${slot} não está definido na composição aprovada`,
+      );
+    }
+
+    return { weight: selectedWeight };
+  }
+
+  private normalizeAssessmentSlot(value: string): AssessmentSlot | null {
+    const normalized = value.trim().toUpperCase().replace(/\s+/g, '');
+    return Object.values(AssessmentSlot).includes(normalized as AssessmentSlot)
+      ? (normalized as AssessmentSlot)
+      : null;
   }
 }

@@ -17,11 +17,7 @@ import { AssessmentSlot, EvaluationStatus, UserRole } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
-import {
-  CreateEvaluationDto,
-  RejectEvaluationDto,
-  UpdateEvaluationWeightDto,
-} from './dto';
+import { CreateEvaluationDto, RejectEvaluationDto } from './dto';
 import { EvaluationsService } from './evaluations.service';
 
 @ApiTags('evaluations')
@@ -118,23 +114,5 @@ export class EvaluationsController {
     @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.evaluationsService.reject(id, dto.reason, user);
-  }
-
-  @Patch(':id/weight')
-  @Roles(
-    UserRole.SUPER_ADMIN_GLOBAL,
-    UserRole.SUPER_ADMIN,
-    UserRole.DIRECTOR,
-    UserRole.INSTITUTION_ADMIN,
-    UserRole.COORDINATOR,
-    UserRole.TEACHER,
-  )
-  @ApiOperation({ summary: 'Definir o peso percentual de uma VA' })
-  updateWeight(
-    @Param('id') id: string,
-    @Body() dto: UpdateEvaluationWeightDto,
-    @CurrentUser() user: CurrentUserPayload,
-  ) {
-    return this.evaluationsService.updateWeight(id, dto.weight, user);
   }
 }

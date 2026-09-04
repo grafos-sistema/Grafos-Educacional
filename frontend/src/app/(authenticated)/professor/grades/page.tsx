@@ -25,6 +25,11 @@ import { classesService } from '@/services/classes.service';
 import { academicPeriodsService } from '@/services/academic-periods.service';
 import { gradesService } from '@/services/grades.service';
 import { evaluationsService } from '@/services/evaluations.service';
+import { gradeCompositionsService } from '@/services/grade-compositions.service';
+import {
+  compositionWeightForSlot,
+  type GradeComposition,
+} from '@/types/grade-composition.types';
 import { GradeStatus } from '@/types/grade.types';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
@@ -110,6 +115,7 @@ export default function GradesPage() {
   );
   const [searchTerm, setSearchTerm] = useState('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showCompositionModal, setShowCompositionModal] = useState(false);
   const [showProposalModal, setShowProposalModal] = useState(false);
   const [proposalSlot, setProposalSlot] = useState<AssessmentSlot>('VA1');
   const [proposalTitle, setProposalTitle] = useState('');
@@ -287,49 +293,55 @@ export default function GradesPage() {
     [approvedEvaluations],
   );
 
+  const {
+    data: gradeCompositions = [],
+    isLoading: loadingComposition,
+    isError: compositionError,
+  } = useQuery({
+    queryKey: ['grade-composition', selectedClassSubjectId, selectedPeriodId],
+    queryFn: () => gradeCompositionsService.findAll({
+      classSubjectId: selectedClassSubjectId,
+      academicPeriodId: selectedPeriodId,
+    }),
+    enabled: Boolean(selectedClassSubjectId && selectedPeriodId),
+  });
+
+  const composition: GradeComposition | undefined = gradeCompositions[0];
+
   useEffect(() => {
-    if (!selectedClassSubjectId || !selectedPeriodId || loadingEvaluations || loadingCurrentGrades) {
+    if (
+      !selectedClassSubjectId ||
+      !selectedPeriodId ||
+      loadingComposition ||
+      compositionError
+    ) {
       return;
     }
 
-    const persistedWeights = new Map<AssessmentSlot, number>();
-
-    approvedEvaluations.forEach((evaluation) => {
-      if (evaluation.weight > 0) {
-        persistedWeights.set(evaluation.slot, evaluation.weight);
+    if (composition) {
+      const nextCount = Math.max(1, Math.min(assessmentSlots.length, composition.assessmentCount));
+      setAssessmentCount(nextCount);
+      setAssessmentWeights({
+        ...getDefaultAssessmentWeights(nextCount),
+        VA1: composition.va1Weight,
+        VA2: composition.va2Weight ?? 0,
+        VA3: composition.va3Weight ?? 0,
+        VA4: composition.va4Weight ?? 0,
+      });
+      if (composition.status === 'CHANGES_REQUESTED') {
+        setShowCompositionModal(true);
       }
-    });
+      return;
+    }
 
-    currentGrades.forEach((grade) => {
-      const slot = normalizeAssessmentSlot(grade.examType);
-      if (slot && !persistedWeights.has(slot) && grade.weight > 1) {
-        persistedWeights.set(slot, grade.weight);
-      }
-    });
-
-    const inferredCount = persistedWeights.size > 0
-      ? Math.max(...Array.from(persistedWeights.keys()).map((slot) => assessmentSlots.indexOf(slot) + 1))
-      : 1;
-    const nextCount = Math.max(1, Math.min(assessmentSlots.length, inferredCount));
-    const nextSlots = assessmentSlots.slice(0, nextCount);
-    const nextWeights = nextSlots.reduce((weights, slot) => {
-      weights[slot] = persistedWeights.get(slot) ?? 0;
-      return weights;
-    }, {} as Record<AssessmentSlot, number>);
-    const persistedTotal = nextSlots.reduce((total, slot) => total + nextWeights[slot], 0);
-    const hasCompletePersistedWeights = nextSlots.every((slot) => nextWeights[slot] >= 1) && persistedTotal === 100;
-
-    setAssessmentCount(nextCount);
-    setAssessmentWeights(
-      hasCompletePersistedWeights
-        ? { ...getDefaultAssessmentWeights(nextCount), ...nextWeights }
-        : getDefaultAssessmentWeights(nextCount),
-    );
+    setAssessmentCount(1);
+    setAssessmentWeights(getDefaultAssessmentWeights(1));
+    setShowCompositionModal(true);
   }, [
-    approvedEvaluations,
-    currentGrades,
-    loadingCurrentGrades,
-    loadingEvaluations,
+    composition?.id,
+    composition?.status,
+    loadingComposition,
+    compositionError,
     selectedClassSubjectId,
     selectedPeriodId,
   ]);
@@ -342,6 +354,28 @@ export default function GradesPage() {
   const hasValidAssessmentWeights = activeAssessmentSlots.every(
     (slot) => Number(assessmentWeights[slot]) >= 1,
   ) && totalAssessmentWeight === 100;
+
+  const compositionMutation = useMutation({
+    mutationFn: () => gradeCompositionsService.create({
+      classSubjectId: selectedClassSubjectId,
+      academicPeriodId: selectedPeriodId,
+      assessmentCount,
+      va1Weight: assessmentWeights.VA1,
+      ...(assessmentCount >= 2 ? { va2Weight: assessmentWeights.VA2 } : {}),
+      ...(assessmentCount >= 3 ? { va3Weight: assessmentWeights.VA3 } : {}),
+      ...(assessmentCount >= 4 ? { va4Weight: assessmentWeights.VA4 } : {}),
+    }),
+    onSuccess: () => {
+      setShowCompositionModal(false);
+      queryClient.invalidateQueries({ queryKey: ['grade-composition'] });
+      toast.success('Composição enviada para análise da coordenação ou direção.');
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || error?.message ||
+        'Não foi possível enviar a composição para análise.';
+      toast.error(message);
+    },
+  });
 
   const proposalMutation = useMutation({
     mutationFn: () => evaluationsService.create({
@@ -447,6 +481,10 @@ export default function GradesPage() {
     mutationFn: async () => {
       if (!selectedSubject || !user || !selectedPeriodId) return;
 
+      if (composition?.status !== 'APPROVED') {
+        throw new Error('A composição da nota precisa ser aprovada antes do lançamento');
+      }
+
       if (!hasValidAssessmentWeights) {
         throw new Error('A soma dos pesos das VAs deve totalizar exatamente 100%');
       }
@@ -481,34 +519,6 @@ export default function GradesPage() {
         throw new Error('Nenhuma nota foi preenchida');
       }
 
-      // Primeiro retiramos o peso de VAs que deixaram de fazer parte da
-      // composição e depois aplicamos os novos pesos. Assim, uma alteração
-      // como 70/20/10 para 60/30/10 nunca é bloqueada temporariamente por
-      // ultrapassar 100% durante a atualização.
-      const weightUpdates = [
-        ...approvedEvaluations
-          .filter((evaluation) => !activeAssessmentSlots.includes(evaluation.slot))
-          .filter((evaluation) => evaluation.weight > 0)
-          .map((evaluation) => ({ evaluation, weight: 0 })),
-        ...activeAssessmentSlots
-          .map((slot) => {
-            const evaluation = evaluationsBySlot.get(slot);
-            return evaluation
-              ? { evaluation, weight: assessmentWeights[slot] }
-              : null;
-          })
-          .filter((update): update is { evaluation: (typeof approvedEvaluations)[number]; weight: number } => Boolean(update)),
-      ].sort((first, second) => {
-        const firstDecreases = first.weight < first.evaluation.weight;
-        const secondDecreases = second.weight < second.evaluation.weight;
-        return Number(secondDecreases) - Number(firstDecreases);
-      });
-
-      for (const { evaluation, weight } of weightUpdates) {
-        if (evaluation.weight === weight) continue;
-        await evaluationsService.updateWeight(evaluation.id, weight);
-      }
-
        const currentGradeIsSlot = (grade: (typeof currentGrades)[number]) =>
          Boolean(normalizeAssessmentSlot(grade.examType));
        await Promise.all(currentGrades.filter(currentGradeIsSlot).map((grade) => gradesService.remove(grade.id)));
@@ -522,7 +532,7 @@ export default function GradesPage() {
            evaluationId: evaluation?.id,
            examDate: evaluation?.examDate,
            description: evaluation?.title,
-           weight: assessmentWeights[slot],
+           weight: compositionWeightForSlot(composition, slot) ?? assessmentWeights[slot],
            classSubjectId: selectedClassSubjectId,
            academicPeriodId: selectedPeriodId,
            teacherId,
@@ -633,6 +643,11 @@ export default function GradesPage() {
   };
 
   const handleSaveClick = () => {
+    if (composition?.status !== 'APPROVED') {
+      toast.warning('A composição da nota precisa ser aprovada antes do lançamento.');
+      return;
+    }
+
     if (stats.filled === 0) {
       toast.warning('Nenhuma nota foi preenchida');
       return;
@@ -657,8 +672,13 @@ export default function GradesPage() {
   };
 
   const openProposalModal = () => {
-    const nextAvailableSlot = assessmentSlots.find((slot) => !evaluationsBySlot.has(slot));
-    setProposalSlot(nextAvailableSlot ?? 'VA1');
+    if (composition?.status !== 'APPROVED') {
+      toast.info('Aguarde a aprovação da composição do bimestre antes de propor uma avaliação.');
+      return;
+    }
+
+    const nextAvailableSlot = activeAssessmentSlots.find((slot) => !evaluationsBySlot.has(slot));
+    setProposalSlot(nextAvailableSlot ?? activeAssessmentSlots[0] ?? 'VA1');
     setShowProposalModal(true);
   };
 
@@ -781,6 +801,85 @@ export default function GradesPage() {
       />
 
       <Modal
+        isOpen={showCompositionModal}
+        onClose={() => setShowCompositionModal(false)}
+        title="Composição da nota do bimestre"
+        description="Defina quantas avaliações formarão a nota e distribua os pesos. A coordenação ou direção analisará sua solicitação."
+        size="lg"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => setShowCompositionModal(false)}
+            >
+              Agora não
+            </Button>
+            <Button
+              onClick={() => compositionMutation.mutate()}
+              disabled={
+                !selectedClassSubjectId ||
+                !selectedPeriodId ||
+                !hasValidAssessmentWeights ||
+                compositionMutation.isPending
+              }
+              isLoading={compositionMutation.isPending}
+            >
+              Enviar para análise
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-5">
+          {composition?.status === 'CHANGES_REQUESTED' && composition.reviewNote ? (
+            <div className="rounded-lg border border-[#e3e5e9] bg-[#f6f6f6] px-4 py-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+              <p className="font-medium text-gray-900 dark:text-white">Observação da coordenação ou direção</p>
+              <p className="mt-1">{composition.reviewNote}</p>
+            </div>
+          ) : null}
+
+          <div className="max-w-xs">
+            <Select
+              label="Quantidade de avaliações"
+              value={assessmentCount}
+              onChange={(event) => handleAssessmentCountChange(Number(event.target.value))}
+              options={[1, 2, 3, 4].map((count) => ({
+                value: count,
+                label: `${count} ${count === 1 ? 'avaliação' : 'avaliações'}`,
+              }))}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {activeAssessmentSlots.map((slot) => (
+              <div key={slot} className="rounded-lg border border-[#e3e5e9] p-4 dark:border-gray-700">
+                <div className="mb-2 text-sm font-semibold text-gray-900 dark:text-white">{slot}</div>
+                <Input
+                  type="number"
+                  label={`Peso da ${slot} (%)`}
+                  value={assessmentWeights[slot] || ''}
+                  onChange={(event) => handleAssessmentWeightChange(slot, event.target.value)}
+                  min="1"
+                  max="100"
+                  step="1"
+                  placeholder="Ex.: 70"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between border-t border-[#e0e0e0] pt-4 text-sm dark:border-gray-700">
+            <span className="text-gray-600 dark:text-gray-400">Total dos pesos</span>
+            <span className="font-semibold text-gray-900 dark:text-white">{totalAssessmentWeight}% de 100%</span>
+          </div>
+          {totalAssessmentWeight !== 100 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Ajuste os pesos para que a soma seja exatamente 100%.
+            </p>
+          ) : null}
+        </div>
+      </Modal>
+
+      <Modal
         isOpen={showProposalModal}
         onClose={() => setShowProposalModal(false)}
         title="Propor avaliação"
@@ -806,7 +905,7 @@ export default function GradesPage() {
             label="VA"
             value={proposalSlot}
             onChange={(event) => setProposalSlot(event.target.value as AssessmentSlot)}
-            options={assessmentSlots.map((slot) => ({
+            options={activeAssessmentSlots.map((slot) => ({
               value: slot,
               label: evaluationsBySlot.has(slot) ? `${slot} (já cadastrada)` : slot,
               disabled: evaluationsBySlot.has(slot),
@@ -1079,18 +1178,19 @@ export default function GradesPage() {
                Lançamento de notas
              </h2>
              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-               Selecione o bimestre, defina as VAs e informe as notas dos alunos.
+               Selecione a turma, a disciplina e o bimestre para iniciar o lançamento.
              </p>
            </div>
-           <Button
-             variant="secondary"
-             size="sm"
-             leftIcon={<PlusIcon className="h-4 w-4" />}
-             onClick={openProposalModal}
-             disabled={!selectedClassSubjectId || !selectedPeriodId}
-           >
-             Propor avaliação
-           </Button>
+           {composition?.status === 'APPROVED' ? (
+             <Button
+               variant="secondary"
+               size="sm"
+               leftIcon={<PlusIcon className="h-4 w-4" />}
+               onClick={openProposalModal}
+             >
+               Propor avaliação
+             </Button>
+           ) : null}
          </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
@@ -1171,82 +1271,60 @@ export default function GradesPage() {
           />
 
         </div>
-        {selectedPeriodId && !loadingEvaluations && approvedEvaluations.length === 0 && (
+        {selectedPeriodId && !loadingEvaluations && composition?.status === 'APPROVED' && approvedEvaluations.length === 0 && (
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Ainda não há uma avaliação VA aprovada para este período. A direção ou coordenação precisa cadastrá-la antes do lançamento.
+            A composição foi aprovada. Agora a coordenação ou direção precisa liberar as avaliações que serão usadas em cada VA.
           </p>
         )}
        </div>
 
        {selectedPeriodId && (
          <div className="mb-6 rounded-lg border border-[#e0e0e0] bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
              <div>
                <h2 className="text-base font-semibold text-gray-900 dark:text-white">
                  Composição da nota do bimestre
                </h2>
                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                 Escolha de 1 a 4 VAs e defina quanto cada uma representa na nota final.
+                 A composição é definida uma vez e analisada pela coordenação ou direção.
                </p>
              </div>
-             <div className="w-full lg:w-48">
-               <Select
-                 label="Quantidade de VAs"
-                 value={assessmentCount}
-                 onChange={(event) => handleAssessmentCountChange(Number(event.target.value))}
-                 options={[1, 2, 3, 4].map((count) => ({
-                   value: count,
-                   label: `${count} ${count === 1 ? 'avaliação' : 'avaliações'}`,
-                 }))}
-               />
+             {composition?.status === 'CHANGES_REQUESTED' ? (
+               <Button size="sm" onClick={() => setShowCompositionModal(true)}>
+                 Ajustar composição
+               </Button>
+             ) : null}
+           </div>
+
+           {loadingComposition ? (
+             <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">Carregando composição...</p>
+           ) : composition?.status === 'APPROVED' ? (
+             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-[#e0e0e0] pt-4 text-sm dark:border-gray-700">
+               <span className="font-medium text-gray-900 dark:text-white">Composição aprovada</span>
+               <span className="text-gray-500 dark:text-gray-400">{composition.assessmentCount} {composition.assessmentCount === 1 ? 'VA' : 'VAs'}</span>
+               {activeAssessmentSlots.map((slot) => (
+                 <span key={slot} className="text-gray-500 dark:text-gray-400">
+                   {slot} {compositionWeightForSlot(composition, slot)}%
+                 </span>
+               ))}
              </div>
-           </div>
-
-           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-             {activeAssessmentSlots.map((slot) => {
-               const evaluation = evaluationsBySlot.get(slot);
-               return (
-                 <div key={slot} className="rounded-lg border border-[#e3e5e9] p-3 dark:border-gray-600">
-                   <div className="mb-2 flex items-center justify-between gap-2">
-                     <span className="text-sm font-semibold text-gray-900 dark:text-white">{slot}</span>
-                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                       {evaluation ? 'Avaliação aprovada' : 'Sem avaliação aprovada'}
-                     </span>
-                   </div>
-                   <Input
-                     type="number"
-                     label={`Peso da ${slot}`}
-                     value={assessmentWeights[slot] || ''}
-                     onChange={(event) => handleAssessmentWeightChange(slot, event.target.value)}
-                     min="1"
-                     max="100"
-                     step="1"
-                     placeholder="0 a 100"
-                   />
-                   {evaluation && (
-                     <p className="mt-2 truncate text-xs text-gray-500 dark:text-gray-400" title={evaluation.title}>
-                       {evaluation.title}
-                     </p>
-                   )}
-                 </div>
-               );
-             })}
-           </div>
-
-           <div className={`mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm ${
-             totalAssessmentWeight === 100
-               ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300'
-               : 'bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-300'
-           }`}>
-             <span>
-               Total dos pesos: <strong>{totalAssessmentWeight}%</strong>
-             </span>
-             <span>
-               {totalAssessmentWeight === 100
-                 ? 'Configuração pronta para o lançamento.'
-                 : 'Ajuste os pesos até totalizar 100%.'}
-             </span>
-           </div>
+           ) : composition?.status === 'PENDING_APPROVAL' ? (
+             <p className="mt-4 border-t border-[#e0e0e0] pt-4 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
+               Solicitação enviada. Aguarde a análise da coordenação ou direção.
+             </p>
+           ) : composition?.status === 'CHANGES_REQUESTED' ? (
+             <div className="mt-4 border-t border-[#e0e0e0] pt-4 text-sm dark:border-gray-700">
+               <p className="font-medium text-gray-900 dark:text-white">A composição precisa de ajustes.</p>
+               {composition.reviewNote ? <p className="mt-1 text-gray-600 dark:text-gray-300">{composition.reviewNote}</p> : null}
+             </div>
+           ) : (
+             <div className="mt-4 border-t border-[#e0e0e0] pt-4 dark:border-gray-700">
+               <p className="text-sm text-gray-600 dark:text-gray-300">Defina a quantidade de avaliações e seus pesos para começar o lançamento.</p>
+               <Button size="sm" className="mt-3" onClick={() => setShowCompositionModal(true)}>
+                 Definir composição
+               </Button>
+             </div>
+           )}
          </div>
        )}
 
@@ -1259,6 +1337,22 @@ export default function GradesPage() {
           </h3>
           <p className="text-gray-500 dark:text-gray-400">
             Selecione a turma, disciplina e período acadêmico para lançar as notas
+          </p>
+        </div>
+      ) : loadingComposition ? (
+        <div className="flex justify-center py-12">
+          <LoadingSpinner size="lg" text="Verificando composição do bimestre..." />
+        </div>
+      ) : composition?.status !== 'APPROVED' ? (
+        <div className="rounded-lg border border-[#e0e0e0] bg-white p-10 text-center shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <AcademicCapIcon className="mx-auto mb-4 h-12 w-12 text-gray-400" />
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+            Lançamento bloqueado até a aprovação
+          </h3>
+          <p className="mx-auto mt-2 max-w-lg text-sm text-gray-500 dark:text-gray-400">
+            {composition?.status === 'PENDING_APPROVAL'
+              ? 'A composição deste bimestre está aguardando análise da coordenação ou direção.'
+              : 'Defina a composição do bimestre e envie a solicitação para análise.'}
           </p>
         </div>
       ) : loadingEnrollments ? (
