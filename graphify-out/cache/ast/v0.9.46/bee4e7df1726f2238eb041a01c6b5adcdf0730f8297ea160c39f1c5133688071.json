@@ -1,0 +1,1 @@
+{"nodes": [{"id": "$graphify-root$_supabase_migrations_20260820110000_restrict_event_attachments_to_pdf_sql", "label": "20260820110000_restrict_event_attachments_to_pdf.sql", "file_type": "code", "source_file": "supabase/migrations/20260820110000_restrict_event_attachments_to_pdf.sql", "source_location": null}], "edges": []}

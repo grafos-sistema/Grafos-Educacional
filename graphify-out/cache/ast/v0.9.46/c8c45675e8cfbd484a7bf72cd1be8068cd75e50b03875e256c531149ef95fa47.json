@@ -1,0 +1,1 @@
+{"nodes": [{"id": "$graphify-root$_supabase_migrations_20260824120000_backfill_imported_student_class_enrollments_sql", "label": "20260824120000_backfill_imported_student_class_enrollments.sql", "file_type": "code", "source_file": "supabase/migrations/20260824120000_backfill_imported_student_class_enrollments.sql", "source_location": null}], "edges": []}
