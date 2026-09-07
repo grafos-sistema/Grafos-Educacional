@@ -257,6 +257,20 @@ export class EvaluationsService {
           id: true,
           class: { select: { id: true, name: true, grade: true } },
           subject: { select: { id: true, name: true, code: true } },
+          teacher: {
+            select: {
+              id: true,
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  firstName: true,
+                  lastName: true,
+                  avatar: true,
+                },
+              },
+            },
+          },
         },
       },
       academicPeriod: {

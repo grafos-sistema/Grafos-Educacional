@@ -13,6 +13,9 @@ export interface Evaluation {
   slot: AssessmentSlot;
   description?: string;
   examDate?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  approvedAt?: string | null;
   maxValue: number;
   weight: number;
   countsTowardsAverage: boolean;
@@ -25,6 +28,16 @@ export interface Evaluation {
     id: string;
     class?: { id: string; name: string; grade?: string };
     subject?: { id: string; name: string; code?: string };
+    teacher?: {
+      id: string;
+      user?: {
+        id: string;
+        name?: string;
+        firstName?: string;
+        lastName?: string;
+        avatar?: string | null;
+      } | null;
+    } | null;
   };
   academicPeriod?: { id: string; name: string; orderNumber: number; type?: string };
   createdBy?: { id: string; name: string; firstName?: string; lastName?: string };

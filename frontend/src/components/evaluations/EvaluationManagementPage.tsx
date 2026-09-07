@@ -2,7 +2,17 @@
 
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeftIcon, CheckIcon, ClockIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowLeftIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronUpIcon,
+  ClockIcon,
+  UserCircleIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { classesService } from '@/services/classes.service';
@@ -20,6 +30,95 @@ import { useToast } from '@/hooks/useToast';
 
 const slots: AssessmentSlot[] = ['VA1', 'VA2', 'VA3', 'VA4'];
 const types = ['Prova', 'Atividade', 'Trabalho', 'Projeto', 'Seminário', 'Outro'];
+const PAGE_SIZE = 10;
+
+type PersonSummary = {
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  avatar?: string | null;
+};
+
+function personName(person?: PersonSummary | null) {
+  if (!person) return 'Não informado';
+  return person.name || `${person.firstName || ''} ${person.lastName || ''}`.trim() || 'Não informado';
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : new Intl.DateTimeFormat('pt-BR').format(date);
+}
+
+function evaluationStatusLabel(status: string) {
+  return {
+    APPROVED: 'Liberada',
+    PENDING_APPROVAL: 'Aguardando aprovação',
+    REJECTED: 'Devolvida',
+    DRAFT: 'Rascunho',
+    ARCHIVED: 'Arquivada',
+  }[status] || status;
+}
+
+function compositionStatusLabel(status: string) {
+  return status === 'APPROVED'
+    ? 'Aprovada'
+    : status === 'CHANGES_REQUESTED'
+      ? 'Devolvida para ajustes'
+      : 'Aguardando aprovação';
+}
+
+function Pagination({
+  page,
+  totalItems,
+  onPageChange,
+}: {
+  page: number;
+  totalItems: number;
+  onPageChange: (page: number) => void;
+}) {
+  const totalPages = Math.ceil(totalItems / PAGE_SIZE);
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-between border-t border-[#e0e0e0] px-6 py-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+      <span>
+        Mostrando {Math.min((page - 1) * PAGE_SIZE + 1, totalItems)}–{Math.min(page * PAGE_SIZE, totalItems)} de {totalItems}
+      </span>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label="Página anterior"
+          onClick={() => onPageChange(Math.max(1, page - 1))}
+          disabled={page === 1}
+          className="rounded-[5px] border border-[#e3e5e9] p-1.5 text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+        >
+          <ChevronLeftIcon className="h-4 w-4" />
+        </button>
+        <span className="min-w-20 text-center">Página {page} de {totalPages}</span>
+        <button
+          type="button"
+          aria-label="Próxima página"
+          onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+          disabled={page === totalPages}
+          className="rounded-[5px] border border-[#e3e5e9] p-1.5 text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+        >
+          <ChevronRightIcon className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PersonAvatar({ person, label }: { person?: PersonSummary | null; label: string }) {
+  return person?.avatar ? (
+    <img src={person.avatar} alt={label} className="h-9 w-9 rounded-full object-cover" />
+  ) : (
+    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300">
+      <UserCircleIcon className="h-6 w-6" />
+    </div>
+  );
+}
 
 export function EvaluationManagementPage() {
   const router = useRouter();
@@ -36,6 +135,12 @@ export function EvaluationManagementPage() {
   const [examDate, setExamDate] = useState('');
   const [compositionToReview, setCompositionToReview] = useState<GradeComposition | null>(null);
   const [compositionReviewReason, setCompositionReviewReason] = useState('');
+  const [showDefinedCompositions, setShowDefinedCompositions] = useState(false);
+  const [showDefinedEvaluations, setShowDefinedEvaluations] = useState(false);
+  const [pendingCompositionPage, setPendingCompositionPage] = useState(1);
+  const [definedCompositionPage, setDefinedCompositionPage] = useState(1);
+  const [pendingEvaluationPage, setPendingEvaluationPage] = useState(1);
+  const [definedEvaluationPage, setDefinedEvaluationPage] = useState(1);
 
   const { data: classesData, isLoading: loadingClasses } = useQuery({
     queryKey: ['evaluation-classes', user?.institutionId],
@@ -162,6 +267,39 @@ export function EvaluationManagementPage() {
     () => compositions.filter((item) => item.status === 'PENDING_APPROVAL'),
     [compositions],
   );
+  const definedCompositions = useMemo(
+    () => compositions.filter((item) => item.status !== 'PENDING_APPROVAL'),
+    [compositions],
+  );
+  const definedEvaluations = useMemo(
+    () => evaluations.filter((item) => item.status !== 'PENDING_APPROVAL'),
+    [evaluations],
+  );
+
+  const pendingCompositionTotalPages = Math.max(1, Math.ceil(pendingCompositions.length / PAGE_SIZE));
+  const definedCompositionTotalPages = Math.max(1, Math.ceil(definedCompositions.length / PAGE_SIZE));
+  const pendingEvaluationTotalPages = Math.max(1, Math.ceil(pending.length / PAGE_SIZE));
+  const definedEvaluationTotalPages = Math.max(1, Math.ceil(definedEvaluations.length / PAGE_SIZE));
+  const currentPendingCompositionPage = Math.min(pendingCompositionPage, pendingCompositionTotalPages);
+  const currentDefinedCompositionPage = Math.min(definedCompositionPage, definedCompositionTotalPages);
+  const currentPendingEvaluationPage = Math.min(pendingEvaluationPage, pendingEvaluationTotalPages);
+  const currentDefinedEvaluationPage = Math.min(definedEvaluationPage, definedEvaluationTotalPages);
+  const visiblePendingCompositions = pendingCompositions.slice(
+    (currentPendingCompositionPage - 1) * PAGE_SIZE,
+    currentPendingCompositionPage * PAGE_SIZE,
+  );
+  const visibleDefinedCompositions = definedCompositions.slice(
+    (currentDefinedCompositionPage - 1) * PAGE_SIZE,
+    currentDefinedCompositionPage * PAGE_SIZE,
+  );
+  const visiblePendingEvaluations = pending.slice(
+    (currentPendingEvaluationPage - 1) * PAGE_SIZE,
+    currentPendingEvaluationPage * PAGE_SIZE,
+  );
+  const visibleDefinedEvaluations = definedEvaluations.slice(
+    (currentDefinedEvaluationPage - 1) * PAGE_SIZE,
+    currentDefinedEvaluationPage * PAGE_SIZE,
+  );
 
   return (
     <div className="space-y-6">
@@ -222,70 +360,137 @@ export function EvaluationManagementPage() {
       <section className="overflow-hidden rounded-lg border border-[#e3e5e9] bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div className="flex items-center justify-between border-b border-[#e0e0e0] px-6 py-4 dark:border-gray-700">
           <div>
-            <h2 className="font-semibold text-gray-900 dark:text-white">Composições para analisar</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white">Composições de nota</h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Revise quantas avaliações formarão a nota de cada bimestre e os respectivos pesos.
+              Revise as solicitações dos professores e acompanhe as composições já analisadas.
             </p>
           </div>
           {pendingCompositions.length > 0 ? (
-            <span className="text-sm text-gray-600 dark:text-gray-300">{pendingCompositions.length} pendente(s)</span>
+            <span className="text-sm font-medium text-amber-700 dark:text-amber-300">{pendingCompositions.length} pendente(s)</span>
           ) : null}
         </div>
         {loadingCompositions ? (
           <div className="p-8"><LoadingSpinner text="Carregando solicitações..." /></div>
-        ) : pendingCompositions.length === 0 ? (
-          <p className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">Nenhuma composição aguardando análise.</p>
         ) : (
-          <div className="divide-y divide-[#e0e0e0] dark:divide-gray-700">
-            {pendingCompositions.map((item) => {
-              const weights = [item.va1Weight, item.va2Weight, item.va3Weight, item.va4Weight]
-                .slice(0, item.assessmentCount);
-              const teacherName = item.submittedBy?.name ||
-                `${item.submittedBy?.firstName || ''} ${item.submittedBy?.lastName || ''}`.trim() ||
-                'Professor';
+          <div>
+            <div className="border-b border-[#e0e0e0] px-6 py-3 dark:border-gray-700">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Pendentes para análise</h3>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Aprove ou devolva as solicitações que ainda aguardam decisão.</p>
+            </div>
+            {pendingCompositions.length === 0 ? (
+              <p className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">Nenhuma composição aguardando análise.</p>
+            ) : (
+              <div className="divide-y divide-[#e0e0e0] dark:divide-gray-700">
+                {visiblePendingCompositions.map((item) => {
+                  const weights = [item.va1Weight, item.va2Weight, item.va3Weight, item.va4Weight]
+                    .slice(0, item.assessmentCount);
+                  const teacher = item.teacher?.user ?? item.submittedBy;
+                  const teacherName = personName(teacher);
 
-              return (
-                <div key={item.id} className="flex flex-col gap-4 px-6 py-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <div className="font-medium text-gray-900 dark:text-white">
-                      Composição de {item.assessmentCount} {item.assessmentCount === 1 ? 'avaliação' : 'avaliações'}
+                  return (
+                    <div key={item.id} className="flex flex-col gap-4 px-6 py-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <PersonAvatar person={teacher} label={`Professor ${teacherName}`} />
+                        <div className="min-w-0">
+                          <div className="font-medium text-gray-900 dark:text-white">
+                            Composição de {item.assessmentCount} {item.assessmentCount === 1 ? 'avaliação' : 'avaliações'}
+                          </div>
+                          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            Professor: <span className="font-medium text-gray-700 dark:text-gray-200">{teacherName}</span> · {item.academicPeriod?.name}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300">
+                            {weights.map((weight, index) => (
+                              <span key={index} className="rounded border border-[#e3e5e9] px-2 py-1 dark:border-gray-600">
+                                VA{index + 1}: {weight}%
+                              </span>
+                            ))}
+                          </div>
+                          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            Enviada em {formatDate(item.submittedAt) || 'data não informada'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setCompositionToReview(item);
+                            setCompositionReviewReason('');
+                          }}
+                          disabled={approveCompositionMutation.isPending || requestCompositionChangesMutation.isPending}
+                          leftIcon={<XMarkIcon className="h-4 w-4" />}
+                        >
+                          Devolver
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => approveCompositionMutation.mutate(item.id)}
+                          disabled={approveCompositionMutation.isPending || requestCompositionChangesMutation.isPending}
+                          leftIcon={<CheckIcon className="h-4 w-4" />}
+                        >
+                          Aprovar
+                        </Button>
+                      </div>
                     </div>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      {item.academicPeriod?.name} · enviada por {teacherName}
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300">
-                      {weights.map((weight, index) => (
-                        <span key={index} className="rounded border border-[#e3e5e9] px-2 py-1 dark:border-gray-600">
-                          VA{index + 1}: {weight}%
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        setCompositionToReview(item);
-                        setCompositionReviewReason('');
-                      }}
-                      disabled={approveCompositionMutation.isPending || requestCompositionChangesMutation.isPending}
-                      leftIcon={<XMarkIcon className="h-4 w-4" />}
-                    >
-                      Devolver
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => approveCompositionMutation.mutate(item.id)}
-                      disabled={approveCompositionMutation.isPending || requestCompositionChangesMutation.isPending}
-                      leftIcon={<CheckIcon className="h-4 w-4" />}
-                    >
-                      Aprovar
-                    </Button>
-                  </div>
+                  );
+                })}
+              </div>
+            )}
+            <Pagination
+              page={currentPendingCompositionPage}
+              totalItems={pendingCompositions.length}
+              onPageChange={setPendingCompositionPage}
+            />
+            <button
+              type="button"
+              onClick={() => setShowDefinedCompositions((value) => !value)}
+              className="flex w-full items-center justify-between border-t border-[#e0e0e0] px-6 py-4 text-left transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/40"
+              aria-expanded={showDefinedCompositions}
+            >
+              <span>
+                <span className="block text-sm font-semibold text-gray-900 dark:text-white">Composições definidas</span>
+                <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">{definedCompositions.length} composição(ões) já analisada(s)</span>
+              </span>
+              {showDefinedCompositions ? <ChevronUpIcon className="h-5 w-5 text-gray-500" /> : <ChevronDownIcon className="h-5 w-5 text-gray-500" />}
+            </button>
+            {showDefinedCompositions ? (
+              definedCompositions.length === 0 ? (
+                <p className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">Nenhuma composição definida.</p>
+              ) : (
+                <div className="divide-y divide-[#e0e0e0] border-t border-[#e0e0e0] dark:divide-gray-700 dark:border-gray-700">
+                  {visibleDefinedCompositions.map((item) => {
+                    const teacher = item.teacher?.user ?? item.submittedBy;
+                    const teacherName = personName(teacher);
+                    const weights = [item.va1Weight, item.va2Weight, item.va3Weight, item.va4Weight]
+                      .slice(0, item.assessmentCount);
+
+                    return (
+                      <div key={item.id} className="flex items-start gap-3 px-6 py-4">
+                        <PersonAvatar person={teacher} label={`Professor ${teacherName}`} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium text-gray-900 dark:text-white">{teacherName}</span>
+                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300">{compositionStatusLabel(item.status)}</span>
+                          </div>
+                          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{item.academicPeriod?.name} · {item.assessmentCount} {item.assessmentCount === 1 ? 'avaliação' : 'avaliações'}</p>
+                          <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300">
+                            {weights.map((weight, index) => <span key={index} className="rounded border border-[#e3e5e9] px-2 py-1 dark:border-gray-600">VA{index + 1}: {weight}%</span>)}
+                          </div>
+                          {item.reviewNote ? <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Observação: {item.reviewNote}</p> : null}
+                        </div>
+                        <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400">{formatDate(item.reviewedAt || item.submittedAt) || ''}</span>
+                      </div>
+                    );
+                  })}
+                  <Pagination
+                    page={currentDefinedCompositionPage}
+                    totalItems={definedCompositions.length}
+                    onPageChange={setDefinedCompositionPage}
+                  />
                 </div>
-              );
-            })}
+              )
+            ) : null}
           </div>
         )}
       </section>
@@ -347,24 +552,110 @@ export function EvaluationManagementPage() {
         <div className="flex items-center justify-between border-b border-[#e0e0e0] px-6 py-4 dark:border-gray-700">
           <div>
             <h2 className="font-semibold text-gray-900 dark:text-white">Avaliações cadastradas</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">As VAs aparecem aqui antes de o professor lançar as notas.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">As avaliações pendentes ficam em destaque; as demais podem ser consultadas quando necessário.</p>
           </div>
-          {pending.length > 0 && <span className="inline-flex items-center gap-1 text-sm text-amber-700"><ClockIcon className="h-4 w-4" /> {pending.length} pendente(s)</span>}
+          {pending.length > 0 && <span className="inline-flex items-center gap-1 text-sm font-medium text-amber-700 dark:text-amber-300"><ClockIcon className="h-4 w-4" /> {pending.length} pendente(s)</span>}
         </div>
-        {loadingEvaluations ? <div className="p-8"><LoadingSpinner text="Carregando avaliações..." /></div> : evaluations.length === 0 ? <p className="p-8 text-center text-sm text-gray-500">Nenhuma avaliação cadastrada.</p> : (
-          <div className="divide-y divide-[#e0e0e0] dark:divide-gray-700">
-            {evaluations.map((item) => (
-              <div key={item.id} className="flex flex-col gap-3 px-6 py-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2 font-medium text-gray-900 dark:text-white">
-                    <span>{item.slot}</span><span>·</span><span>{item.title}</span>
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-normal text-gray-600 dark:bg-gray-700 dark:text-gray-300">{item.status === 'APPROVED' ? 'Liberada' : item.status === 'PENDING_APPROVAL' ? 'Aguardando aprovação' : item.status}</span>
-                  </div>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{item.classSubject?.class?.name} · {item.classSubject?.subject?.name} · {item.academicPeriod?.name} · {item.type}</p>
-                </div>
-                {item.status === 'PENDING_APPROVAL' && <div className="flex gap-2"><Button variant="secondary" onClick={() => rejectMutation.mutate(item.id)} disabled={rejectMutation.isPending} leftIcon={<XMarkIcon className="h-4 w-4" />}>Devolver</Button><Button onClick={() => approveMutation.mutate(item.id)} disabled={approveMutation.isPending} leftIcon={<CheckIcon className="h-4 w-4" />}>Aprovar</Button></div>}
+        {loadingEvaluations ? (
+          <div className="p-8"><LoadingSpinner text="Carregando avaliações..." /></div>
+        ) : (
+          <div>
+            <div className="border-b border-[#e0e0e0] px-6 py-3 dark:border-gray-700">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Pendentes para análise</h3>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Avaliações propostas que ainda precisam ser aprovadas ou devolvidas.</p>
+            </div>
+            {pending.length === 0 ? (
+              <p className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">Nenhuma avaliação aguardando análise.</p>
+            ) : (
+              <div className="divide-y divide-[#e0e0e0] dark:divide-gray-700">
+                {visiblePendingEvaluations.map((item) => {
+                  const teacher = item.classSubject?.teacher?.user ?? item.createdBy;
+                  const teacherName = personName(teacher);
+
+                  return (
+                    <div key={item.id} className="flex flex-col gap-4 px-6 py-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <PersonAvatar person={teacher} label={`Professor ${teacherName}`} />
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 font-medium text-gray-900 dark:text-white">
+                            <span>{item.slot}</span><span>·</span><span>{item.title}</span>
+                            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-normal text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Aguardando aprovação</span>
+                          </div>
+                          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            Professor: <span className="font-medium text-gray-700 dark:text-gray-200">{teacherName}</span> · {item.classSubject?.class?.name || 'Turma não informada'} · {item.classSubject?.subject?.name || 'Disciplina não informada'}
+                          </p>
+                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            {item.academicPeriod?.name || 'Período não informado'} · {item.type} · enviada em {formatDate(item.createdAt) || 'data não informada'}
+                          </p>
+                          {item.examDate ? <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Data da avaliação: {formatDate(item.examDate) || 'não informada'}</p> : null}
+                          {item.description ? <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-300">{item.description}</p> : null}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        <Button variant="secondary" size="sm" onClick={() => rejectMutation.mutate(item.id)} disabled={rejectMutation.isPending} leftIcon={<XMarkIcon className="h-4 w-4" />}>Devolver</Button>
+                        <Button size="sm" onClick={() => approveMutation.mutate(item.id)} disabled={approveMutation.isPending} leftIcon={<CheckIcon className="h-4 w-4" />}>Aprovar</Button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
+            )}
+            <Pagination
+              page={currentPendingEvaluationPage}
+              totalItems={pending.length}
+              onPageChange={setPendingEvaluationPage}
+            />
+            <button
+              type="button"
+              onClick={() => setShowDefinedEvaluations((value) => !value)}
+              className="flex w-full items-center justify-between border-t border-[#e0e0e0] px-6 py-4 text-left transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/40"
+              aria-expanded={showDefinedEvaluations}
+            >
+              <span>
+                <span className="block text-sm font-semibold text-gray-900 dark:text-white">Avaliações já definidas</span>
+                <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">{definedEvaluations.length} avaliação(ões) cadastrada(s) ou já analisada(s)</span>
+              </span>
+              {showDefinedEvaluations ? <ChevronUpIcon className="h-5 w-5 text-gray-500" /> : <ChevronDownIcon className="h-5 w-5 text-gray-500" />}
+            </button>
+            {showDefinedEvaluations ? (
+              definedEvaluations.length === 0 ? (
+                <p className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">Nenhuma avaliação definida.</p>
+              ) : (
+                <div className="divide-y divide-[#e0e0e0] border-t border-[#e0e0e0] dark:divide-gray-700 dark:border-gray-700">
+                  {visibleDefinedEvaluations.map((item) => {
+                    const teacher = item.classSubject?.teacher?.user ?? item.createdBy;
+                    const teacherName = personName(teacher);
+                    const reviewer = item.approvedBy;
+
+                    return (
+                      <div key={item.id} className="flex items-start gap-3 px-6 py-4">
+                        <PersonAvatar person={teacher} label={`Professor ${teacherName}`} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2 font-medium text-gray-900 dark:text-white">
+                            <span>{item.slot}</span><span>·</span><span>{item.title}</span>
+                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-normal text-gray-600 dark:bg-gray-700 dark:text-gray-300">{evaluationStatusLabel(item.status)}</span>
+                          </div>
+                          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            Professor: <span className="font-medium text-gray-700 dark:text-gray-200">{teacherName}</span> · {item.classSubject?.class?.name || 'Turma não informada'} · {item.classSubject?.subject?.name || 'Disciplina não informada'}
+                          </p>
+                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            {item.academicPeriod?.name || 'Período não informado'} · {item.type} · criada em {formatDate(item.createdAt) || 'data não informada'}
+                            {item.examDate ? ` · avaliação em ${formatDate(item.examDate) || 'data não informada'}` : ''}
+                          </p>
+                          {reviewer ? <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Analisada por {personName(reviewer)}{item.approvedAt ? ` em ${formatDate(item.approvedAt) || ''}` : ''}</p> : null}
+                          {item.rejectionReason ? <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">Observação: {item.rejectionReason}</p> : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <Pagination
+                    page={currentDefinedEvaluationPage}
+                    totalItems={definedEvaluations.length}
+                    onPageChange={setDefinedEvaluationPage}
+                  />
+                </div>
+              )
+            ) : null}
           </div>
         )}
       </section>
