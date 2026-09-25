@@ -313,6 +313,7 @@ export const classesService = {
         'id, enrollmentDate, isActive, classId, studentId, createdAt, updatedAt, student:students(id, userId, registrationNumber, enrollmentNumber, isActive, user:users(firstName, lastName, email, cpf, avatar))'
       )
       .eq('classId', classId)
+      .eq('isActive', true)
       .order('enrollmentDate', { ascending: false });
 
     if (error) throw error;

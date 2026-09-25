@@ -151,7 +151,9 @@ export class ClassesService {
         },
         _count: {
           select: {
-            enrollments: true,
+            enrollments: {
+              where: { isActive: true },
+            },
             subjects: true,
             schedules: true,
           },
@@ -249,7 +251,9 @@ export class ClassesService {
           },
           _count: {
             select: {
-              enrollments: true,
+              enrollments: {
+                where: { isActive: true },
+              },
               subjects: true,
               schedules: true,
             },
@@ -318,7 +322,9 @@ export class ClassesService {
         },
         _count: {
           select: {
-            enrollments: true,
+            enrollments: {
+              where: { isActive: true },
+            },
             subjects: true,
             schedules: true,
           },
@@ -593,7 +599,9 @@ export class ClassesService {
         },
         _count: {
           select: {
-            enrollments: true,
+            enrollments: {
+              where: { isActive: true },
+            },
             subjects: true,
             schedules: true,
           },

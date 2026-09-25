@@ -97,6 +97,7 @@ export default function SchedulesManagementPage() {
       label: item.subject.name,
     })),
   ];
+  const selectedFormSubject = classSubjects.find((item: any) => item.id === formData.classSubjectId);
 
   // Mutation para criar horário
   const createMutation = useMutation({
@@ -164,7 +165,7 @@ export default function SchedulesManagementPage() {
 
   const resetForm = () => {
     setFormData({
-      classSubjectId: '',
+      classSubjectId: selectedSubjectId,
       dayOfWeek: '',
       startTime: '',
       endTime: '',
@@ -653,19 +654,33 @@ export default function SchedulesManagementPage() {
         title={editingSchedule ? 'Editar Horário' : 'Novo Horário'}
       >
         <div className="space-y-4">
-          <Select
-            label="Disciplina"
-            value={formData.classSubjectId}
-            onChange={(e) => setFormData({ ...formData, classSubjectId: e.target.value })}
-            required
-            options={[
-              { value: '', label: 'Selecione...' },
-              ...classSubjects.map((cs) => ({
-                value: cs.id,
-                label: cs.subject?.name || 'Disciplina',
-              })),
-            ]}
-          />
+          {!editingSchedule && selectedSubjectId ? (
+            <div className="rounded-xl border border-primary-200 bg-primary-50/70 p-4 dark:border-primary-800 dark:bg-primary-950/30">
+              <div className="text-xs font-semibold uppercase tracking-wide text-primary-700 dark:text-primary-300">
+                Disciplina selecionada
+              </div>
+              <div className="mt-1 font-medium text-gray-900 dark:text-white">
+                {selectedFormSubject?.subject?.name || 'Disciplina'}
+              </div>
+              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                O horário será criado para a disciplina escolhida no filtro da grade.
+              </p>
+            </div>
+          ) : (
+            <Select
+              label="Disciplina"
+              value={formData.classSubjectId}
+              onChange={(e) => setFormData({ ...formData, classSubjectId: e.target.value })}
+              required
+              options={[
+                { value: '', label: 'Selecione...' },
+                ...classSubjects.map((cs) => ({
+                  value: cs.id,
+                  label: cs.subject?.name || 'Disciplina',
+                })),
+              ]}
+            />
+          )}
           {!hasClassSubjects && (
             <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-800">
               Nenhuma disciplina foi vinculada a esta turma ainda. Primeiro é preciso criar os

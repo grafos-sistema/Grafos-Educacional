@@ -20,6 +20,7 @@ import {
 } from '@nestjs/swagger';
 import { EnrollmentsService } from './enrollments.service';
 import {
+  BulkCreateEnrollmentDto,
   CreateEnrollmentDto,
   TransferEnrollmentDto,
   EnrollmentResponseDto,
@@ -34,6 +35,34 @@ import { SkipOwnership } from '../common/decorators/skip-ownership.decorator';
 @Controller('enrollments')
 export class EnrollmentsController {
   constructor(private readonly enrollmentsService: EnrollmentsService) {}
+
+  @Post('bulk')
+  @UseGuards(InstitutionAdminGuard)
+  @Roles(
+    UserRole.SUPER_ADMIN_GLOBAL,
+    UserRole.SUPER_ADMIN,
+    UserRole.DIRECTOR,
+    UserRole.INSTITUTION_ADMIN,
+    UserRole.COORDINATOR,
+  )
+  @ApiOperation({
+    summary: 'Matricular vários alunos em uma turma',
+    description:
+      'Valida a capacidade e os vínculos dos alunos e cria ou reativa as matrículas em uma única operação transacional.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Matrículas criadas com sucesso',
+    type: [EnrollmentResponseDto],
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Dados inválidos ou capacidade excedida',
+  })
+  @ApiResponse({ status: 409, description: 'Aluno já vinculado a outra turma' })
+  bulkCreate(@Body() bulkCreateEnrollmentDto: BulkCreateEnrollmentDto) {
+    return this.enrollmentsService.bulkCreate(bulkCreateEnrollmentDto);
+  }
 
   @Post()
   @UseGuards(InstitutionAdminGuard)

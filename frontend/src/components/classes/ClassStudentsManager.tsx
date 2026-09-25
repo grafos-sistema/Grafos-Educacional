@@ -3,8 +3,8 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  CheckIcon,
   MagnifyingGlassIcon,
-  PlusIcon,
   TrashIcon,
   UserGroupIcon,
 } from '@heroicons/react/24/outline';
@@ -13,6 +13,7 @@ import { enrollmentsService } from '@/services/enrollments.service';
 import { usersService } from '@/services/users.service';
 import { UserRole } from '@/types/user.types';
 import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -61,6 +62,7 @@ export function ClassStudentsManager({
       UserRole.COORDINATOR,
     ].includes(currentRole as UserRole);
   const [search, setSearch] = useState('');
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
 
   const { data: enrollmentData, isLoading: isLoadingEnrollments } = useQuery({
     queryKey: ['class-enrollments', classId],
@@ -108,8 +110,6 @@ export function ClassStudentsManager({
   );
   const availableStudents = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
-    if (!normalizedSearch) return [];
-
     return (studentsData?.data ?? [])
       .filter(
         (student) =>
@@ -117,21 +117,25 @@ export function ClassStudentsManager({
           !enrolledStudentIds.has(student.studentProfile.id) &&
           !enrolledInAnotherClassStudentIds.has(student.studentProfile.id),
       )
-      .filter((student) =>
-        `${student.firstName} ${student.lastName} ${student.email} ${student.cpf ?? ''}`
+      .filter((student) => {
+        if (!normalizedSearch) return true;
+        return `${student.firstName} ${student.lastName} ${student.email} ${student.cpf ?? ''}`
           .toLowerCase()
-          .includes(normalizedSearch),
-      )
+          .includes(normalizedSearch);
+      })
       .sort((left, right) =>
         userName(left).localeCompare(userName(right), 'pt-BR'),
       )
-      .slice(0, 8);
+      .slice(0, 50);
   }, [enrolledInAnotherClassStudentIds, enrolledStudentIds, search, studentsData?.data]);
 
-  const createMutation = useMutation({
-    mutationFn: (studentId: string) =>
-      enrollmentsService.syncStudentClass(studentId, classId),
-    onSuccess: async (_data, studentId) => {
+  const bulkCreateMutation = useMutation({
+    mutationFn: () =>
+      enrollmentsService.createBulk({
+        classId,
+        studentIds: selectedStudentIds,
+      }),
+    onSuccess: async (createdEnrollments) => {
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ['class-enrollments', classId],
@@ -141,12 +145,12 @@ export function ClassStudentsManager({
         queryClient.invalidateQueries({
           queryKey: ['active-institution-enrollments', institutionId],
         }),
-        queryClient.invalidateQueries({
-          queryKey: ['student-class-enrollment', studentId],
-        }),
       ]);
-      toast.success('Aluno vinculado à turma com sucesso!');
+      toast.success(
+        `${createdEnrollments.length} aluno(s) vinculado(s) à turma com sucesso!`,
+      );
       setSearch('');
+      setSelectedStudentIds([]);
     },
     onError: (error: any) => {
       toast.error(
@@ -184,7 +188,46 @@ export function ClassStudentsManager({
   const isLoading =
     isLoadingEnrollments || isLoadingInstitutionEnrollments || isLoadingStudents;
   const isFull = Boolean(maxStudents && enrollments.length >= maxStudents);
-  const isBusy = createMutation.isPending || removeMutation.isPending;
+  const remainingCapacity = maxStudents
+    ? Math.max(maxStudents - enrollments.length, 0)
+    : Number.POSITIVE_INFINITY;
+  const visibleStudentIds = availableStudents
+    .map((student) => student.studentProfile?.id)
+    .filter((studentId): studentId is string => Boolean(studentId));
+  const selectedVisibleCount = visibleStudentIds.filter((studentId) =>
+    selectedStudentIds.includes(studentId),
+  ).length;
+  const allVisibleSelected =
+    visibleStudentIds.length > 0 && selectedVisibleCount === visibleStudentIds.length;
+
+  const toggleStudent = (studentId: string) => {
+    setSelectedStudentIds((current) => {
+      if (current.includes(studentId)) {
+        return current.filter((id) => id !== studentId);
+      }
+      if (current.length >= remainingCapacity) return current;
+      return [...current, studentId];
+    });
+  };
+
+  const toggleVisibleStudents = () => {
+    setSelectedStudentIds((current) => {
+      if (allVisibleSelected) {
+        const visibleIds = new Set(visibleStudentIds);
+        return current.filter((studentId) => !visibleIds.has(studentId));
+      }
+
+      const next = [...current];
+      for (const studentId of visibleStudentIds) {
+        if (next.includes(studentId)) continue;
+        if (next.length >= remainingCapacity) break;
+        next.push(studentId);
+      }
+      return next;
+    });
+  };
+
+  const isBusy = bulkCreateMutation.isPending || removeMutation.isPending;
 
   return (
     <section className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
@@ -214,7 +257,7 @@ export function ClassStudentsManager({
           {canManageStudents && (
             <div className="mb-6">
               <Input
-                label="Buscar aluno para vincular"
+                label="Adicionar alunos à turma"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
@@ -225,16 +268,57 @@ export function ClassStudentsManager({
                 <p className="mt-2 text-xs text-amber-700">
                   A capacidade máxima desta turma foi atingida.
                 </p>
-              ) : search.trim() && availableStudents.length > 0 ? (
-                <div className="mt-2 space-y-2 rounded-xl border border-gray-200 p-2 dark:border-gray-700">
+              ) : availableStudents.length > 0 ? (
+                <div className="mt-3 rounded-xl border border-gray-200 dark:border-gray-700">
+                  <div className="flex flex-col gap-2 border-b border-gray-200 px-3 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-gray-700">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        Selecione os alunos que deseja vincular
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {selectedStudentIds.length > 0
+                          ? `${selectedStudentIds.length} selecionado(s)`
+                          : 'Você pode selecionar vários de uma vez.'}
+                        {Number.isFinite(remainingCapacity)
+                          ? ` Restam ${remainingCapacity} vaga(s).`
+                          : ''}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={toggleVisibleStudents}
+                      disabled={
+                        isBusy ||
+                        visibleStudentIds.length === 0 ||
+                        (!allVisibleSelected && selectedStudentIds.length >= remainingCapacity)
+                      }
+                      className="self-start rounded-lg px-3 py-2 text-xs font-semibold text-violet-700 transition hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-50 sm:self-auto dark:text-violet-300 dark:hover:bg-violet-900/30"
+                    >
+                      {allVisibleSelected ? 'Desmarcar exibidos' : 'Selecionar exibidos'}
+                    </button>
+                  </div>
+                  <div className="max-h-80 space-y-1 overflow-y-auto p-2">
                   {availableStudents.map((student) => {
-                    const studentId = student.studentProfile!.id;
-                    const name = userName(student);
-                    return (
-                      <div
+                      const studentId = student.studentProfile!.id;
+                      const name = userName(student);
+                      const isSelected = selectedStudentIds.includes(studentId);
+                      return (
+                      <label
                         key={student.id}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/40"
+                        className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 transition ${
+                          isSelected
+                            ? 'border-violet-300 bg-violet-50 dark:border-violet-700 dark:bg-violet-900/20'
+                            : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-700/40'
+                        }`}
                       >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleStudent(studentId)}
+                          disabled={isBusy || (!isSelected && selectedStudentIds.length >= remainingCapacity)}
+                          className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                          aria-label={`Selecionar ${name}`}
+                        />
                         <StudentAvatar avatar={student.avatar} name={name} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium text-gray-900 dark:text-white">
@@ -244,19 +328,32 @@ export function ClassStudentsManager({
                             {student.studentProfile?.registrationNumber || student.email}
                           </p>
                         </div>
-                        <button
-                          type="button"
-                          aria-label={`Vincular ${name} à turma`}
-                          title="Vincular aluno"
-                          onClick={() => createMutation.mutate(studentId)}
-                          disabled={isBusy}
-                          className="rounded-lg p-2 text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 dark:text-emerald-300 dark:hover:bg-emerald-900/30"
-                        >
-                          <PlusIcon className="h-5 w-5" />
-                        </button>
-                      </div>
-                    );
-                  })}
+                        {isSelected ? (
+                          <CheckIcon className="h-5 w-5 shrink-0 text-violet-600 dark:text-violet-300" />
+                        ) : null}
+                      </label>
+                      );
+                    })}
+                  </div>
+                  {availableStudents.length === 50 ? (
+                    <p className="border-t border-gray-200 px-3 py-2 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                      Mostrando até 50 alunos disponíveis. Use a busca para refinar a lista.
+                    </p>
+                  ) : null}
+                  {selectedStudentIds.length > 0 ? (
+                    <div className="flex flex-col gap-3 border-t border-gray-200 px-3 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-gray-700">
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        {selectedStudentIds.length} aluno(s) pronto(s) para vincular.
+                      </p>
+                      <Button
+                        type="button"
+                        onClick={() => bulkCreateMutation.mutate()}
+                        disabled={isBusy}
+                      >
+                        {bulkCreateMutation.isPending ? 'Vinculando...' : 'Vincular selecionados'}
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               ) : search.trim() ? (
                 <p className="mt-2 rounded-lg border border-dashed border-gray-300 p-3 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
@@ -264,7 +361,7 @@ export function ClassStudentsManager({
                 </p>
               ) : (
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Digite o nome, e-mail ou CPF para encontrar um aluno disponível.
+                  Nenhum aluno disponível para vincular a esta turma.
                 </p>
               )}
             </div>

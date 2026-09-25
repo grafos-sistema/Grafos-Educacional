@@ -5,7 +5,11 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateEnrollmentDto, TransferEnrollmentDto } from './dto';
+import {
+  BulkCreateEnrollmentDto,
+  CreateEnrollmentDto,
+  TransferEnrollmentDto,
+} from './dto';
 
 @Injectable()
 export class EnrollmentsService {
@@ -143,6 +147,182 @@ export class EnrollmentsService {
           },
         },
       },
+    });
+  }
+
+  /**
+   * Cria ou reativa várias matrículas de uma vez.
+   */
+  async bulkCreate(bulkCreateEnrollmentDto: BulkCreateEnrollmentDto) {
+    const { classId, studentIds } = bulkCreateEnrollmentDto;
+    const uniqueStudentIds = [...new Set(studentIds)];
+
+    return this.prisma.$transaction(async (tx) => {
+      const classEntity = await tx.class.findUnique({
+        where: { id: classId },
+        include: {
+          _count: {
+            select: {
+              enrollments: {
+                where: { isActive: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!classEntity) {
+        throw new NotFoundException('Turma não encontrada');
+      }
+
+      if (!classEntity.isActive) {
+        throw new BadRequestException('Turma não está ativa');
+      }
+
+      const students = await tx.student.findMany({
+        where: { id: { in: uniqueStudentIds } },
+        select: {
+          id: true,
+          isActive: true,
+          user: {
+            select: {
+              institutionId: true,
+            },
+          },
+        },
+      });
+
+      if (students.length !== uniqueStudentIds.length) {
+        throw new NotFoundException('Um ou mais alunos não foram encontrados');
+      }
+
+      if (students.some((student) => !student.isActive)) {
+        throw new BadRequestException(
+          'Não é possível vincular alunos inativos',
+        );
+      }
+
+      if (
+        students.some(
+          (student) => student.user.institutionId !== classEntity.institutionId,
+        )
+      ) {
+        throw new BadRequestException(
+          'Todos os alunos devem pertencer à mesma instituição da turma',
+        );
+      }
+
+      const activeTargetEnrollments = await tx.classEnrollment.findMany({
+        where: {
+          classId,
+          studentId: { in: uniqueStudentIds },
+          isActive: true,
+        },
+        select: { studentId: true },
+      });
+
+      if (activeTargetEnrollments.length > 0) {
+        throw new ConflictException(
+          'Um ou mais alunos já estão matriculados nesta turma',
+        );
+      }
+
+      const activeOtherClassEnrollments = await tx.classEnrollment.findMany({
+        where: {
+          studentId: { in: uniqueStudentIds },
+          classId: { not: classId },
+          isActive: true,
+        },
+        select: { studentId: true },
+      });
+
+      if (activeOtherClassEnrollments.length > 0) {
+        throw new ConflictException(
+          'Um ou mais alunos já estão vinculados a outra turma',
+        );
+      }
+
+      if (
+        classEntity.maxStudents &&
+        classEntity._count.enrollments + uniqueStudentIds.length >
+          classEntity.maxStudents
+      ) {
+        throw new BadRequestException(
+          `A turma comporta mais ${classEntity.maxStudents - classEntity._count.enrollments} aluno(s)`,
+        );
+      }
+
+      const previousTargetEnrollments = await tx.classEnrollment.findMany({
+        where: {
+          classId,
+          studentId: { in: uniqueStudentIds },
+          isActive: false,
+        },
+        select: { id: true, studentId: true },
+      });
+      const previousByStudentId = new Map(
+        previousTargetEnrollments.map((enrollment) => [
+          enrollment.studentId,
+          enrollment.id,
+        ]),
+      );
+      const enrollmentDate = new Date();
+
+      for (const studentId of uniqueStudentIds) {
+        const previousEnrollmentId = previousByStudentId.get(studentId);
+        if (previousEnrollmentId) {
+          await tx.classEnrollment.update({
+            where: { id: previousEnrollmentId },
+            data: { isActive: true, enrollmentDate },
+          });
+        } else {
+          await tx.classEnrollment.create({
+            data: { classId, studentId, enrollmentDate },
+          });
+        }
+      }
+
+      return tx.classEnrollment.findMany({
+        where: {
+          classId,
+          studentId: { in: uniqueStudentIds },
+          isActive: true,
+        },
+        include: {
+          class: {
+            select: {
+              id: true,
+              name: true,
+              grade: true,
+              section: true,
+              shift: true,
+              course: {
+                select: { id: true, name: true, code: true },
+              },
+              academicYear: {
+                select: { id: true, year: true },
+              },
+            },
+          },
+          student: {
+            select: {
+              id: true,
+              enrollmentNumber: true,
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  cpf: true,
+                  avatar: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { enrollmentDate: 'desc' },
+      });
     });
   }
 

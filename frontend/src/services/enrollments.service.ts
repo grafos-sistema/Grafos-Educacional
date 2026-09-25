@@ -129,6 +129,11 @@ export const enrollmentsService = {
     return mapEnrollment(response);
   },
 
+  async createBulk(data: { classId: string; studentIds: string[] }): Promise<ClassEnrollment[]> {
+    const response = (await api.post<ApiEnrollment[]>('/enrollments/bulk', data)) as unknown as ApiEnrollment[];
+    return (response ?? []).map(mapEnrollment);
+  },
+
   async transfer(id: string, data: { newClassId: string }): Promise<ClassEnrollment> {
     const response = (await api.patch<ApiEnrollment>(
       `/enrollments/${id}/transfer`,

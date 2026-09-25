@@ -98,17 +98,6 @@ export default function SuperAdminLoginPage() {
             Voltar para seleção de perfil
           </Link>
 
-          {/* Logo */}
-          <div className="flex items-center gap-3 mb-8">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 shadow-lg">
-              <ShieldExclamationIcon className="h-7 w-7 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">Grafos System</h1>
-              <p className="text-sm text-gray-500">Administração Global</p>
-            </div>
-          </div>
-
           {/* Title */}
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-gray-900">

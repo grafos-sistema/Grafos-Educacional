@@ -21,7 +21,7 @@ import { classesService } from '@/services/classes.service';
 import { UserRole } from '@/types/user.types';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
-import { Input } from '@/components/ui/Input';
+import { MonthPicker } from '@/components/ui/MonthPicker';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Modal } from '@/components/ui/Modal';
 import { ClassSubjectsManager } from '@/components/classes/ClassSubjectsManager';
@@ -373,12 +373,9 @@ export default function TeacherSchedulesPage() {
             options={subjectOptions}
             disabled={!selectedTeacherId}
           />
-          <Input
-            type="month"
-            label="Mês/Ano"
+          <MonthPicker
             value={selectedDate.substring(0, 7)}
-            onChange={(e) => setSelectedDate(e.target.value + '-01')}
-            leftIcon={<CalendarIcon className="h-5 w-5" />}
+            onChange={(value) => setSelectedDate(`${value}-01`)}
           />
         </div>
       </div>
